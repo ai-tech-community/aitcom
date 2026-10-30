@@ -73,7 +73,11 @@ export function GifPickerButton({
   const touch = useMediaQuery("(pointer: coarse)", false);
 
   const results = api.feed.searchGifs.useInfiniteQuery(
-    { communitySlug, query, lang: locale === "nl" ? "nl" : "en" },
+    {
+      communitySlug,
+      query,
+      lang: locale === "fr" ? "fr" : locale === "nl" ? "nl" : "en",
+    },
     {
       enabled: open,
       getNextPageParam: (page) => page.nextCursor,

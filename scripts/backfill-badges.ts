@@ -2,7 +2,8 @@
  * Badge backfill (ADR-0039) — a production action, run by the owner.
  *
  * Evaluates every badge track for every member with a profile, so members
- * get the tiers they already qualify for, and moves free-text prize rows
+ * get the tiers they already qualify for and milestones found in data,
+ * and moves free-text prize rows
  * (a challenge's `rewards.badgeReward` stored in `member_badge`) into
  * `member_award`. Backfilled badges get no XP, activity event or
  * notification. Rows that match no challenge are reported and kept.

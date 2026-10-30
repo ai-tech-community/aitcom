@@ -1,0 +1,318 @@
+import { forumThreadItemKind } from "./forumThread/kind";
+import { eventItemKind } from "./event/kind";
+import { z } from "zod";
+
+import { seesEditorLayer } from "@/lib/magazines/access";
+import { readItemImage } from "@/lib/magazines/item-image";
+import type {
+  EditorItemView,
+  ItemKindId,
+  ItemProblem,
+  UnavailableItem,
+} from "@/lib/magazines/item-views";
+
+import { articleItemKind } from "./article/kind";
+import { editorialItemKind } from "./editorial/kind";
+import { storylineItemKind } from "./storyline/kind";
+import { newsItemKind } from "./newsItem/kind";
+import { launchpadProjectItemKind } from "./launchpadProject/kind";
+import { itemIdOf } from "./item-id";
+import type {
+  IssueItemKind,
+  ItemContext,
+  ItemViewOf,
+  StoredItem,
+} from "./types";
+
+/**
+ * The item registry (ADR-0043): every kind id maps to its strategy. This
+ * record is the only place that names the kinds; everything below groups
+ * an issue's blocks by kind and dispatches through `ITEM_KINDS[kind]`.
+ * Adding a kind is one folder under `items/` plus one entry here.
+ */
+const STRATEGIES = {
+  article: articleItemKind,
+  editorial: editorialItemKind,
+  storyline: storylineItemKind,
+  newsItem: newsItemKind,
+  event: eventItemKind,
+  forumThread: forumThreadItemKind,
+  launchpadProject: launchpadProjectItemKind,
+};
+
+/** The builder input type a kind's strategy declares. */
+type KindInputs = {
+  [K in ItemKindId]: (typeof STRATEGIES)[K] extends IssueItemKind<
+    K,
+    infer Input,
+    StoredItem<K>
+  >
+    ? Input
+    : never;
+};
+export type InputOf<K extends ItemKindId> = KindInputs[K];
+
+/**
+ * One strategy per kind id: a kind without a strategy, or a strategy whose
+ * stored shape is not its Payload block, is a compile error.
+ */
+export type ItemKindRegistry = {
+  [K in ItemKindId]: IssueItemKind<K, InputOf<K>, StoredItem<K>>;
+};
+
+export const ITEM_KINDS: ItemKindRegistry = STRATEGIES;
+
+/** A builder input's content identity, shared by search and suggestions. */
+export function referenceOfInput<K extends ItemKindId>(
+  kind: K,
+  input: InputOf<K>,
+): string | null {
+  // toStored omits only the optional block id; references identify content.
+  const stored = ITEM_KINDS[kind].toStored(input) as StoredItem<K>;
+  return ITEM_KINDS[kind].referenceOf(stored);
+}
+
+/** An issue item block as Payload stores it in `magazine-issues.items`. */
+export type StoredBlock = {
+  blockType: ItemKindId;
+  id?: string | null;
+} & Record<string, unknown>;
+
+type KindInputSchema = ItemKindRegistry[ItemKindId]["input"];
+
+/** The builder input of any item: one kind's input, picked by `kind`. */
+export const issueItemInputSchema = z.discriminatedUnion(
+  "kind",
+  Object.values(ITEM_KINDS).map((strategy) => strategy.input) as [
+    KindInputSchema,
+    ...KindInputSchema[],
+  ],
+);
+
+export type IssueItemInput = z.infer<typeof issueItemInputSchema>;
+
+type InputsByKind = { [K in ItemKindId]: InputOf<K> };
+
+function storeOne<K extends ItemKindId>(
+  kind: K,
+  input: InputsByKind[K],
+): StoredBlock {
+  return {
+    blockType: kind,
+    ...ITEM_KINDS[kind].toStored(input),
+    ...(input.image !== undefined ? { image: input.image } : {}),
+    // Keep a saved item's block id: reading-page anchors and builder keys
+    // must survive a save (preflight F5).
+    ...(input.id ? { id: input.id } : {}),
+  };
+}
+
+/** Builder inputs → Payload `items` blocks, in order. */
+export function toStoredItems(inputs: IssueItemInput[]): StoredBlock[] {
+  return inputs.map((input) => storeOne(input.kind, input));
+}
+
+/**
+ * The boundary from Payload's block list to one kind's stored shape: Payload
+ * stores each block with the fields of its `blockType`'s block config, which
+ * `StoredItem<K>` is generated from.
+ */
+function asStored<K extends ItemKindId>(block: StoredBlock): StoredItem<K> {
+  return block as unknown as StoredItem<K>;
+}
+
+function inputOne<K extends ItemKindId>(
+  kind: K,
+  block: StoredBlock,
+): InputOf<K> {
+  const input = ITEM_KINDS[kind].toInput(asStored<K>(block));
+  const image = readItemImage(block.image);
+  return image ? { ...input, image } : input;
+}
+
+/** Payload `items` blocks → builder inputs, in order, block ids kept. */
+export function toItemInputs(blocks: StoredBlock[]): IssueItemInput[] {
+  return blocks.map((block) => inputOne(block.blockType, block));
+}
+
+type IndexedBlock = { index: number; block: StoredBlock };
+
+function groupByKind(blocks: StoredBlock[]): Map<ItemKindId, IndexedBlock[]> {
+  const groups = new Map<ItemKindId, IndexedBlock[]>();
+  blocks.forEach((block, index) => {
+    const group = groups.get(block.blockType) ?? [];
+    group.push({ index, block });
+    groups.set(block.blockType, group);
+  });
+  return groups;
+}
+
+function validateKind<K extends ItemKindId>(
+  kind: K,
+  group: IndexedBlock[],
+  ctx: ItemContext,
+  previousReferences: ReadonlySet<string>,
+): Promise<ItemProblem[]> {
+  const strategy = ITEM_KINDS[kind];
+  return ITEM_KINDS[kind].validate(
+    group.map(({ index, block }) => {
+      const stored = asStored<K>(block);
+      const reference = strategy.referenceOf(stored);
+      return {
+        index,
+        stored,
+        isNew: reference === null || !previousReferences.has(reference),
+      };
+    }),
+    ctx,
+  );
+}
+
+function referenceOfBlock<K extends ItemKindId>(
+  kind: K,
+  block: StoredBlock,
+): string | null {
+  return ITEM_KINDS[kind].referenceOf(asStored<K>(block));
+}
+
+/** Content identities in block order; issue-owned content has none. */
+export function referencesOfBlocks(blocks: StoredBlock[]): string[] {
+  return blocks.flatMap((block) => {
+    const reference = referenceOfBlock(block.blockType, block);
+    return reference === null ? [] : [reference];
+  });
+}
+
+async function openHrefsOfKind<K extends ItemKindId>(
+  kind: K,
+  group: IndexedBlock[],
+  ctx: ItemContext,
+): Promise<Record<string, string>> {
+  return (
+    ITEM_KINDS[kind].openHrefs?.(
+      group.map(({ block }) => asStored<K>(block)),
+      ctx,
+    ) ?? {}
+  );
+}
+
+/** Saved-item editor links, dispatched only to kinds present in the issue. */
+export async function loadIssueItemOpenHrefs(
+  blocks: StoredBlock[],
+  ctx: ItemContext,
+): Promise<Record<string, string>> {
+  const maps = await Promise.all(
+    [...groupByKind(blocks)].map(([kind, group]) =>
+      openHrefsOfKind(kind, group, ctx),
+    ),
+  );
+  return Object.fromEntries(maps.flatMap((map) => Object.entries(map)));
+}
+
+/**
+ * Every problem with an issue's items, in item order. One batched check per
+ * kind present in the issue.
+ * `previous` is the issue's stored blocks before this save; omitted means
+ * every reference is new.
+ */
+export async function validateIssueItems(
+  blocks: StoredBlock[],
+  ctx: ItemContext,
+  previous?: readonly StoredBlock[],
+): Promise<ItemProblem[]> {
+  const previousReferences = new Set(referencesOfBlocks([...(previous ?? [])]));
+  const perKind = await Promise.all(
+    [...groupByKind(blocks)].map(([kind, group]) =>
+      validateKind(kind, group, ctx, previousReferences),
+    ),
+  );
+  return perKind.flat().sort((a, b) => a.itemIndex - b.itemIndex);
+}
+
+function isUnavailable(view: EditorItemView): view is UnavailableItem {
+  return "unavailable" in view;
+}
+
+/**
+ * One kind's views by block id. For readers, unavailable and unreadable
+ * items are left out.
+ */
+async function loadKind<K extends ItemKindId>(
+  kind: K,
+  group: IndexedBlock[],
+  ctx: ItemContext,
+): Promise<Map<string, EditorItemView>> {
+  const strategy = ITEM_KINDS[kind];
+  const views: Map<string, ItemViewOf<K> | UnavailableItem> =
+    await strategy.load(
+      group.map(({ block }) => asStored<K>(block)),
+      ctx,
+    );
+  const shown = new Map<string, EditorItemView>();
+  const blocks = new Map(group.map(({ block }) => [itemIdOf(block), block]));
+  for (const [itemId, view] of views) {
+    const image = !isUnavailable(view)
+      ? readItemImage(blocks.get(itemId)?.image)
+      : null;
+    const decorated = image ? { ...view, image } : view;
+    if (seesEditorLayer(ctx.access)) {
+      shown.set(itemId, decorated);
+    } else if (!isUnavailable(view) && strategy.isReadable(view, ctx)) {
+      shown.set(itemId, decorated);
+    }
+  }
+  return shown;
+}
+
+/**
+ * An issue's items as views, in issue order. Readers get readable views
+ * only; editors also get `UnavailableItem` markers in place. One batched
+ * load per kind present in the issue.
+ *
+ * Saved blocks only: every block must carry the block id Payload gave it
+ * on save (`itemIdOf` throws otherwise). Do not call it on unsaved builder
+ * input; a preview renders the last saved views.
+ */
+export async function loadIssueItemViews(
+  blocks: StoredBlock[],
+  ctx: ItemContext,
+): Promise<EditorItemView[]> {
+  const loaded = new Map<ItemKindId, Map<string, EditorItemView>>(
+    await Promise.all(
+      [...groupByKind(blocks)].map(
+        async ([kind, group]) =>
+          [kind, await loadKind(kind, group, ctx)] as const,
+      ),
+    ),
+  );
+  const views: EditorItemView[] = [];
+  for (const block of blocks) {
+    const itemId = itemIdOf(block);
+    const view = loaded.get(block.blockType)?.get(itemId);
+    if (view) {
+      views.push(view);
+    } else if (seesEditorLayer(ctx.access)) {
+      // A strategy that returns nothing for an item: mark it, never hide it
+      // from the editor.
+      views.push({
+        kind: block.blockType,
+        itemId,
+        unavailable: true,
+        reason: "missing",
+      });
+    }
+  }
+  return views;
+}
+
+/** Loads only blocks of the given kinds, filtering before any kind is loaded. */
+export function loadIssueItemViewsOfKinds(
+  blocks: StoredBlock[],
+  ctx: ItemContext,
+  kinds: readonly ItemKindId[],
+): Promise<EditorItemView[]> {
+  return loadIssueItemViews(
+    blocks.filter((block) => kinds.includes(block.blockType)),
+    ctx,
+  );
+}

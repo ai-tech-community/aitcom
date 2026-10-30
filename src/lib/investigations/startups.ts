@@ -1,3 +1,4 @@
+import { resolveLocale, type AppLocale } from "@/i18n/messages";
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 import { slugify } from "@/lib/text-utils";
 import {
@@ -5,6 +6,7 @@ import {
   startupPlaceCentroid,
 } from "./startups-places";
 import { defaultStartupJobsSort } from "./startup-jobs-search";
+import { sourcedAnswerBlurb } from "./startup-sourced-answers";
 import type { StartupCountryCode } from "./startups-countries";
 
 export const STARTUPS_PATH = "/startups";
@@ -16,7 +18,7 @@ export const STARTUPS_INSIGHTS_PATH = "/startups/insights";
  * never a Hub path.
  */
 export function startupsInsightsShareUrl(locale: string): string {
-  const resolved = locale === "nl" ? "nl" : "en";
+  const resolved = resolveLocale(locale);
   return `${CANONICAL_PRODUCTION_ORIGIN}/${resolved}${STARTUPS_INSIGHTS_PATH}`;
 }
 
@@ -72,7 +74,7 @@ export const STARTUPS_NAME_MAX = 160;
 /** Sourced short blurb. Longer than logo URLs; still a directory one-liner. */
 export const STARTUPS_DESCRIPTION_MAX = 500;
 
-export type StartupLocale = "en" | "nl";
+export type StartupLocale = AppLocale;
 
 export type StartupCategoryId =
   | "models"
@@ -153,9 +155,9 @@ export const STARTUP_EXIT_STATUS_LABELS: Record<
   StartupExitStatus,
   Record<StartupLocale, string>
 > = {
-  acquired: { en: "Acquired", nl: "Overgenomen" },
-  ipo: { en: "IPO", nl: "Beursgang" },
-  shutdown: { en: "Shutdown", nl: "Gestopt" },
+  acquired: { en: "Acquired", nl: "Overgenomen", fr: "Rachetée" },
+  ipo: { en: "IPO", nl: "Beursgang", fr: "Introduction en bourse" },
+  shutdown: { en: "Shutdown", nl: "Gestopt", fr: "Fermée" },
 };
 
 /** Filter labels only. Blank exit stays badge-omitted on the card. */
@@ -163,7 +165,7 @@ export const STARTUP_EXIT_FILTER_LABELS: Record<
   StartupExitFilter,
   Record<StartupLocale, string>
 > = {
-  active: { en: "Active", nl: "Actief" },
+  active: { en: "Active", nl: "Actief", fr: "Active" },
   ...STARTUP_EXIT_STATUS_LABELS,
 };
 
@@ -249,18 +251,19 @@ export const STARTUP_CATEGORY_LABELS: Record<
   StartupCategoryId,
   Record<StartupLocale, string>
 > = {
-  models: { en: "Models", nl: "Modellen" },
-  agents: { en: "Agents", nl: "Agents" },
-  "ai-infra": { en: "AI infra", nl: "AI-infra" },
-  robotics: { en: "Robotics", nl: "Robotica" },
-  energy: { en: "Energy", nl: "Energie" },
-  vertical: { en: "Vertical", nl: "Verticaal" },
-  other: { en: "Other", nl: "Overig" },
+  models: { en: "Models", nl: "Modellen", fr: "Modèles" },
+  agents: { en: "Agents", nl: "Agents", fr: "Agents" },
+  "ai-infra": { en: "AI infra", nl: "AI-infra", fr: "Infrastructure d’IA" },
+  robotics: { en: "Robotics", nl: "Robotica", fr: "Robotique" },
+  energy: { en: "Energy", nl: "Energie", fr: "Énergie" },
+  vertical: { en: "Vertical", nl: "Verticaal", fr: "Solutions sectorielles" },
+  other: { en: "Other", nl: "Overig", fr: "Autres" },
 };
 
 export const STARTUP_USES_AI_LABELS: Record<StartupLocale, string> = {
   en: "Uses AI",
   nl: "Gebruikt AI",
+  fr: "Utilise l’IA",
 };
 
 export function startupUsesAi(
@@ -467,6 +470,8 @@ export function startupProfileMetaDescription(
 ): string | undefined {
   const blurb = sanitizeStartupDescription(card.description);
   if (blurb) return blurb;
+  const sourced = sanitizeStartupDescription(sourcedAnswerBlurb(card.slug));
+  if (sourced) return sourced;
   const parts = [
     STARTUP_CATEGORY_LABELS[card.category][locale],
     presentText(card.region),
@@ -729,10 +734,10 @@ export const STARTUP_CITE_KIND_LABELS: Record<
   StartupCiteKind,
   Record<StartupLocale, string>
 > = {
-  docs: { en: "Docs", nl: "Docs" },
-  "deep-dive": { en: "Deep dive", nl: "Deep dive" },
-  talk: { en: "Talk", nl: "Talk" },
-  news: { en: "News", nl: "Nieuws" },
+  docs: { en: "Docs", nl: "Docs", fr: "Documentation" },
+  "deep-dive": { en: "Deep dive", nl: "Deep dive", fr: "Analyse approfondie" },
+  talk: { en: "Talk", nl: "Talk", fr: "Conférence" },
+  news: { en: "News", nl: "Nieuws", fr: "Actualités" },
 };
 
 const SOURCED_PUBLICATION_TITLES: Record<string, string> = {
@@ -987,10 +992,17 @@ export function formatStartupListedDate(
   const date = new Date(`${listedOn}T12:00:00.000Z`);
   if (Number.isNaN(date.getTime())) return listedOn;
   const formatted = new Intl.DateTimeFormat(
-    locale === "nl" ? "nl-NL" : "en-US",
+    locale === "nl" ? "nl-NL" : locale === "fr" ? "fr-FR" : "en-US",
     { month: "long", day: "numeric", year: "numeric" },
   ).format(date);
-  return locale === "nl" ? `Geplaatst: ${formatted}` : `Listed: ${formatted}`;
+  const label: Record<StartupLocale, string> = {
+    en: "Listed",
+    nl: "Geplaatst",
+    fr: "Ajoutée le",
+  };
+  return locale === "fr"
+    ? `${label.fr} ${formatted}`
+    : `${label[locale]}: ${formatted}`;
 }
 
 function firstParam(value: string | string[] | undefined): string | undefined {

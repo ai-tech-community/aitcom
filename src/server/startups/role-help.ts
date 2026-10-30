@@ -24,7 +24,7 @@ import { getPayloadClient } from "@/server/payload";
 import { findStartupRoleApplication } from "@/server/startups/member-jobs";
 import { toPublicRole } from "@/server/startups/queries";
 
-type HelpLocale = "en" | "nl";
+type HelpLocale = "en" | "nl" | "fr";
 
 async function assertCommunityRulesAccepted(
   userId: string,

@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 // Shared resolution for the public hackathon sub-pages (winners, gallery):
 // public event lookup → bound challenge → phase markers → lifecycle phase.
 // NOT pure (touches Payload + db) — kept out of the db-free hackathon modules'
@@ -21,7 +22,7 @@ import type { Challenge, Event } from "@/payload-types";
 // Wrapped in React cache() so the layout + page (and the hub sub-pages) that
 // each resolve the same slug within one request share a single Payload lookup.
 export const findPublicEvent = cache(
-  async (slug: string, locale: "en" | "nl"): Promise<Event | null> => {
+  async (slug: string, locale: AppLocale): Promise<Event | null> => {
     const payload = await getPayloadClient();
     const { docs } = await payload.find({
       collection: "events",
@@ -57,7 +58,7 @@ export type PublicHackathonResolution =
  */
 export async function resolvePublicHackathonPage(
   slug: string,
-  locale: "en" | "nl",
+  locale: AppLocale,
 ): Promise<PublicHackathonResolution> {
   const event = await findPublicEvent(slug, locale);
   // Not a hackathon (no bound challenge) → the sub-page does not exist.

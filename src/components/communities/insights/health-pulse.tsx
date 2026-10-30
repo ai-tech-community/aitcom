@@ -42,7 +42,7 @@ export function HealthPulse({ slug }: { slug: string }) {
   return (
     <section
       aria-label={t("healthSection")}
-      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      className="grid gap-3 @lg:grid-cols-2 @4xl:grid-cols-4"
     >
       {cards.map((c) => (
         <article

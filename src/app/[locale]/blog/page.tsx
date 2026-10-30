@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -65,7 +66,7 @@ export default async function BlogPage({
     collection: "articles",
     where: { and: conditions },
     sort: "-publishedAt",
-    locale: locale as "en" | "nl",
+    locale: locale as AppLocale,
     draft: false,
     limit: 10,
     page: requestedPage,

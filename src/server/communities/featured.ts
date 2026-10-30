@@ -39,6 +39,26 @@ export function asMemberCount(value: unknown): number {
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 0;
 }
 
+/** Curated doors first, then other explicitly public communities. */
+export function pickHomeCommunities<T extends FeaturedCommunityCard>(
+  rows: readonly T[],
+): T[] {
+  const featured = pickFeaturedCommunities(rows);
+  const selected = new Set(featured.map((row) => row.slug));
+  const excluded = new Set<string>(NEVER_FEATURE_SLUGS);
+  const others = rows
+    .filter(
+      (row) =>
+        row.isListedInDirectory === true &&
+        !selected.has(row.slug) &&
+        !excluded.has(row.slug),
+    )
+    .sort(
+      (a, b) => b.memberCount - a.memberCount || a.name.localeCompare(b.name),
+    );
+  return [...featured, ...others].slice(0, 6);
+}
+
 /** Keep Pulse order; drop unknown / kill-list / missing / unlisted rows. */
 export function pickFeaturedCommunities<
   T extends { slug: string; isListedInDirectory?: boolean },

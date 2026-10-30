@@ -1,3 +1,4 @@
+import { routing } from "@/i18n/routing";
 // src/server/api/routers/communities.ts
 import { z } from "zod";
 import { and, eq, isNull, sql, desc, count, inArray } from "drizzle-orm";
@@ -14,9 +15,8 @@ import {
   communityInvites,
   memberProfiles,
   user,
-  spaces,
 } from "@/server/db/schema";
-import { buildDefaultSpaceRows } from "@/server/communities/space-defaults";
+import { seedDefaultSpaces } from "@/server/communities/seed-default-spaces";
 import { generateSlug } from "@/server/communities/slug-utils";
 import {
   canManageRole,
@@ -49,6 +49,7 @@ import {
 } from "@/server/communities/directory";
 import { getPayloadClient } from "@/server/payload";
 import { ipOriginFromHeaders } from "@/lib/visitor-headers";
+import { communityDescriptionSchema } from "@/lib/communities/description";
 
 /** Two decimals of a degree: about a kilometre. */
 function roundToKm(degrees: number): number {
@@ -64,6 +65,14 @@ import { countPendingJoinRequests } from "@/server/communities/pending-join-requ
 import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
 import { activateMembership } from "@/server/communities/activate-membership";
 import {
+  joinSourceSchema,
+  type JoinSource,
+} from "@/lib/communities/join-source";
+import {
+  joinSourceMetadata,
+  verifyJoinSource,
+} from "@/server/communities/join-sources";
+import {
   notifyCommunityInvite,
   resolveCommunityInviteNotices,
 } from "@/server/communities/invite-notification";
@@ -75,6 +84,21 @@ import {
   recordInviteDeclined,
 } from "@/server/communities/invite-limits";
 import type { db as Database } from "@/server/db";
+
+/** Source lookup is supplementary, including when Payload cannot start. */
+async function verifiedJoinMetadata(
+  db: typeof Database,
+  communityId: string,
+  source?: JoinSource,
+) {
+  if (!source) return undefined;
+  const verified = await verifyJoinSource(
+    async () => ({ db, payload: await getPayloadClient() }),
+    communityId,
+    source,
+  );
+  return verified ? joinSourceMetadata(verified) : undefined;
+}
 
 /** The membership changed between reading and writing it (e.g. a ban). */
 function membershipChanged(): TRPCError {
@@ -157,7 +181,7 @@ export const communitiesRouter = createTRPCRouter({
           .optional(),
         limit: z.number().int().min(1).max(48).default(24),
         cursor: z.number().int().min(0).nullish(),
-        locale: z.enum(["en", "nl"]).default("en"),
+        locale: z.enum(routing.locales).default("en"),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -365,7 +389,7 @@ export const communitiesRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(2).max(100),
-        description: z.string().max(500).optional(),
+        description: communityDescriptionSchema.optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .default("open"),
@@ -408,7 +432,7 @@ export const communitiesRouter = createTRPCRouter({
         });
 
         // Seed the default builtin spaces so the new community's nav is populated.
-        await tx.insert(spaces).values(buildDefaultSpaceRows(c!.id));
+        await seedDefaultSpaces(tx, c!.id);
 
         try {
           await writeCommunityNewsSector(tx, c!.id, "ai");
@@ -434,7 +458,7 @@ export const communitiesRouter = createTRPCRouter({
 
   /** Join an open community */
   join: protectedProcedure
-    .input(z.object({ slug: z.string() }))
+    .input(z.object({ slug: z.string(), source: joinSourceSchema.optional() }))
     .mutation(async ({ ctx, input }) => {
       const community = await ctx.db.query.communities.findFirst({
         where: and(
@@ -477,11 +501,18 @@ export const communitiesRouter = createTRPCRouter({
         }
       }
 
+      const metadata = await verifiedJoinMetadata(
+        ctx.db,
+        community.id,
+        input.source,
+      );
+
       // An existing invited/pending_approval row is activated, never duplicated.
       const activated = await activateMembership(ctx.db, {
         communityId: community.id,
         userId: ctx.session.user.id,
         existing: existing ?? null,
+        ...(metadata ? { metadata } : {}),
       });
       if (!activated) throw membershipChanged();
 
@@ -490,7 +521,7 @@ export const communitiesRouter = createTRPCRouter({
 
   /** Request to join an approval-required community */
   requestToJoin: protectedProcedure
-    .input(z.object({ slug: z.string() }))
+    .input(z.object({ slug: z.string(), source: joinSourceSchema.optional() }))
     .mutation(async ({ ctx, input }) => {
       const community = await ctx.db.query.communities.findFirst({
         where: and(
@@ -536,26 +567,31 @@ export const communitiesRouter = createTRPCRouter({
             message: "Request already pending",
           });
         }
-        if (existing.status === "invited") {
-          // Already invited — update to pending_approval since they're requesting via the approval flow
-          await ctx.db
-            .update(communityMemberships)
-            .set({ status: "pending_approval" })
-            .where(eq(communityMemberships.id, existing.id));
-          return { success: true };
-        }
       }
 
-      await ctx.db.insert(communityMemberships).values({
-        communityId: community.id,
-        userId: ctx.session.user.id,
-        role: "member",
-        status: "pending_approval",
-      });
+      const metadata = await verifiedJoinMetadata(
+        ctx.db,
+        community.id,
+        input.source,
+      );
+      if (existing?.status === "invited") {
+        await ctx.db
+          .update(communityMemberships)
+          .set({ status: "pending_approval" })
+          .where(eq(communityMemberships.id, existing.id));
+      } else {
+        await ctx.db.insert(communityMemberships).values({
+          communityId: community.id,
+          userId: ctx.session.user.id,
+          role: "member",
+          status: "pending_approval",
+        });
+      }
 
       await logActivity(ctx.db, {
         actorId: ctx.session.user.id,
         actorType: "member",
+        ...(metadata ? { metadata } : {}),
         action: "community.join_requested",
         targetType: "community",
         targetId: community.id,
@@ -880,8 +916,9 @@ export const communitiesRouter = createTRPCRouter({
       z.object({
         slug: z.string(),
         name: z.string().min(2).max(100).optional(),
-        description: z.string().max(500).optional(),
+        description: communityDescriptionSchema.optional(),
         logoUrl: z.string().url().optional().nullable(),
+        bannerUrl: z.string().url().nullable().optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .optional(),
@@ -909,6 +946,7 @@ export const communitiesRouter = createTRPCRouter({
       if (input.description !== undefined)
         updates.description = input.description;
       if (input.logoUrl !== undefined) updates.logoUrl = input.logoUrl;
+      if (input.bannerUrl !== undefined) updates.bannerUrl = input.bannerUrl;
       if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
       if (input.isListedInDirectory !== undefined)
         updates.isListedInDirectory = input.isListedInDirectory;

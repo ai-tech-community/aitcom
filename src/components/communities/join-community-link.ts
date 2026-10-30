@@ -1,3 +1,8 @@
+import {
+  joinSourceSchema,
+  type JoinSource,
+} from "@/lib/communities/join-source";
+
 /**
  * Finishing a join after sign-in. A guest who presses Join is sent to sign
  * in with `?join=<slug>` on the return path (the page they were on — the
@@ -22,11 +27,15 @@ export function joinReturnPath(currentPath: string, slug: string): string {
 }
 
 /** Records that this browser pressed Join for `slug` (before sign-in). */
-export function rememberJoinIntent(slug: string, now: number = Date.now()) {
+export function rememberJoinIntent(
+  slug: string,
+  now: number = Date.now(),
+  source?: JoinSource | null,
+): void {
   try {
     window.sessionStorage.setItem(
       INTENT_KEY,
-      JSON.stringify({ slug, at: now }),
+      JSON.stringify({ slug, at: now, source: source ?? null }),
     );
   } catch {
     // Storage unavailable (private mode): the join will not auto-finish,
@@ -35,22 +44,35 @@ export function rememberJoinIntent(slug: string, now: number = Date.now()) {
 }
 
 /**
- * Whether this browser recorded a fresh intent to join `slug`. Consumes the
+ * The fresh intent this browser recorded to join `slug`. Consumes the
  * record either way, so it can be used once.
  */
-export function takeJoinIntent(slug: string, now: number = Date.now()) {
+export type JoinIntent = { source: JoinSource | null };
+
+export function takeJoinIntent(
+  slug: string,
+  now: number = Date.now(),
+): JoinIntent | null {
   try {
     const raw = window.sessionStorage.getItem(INTENT_KEY);
     window.sessionStorage.removeItem(INTENT_KEY);
-    if (!raw) return false;
-    const intent = JSON.parse(raw) as { slug?: unknown; at?: unknown };
-    return (
-      intent.slug === slug &&
-      typeof intent.at === "number" &&
-      now - intent.at >= 0 &&
-      now - intent.at < JOIN_INTENT_TTL_MS
-    );
+    if (!raw) return null;
+    const intent = JSON.parse(raw) as {
+      slug?: unknown;
+      at?: unknown;
+      source?: unknown;
+    } | null;
+    if (
+      intent?.slug !== slug ||
+      typeof intent.at !== "number" ||
+      !Number.isFinite(intent.at) ||
+      now - intent.at < 0 ||
+      now - intent.at >= JOIN_INTENT_TTL_MS
+    )
+      return null;
+    const source = joinSourceSchema.safeParse(intent.source);
+    return { source: source.success ? source.data : null };
   } catch {
-    return false;
+    return null;
   }
 }

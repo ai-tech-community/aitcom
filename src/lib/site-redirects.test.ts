@@ -80,7 +80,7 @@ describe("retired section redirects", () => {
   });
 
   it("covers every configured locale and collapses subpaths", () => {
-    expect(localeGroup).toBe("en|nl");
+    expect(localeGroup).toBe("en|nl|fr");
     for (const rule of siteRedirects) {
       expect(rule.source).toContain(`:locale(${localeGroup})`);
     }
@@ -173,7 +173,7 @@ describe("retired section redirects", () => {
 
 function samplePath(rule: Redirect): string {
   return rule.source
-    .replace(":locale(en|nl)", "en")
+    .replace(`:locale(${localeGroup})`, routing.defaultLocale)
     .replace(":slug", "makers")
     .replace("/:path*", "/sample");
 }

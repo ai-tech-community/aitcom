@@ -1,7 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
-import { memberProfiles, notifications, user } from "@/server/db/schema";
+import { notifications } from "@/server/db/schema";
+import { memberDisplayName } from "@/server/members/display-name";
 import { communityHref } from "@/lib/communities/routes";
 import { clipText, oneLine } from "@/lib/text-utils";
 import type { Tx } from "./activate-membership";
@@ -16,18 +17,6 @@ const TITLE_MAX = 255;
 /** Names are member-chosen and up to 255 characters; keep the sentence readable. */
 const INVITER_NAME_MAX = 60;
 const COMMUNITY_NAME_MAX = 120;
-
-/** The name a member is shown by: their profile name, else their account name. */
-async function displayNameOf(db: DB, userId: string): Promise<string | null> {
-  const [row] = await db
-    .select({ profileName: memberProfiles.displayName, accountName: user.name })
-    .from(user)
-    .leftJoin(memberProfiles, eq(memberProfiles.userId, user.id))
-    .where(eq(user.id, userId))
-    .limit(1);
-  const name = oneLine(row?.profileName ?? row?.accountName ?? "");
-  return name || null;
-}
 
 /** "{inviter} invited you to {community}", always within the title column. */
 export function communityInviteTitle(
@@ -55,7 +44,7 @@ export async function notifyCommunityInvite(
     community: { id: string; slug: string; name: string };
   },
 ): Promise<void> {
-  const inviter = await displayNameOf(db, input.inviterId);
+  const inviter = await memberDisplayName(db, input.inviterId);
   await db.insert(notifications).values({
     userId: input.inviteeId,
     type: COMMUNITY_INVITE_NOTIFICATION,

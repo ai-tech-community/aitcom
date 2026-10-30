@@ -23,6 +23,8 @@ import {
 import { $setBlocksType } from "@payloadcms/richtext-lexical/lexical/selection";
 import { TOGGLE_LINK_COMMAND } from "@payloadcms/richtext-lexical/lexical/link";
 
+import { $insertVideoBlock } from "./article-paste";
+
 type TextFormat =
   | "bold"
   | "italic"
@@ -301,6 +303,13 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
     [editor],
   );
 
+  const insertVideo = useCallback(() => {
+    if (!editor) return;
+    editor.update(() => {
+      $insertVideoBlock("");
+    });
+  }, [editor]);
+
   const handleLink = useCallback(() => {
     if (formats.link) {
       editor?.dispatchCommand(TOGGLE_LINK_COMMAND, null);
@@ -531,6 +540,14 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
             title="Inline Code"
           >
             <span className="font-mono text-xs">&lt;/&gt;</span>
+          </button>
+          <button
+            type="button"
+            onClick={insertVideo}
+            className={btnClass(false)}
+            title="Video"
+          >
+            <span className="font-mono text-xs">▶</span>
           </button>
           <button
             type="button"

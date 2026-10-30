@@ -46,7 +46,10 @@ export function StartupsDirectoryMap({
 }) {
   const t = useTranslations("investigationsStartups");
   const numbers = useMemo(
-    () => new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-US"),
+    () =>
+      new Intl.NumberFormat(
+        locale === "fr" ? "fr-FR" : locale === "nl" ? "nl-NL" : "en-US",
+      ),
     [locale],
   );
   const pins = useMemo(() => startupMapPins([...companies]), [companies]);

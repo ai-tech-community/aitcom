@@ -27,9 +27,8 @@ import { Switch } from "@/components/ui/switch";
 import { BuildingModal } from "@/components/community/building-modal";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Loader2, Plus } from "lucide-react";
+import { COMMUNITY_DESCRIPTION_MAX } from "@/lib/communities/description";
 import { useCreateCommunityDeepLink } from "./use-create-community-deep-link";
-
-const SIGN_IN_INTENT = "Sign in to create a community";
 
 type CreateCommunityContextValue = {
   /** Opens the dialog; guests are asked to sign in first. */
@@ -47,6 +46,7 @@ const CreateCommunityContext =
  */
 export function CreateCommunityProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("communities.create");
+  const signInIntent = t("signInToCreate");
   const router = useRouter();
   const utils = api.useUtils();
   const { requireAuth } = useRequireAuth();
@@ -60,7 +60,7 @@ export function CreateCommunityProvider({ children }: { children: ReactNode }) {
   const [isListed, setIsListed] = useState(true);
 
   // `/communities?create=1` opens this dialog (sign-in first for guests).
-  useCreateCommunityDeepLink(() => setOpen(true), SIGN_IN_INTENT);
+  useCreateCommunityDeepLink(() => setOpen(true), signInIntent);
 
   const mutation = api.communities.create.useMutation({
     onSuccess: (community) => {
@@ -89,8 +89,8 @@ export function CreateCommunityProvider({ children }: { children: ReactNode }) {
   }
 
   const start = useCallback(
-    () => requireAuth(() => setOpen(true), SIGN_IN_INTENT),
-    [requireAuth],
+    () => requireAuth(() => setOpen(true), signInIntent),
+    [requireAuth, signInIntent],
   );
   const value = useMemo(() => ({ start }), [start]);
 
@@ -126,7 +126,7 @@ export function CreateCommunityProvider({ children }: { children: ReactNode }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is your community about?"
-              maxLength={500}
+              maxLength={COMMUNITY_DESCRIPTION_MAX}
               rows={3}
               className="mt-1 font-mono text-sm"
             />
@@ -156,7 +156,7 @@ export function CreateCommunityProvider({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3">
             <Switch checked={isListed} onCheckedChange={setIsListed} />
             <Label className="font-mono text-xs">
-              Listed in community directory
+              {t("listedInDirectory")}
             </Label>
           </div>
           {mutation.error && (

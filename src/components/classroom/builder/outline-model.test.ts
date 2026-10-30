@@ -31,7 +31,14 @@ describe("buildOutline", () => {
   it("returns one flat group when there are no modules", () => {
     const flat = lessons.map((l, i) => ({ ...l, module: null, order: 2 - i }));
     expect(buildOutline(flat, [])).toEqual([
-      { moduleId: null, title: null, summary: null, lessonIds: [3, 2, 1] },
+      {
+        moduleId: null,
+        title: null,
+        summary: null,
+        imageUrl: null,
+        imageAlt: null,
+        lessonIds: [3, 2, 1],
+      },
     ]);
   });
 });

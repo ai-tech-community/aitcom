@@ -22,6 +22,7 @@ import {
 import type { CommunityRole } from "@/server/communities/role-utils";
 import { checkRateLimit } from "@/server/agent/rate-limit";
 import { HUB_SLUG } from "@/server/communities/hub";
+import { magazineErrorItemIndex } from "@/server/magazines/errors";
 
 export { HUB_SLUG };
 
@@ -37,7 +38,10 @@ export { HUB_SLUG };
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  afterResponse?: (task: () => Promise<void>) => void;
+}) => {
   const session = await auth.api.getSession({
     headers: opts.headers,
   });
@@ -64,6 +68,7 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
         ...shape.data,
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
+        magazineItemIndex: magazineErrorItemIndex(error),
       },
     };
   },

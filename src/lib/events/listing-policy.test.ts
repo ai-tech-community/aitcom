@@ -306,6 +306,23 @@ describe("event meta description", () => {
     expect(meta).not.toMatch(/officiële pagina|https?:/i);
   });
 
+  it("preserves the translated online label after localizing city fields", () => {
+    const meta = eventMetaDescription(
+      {
+        title: "Online meetup",
+        date: "2026-11-16",
+        format: "online",
+        city: "Paris",
+        description: "En ligne sessions cover practical examples.",
+      },
+      "fr",
+      "En ligne",
+    );
+    expect(meta).toContain("En ligne.");
+    expect(meta).not.toContain("Online.");
+    expect(meta).not.toContain("sessions cover");
+  });
+
   it("uses München for the Dutch Handelsblatt meta and Munich in English", () => {
     const event = {
       title: "Handelsblatt AI Summit 2026",

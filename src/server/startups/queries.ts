@@ -11,7 +11,14 @@ import {
   type SQL,
 } from "drizzle-orm";
 
-import { isThinStartupProfile } from "@/lib/investigations/startup-profile-index";
+import {
+  AI_TOOLS_LIST_CATEGORIES,
+  isAiToolsHubStartup,
+} from "@/lib/investigations/ai-tools-list";
+import {
+  isThinStartupProfile,
+  startupProfileIndexInput,
+} from "@/lib/investigations/startup-profile-index";
 import {
   displayStartupFounders,
   displayStartupInvestors,
@@ -214,8 +221,10 @@ export async function findApprovedPublicStartupBySlug(
 /**
  * Approved public profile paths for the sitemap. Thin profiles (description
  * under 80 characters and no open roles) are omitted. The same
- * `isThinStartupProfile` check noindexes those URLs. Enrichment that fills
- * the description, or a scan that records an open role, puts the profile back.
+ * `isThinStartupProfile` check noindexes those URLs. A missing blurb can
+ * still pass when `startupProfileIndexInput` supplies a sourced answer of
+ * at least 80 characters. Enrichment that fills the description, or a scan
+ * that records an open role, puts the profile back the same way.
  */
 export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
   try {
@@ -231,15 +240,52 @@ export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
       const slug = parseStartupSlug(row.slug);
       if (!slug) return [];
       if (
-        isThinStartupProfile({
-          description: row.description,
-          openRoleCount: asFiniteCount(row.openRoleCount),
-        })
+        isThinStartupProfile(
+          startupProfileIndexInput({
+            slug,
+            description: row.description,
+            openRoleCount: asFiniteCount(row.openRoleCount),
+          }),
+        )
       ) {
         return [];
       }
       return [slug];
     });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Approved agents and models that the thin-profile rule still indexes.
+ * Sorted by name. Soft-empty when the query fails. No writes.
+ */
+export async function listAiToolsHubStartups(): Promise<StartupPublicCard[]> {
+  const where = and(
+    eq(startups.status, "approved"),
+    inArray(startups.category, [...AI_TOOLS_LIST_CATEGORIES]),
+  );
+  try {
+    let rows;
+    try {
+      rows = await db.select().from(startups).where(where);
+    } catch (error) {
+      if (!isMissingUsesAiColumn(error)) throw error;
+      const legacy = await db
+        .select(startupColumnsWithoutUsesAi)
+        .from(startups)
+        .where(where);
+      rows = legacy.map((row) => ({ ...row, usesAi: null }));
+    }
+    return rows
+      .map((row) => toPublicCard(row))
+      .filter((card) => isAiToolsHubStartup(card))
+      .sort(
+        (a, b) =>
+          a.name.localeCompare(b.name, "en", { sensitivity: "base" }) ||
+          a.slug.localeCompare(b.slug),
+      );
   } catch {
     return [];
   }

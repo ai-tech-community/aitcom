@@ -85,6 +85,12 @@ export function Footer() {
                 >
                   {tNav("startups")}
                 </Link>
+                <Link
+                  href="/sponsors"
+                  className="hover:text-primary text-sm transition-colors"
+                >
+                  {tNav("sponsors")}
+                </Link>
               </nav>
             </div>
 

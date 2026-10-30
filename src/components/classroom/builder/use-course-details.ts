@@ -9,9 +9,10 @@ import {
 } from "react";
 import { api } from "@/trpc/react";
 import { COURSE_TITLE_MIN } from "@/lib/classroom/course-title";
-import { useAutosave } from "./use-autosave";
+import { useAutosave } from "@/components/use-autosave";
+import { CLASSROOM_CONFLICT_CODES } from "./builder-errors";
 import { usePaneReport } from "./use-pane-report";
-import type { VersionedWriter } from "./versioned-writer";
+import type { VersionedWriter } from "@/components/versioned-writer";
 import type { PaneSaveState } from "./course-builder";
 
 export type CourseDetailsDraft = {
@@ -48,7 +49,7 @@ export function useCourseDetails({
     summary: string | null;
     coverImageUrl: string | null;
   };
-  /** Shared with every other course write in the builder (see versioned-writer.ts). */
+  /** Shared with every other course write in the builder (see src/components/versioned-writer.ts). */
   writer: VersionedWriter;
   readOnly: boolean;
   onStatusChange: (state: PaneSaveState) => void;
@@ -93,6 +94,7 @@ export function useCourseDetails({
   const autosave = useAutosave({
     value: draft,
     save,
+    conflictCodes: CLASSROOM_CONFLICT_CODES,
     enabled: !readOnly && titleValid,
   });
 

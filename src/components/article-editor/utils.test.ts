@@ -37,6 +37,151 @@ const stored = {
   },
 } as unknown as SerializedEditorState;
 
+describe("stray empty paragraphs", () => {
+  it("drops empty paragraphs, including runs around a list and a callout", () => {
+    const saved = postprocessEditorState({
+      root: {
+        children: [
+          {
+            type: "paragraph",
+            children: [{ type: "text", text: "Before" }],
+          },
+          { type: "paragraph", children: [] },
+          {
+            type: "paragraph",
+            children: [{ type: "text", text: "Still before" }],
+          },
+          { type: "paragraph", children: [{ type: "text", text: "  " }] },
+          {
+            type: "list",
+            listType: "bullet",
+            children: [
+              {
+                type: "listitem",
+                children: [
+                  {
+                    type: "paragraph",
+                    children: [{ type: "text", text: "One thing" }],
+                  },
+                ],
+              },
+            ],
+          },
+          { type: "paragraph", children: [] },
+          { type: "paragraph", children: [] },
+          {
+            type: "paragraph",
+            children: [{ type: "text", text: "[!WARNING] Look out" }],
+          },
+          { type: "paragraph", children: [] },
+          {
+            type: "image",
+            fields: {
+              blockType: "Image",
+              src: "https://example.com/a.png",
+              alt: "",
+            },
+          },
+          { type: "paragraph", children: [] },
+          {
+            type: "paragraph",
+            children: [{ type: "text", text: "After" }],
+          },
+        ],
+      },
+    } as unknown as SerializedEditorState) as unknown as {
+      root: { children: { type: string; children?: { text?: string }[] }[] };
+    };
+    expect(
+      saved.root.children.map((node) =>
+        node.type === "paragraph"
+          ? (node.children?.[0]?.text ?? "")
+          : node.type,
+      ),
+    ).toEqual([
+      "Before",
+      "Still before",
+      "list",
+      "[!WARNING] Look out",
+      "block",
+      "After",
+    ]);
+  });
+
+  it("loads a [!INFO] paragraph as a callout and saves the same paragraph", () => {
+    const stored = {
+      root: {
+        children: [
+          { type: "paragraph", children: [] },
+          {
+            type: "paragraph",
+            children: [
+              { type: "text", text: "[!INFO] Read the " },
+              {
+                type: "link",
+                version: 3,
+                fields: {
+                  url: "https://example.com/docs",
+                  newTab: false,
+                  linkType: "custom",
+                },
+                children: [{ type: "text", text: "docs" }],
+              },
+            ],
+          },
+          { type: "paragraph", children: [] },
+        ],
+      },
+    } as unknown as SerializedEditorState;
+    const loaded = JSON.parse(preprocessEditorState(stored)!) as {
+      root: {
+        children: {
+          type: string;
+          variant?: string;
+          spacing?: string;
+          children?: { children?: { text?: string; type?: string }[] }[];
+        }[];
+      };
+    };
+    expect(loaded.root.children.map((node) => node.type)).toEqual([
+      "admonition",
+    ]);
+    expect(loaded.root.children[0]).toMatchObject({
+      variant: "INFO",
+      spacing: " ",
+    });
+    expect(
+      loaded.root.children[0]?.children?.[0]?.children?.map(
+        (node) => node.text,
+      ),
+    ).toEqual(["Read the ", undefined]);
+
+    const saved = postprocessEditorState(
+      loaded as unknown as SerializedEditorState,
+    ) as unknown as {
+      root: {
+        children: {
+          type: string;
+          children?: {
+            type?: string;
+            text?: string;
+            fields?: { url?: string };
+          }[];
+        }[];
+      };
+    };
+    expect(saved.root.children).toHaveLength(1);
+    expect(saved.root.children[0]?.type).toBe("paragraph");
+    expect(saved.root.children[0]?.children?.[0]?.text).toBe(
+      "[!INFO] Read the ",
+    );
+    expect(saved.root.children[0]?.children?.[1]).toMatchObject({
+      type: "link",
+      fields: { url: "https://example.com/docs" },
+    });
+  });
+});
+
 describe("block ↔ node remapping", () => {
   it("keeps today's behaviour without extensions", () => {
     const pre = JSON.parse(preprocessEditorState(stored)!);

@@ -184,11 +184,14 @@ export function formatStartupInsightMonth(
   const match = /^(\d{4})-(\d{2})$/.exec(month);
   if (!match) return month;
   const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
-  return new Intl.DateTimeFormat(locale === "nl" ? "nl-NL" : "en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
+  return new Intl.DateTimeFormat(
+    locale === "fr" ? "fr-FR" : locale === "nl" ? "nl-NL" : "en-US",
+    {
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  ).format(date);
 }
 
 function increment<K>(map: Map<K, number>, key: K): void {

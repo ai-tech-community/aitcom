@@ -87,6 +87,21 @@ afterEach(() => {
 });
 
 describe("useCommunityJoin", () => {
+  it("sends the source with a join and a request", async () => {
+    const source = { via: "magazine", magazineId: 1, issueId: 2 } as const;
+    for (const joinPolicy of ["open", "approval_required"] as const) {
+      const { result, unmount } = renderHook(() =>
+        useCommunityJoin({ slug: "acme", name: "ACME", joinPolicy, source }),
+      );
+      await act(() => result.current.run());
+      expect(joinPolicy === "open" ? s.join : s.request).toHaveBeenCalledWith({
+        slug: "acme",
+        source,
+      });
+      unmount();
+    }
+  });
+
   it("joins an open community and says so", async () => {
     const { result } = renderHook(() =>
       useCommunityJoin({ slug: "acme", name: "ACME", joinPolicy: "open" }),
@@ -188,6 +203,16 @@ describe("useCommunityJoin", () => {
 });
 
 describe("useJoinDeepLink", () => {
+  it("passes the remembered source on after sign-in", async () => {
+    const source = { via: "magazine", magazineId: 1, issueId: 2 } as const;
+    rememberJoinIntent("acme", undefined, source);
+    window.history.replaceState(null, "", "/en/magazines/m/i?join=acme");
+    renderHook(() => useJoinDeepLink());
+    await waitFor(() =>
+      expect(s.join).toHaveBeenCalledWith({ slug: "acme", source }),
+    );
+  });
+
   it("finishes the join after sign-in and drops the param", async () => {
     rememberJoinIntent("acme");
     window.history.replaceState(null, "", "/en/communities?q=ml&join=acme");

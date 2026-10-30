@@ -26,9 +26,51 @@ import { generateInviteCode } from "@/app/api/mcp/registration-tools";
 import { getPayloadClient } from "@/server/payload";
 import { syncForumThreadCounters } from "@/server/communities/forum-thread-counters";
 import { importFeedImage } from "@/server/communities/feed-images";
+import { sharedMediaUrl } from "@/server/communities/shared-media-url";
+import {
+  applyApprovedMagazineDelete,
+  MAGAZINE_DELETE_DRAFT_TYPE,
+  magazineDeleteFromDraft,
+} from "@/server/magazines/magazine-delete";
+import {
+  applyMagazineIssueUpdate,
+  MAGAZINE_ISSUE_UPDATE_DRAFT_TYPE,
+  magazineIssueUpdateFromDraft,
+} from "@/server/magazines/magazine-issue-update";
+import { assertArticleNotPlaced } from "@/server/magazines/article-placement";
 import { syncFeedPostCounters } from "@/server/communities/feed-post-counters";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import { createForumThread } from "@/server/communities/create-forum-thread";
+import { memberDisplayName } from "@/server/members/display-name";
+import {
+  CLASSROOM_COURSE_DRAFT_TYPE,
+  CLASSROOM_COURSE_UPDATE_DRAFT_TYPE,
+  CLASSROOM_LESSON_DRAFT_TYPE,
+  CLASSROOM_MODULE_DRAFT_TYPE,
+  assertClassroomDraftPublishable,
+  classroomCourseUpdateFromDraft,
+  classroomLessonFromDraft,
+  classroomModuleFromDraft,
+  publishClassroomCourseDraft,
+  publishClassroomCourseUpdate,
+  publishClassroomLesson,
+  publishClassroomModule,
+} from "./agent-classrooms";
+import {
+  FORUM_THREAD_DRAFT_TYPE,
+  forumThreadFromDraft,
+} from "@/server/communities/forum-thread-draft";
+import {
+  applyMagazineArticleUpdate,
+  MAGAZINE_ARTICLE_UPDATE_DRAFT_TYPE,
+  magazineArticleUpdateFromDraft,
+} from "@/server/magazines/magazine-article-update";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
+import {
+  communityOwnerMayReview,
+  listApprovalQueue,
+} from "@/server/agent/approval-queue";
+import { isNewsStaff } from "@/server/news/staff";
 import {
   isBlockedAddress,
   pinnedFetch,
@@ -877,6 +919,13 @@ export const agentManagementRouter = createTRPCRouter({
   // ── Drafts ────────────────────────────────────────────────────────────────
 
   /** Get drafts for the current user, filtered by status. */
+  listApprovalQueue: protectedProcedure.query(async ({ ctx }) => {
+    return listApprovalQueue(ctx.db, {
+      id: ctx.session.user.id,
+      newsStaff: await isNewsStaff(ctx.session.user.email),
+    });
+  }),
+
   getDrafts: protectedProcedure
     .input(
       z.object({
@@ -942,6 +991,14 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
+      if (existing.type === "magazine_issue" && input.action === "approved") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Approve this magazine issue from its review page. Approval publishes the issue. Subscriber email goes out only after that publish.",
+        });
+      }
+
       // Community-scoped draft types: any qualifying admin of the draft's
       // community may act (ADR-0016). Everything else is owner-scoped.
       const COMMUNITY_SCOPED_ROLES: Record<string, string[]> = {
@@ -971,9 +1028,50 @@ export const agentManagementRouter = createTRPCRouter({
         // Owner-scoped (thread_reply, revival_nudge, feed_post, feed_comment,
         // knowledge_share, challenge_channel_*, and any future owner draft).
         if (existing.ownerId !== userId) {
-          throw new TRPCError({ code: "FORBIDDEN" });
+          const allowed = await communityOwnerMayReview(
+            ctx.db,
+            userId,
+            existing,
+          );
+          if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
         }
       }
+
+      // Parse before the status flip so a damaged draft stays pending.
+      const threadToPublish =
+        existing.type === FORUM_THREAD_DRAFT_TYPE && input.action === "approved"
+          ? forumThreadFromDraft(existing)
+          : undefined;
+      const classroomToPublish =
+        existing.type === CLASSROOM_COURSE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? await assertClassroomDraftPublishable(
+              await getPayloadClient(),
+              existing,
+            )
+          : undefined;
+      const classroomUpdate =
+        existing.type === CLASSROOM_COURSE_UPDATE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? classroomCourseUpdateFromDraft(existing)
+          : undefined;
+      const classroomModule =
+        existing.type === CLASSROOM_MODULE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? classroomModuleFromDraft(existing)
+          : undefined;
+      const classroomLesson =
+        existing.type === CLASSROOM_LESSON_DRAFT_TYPE &&
+        input.action === "approved"
+          ? classroomLessonFromDraft(existing)
+          : undefined;
+      const articleUpdate =
+        existing.type === MAGAZINE_ARTICLE_UPDATE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? magazineArticleUpdateFromDraft(existing)
+          : undefined;
+      const authorName =
+        (await memberDisplayName(ctx.db, userId)) ?? "Community member";
 
       // A feed post draft's picture is fetched before the draft is claimed,
       // so a picture that cannot be loaded leaves the draft pending instead
@@ -981,16 +1079,54 @@ export const agentManagementRouter = createTRPCRouter({
       // copied into our storage as the owner's feed post image, so readers
       // never load an outside address. If the claim then fails, the unused
       // image is removed by the daily sweep.
+      const feedMeta =
+        existing.type === "feed_post"
+          ? (existing.metadata as {
+              imageUrl?: string | null;
+              imageMediaId?: number | null;
+              imageAlt?: string | null;
+            } | null)
+          : null;
       const draftImageUrl =
-        input.action === "approved" && existing.type === "feed_post"
-          ? (existing.metadata as { imageUrl?: string } | null)?.imageUrl
+        input.action === "approved"
+          ? (feedMeta?.imageUrl ?? undefined)
           : undefined;
-      const image = draftImageUrl
-        ? await importFeedImage(await getPayloadClient(), {
-            url: draftImageUrl,
-            userId,
-          })
-        : null;
+      const draftImageMediaId =
+        input.action === "approved" &&
+        typeof feedMeta?.imageMediaId === "number"
+          ? feedMeta.imageMediaId
+          : undefined;
+      // A media id is stored with the URL it resolved to. That pair is one
+      // picture, not two sources. A URL without a media id is copied in.
+      const image = draftImageMediaId
+        ? {
+            id: draftImageMediaId,
+            url: await sharedMediaUrl(
+              await getPayloadClient(),
+              draftImageMediaId,
+              userId,
+            ),
+          }
+        : draftImageUrl
+          ? await importFeedImage(await getPayloadClient(), {
+              url: draftImageUrl,
+              userId,
+              alt: feedMeta?.imageAlt,
+            })
+          : null;
+      const issueUpdate =
+        existing.type === MAGAZINE_ISSUE_UPDATE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? magazineIssueUpdateFromDraft(existing)
+          : undefined;
+      const deletion =
+        existing.type === MAGAZINE_DELETE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? magazineDeleteFromDraft(existing)
+          : undefined;
+      if (deletion?.collection === "articles") {
+        await assertArticleNotPlaced(await getPayloadClient(), deletion.id);
+      }
 
       // 2. CAS claim: only the caller who flips pending→action proceeds.
       const [draft] = await ctx.db
@@ -1009,6 +1145,21 @@ export const agentManagementRouter = createTRPCRouter({
           code: "CONFLICT",
           message: "Already reviewed",
         });
+      }
+
+      // Approving a thread draft publishes it in the reviewer's name, the
+      // same path as the forum form. The agent never writes the live row.
+      if (
+        input.action === "approved" &&
+        draft.type === FORUM_THREAD_DRAFT_TYPE &&
+        threadToPublish
+      ) {
+        await createForumThread(
+          ctx.db,
+          { id: userId, type: "member" },
+          { id: userId, name: authorName },
+          threadToPublish,
+        );
       }
 
       // If approved and it's a thread reply, publish it via Payload.
@@ -1073,8 +1224,14 @@ export const agentManagementRouter = createTRPCRouter({
           data: {
             content: draft.content ?? "",
             images: image ? [image.id] : [],
+            ...(draftImageMediaId !== undefined
+              ? { imageMediaId: draftImageMediaId }
+              : {}),
+            ...(feedMeta?.imageAlt !== undefined
+              ? { imageAlt: feedMeta.imageAlt }
+              : {}),
             authorId: userId,
-            authorName: ctx.session.user.name ?? "Community member",
+            authorName,
             communityId: draft.targetId,
             topicSlug: "general",
             visibility: "community",
@@ -1100,11 +1257,92 @@ export const agentManagementRouter = createTRPCRouter({
             post: Number(draft.targetId),
             content: draft.content ?? "",
             authorId: userId,
-            authorName: ctx.session.user.name ?? "Community member",
+            authorName,
             communityId: post.communityId ?? null,
           },
         });
         await syncFeedPostCounters(payload, post.id);
+      }
+
+      if (
+        input.action === "approved" &&
+        draft.type === CLASSROOM_COURSE_DRAFT_TYPE &&
+        classroomToPublish
+      ) {
+        await publishClassroomCourseDraft(
+          ctx.db,
+          await getPayloadClient(),
+          userId,
+          authorName,
+          classroomToPublish,
+        );
+      }
+
+      if (
+        input.action === "approved" &&
+        draft.type === CLASSROOM_COURSE_UPDATE_DRAFT_TYPE &&
+        classroomUpdate
+      ) {
+        await publishClassroomCourseUpdate(
+          ctx.db,
+          await getPayloadClient(),
+          userId,
+          classroomUpdate,
+        );
+      }
+
+      if (
+        input.action === "approved" &&
+        draft.type === CLASSROOM_MODULE_DRAFT_TYPE &&
+        classroomModule
+      ) {
+        await publishClassroomModule(await getPayloadClient(), classroomModule);
+      }
+
+      if (
+        input.action === "approved" &&
+        draft.type === CLASSROOM_LESSON_DRAFT_TYPE &&
+        classroomLesson
+      ) {
+        await publishClassroomLesson(await getPayloadClient(), classroomLesson);
+      }
+
+      const revertDraft = async () => {
+        await ctx.db
+          .update(agentDrafts)
+          .set({ status: "pending" })
+          .where(eq(agentDrafts.id, draft.id));
+      };
+      if (input.action === "approved" && issueUpdate) {
+        try {
+          await applyMagazineIssueUpdate(await getPayloadClient(), issueUpdate);
+        } catch (error) {
+          await revertDraft();
+          throw error;
+        }
+      }
+      if (input.action === "approved" && deletion) {
+        try {
+          await applyApprovedMagazineDelete(await getPayloadClient(), deletion);
+        } catch (error) {
+          await revertDraft();
+          throw error;
+        }
+      }
+      if (
+        input.action === "approved" &&
+        draft.type === MAGAZINE_ARTICLE_UPDATE_DRAFT_TYPE &&
+        articleUpdate
+      ) {
+        try {
+          await applyMagazineArticleUpdate(
+            await getPayloadClient(),
+            articleUpdate,
+          );
+        } catch (error) {
+          await revertDraft();
+          throw error;
+        }
       }
 
       // Revival/welcome nudge: approving opens/sends a DM from the organizer to the member.

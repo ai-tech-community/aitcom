@@ -91,7 +91,7 @@ export function registerFeedTools(
     "create-feed-post",
     {
       description:
-        "Post to a community feed. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015).",
+        "Post to a community feed. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015). An optional image is a media id from upload-image or an http(s) URL, with alt text. Send one of those, not both.",
       inputSchema: {
         communitySlug: z.string().describe("Community slug to post in."),
         content: z.string().min(1).max(2000).describe("Post content."),
@@ -100,16 +100,31 @@ export function registerFeedTools(
           .url()
           .optional()
           .describe(
-            "Optional public image to attach: a JPEG, PNG, WebP or GIF of up to 2 MB. It is copied into the community when the owner publishes the draft.",
+            "Optional http(s) image. It is copied into the community when the owner publishes the draft. Send imageUrl or imageMediaId, not both.",
           ),
+        imageMediaId: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            "Media id from upload-image. Send imageUrl or imageMediaId, not both.",
+          ),
+        imageAlt: z
+          .string()
+          .max(200)
+          .optional()
+          .describe("Alt text for the image."),
       },
       annotations: DRAFT_FOR_REVIEW,
     },
-    async ({ communitySlug, content, imageUrl }) => {
+    async ({ communitySlug, content, imageUrl, imageMediaId, imageAlt }) => {
       const result = await caller.agent.createFeedPost({
         communitySlug,
         content,
-        imageUrl,
+        ...(imageUrl !== undefined ? { imageUrl } : {}),
+        ...(imageMediaId !== undefined ? { imageMediaId } : {}),
+        ...(imageAlt !== undefined ? { imageAlt } : {}),
       });
       return {
         content: [

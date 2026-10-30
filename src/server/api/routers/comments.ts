@@ -8,6 +8,51 @@ import {
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import {
+  type ArticleCommentAccess,
+  articleCommentAccess,
+  canReadArticle,
+} from "@/server/articles/article-access";
+import { listArticleComments } from "@/server/articles/article-comments";
+import type { Deps } from "@/server/magazines/deps";
+
+/**
+ * The live article and whether the viewer may read it (`canReadArticle`).
+ * Null when it does not exist.
+ */
+async function loadArticleForViewer(
+  deps: Deps,
+  articleId: number,
+  viewerId: string | null,
+) {
+  const article = await deps.payload.findByID({
+    collection: "articles",
+    id: articleId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!article) return null;
+  return { article, readable: await canReadArticle(deps, article, viewerId) };
+}
+
+/**
+ * The refusal for a comment the article's channel does not allow, or null
+ * when it does. An unpublished article keeps the blog's message; one the
+ * viewer may not read is not found, so its existence is not revealed.
+ */
+function commentRefusal(access: ArticleCommentAccess): TRPCError | null {
+  switch (access) {
+    case "open":
+      return null;
+    case "unpublished":
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Cannot comment on unpublished articles",
+      });
+    case "not_found":
+      return new TRPCError({ code: "NOT_FOUND" });
+  }
+}
 
 async function requireRulesAcceptance(userId: string, communityId?: string) {
   if (!communityId) return;
@@ -50,24 +95,17 @@ export const commentsRouter = createTRPCRouter({
 
   list: publicProcedure
     .input(z.object({ articleId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
-      const { docs } = await payload.find({
-        collection: "comments",
-        where: { articleId: { equals: input.articleId } },
-        sort: "createdAt",
-        limit: 100,
-        depth: 0,
-      });
-
-      return docs.map((doc) => ({
-        id: doc.id,
-        content: doc.content,
-        parentId: doc.parentId ?? null,
-        createdAt: doc.createdAt,
-        authorId: doc.authorId,
-        authorName: doc.authorName ?? null,
-      }));
+      // Comments are as private as their article; an unreadable one is
+      // not found, so its existence is not revealed.
+      const found = await loadArticleForViewer(
+        { db: ctx.db, payload },
+        input.articleId,
+        ctx.session?.user.id ?? null,
+      );
+      if (!found?.readable) throw new TRPCError({ code: "NOT_FOUND" });
+      return listArticleComments(payload, input.articleId);
     }),
 
   // ── Create a comment ──────────────────────────────────────────────────────
@@ -85,19 +123,23 @@ export const commentsRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
-      // Validate article exists and is published
       const article = await payload.findByID({
         collection: "articles",
         id: input.articleId,
         depth: 0,
+        disableErrors: true,
       });
-
-      if (article.status !== "published") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Cannot comment on unpublished articles",
-        });
-      }
+      if (!article) throw new TRPCError({ code: "NOT_FOUND" });
+      // Commenting is the channel's call, not the read rule: an editor
+      // reads unpublished magazine work but may not comment on it.
+      const refusal = commentRefusal(
+        await articleCommentAccess(
+          { db: ctx.db, payload },
+          article,
+          ctx.session.user.id,
+        ),
+      );
+      if (refusal) throw refusal;
 
       // Validate parentId if provided (one-level threading)
       if (input.parentId !== undefined) {

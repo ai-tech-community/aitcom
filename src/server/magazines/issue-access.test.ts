@@ -1,0 +1,283 @@
+import { describe, expect, it } from "vitest";
+
+import type { IssueStatus, IssueVisibility } from "@/lib/magazines/values";
+
+import { type MagazineStanding, NO_STANDING } from "./editorship";
+import {
+  type IssueAccessInput,
+  type IssueAudience,
+  type MagazineIssueAccess,
+  issueAudience,
+  resolveMagazineIssueAccess,
+} from "./issue-access";
+
+const CONFIRMED = "2026-10-26T10:00:00.000Z";
+
+type Who = "editor" | "member" | "outsider";
+
+const STANDING: Record<Who, MagazineStanding> = {
+  editor: {
+    role: "editor",
+    isEditor: true,
+    isMember: true,
+    leadsCommunity: false,
+  },
+  member: {
+    role: null,
+    isEditor: false,
+    isMember: true,
+    leadsCommunity: false,
+  },
+  outsider: NO_STANDING,
+};
+
+function input(over: {
+  who?: Who;
+  listed?: boolean;
+  slug?: string;
+  deleted?: boolean;
+  community?: null;
+  status?: IssueStatus;
+  visibility?: IssueVisibility;
+  confirmedAt?: string | null;
+}): IssueAccessInput {
+  return {
+    viewer: STANDING[over.who ?? "outsider"],
+    community:
+      over.community === null
+        ? null
+        : {
+            slug: over.slug ?? "garden-club",
+            isListedInDirectory: over.listed ?? true,
+            deleted: over.deleted ?? false,
+          },
+    issue: {
+      status: over.status ?? "published",
+      visibility: over.visibility ?? "public",
+      publicConfirmedAt: over.confirmedAt ?? null,
+    },
+  };
+}
+
+describe("resolveMagazineIssueAccess", () => {
+  it.each<
+    [string, Who, boolean, IssueStatus, IssueVisibility, string | null, string]
+  >([
+    // [label, who, listed, status, visibility, confirmedAt, expected]
+    [
+      "outsider previews listed issue",
+      "outsider",
+      true,
+      "published",
+      "teaser",
+      null,
+      "teaser",
+    ],
+    [
+      "unconfirmed unlisted preview stays hidden",
+      "outsider",
+      false,
+      "published",
+      "teaser",
+      null,
+      "none",
+    ],
+    [
+      "confirmed unlisted preview",
+      "outsider",
+      false,
+      "published",
+      "teaser",
+      CONFIRMED,
+      "teaser",
+    ],
+    [
+      "member reads preview in full",
+      "member",
+      false,
+      "published",
+      "teaser",
+      null,
+      "full",
+    ],
+    [
+      "editor previews a draft",
+      "editor",
+      true,
+      "draft",
+      "teaser",
+      null,
+      "editor",
+    ],
+    [
+      "member cannot see a preview draft",
+      "member",
+      true,
+      "draft",
+      "teaser",
+      null,
+      "none",
+    ],
+    [
+      "outsider cannot see a preview draft",
+      "outsider",
+      true,
+      "draft",
+      "teaser",
+      null,
+      "none",
+    ],
+    [
+      "outsider cannot see a scheduled preview",
+      "outsider",
+      true,
+      "scheduled",
+      "teaser",
+      null,
+      "none",
+    ],
+    ["editor sees a draft", "editor", true, "draft", "members", null, "editor"],
+    [
+      "editor of an unlisted community",
+      "editor",
+      false,
+      "published",
+      "members",
+      null,
+      "editor",
+    ],
+    [
+      "member reads a members issue",
+      "member",
+      false,
+      "published",
+      "members",
+      null,
+      "full",
+    ],
+    [
+      "outsider: members issue is hidden",
+      "outsider",
+      true,
+      "published",
+      "members",
+      null,
+      "none",
+    ],
+    [
+      "outsider reads public in a listed community",
+      "outsider",
+      true,
+      "published",
+      "public",
+      null,
+      "full",
+    ],
+    [
+      "outsider: unconfirmed public in an unlisted community is members-only",
+      "outsider",
+      false,
+      "published",
+      "public",
+      null,
+      "none",
+    ],
+    [
+      "outsider reads confirmed public in an unlisted community",
+      "outsider",
+      false,
+      "published",
+      "public",
+      CONFIRMED,
+      "full",
+    ],
+    [
+      "nobody but editors sees a draft",
+      "member",
+      true,
+      "draft",
+      "public",
+      null,
+      "none",
+    ],
+  ])(
+    "resolver: %s",
+    (_label, who, listed, status, visibility, confirmedAt, expected) => {
+      expect(
+        resolveMagazineIssueAccess(
+          input({ who, listed, status, visibility, confirmedAt }),
+        ),
+      ).toBe(expected);
+    },
+  );
+
+  it("a deleted or missing community is none for everyone, editors included", () => {
+    for (const who of ["editor", "member", "outsider"] as const) {
+      expect(resolveMagazineIssueAccess(input({ who, deleted: true }))).toBe(
+        "none",
+      );
+      expect(resolveMagazineIssueAccess(input({ who, community: null }))).toBe(
+        "none",
+      );
+    }
+  });
+
+  it("the Hub counts as content-public (slug 'ait', unlisted)", () => {
+    expect(
+      resolveMagazineIssueAccess(
+        input({ slug: "ait", listed: false, confirmedAt: null }),
+      ),
+    ).toBe("full");
+  });
+});
+
+describe("issueAudience", () => {
+  it("an issue's audience follows the resolver", () => {
+    const cases: [Parameters<typeof input>[0], IssueAudience][] = [
+      [{}, "everyone"],
+      [{ visibility: "teaser" }, "preview"],
+      [{ visibility: "teaser", listed: false }, "members"],
+      [
+        { visibility: "teaser", listed: false, confirmedAt: CONFIRMED },
+        "preview",
+      ],
+      [{ listed: false }, "members"],
+      [{ listed: false, confirmedAt: CONFIRMED }, "everyone"],
+      [{ visibility: "members" }, "members"],
+      [{ status: "scheduled" }, "nobody"],
+      [{ status: "draft" }, "nobody"],
+      [{ deleted: true }, "nobody"],
+      [{ community: null }, "nobody"],
+    ];
+    for (const [over, audience] of cases) {
+      const fixture = input(over);
+      expect(issueAudience(fixture.community, fixture.issue)).toBe(audience);
+    }
+  });
+
+  it("decides every access level explicitly", () => {
+    const OUTSIDER_ACCESS_DECIDED: Record<
+      MagazineIssueAccess,
+      IssueAudience | "via-member"
+    > = {
+      none: "via-member",
+      teaser: "preview",
+      full: "everyone",
+      editor: "nobody",
+    };
+    const fixtures: Record<MagazineIssueAccess, IssueAccessInput> = {
+      none: input({ visibility: "members" }),
+      teaser: input({ visibility: "teaser" }),
+      full: input({}),
+      editor: input({ who: "editor", status: "draft" }),
+    };
+    for (const access of Object.keys(fixtures) as MagazineIssueAccess[]) {
+      const fixture = fixtures[access];
+      expect(resolveMagazineIssueAccess(fixture)).toBe(access);
+      const decision = OUTSIDER_ACCESS_DECIDED[access];
+      expect(issueAudience(fixture.community, fixture.issue)).toBe(
+        decision === "via-member" ? "members" : decision,
+      );
+    }
+  });
+});

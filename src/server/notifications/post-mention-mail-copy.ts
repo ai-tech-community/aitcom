@@ -21,6 +21,14 @@ export function postMentionMailCopy(
 ) {
   const authorName = oneLine(mail.authorName);
   const communityName = oneLine(mail.communityName);
+  if (locale === "fr") {
+    return {
+      subject: `${authorName} vous a mentionné dans ${communityName}`,
+      body: `${authorName} vous a mentionné dans ${mail.isVideo ? "une vidéo" : "une publication"} dans ${communityName}.`,
+      cta: mail.isVideo ? "Voir la vidéo" : "Ouvrir le fil",
+      manage: "Gérer les notifications",
+    };
+  }
   if (locale === "nl") {
     return {
       subject: `${authorName} noemde je in ${communityName}`,

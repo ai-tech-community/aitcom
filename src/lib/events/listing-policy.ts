@@ -233,7 +233,10 @@ function isOnlinePlace(value: string): boolean {
  * Where the event happens, from stored place fields only.
  * Online when the format or the place says so and there is no venue.
  */
-export function eventWhereLabel(event: EventMetaSource): string | null {
+export function eventWhereLabel(
+  event: EventMetaSource,
+  onlineLabel = "Online",
+): string | null {
   const location = cleanPlace(event.location);
   const city = cleanPlace(event.city);
   const venue =
@@ -249,7 +252,7 @@ export function eventWhereLabel(event: EventMetaSource): string | null {
   }
   const online =
     event.format === "online" || isOnlinePlace(location) || isOnlinePlace(city);
-  if (online) return "Online";
+  if (online) return onlineLabel;
   return town || null;
 }
 
@@ -373,9 +376,17 @@ function localizeEventPlace(
   return { event: { ...event, city, location }, changed: true };
 }
 
-function repeatsPlace(sentence: string, event: EventMetaSource): boolean {
+function repeatsPlace(
+  sentence: string,
+  event: EventMetaSource,
+  onlineLabel = "Online",
+): boolean {
   const haystack = sentence.toLowerCase();
-  const needles = [event.location, event.city, eventWhereLabel(event)];
+  const needles = [
+    event.location,
+    event.city,
+    eventWhereLabel(event, onlineLabel),
+  ];
   return needles.some((value) => {
     const raw = value?.trim() ?? "";
     if (raw.length >= 4 && haystack.includes(raw.toLowerCase())) return true;
@@ -406,12 +417,13 @@ function topicSentences(description: string): string[] {
 export function eventMetaDescription(
   event: EventMetaSource,
   locale: string,
+  onlineLabel = "Online",
 ): string {
   const title = repairEventEncoding(event.title.trim());
   const localized = localizeEventPlace(event, locale);
   const placeEvent = localized.event;
   const when = eventWhenLabel(event, locale);
-  const where = eventWhereLabel(placeEvent);
+  const where = eventWhereLabel(placeEvent, onlineLabel);
   const facts = fitFacts([title, when ?? "", where ?? ""]);
   const description = stripListingPolicy(event.description ?? "").replace(
     /\*+/g,
@@ -430,8 +442,8 @@ export function eventMetaDescription(
     }
     if (
       restatesSchedule(sentence) ||
-      repeatsPlace(sentence, placeEvent) ||
-      (localized.changed && repeatsPlace(sentence, event))
+      repeatsPlace(sentence, placeEvent, onlineLabel) ||
+      (localized.changed && repeatsPlace(sentence, event, onlineLabel))
     ) {
       continue;
     }

@@ -25,28 +25,38 @@ export type InviteResponseVariant = "page" | "compact" | "row";
  * are disabled meanwhile. `onAnswered` runs after a successful answer —
  * the place to refresh data and move focus, as this control goes away.
  */
-export function InviteResponse({
-  slug,
-  name,
-  variant = "page",
-  describedBy,
-  onAnswered,
-  className,
-}: {
+type InviteResponseProps = {
   slug: string;
   name?: string;
   variant?: InviteResponseVariant;
   describedBy?: string;
   onAnswered?: (answer: InviteAnswer) => void;
   className?: string;
+};
+
+export function InviteResponse({
+  slug,
+  name,
+  onAnswered,
+  ...props
+}: InviteResponseProps) {
+  const response = useInviteResponse({ slug, name, onChange: onAnswered });
+  return <InviteResponseView {...props} name={name} response={response} />;
+}
+
+/** Presentation shared by controls that use the same invitation response. */
+export function InviteResponseView({
+  name,
+  variant = "page",
+  describedBy,
+  className,
+  response,
+}: Omit<InviteResponseProps, "slug" | "onAnswered"> & {
+  response: ReturnType<typeof useInviteResponse>;
 }) {
   const t = useTranslations("communities.invite");
   const sentenceId = React.useId();
-  const { accept, decline, pending } = useInviteResponse({
-    slug,
-    name,
-    onChange: onAnswered,
-  });
+  const { accept, decline, pending } = response;
   const describes = variant === "row" ? describedBy : sentenceId;
   const size = variant === "page" ? "default" : "sm";
 
