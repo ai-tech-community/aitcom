@@ -1,10 +1,9 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { StartupsPage } from "@/components/investigations/startups-page";
 import {
-  STARTUPS_INSIGHTS_H1,
-  STARTUPS_INSIGHTS_META,
   STARTUPS_INSIGHTS_PATH,
   startupsInsightsShareUrl,
   startupsPublicRobots,
@@ -28,7 +27,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const t = await getTranslations("investigationsStartups");
   const companies = await listApprovedPublicStartups();
   const insights = buildStartupInsights(companies, copyLocale);
@@ -36,10 +35,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const ogSpec = startupInsightsOgSpec(facts);
   const title = ogSpec
     ? t(ogSpec.titleKey, ogSpec.titleValues)
-    : STARTUPS_INSIGHTS_H1;
+    : t("insightsTitle");
   const description = ogSpec
     ? t(ogSpec.descriptionKey, ogSpec.descriptionValues)
-    : STARTUPS_INSIGHTS_META;
+    : t("insightsLead");
   const shareUrl = startupsInsightsShareUrl(copyLocale);
   const og = buildOgMeta(title, description, t("shareOgKicker"));
   return {
@@ -57,7 +56,7 @@ export default async function StartupsInsightsPage() {
   const t = await getTranslations("investigationsStartups");
   const session = await getSession();
   const companies = await listApprovedPublicStartups();
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const insights = buildStartupInsights(companies, copyLocale);
   const isModerator = session?.user
     ? await userIsHubOperator(session.user.id)

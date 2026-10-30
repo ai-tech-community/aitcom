@@ -25,7 +25,7 @@ import {
 } from "./unsubscribe-confirm";
 
 const copy: UnsubscribeCopy = {
-  kicker: "/ DIGEST",
+  kicker: "Digest",
   title: "Unsubscribe from the weekly digest",
   body: "This stops the weekly digest.",
   action: "Unsubscribe",
@@ -53,6 +53,12 @@ describe("UnsubscribeConfirm", () => {
   it("asks before opting out and posts the token", () => {
     renderConfirm("ready", "signed-token");
 
+    const label = document.querySelector('[data-slot="section-label"]');
+    expect(label?.textContent).toBe("/ Digest");
+    expect(label?.querySelector('[aria-hidden="true"]')?.textContent).toBe(
+      "/ ",
+    );
+    expect(label?.classList.contains("uppercase")).toBe(true);
     expect(
       screen.getByRole("heading", {
         name: "Unsubscribe from the weekly digest",

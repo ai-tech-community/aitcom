@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,35 +12,40 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  EVENT_FOCUS_LABELS,
   EVENT_FOCUS_OPTIONS,
-  EVENT_FORMAT_LABELS,
   EVENT_FORMAT_OPTIONS,
-  EVENT_TYPE_LABELS,
   EVENT_TYPES,
+  type EventFocus,
+  type EventFormat,
+  type EventType,
 } from "@/lib/event-metadata";
 
 const DEBOUNCE_MS = 300;
 const ANY = "__any__";
 
-const FIT_OPTIONS = [
-  { value: ANY, label: "Any AIT fit" },
-  { value: "6", label: "AIT ≥ 6" },
-  { value: "7", label: "AIT ≥ 7" },
-  { value: "8", label: "AIT ≥ 8" },
-  { value: "9", label: "AIT ≥ 9" },
-];
-
-const SORT_OPTIONS = [
-  { value: "date", label: "Sort: Date" },
-  { value: "fit", label: "Sort: AIT fit" },
-  { value: "newest", label: "Sort: Newest" },
-  { value: "near", label: "Sort: Nearest" },
-];
+const FIT_SCORES = ["6", "7", "8", "9"] as const;
 
 interface EventsFilterBarProps {
   visitorCountryCode?: string | null;
   visitorCountryName?: string | null;
+}
+
+function displayCountry(
+  code: string | null,
+  name: string | null,
+  locale: string,
+): string | null {
+  if (code) {
+    try {
+      const localized = new Intl.DisplayNames([locale], { type: "region" }).of(
+        code,
+      );
+      if (localized) return localized;
+    } catch {
+      // Keep the name supplied with the request.
+    }
+  }
+  return name;
 }
 
 export function EventsFilterBar({
@@ -48,6 +53,7 @@ export function EventsFilterBar({
   visitorCountryName = null,
 }: EventsFilterBarProps = {}) {
   const t = useTranslations("events");
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -143,13 +149,79 @@ export function EventsFilterBar({
     sort !== "date" ||
     nearMe;
 
+  const country = displayCountry(
+    visitorCountryCode,
+    visitorCountryName,
+    locale,
+  );
+  const upper = (value: string) => value.toLocaleUpperCase(locale);
+
+  const typeLabel = (value: EventType) => {
+    switch (value) {
+      case "workshop":
+        return t("eventTypeWorkshop");
+      case "hackathon":
+        return t("eventTypeHackathon");
+      case "deep_dive":
+        return t("eventTypeDeepDive");
+      case "meetup":
+        return t("eventTypeMeetup");
+      case "conference":
+        return t("eventTypeConference");
+    }
+  };
+
+  const focusLabel = (value: EventFocus) => {
+    switch (value) {
+      case "technical":
+        return t("filters.focus.technical");
+      case "marketing":
+        return t("filters.focus.marketing");
+      case "product":
+        return t("filters.focus.product");
+      case "research":
+        return t("filters.focus.research");
+      case "mixed":
+        return t("filters.focus.mixed");
+    }
+  };
+
+  const formatLabel = (value: EventFormat) => {
+    switch (value) {
+      case "online":
+        return t("online");
+      case "in-person":
+        return t("formatInPerson");
+      case "hybrid":
+        return t("formatHybrid");
+    }
+  };
+
+  const sortLabel = (value: string) => {
+    switch (value) {
+      case "fit":
+        return t("filters.sortFit");
+      case "newest":
+        return t("filters.sortNewest");
+      case "near":
+        return t("filters.sortNearest");
+      default:
+        return t("filters.sortDate");
+    }
+  };
+
   return (
     <div className="border-border mt-4 space-y-3 rounded-lg border p-4">
-      {visitorCountryName && (
+      {country && (
         <div className="flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
           <span className="text-muted-foreground">
-            DETECTED · {visitorCountryName.toUpperCase()}
-            {visitorCountryCode ? ` (${visitorCountryCode})` : ""}
+            {upper(
+              t("filters.detected", {
+                country: visitorCountryCode
+                  ? `${country} (${visitorCountryCode})`
+                  : country,
+              }),
+            )}
           </span>
           <button
             type="button"
@@ -161,8 +233,8 @@ export function EventsFilterBar({
             }`}
           >
             {nearMe
-              ? `✓ IN ${visitorCountryName.toUpperCase()}`
-              : `SHOW ONLY ${visitorCountryName.toUpperCase()}`}
+              ? `✓ ${upper(t("filters.inCountry", { country }))}`
+              : upper(t("filters.showOnly", { country }))}
           </button>
         </div>
       )}
@@ -170,19 +242,24 @@ export function EventsFilterBar({
         type="text"
         value={search}
         onChange={(e) => handleSearchChange(e.target.value)}
-        placeholder="/ SEARCH TITLE OR SUMMARY"
+        placeholder={`/ ${upper(t("filters.search"))}`}
         className="font-mono text-sm tracking-wider"
       />
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <Select value={type} onValueChange={(v) => setFilter("type", v)}>
           <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder="Any type" />
+            <SelectValue placeholder={t("filters.anyType")}>
+              {type === ANY ||
+              !(EVENT_TYPES as readonly string[]).includes(type)
+                ? t("filters.anyType")
+                : upper(typeLabel(type as EventType))}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any type</SelectItem>
+            <SelectItem value={ANY}>{t("filters.anyType")}</SelectItem>
             {EVENT_TYPES.map((value) => (
               <SelectItem key={value} value={value}>
-                {EVENT_TYPE_LABELS[value]}
+                {upper(typeLabel(value))}
               </SelectItem>
             ))}
           </SelectContent>
@@ -190,13 +267,18 @@ export function EventsFilterBar({
 
         <Select value={focus} onValueChange={(v) => setFilter("focus", v)}>
           <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder="Any focus" />
+            <SelectValue placeholder={t("filters.anyFocus")}>
+              {focus === ANY ||
+              !(EVENT_FOCUS_OPTIONS as readonly string[]).includes(focus)
+                ? t("filters.anyFocus")
+                : focusLabel(focus as EventFocus)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any focus</SelectItem>
+            <SelectItem value={ANY}>{t("filters.anyFocus")}</SelectItem>
             {EVENT_FOCUS_OPTIONS.map((value) => (
               <SelectItem key={value} value={value}>
-                {EVENT_FOCUS_LABELS[value]}
+                {focusLabel(value)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -204,13 +286,18 @@ export function EventsFilterBar({
 
         <Select value={format} onValueChange={(v) => setFilter("format", v)}>
           <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder="Any format" />
+            <SelectValue placeholder={t("filters.anyFormat")}>
+              {format === ANY ||
+              !(EVENT_FORMAT_OPTIONS as readonly string[]).includes(format)
+                ? t("filters.anyFormat")
+                : formatLabel(format as EventFormat)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any format</SelectItem>
+            <SelectItem value={ANY}>{t("filters.anyFormat")}</SelectItem>
             {EVENT_FORMAT_OPTIONS.map((value) => (
               <SelectItem key={value} value={value}>
-                {EVENT_FORMAT_LABELS[value]}
+                {formatLabel(value)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -221,7 +308,13 @@ export function EventsFilterBar({
             aria-label={t("filterAi")}
             className="font-mono text-xs tracking-wider"
           >
-            <SelectValue placeholder={t("filterAiAll")} />
+            <SelectValue placeholder={t("filterAiAll")}>
+              {ai === "1"
+                ? t("filterAiYes")
+                : ai === "0"
+                  ? t("filterAiNo")
+                  : t("filterAiAll")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ANY}>{t("filterAiAll")}</SelectItem>
@@ -232,12 +325,17 @@ export function EventsFilterBar({
 
         <Select value={fit} onValueChange={(v) => setFilter("fit", v)}>
           <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder="Any AIT fit" />
+            <SelectValue placeholder={t("filters.anyFit")}>
+              {(FIT_SCORES as readonly string[]).includes(fit)
+                ? t("filters.fitAtLeast", { score: fit })
+                : t("filters.anyFit")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {FIT_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+            <SelectItem value={ANY}>{t("filters.anyFit")}</SelectItem>
+            {FIT_SCORES.map((score) => (
+              <SelectItem key={score} value={score}>
+                {t("filters.fitAtLeast", { score })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -245,12 +343,14 @@ export function EventsFilterBar({
 
         <Select value={sort} onValueChange={setSort}>
           <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder="Sort: Date" />
+            <SelectValue placeholder={t("filters.sortDate")}>
+              {sortLabel(sort)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {SORT_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+            {(["date", "fit", "newest", "near"] as const).map((value) => (
+              <SelectItem key={value} value={value}>
+                {sortLabel(value)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -262,7 +362,7 @@ export function EventsFilterBar({
           onClick={resetAll}
           className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider underline-offset-4 hover:underline"
         >
-          Clear filters
+          {t("filters.clear")}
         </button>
       )}
     </div>

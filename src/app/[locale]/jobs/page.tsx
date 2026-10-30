@@ -37,10 +37,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const JOBS_H1 = "Open positions";
-const JOBS_META =
-  "Open positions at listed companies, each linked to the original posting.";
-
 interface PageProps {
   searchParams: Promise<{
     company?: string;
@@ -57,6 +53,7 @@ export async function generateMetadata({
   searchParams,
 }: PageProps): Promise<Metadata> {
   const locale = await getLocale();
+  const t = await getTranslations("investigationsStartups");
   const raw = await searchParams;
   const query = parseStartupJobsQuery(raw);
   const [roles, textMatches] = await Promise.all([
@@ -69,11 +66,13 @@ export async function generateMetadata({
   const canonical = filteredView
     ? STARTUPS_JOBS_PATH
     : buildStartupJobsPath({ page: pagination.page });
+  const title = t("jobsTitle");
+  const description = t("jobsMeta");
   return {
-    title: JOBS_H1,
-    description: JOBS_META,
+    title,
+    description,
     robots: startupJobsIndexRobots(query),
-    ...buildOgMeta(JOBS_H1, JOBS_META, "Startups"),
+    ...buildOgMeta(title, description, t("kicker")),
     alternates: await localeAlternates(canonical),
     ...(pagination.totalPages > 1 && !filteredView
       ? {

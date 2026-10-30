@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -41,7 +42,7 @@ export default async function AwesomeAiOssInsightsPage() {
   const session = await getSession();
   const signedIn = Boolean(session?.user);
   const projects = await listApprovedPublicCards();
-  const copyLocale: AwesomeLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: AwesomeLocale = resolveLocale(locale);
   const insights = buildAwesomeInsights(projects, copyLocale);
   const isModerator = session?.user
     ? await userIsHubOperator(session.user.id)

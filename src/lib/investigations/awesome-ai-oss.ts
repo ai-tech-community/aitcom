@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "./awesome-ai-oss-seeds-chunk-1";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_2 } from "./awesome-ai-oss-seeds-chunk-2";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "./awesome-ai-oss-seeds-chunk-3";
@@ -36,7 +37,11 @@ export const AWESOME_AI_OSS_BLURB_MAX = 160;
 /** Cards per crawlable directory page. Fits the 3-column grid (24–48). */
 export const AWESOME_AI_OSS_PAGE_SIZE = 36;
 
-export type AwesomeLocale = "en" | "nl";
+export type AwesomeLocale = AppLocale;
+
+/** Editorial blurbs keep their existing languages; newer translations are optional. */
+export type AwesomeBlurb = Record<"en" | "nl", string> &
+  Partial<Record<AwesomeLocale, string>>;
 
 export type AwesomeCategoryId =
   | "protocols"
@@ -58,7 +63,7 @@ export type AwesomeSort = "newest" | "voted";
 export type AwesomeRepo = {
   href: string;
   name: string;
-  blurb: Record<AwesomeLocale, string>;
+  blurb: AwesomeBlurb;
 };
 
 export type AwesomeSeed = AwesomeRepo & {
@@ -76,7 +81,7 @@ export type AwesomePublicCard = {
   repoUrl: string;
   repoHost: AwesomeRepoHost;
   category: AwesomeCategoryId;
-  blurb: Record<AwesomeLocale, string>;
+  blurb: AwesomeBlurb;
   addedOn: string;
   source: AwesomeProjectSource;
   /** Live GH/GL count only. Null until a fetch succeeds — never invented. */
@@ -112,24 +117,43 @@ export const AWESOME_CATEGORY_LABELS: Record<
   AwesomeCategoryId,
   Record<AwesomeLocale, string>
 > = {
-  protocols: { en: "Protocols & SDKs", nl: "Protocollen & SDK’s" },
+  protocols: {
+    en: "Protocols & SDKs",
+    nl: "Protocollen & SDK’s",
+    fr: "Protocoles et SDK",
+  },
   runtimes: {
     en: "MCP servers & runtimes",
     nl: "MCP-servers & runtimes",
+    fr: "Serveurs MCP et environnements d’exécution",
   },
-  frameworks: { en: "Agent frameworks", nl: "Agentframeworks" },
-  rag: { en: "RAG & memory", nl: "RAG & geheugen" },
-  models: { en: "Open models & serving", nl: "Open modellen & serving" },
-  "agent-uis": { en: "Agent UIs & chat", nl: "Agent-UI’s & chat" },
+  frameworks: {
+    en: "Agent frameworks",
+    nl: "Agentframeworks",
+    fr: "Frameworks d’agents",
+  },
+  rag: { en: "RAG & memory", nl: "RAG & geheugen", fr: "RAG et mémoire" },
+  models: {
+    en: "Open models & serving",
+    nl: "Open modellen & serving",
+    fr: "Modèles ouverts et inférence",
+  },
+  "agent-uis": {
+    en: "Agent UIs & chat",
+    nl: "Agent-UI’s & chat",
+    fr: "Interfaces d’agents et chat",
+  },
   "agent-tools": {
     en: "Agent tools & crawlers",
     nl: "Agenttools & crawlers",
+    fr: "Outils d’agents et robots d’exploration",
   },
   "eval-observability": {
     en: "Eval & observability",
     nl: "Eval & observatie",
+    fr: "Évaluation et observabilité",
   },
-  other: { en: "Other", nl: "Overig" },
+  other: { en: "Other", nl: "Overig", fr: "Autres" },
 };
 
 /**
@@ -363,10 +387,14 @@ export function formatAwesomeAddedDate(
 ): string {
   const date = new Date(`${addedOn}T12:00:00.000Z`);
   const formatted = new Intl.DateTimeFormat(
-    locale === "nl" ? "nl-NL" : "en-US",
+    { en: "en-US", nl: "nl-NL", fr: "fr-FR" }[locale],
     { month: "long", day: "numeric", year: "numeric" },
   ).format(date);
-  return locale === "nl" ? `Toegevoegd: ${formatted}` : `Added: ${formatted}`;
+  return {
+    en: `Added: ${formatted}`,
+    nl: `Toegevoegd: ${formatted}`,
+    fr: `Ajouté le ${formatted}`,
+  }[locale];
 }
 
 export function isAwesomeCategoryId(
@@ -425,6 +453,7 @@ export function applyAwesomeDirectoryQuery(
       card.repoUrl,
       card.blurb.en,
       card.blurb.nl,
+      card.blurb[locale] ?? card.blurb.en,
       AWESOME_CATEGORY_LABELS[card.category][locale],
       AWESOME_CATEGORY_LABELS[card.category].en,
     ]

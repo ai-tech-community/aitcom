@@ -133,6 +133,10 @@ it("returns public storyline summaries without private reviewer IDs or drafts", 
   });
   const result = await caller().browseNewsStorylines({});
   expect(state.stories).toHaveBeenCalledWith({ q: "", page: 1 });
+  await caller().browseNewsStorylines({ query: " Local AI ", q: "other" });
+  expect(state.stories).toHaveBeenLastCalledWith({ q: "Local AI", page: 1 });
+  await caller().browseNewsStorylines({ q: "models" });
+  expect(state.stories).toHaveBeenLastCalledWith({ q: "models", page: 1 });
   expect(result.items[0]).not.toHaveProperty("createdBy");
   expect(result.items[0]).not.toHaveProperty("connections");
 });
@@ -165,6 +169,31 @@ it("requires read scope for shared research and a reservation token for proposal
   await expect(caller().browseNewsResearch()).rejects.toMatchObject({
     code: "FORBIDDEN",
   });
+  state.agent.scopes = ["read"];
+  state.research.mockResolvedValue([
+    {
+      topicKey: "local-ai",
+      title: "Local AI",
+      state: "researching",
+      expiresAt: null,
+      agentName: null,
+      slug: null,
+    },
+    {
+      topicKey: "match-day",
+      title: "Match day",
+      state: "published",
+      expiresAt: null,
+      agentName: "Scout",
+      slug: "match-day",
+    },
+  ]);
+  await expect(
+    caller().browseNewsResearch({ query: "local" }),
+  ).resolves.toMatchObject({ items: [{ topicKey: "local-ai" }] });
+  await expect(
+    caller().browseNewsResearch({ q: "MATCH" }),
+  ).resolves.toMatchObject({ items: [{ topicKey: "match-day" }] });
   state.agent.scopes = ["read", "contribute"];
   const { reservationId: _id, ...withoutLease } = proposal;
   await expect(

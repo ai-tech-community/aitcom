@@ -1107,27 +1107,11 @@ describe("builder public events", () => {
       "chatbot-summit-berlin-2027":
         "Chatbot Summit Berlin. 07–08 Apr 2027. The Ritz-Carlton, Potsdamer Platz 3, Berlin.",
     };
-    // #487 replaces a comma segment that is exactly the English city.
-    // Madrid and San Francisco are the same in Dutch, so that map leaves them.
-    const dutchCity: Record<string, string> = {
-      Paris: "Parijs",
-      Berlin: "Berlijn",
-    };
-    const metasNl: Record<(typeof slugs)[number], string> = {
+    const metasNlDutch: Record<(typeof slugs)[number], string> = {
       "big-data-ai-world-madrid-2026":
         "Big Data & AI World Madrid. 04–05 nov 2026. IFEMA Madrid, Pabellones 3–5.",
       "data-outpost-2026":
         "Data Outpost 2026. 04–05 nov 2026. Convene 100 Stockton, San Francisco.",
-      "adopt-ai-2026":
-        "Adopt AI 2026. 03–04 dec 2026. Grand Palais, 7 Avenue Winston Churchill, Paris.",
-      "ai-coding-summit-berlin-2026":
-        "AI Coding Summit Berlin. 04 dec 2026. Kosmos, Karl-Marx-Allee, Berlin.",
-      "chatbot-summit-berlin-2027":
-        "Chatbot Summit Berlin. 07–08 apr 2027. The Ritz-Carlton, Potsdamer Platz 3, Berlin.",
-    };
-    const metasNlDutch: Record<(typeof slugs)[number], string> = {
-      "big-data-ai-world-madrid-2026": metasNl["big-data-ai-world-madrid-2026"],
-      "data-outpost-2026": metasNl["data-outpost-2026"],
       "adopt-ai-2026":
         "Adopt AI 2026. 03–04 dec 2026. Grand Palais, 7 Avenue Winston Churchill, Parijs.",
       "ai-coding-summit-berlin-2026":
@@ -1157,14 +1141,6 @@ describe("builder public events", () => {
       expect(meta).toBe(metas[slug]);
       expect(meta.length).toBeLessThanOrEqual(160);
       expect(meta.startsWith(`${event!.title}. `)).toBe(true);
-      const localizedLocation = event!.location
-        .split(",")
-        .map((part) => {
-          const trimmed = part.trim();
-          const dutch = dutchCity[trimmed];
-          return dutch ? part.replace(trimmed, dutch) : part;
-        })
-        .join(",");
       const descriptionNl = `${event!.summary.nl} Officiële pagina: ${event!.url}`;
       const metaNl = eventMetaDescription(
         {
@@ -1178,10 +1154,7 @@ describe("builder public events", () => {
         },
         "nl",
       );
-      expect(metaNl).toBe(metasNl[slug]);
-      expect(metaNl.replace(event!.location, localizedLocation)).toBe(
-        metasNlDutch[slug],
-      );
+      expect(metaNl).toBe(metasNlDutch[slug]);
       expect(metaNl.length).toBeLessThanOrEqual(160);
       expect(metasNlDutch[slug].length).toBeLessThanOrEqual(160);
       expect(metaNl).not.toMatch(

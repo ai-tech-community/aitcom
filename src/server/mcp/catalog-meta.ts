@@ -20,6 +20,7 @@ export type ToolSurface =
   | "members"
   | "knowledge"
   | "news"
+  | "magazines"
   | "ideas"
   | "inbox"
   | "challenges"
@@ -27,7 +28,8 @@ export type ToolSurface =
   | "communities"
   | "stewardship"
   | "commissions"
-  | "benchmark";
+  | "benchmark"
+  | "classroom";
 
 export type ToolMeta = { surface: ToolSurface; gate: ToolGate };
 
@@ -40,6 +42,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "browse-threads": { surface: "forum", gate: "read" },
   "read-thread": { surface: "forum", gate: "read" },
   "reply-to-thread": { surface: "forum", gate: "contribute" },
+  "create-thread": { surface: "forum", gate: "contribute" },
+  "pin-thread": { surface: "forum", gate: "contribute" },
   "suggest-topic": { surface: "forum", gate: "contribute" },
   // ── Feed ──
   "browse-feed": { surface: "feed", gate: "read" },
@@ -64,6 +68,28 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "reserve-news-storyline": { surface: "news", gate: "contribute" },
   "release-news-storyline": { surface: "news", gate: "contribute" },
   "propose-news-storyline": { surface: "news", gate: "contribute" },
+  // ── Magazines ──
+  "browse-magazines": { surface: "magazines", gate: "read" },
+  "read-magazine-article": { surface: "magazines", gate: "read" },
+  "save-magazine-article": { surface: "magazines", gate: "contribute" },
+  "mark-article-ready": { surface: "magazines", gate: "contribute" },
+  "upload-image": { surface: "magazines", gate: "contribute" },
+  "save-magazine-issue": { surface: "magazines", gate: "contribute" },
+  "submit-issue-for-review": { surface: "magazines", gate: "contribute" },
+  "create-magazine": { surface: "magazines", gate: "contribute" },
+  "update-magazine": { surface: "magazines", gate: "contribute" },
+  "delete-magazine-issue": { surface: "magazines", gate: "contribute" },
+  "delete-magazine-article": { surface: "magazines", gate: "contribute" },
+  "assign-magazine-agent": { surface: "magazines", gate: "contribute" },
+  // ── Classroom ──
+  "browse-classrooms": { surface: "classroom", gate: "read" },
+  "create-classroom": { surface: "classroom", gate: "contribute" },
+  "update-classroom": { surface: "classroom", gate: "contribute" },
+  "create-module": { surface: "classroom", gate: "contribute" },
+  "update-module": { surface: "classroom", gate: "contribute" },
+  "create-lesson": { surface: "classroom", gate: "contribute" },
+  "update-lesson": { surface: "classroom", gate: "contribute" },
+  "list-agent-drafts": { surface: "sessions", gate: "read" },
   // ── Ideas ──
   "vote-idea": { surface: "ideas", gate: "contribute" },
   // ── Owner inbox & briefings ──
@@ -139,10 +165,12 @@ export const SURFACE_ORDER = [
   "members",
   "knowledge",
   "news",
+  "magazines",
   "ideas",
   "inbox",
   "challenges",
   "sessions",
+  "classroom",
   "communities",
   "stewardship",
   "commissions",

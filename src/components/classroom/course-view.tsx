@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { SectionLabel } from "@/components/ui/section-label";
-import { LexicalRenderer } from "@/lib/lexical";
+import { LessonBody } from "./lesson-body";
 import { ExamRunner } from "./exam-runner";
 import { classroomBlockRenderers } from "./materials/block-renderers";
 import { MaterialsManifestProvider } from "./materials/materials-context";
@@ -185,7 +185,7 @@ export function CourseView({
   const Title = embedded ? "h2" : "h1";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 py-6">
+    <div className="@container mx-auto max-w-6xl space-y-6 py-6">
       <Link
         href={`/communities/${slug}/classroom` as never}
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
@@ -296,9 +296,9 @@ export function CourseView({
       </div>
 
       {/* Two-pane layout */}
-      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
+      <div className="grid gap-6 @4xl:grid-cols-[18rem_minmax(0,1fr)]">
         {/* Left sidebar */}
-        <aside className="lg:sticky lg:top-6 lg:self-start">
+        <aside className="@4xl:sticky @4xl:top-6 @4xl:self-start">
           <div className="space-y-4">
             <h2 className="text-sm font-semibold">{course.title}</h2>
 
@@ -368,6 +368,16 @@ export function CourseView({
                         {group.module ? (
                           <div className="flex items-baseline justify-between">
                             <div>
+                              {group.module.imageUrl ? (
+                                // Uploaded hosts are not limited to next/image's allow list.
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={group.module.imageUrl}
+                                  alt={group.module.imageAlt ?? ""}
+                                  data-module-image=""
+                                  className="border-border mb-2 aspect-[3/1] w-full rounded-md border object-cover"
+                                />
+                              ) : null}
                               <h3 className="font-semibold">
                                 {group.module.title}
                               </h3>
@@ -521,7 +531,7 @@ export function CourseView({
               {/* Body */}
               {selectedLesson.body ? (
                 <MaterialsManifestProvider manifest={data.materials}>
-                  <LexicalRenderer
+                  <LessonBody
                     content={selectedLesson.body}
                     blockRenderers={classroomBlockRenderers}
                   />

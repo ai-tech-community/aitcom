@@ -1,8 +1,9 @@
+import type { AppLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import type { Where } from "payload";
 import Image from "next/image";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
@@ -38,11 +39,11 @@ import {
   type EventDetailDay,
 } from "@/components/events/detail/event-detail-when";
 import { EventTimeDisplay } from "@/components/event-time-display";
-import { getTranslations } from "next-intl/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
 import { getInitials } from "@/lib/avatar";
+import { PUBLICLY_LISTED_EVENT_STATUSES } from "@/lib/events/event-status";
 import { externalEventUrl } from "@/lib/events/event-source";
 import { parseStoredQuestions } from "@/lib/events/registration-questions";
 import {
@@ -117,21 +118,21 @@ export async function generateMetadata({
       and: [
         { slug: { equals: slug } },
         // Hide un-approved submissions (pending/rejected) from public view
-        { status: { not_in: ["draft", "rejected"] } },
+        { status: { in: [...PUBLICLY_LISTED_EVENT_STATUSES] } },
       ],
     },
-    locale: locale as "en" | "nl",
+    locale: locale as AppLocale,
     limit: 1,
     depth: 1,
   });
   const event = docs[0];
   if (!event) return {};
 
-  const summaryLine = eventSummaryLine(
-    event,
-    locale,
-    await getEventRowLabels(),
-  );
+  const [labels, tEvents] = await Promise.all([
+    getEventRowLabels(),
+    getTranslations("events"),
+  ]);
+  const summaryLine = eventSummaryLine(event, locale, labels);
   const builtDescription = eventMetaDescription(
     {
       title: event.title,
@@ -144,6 +145,7 @@ export async function generateMetadata({
       description: lexicalToPlainText(event.description),
     },
     locale,
+    tEvents("online"),
   );
   const description = eventSeoDescription(slug, locale) ?? builtDescription;
   const title = eventSeoTitle(slug, locale, event.title);
@@ -163,8 +165,10 @@ export default async function EventDetailPage({
 }) {
   const { slug } = await params;
   const locale = await getLocale();
-  const tEvents = await getTranslations("events");
-  const labels = await getEventRowLabels();
+  const [tEvents, labels] = await Promise.all([
+    getTranslations("events"),
+    getEventRowLabels(),
+  ]);
 
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
@@ -173,11 +177,11 @@ export default async function EventDetailPage({
       and: [
         { slug: { equals: slug } },
         // Hide un-approved submissions (pending/rejected) from public view
-        { status: { not_in: ["draft", "rejected"] } },
+        { status: { in: [...PUBLICLY_LISTED_EVENT_STATUSES] } },
       ],
     },
     depth: 2,
-    locale: locale as "en" | "nl",
+    locale: locale as AppLocale,
     limit: 1,
   });
 
@@ -200,6 +204,7 @@ export default async function EventDetailPage({
       description: lexicalToPlainText(event.description),
     },
     locale,
+    tEvents("online"),
   );
   const metaDescription = eventSeoDescription(slug, locale) ?? builtDescription;
   const pageTitle = eventSeoTitle(slug, locale, event.title);
@@ -334,7 +339,7 @@ export default async function EventDetailPage({
       ],
     },
     sort: "date",
-    locale: locale as "en" | "nl",
+    locale: locale as AppLocale,
     depth: 1,
     limit: RELATED_EVENT_CANDIDATES,
   });

@@ -1,0 +1,168 @@
+/**
+ * The serializable views of issue items (ADR-0043). Server item strategies
+ * produce them; client renderers and the issue builder consume them. No
+ * server imports here: client code imports this module.
+ */
+
+import type { ItemImage } from "./item-image";
+
+export type ItemImageMetadata = { image?: ItemImage };
+
+/** An original magazine article in an issue. */
+export type ArticleItemView = ItemImageMetadata & {
+  kind: "article";
+  itemId: string;
+  intro: string | null;
+  article: {
+    id: number;
+    slug: string;
+    title: string;
+    authorName: string | null;
+    /** `openingOf(content, 40)`: never code. */
+    excerpt: string;
+    opening: string;
+    readingMinutes: number;
+    imageUrl: string | null;
+  };
+};
+
+/** Free-form text owned by the issue. */
+export type EditorialItemView = ItemImageMetadata & {
+  kind: "editorial";
+  itemId: string;
+  intro: string | null;
+  heading: string | null;
+  /** Lexical editor state; null for a preview reader. */
+  body: unknown;
+};
+
+/** An AIT News story, read live from its source. */
+export type StorylineItemView = ItemImageMetadata & {
+  kind: "storyline";
+  itemId: string;
+  intro: string | null;
+  storyline: {
+    slug: string;
+    title: string;
+    overview: string;
+    sourceCount: number;
+    updatedAt: string | null;
+  };
+};
+
+/** An AIT News headline, read live from its source. */
+export type NewsItemView = ItemImageMetadata & {
+  kind: "newsItem";
+  itemId: string;
+  intro: string | null;
+  news: {
+    url: string | null;
+    title: string;
+    source: string | null;
+    publishedAt: string | null;
+    summary: string;
+  };
+};
+
+/** A community event, read live for the current viewer. */
+export type EventItemView = ItemImageMetadata & {
+  kind: "event";
+  itemId: string;
+  intro: string | null;
+  membersOnly: boolean;
+  event: {
+    slug: string;
+    title: string;
+    date: string;
+    endDate: string | null;
+    city: string | null;
+    online: boolean;
+    status: "published" | "cancelled" | "completed";
+  };
+};
+
+/** A live forum thread, linked through its community's forum. */
+export type ForumThreadItemView = ItemImageMetadata & {
+  kind: "forumThread";
+  itemId: string;
+  intro: string | null;
+  membersOnly: boolean;
+  thread: {
+    path: string;
+    title: string;
+    replyCount: number;
+    authorName: string | null;
+    lastActivityAt: string | null;
+  };
+};
+
+/** A launchpad project, read live for the current viewer. */
+export type LaunchpadProjectItemView = ItemImageMetadata & {
+  kind: "launchpadProject";
+  itemId: string;
+  intro: string | null;
+  membersOnly: boolean;
+  project: {
+    slug: string;
+    title: string;
+    pitch: string;
+    stage: "idea" | "prototype" | "mvp" | "launched";
+    voteCount: number;
+    authorName: string | null;
+  };
+};
+
+/** What a reader sees for one issue item, by kind. */
+export type IssueItemView =
+  | ArticleItemView
+  | EditorialItemView
+  | StorylineItemView
+  | NewsItemView
+  | EventItemView
+  | ForumThreadItemView
+  | LaunchpadProjectItemView;
+
+/** The item kinds; each has one strategy, one block and one renderer. */
+export type ItemKindId = IssueItemView["kind"];
+
+/**
+ * An item whose content cannot be shown: the reference is gone, its content
+ * is not ready for readers, or it belongs to another magazine. Readers never
+ * get these (the item is skipped); editors get them in place, as markers.
+ */
+export type UnavailableItem = {
+  kind: ItemKindId;
+  itemId: string;
+  unavailable: true;
+  reason:
+    | "missing"
+    | "not_ready"
+    | "other_magazine"
+    | "unpublished"
+    | "no_access";
+};
+
+/** What an editor sees for one issue item. */
+export type EditorItemView = IssueItemView | UnavailableItem;
+
+/**
+ * Why an issue item cannot be saved or published. `itemIndex` is the item's
+ * position in the issue; `code` is the magazine refusal code the client maps
+ * to friendly text.
+ */
+export const ITEM_PROBLEM_CODES = [
+  "ITEM_INVALID",
+  "ARTICLE_PLACED",
+  "ARTICLE_NOT_READY",
+] as const;
+
+export type ItemProblem = {
+  itemIndex: number;
+  code: (typeof ITEM_PROBLEM_CODES)[number];
+  detail?: string;
+};
+
+/** Audience flag shared by community-scoped kinds and editor previews. */
+export function isMembersOnlyView(view: EditorItemView): boolean {
+  return "membersOnly" in view && view.membersOnly;
+}

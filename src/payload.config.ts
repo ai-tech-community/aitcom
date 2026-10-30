@@ -42,6 +42,8 @@ import { Courses } from "./collections/Courses";
 import { Lessons } from "./collections/Lessons";
 import { Modules } from "./collections/Modules";
 import { HostedMaterials } from "./collections/HostedMaterials";
+import { Magazines } from "./collections/Magazines";
+import { MagazineIssues } from "./collections/MagazineIssues";
 import { EmailTemplates } from "./collections/EmailTemplates";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
@@ -114,6 +116,8 @@ export default buildConfig({
     Lessons,
     Modules,
     HostedMaterials,
+    Magazines,
+    MagazineIssues,
     EmailTemplates,
     {
       slug: "users",
@@ -137,6 +141,10 @@ export default buildConfig({
     s3Storage({
       collections: {
         media: {
+          // Enables the prefix column. Magazine uploads set their own
+          // `magazines/<id>` prefix; every other upload leaves it empty and
+          // stays at the bucket root.
+          prefix: "",
           disablePayloadAccessControl: true,
           generateFileURL: ({ filename, prefix }) => {
             const bucket = process.env.S3_BUCKET;
@@ -169,6 +177,7 @@ export default buildConfig({
     locales: [
       { label: "English", code: "en" },
       { label: "Nederlands", code: "nl" },
+      { label: "Français", code: "fr" },
     ],
     defaultLocale: "en",
     fallback: true,

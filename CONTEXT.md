@@ -67,14 +67,14 @@ tracked on issue #328).
 
 A member's `member_profile.isPublic` flag governs whether their **identity**
 (display name and avatar) may be shown in any **aggregate or directory
-display** — the global `/members` directory *and* per-[[Community]] member
+display** — the global `/members` directory _and_ per-[[Community]] member
 displays such as the [[member-stack]]. Opting out (`isPublic = false`) hides
 the member's **face**, never their **count**: a private member still
 contributes to a community's member total and to the [[member-stack]] overflow
 (the "+N"), they are simply never one of the shown faces. This is broader than
 the flag's original directory-only reading; the widening was a deliberate
 privacy call (honour the explicit opt-out for faces, keep counts honest). The
-per-Community *member list page* and other surfaces gated by community access
+per-Community _member list page_ and other surfaces gated by community access
 are a separate concern — `isPublic` is about being shown to people who can
 already reach the surface, not about who can reach it. See
 [[adr-0021-profile-visibility-governs-member-stack-faces]].
@@ -105,8 +105,8 @@ of these surfaces.
 
 A voteable suggestion with a triage status (open → implemented/rejected). The
 two forms of this [[shared-surface]] differ by **subject**, not just scope: a
-per-Community idea is about *that community's life*; a Hub-wide idea is about
-*the platform itself* (including missing agent capabilities surfaced from the
+per-Community idea is about _that community's life_; a Hub-wide idea is about
+_the platform itself_ (including missing agent capabilities surfaced from the
 [[tool-catalog]]). The Hub-wide ideas page is therefore the one
 cross-communities suggestion box — it is **not** an aggregator of the
 communities' own idea boards, which stay inside their tenant boundaries.
@@ -130,8 +130,8 @@ feed is where [[topic]]s, pins, and future engagement levers live. See
 
 A threaded discussion surface (`/communities/<slug>/forum`) with replies,
 admin **pins**, ideas+voting, a rules-acceptance gate, and a fixed
-`category` enum (`general | question | showcase | job`) — a *structural thread
-type*, **not** an admin-branded label (contrast [[topic]]). Load-bearing today:
+`category` enum (`general | question | showcase | job`) — a _structural thread
+type_, **not** an admin-branded label (contrast [[topic]]). Load-bearing today:
 [[ritual]]s materialize as forum threads and the [[greeter]] queue reads it.
 **Frozen** in favour of the [[community-feed]]; threads/rituals/ideas are
 expected to migrate onto the feed in a later, separate step.
@@ -177,8 +177,8 @@ can express. See [[adr-0027-classroom-is-member-authored-ordered-curriculum]].
 ### Course
 
 An ordered collection of [[lesson]]s in the [[classroom]], **flat by default**
-but optionally grouped into [[module]]s (opt-in per course; a course is *either*
-flat *or* fully moduled, never mixed),
+but optionally grouped into [[module]]s (opt-in per course; a course is _either_
+flat _or_ fully moduled, never mixed),
 **created and owned by any active [[Community]] member** (subject to
 `classroomCreatePolicy`) and published immediately. **Members-only by default**;
 a course becomes **public only when an admin/mod promotes it** — a creator
@@ -187,7 +187,7 @@ Who may read a course is one **course access** decision: `none` (may not
 know it exists — answered as not-found), `visitor` (non-member on a public
 published course), `member` (active member on a published course) or
 `manager` (the author, or an active owner/admin/moderator, who also sees
-drafts and archived courses). Manager is about *seeing*; the exam answer key
+drafts and archived courses). Manager is about _seeing_; the exam answer key
 stays author-only. Enrolling, taking an exam and completing a lesson all
 require access, so a banned member's old enrollment opens nothing.
 A member [[course-enrollment|enrolls]]
@@ -212,8 +212,8 @@ first-class entity (own row: `title`, `order`, optional `summary`) that a
 lesson points at via a nullable `module` FK. Modules are **opt-in per course**:
 a course either has no modules (flat, the default) or groups **every** lesson
 into a module — never a mix. "Is moduled" is **derived** (has ≥1 module), not a
-stored flag. A module is **behaviour-free**: it restructures *display and
-ordering* only. It carries **no completion of its own** (a "3/5 done" badge is a
+stored flag. A module is **behaviour-free**: it restructures _display and
+ordering_ only. It carries **no completion of its own** (a "3/5 done" badge is a
 read-time rollup of existing [[lesson]] completions, never stored), **no
 module-level exam** (assessment stays on the [[lesson]] via [[lesson-exam]]), and
 **no sequential gating** — modules do **not** hard-lock later modules, preserving
@@ -290,7 +290,7 @@ plans can raise it later.
 
 An author-created assessment attached to a [[lesson]] that a learner must pass
 to complete the lesson. Has a **mandatory** flag: **mandatory** = passing is the
-*only* way to mark the lesson complete (completion becomes **verified**, not
+_only_ way to mark the lesson complete (completion becomes **verified**, not
 self-reported); **not mandatory** = a self-check (the **practice** mode) the
 learner may take for feedback, with self-reported completion still available.
 Questions are **single**-choice, **boolean**, or **multi**-select; a multi
@@ -305,7 +305,7 @@ exam blocks **its own lesson's completion only** — it does **not** hard-lock
 later lessons (the [[course]] stays flat and browsable), but the gated lessons
 must be genuinely passed before they count toward progress. A verified
 (exam-gated) completion still earns the learner **no Hub-global XP** at launch —
-the exam verifies the *response* but not the *bar* (the author writes it with no
+the exam verifies the _response_ but not the _bar_ (the author writes it with no
 pre-review), so it gates local outcomes only, never reputation. See
 [[adr-0028-lesson-exam-gates-completion-not-reputation]].
 
@@ -316,8 +316,8 @@ of article comments (mirrors the `Comments`/`FeedComments` shape: a `lesson` FK,
 one level of `parentId` threading, author, body). **Not** a feed post and
 **not** a standalone discussion surface, so it does **not** contradict
 [[adr-0026-feed-is-the-canonical-discussion-surface]]: that ADR governs
-*community-level* discussion surfaces (feed vs forum), whereas this is comments
-*on a piece of content*, like article comments. Deliberately **not** "Q&A" with
+_community-level_ discussion surfaces (feed vs forum), whereas this is comments
+_on a piece of content_, like article comments. Deliberately **not** "Q&A" with
 accepted-answer/upvote semantics (that is forum-adjacent; deferred). **Reading**
 inherits the [[course]]'s visibility (members-only, or public if admin-promoted);
 **posting** requires active [[Community]] membership — **not** [[course-enrollment|enrollment]]
@@ -450,15 +450,15 @@ so it can be conflict-checked against**, via the curation pipeline
 (agent discovery, connected Luma calendars, or URL import). The curating agent
 classifies its [[audience]]s at ingestion; the existing human review queue
 ([[adr-0011-community-event-submission-approval]]) catches mislabels. It exists
-to be scheduled *around*, not to be attended *through* the platform.
+to be scheduled _around_, not to be attended _through_ the platform.
 
 ### Hackathon
 
 The **composition of an Event and a Challenge** — not a new swallowing entity.
 The Event (`events` collection, `event_registration`, reminders, Luma sync,
-calendar) owns *when it runs and who attends*; the bound Challenge (objectives,
-submissions, channel, leaderboard, XP) owns *the problem, the work, and the
-scoring*. A hackathon problem is fanned across teams via a [[work-grid]]. Both
+calendar) owns _when it runs and who attends_; the bound Challenge (objectives,
+submissions, channel, leaderboard, XP) owns _the problem, the work, and the
+scoring_. A hackathon problem is fanned across teams via a [[work-grid]]. Both
 underlying models are single-actor today, so the one genuinely new concept a
 hackathon requires is the **[[team]]**. Both an Event and a Challenge are
 [[shared-surface]]s, so a hackathon is Hub-wide or community-scoped by the same
@@ -466,16 +466,17 @@ hackathon requires is the **[[team]]**. Both an Event and a Challenge are
 `communityId`.
 
 The **binding is the discriminator**: a challenge is team-based / competitive
-*exactly when* it is bound to a hackathon Event. There is no separate
+_exactly when_ it is bound to a hackathon Event. There is no separate
 "team-mode" flag — being a hackathon and being team-based are the same fact.
 
 A team's **submission** is the recombined output of its [[competitive grid]] —
 its verified [[work-cell]]s, plus an optional captain-attached artifact (repo/URL
-+ summary) — frozen by the captain's submit at the deadline. Judging is
-**automated and verification-driven**: a team's score is the sum of its *verified*
-cell weights, ranked into one leaderboard slot per team with `rankingMode` as the
-tiebreak, then confirmed at a sponsor/creator **finalize** gate before prizes
-lock. A full human rubric judge panel is a deferred fast-follow, not the MVP.
+
+- summary) — frozen by the captain's submit at the deadline. Judging is
+  **automated and verification-driven**: a team's score is the sum of its _verified_
+  cell weights, ranked into one leaderboard slot per team with `rankingMode` as the
+  tiebreak, then confirmed at a sponsor/creator **finalize** gate before prizes
+  lock. A full human rubric judge panel is a deferred fast-follow, not the MVP.
 
 ### Team
 
@@ -491,7 +492,7 @@ A team is a **grouping over enrollments, not a replacement for them**: each
 member still holds their own `challenge_enrollment` row (so the
 [[agent-commission]] source-scope claim check, progress, and test machinery are
 unchanged), and the enrollment optionally points at a team. The team row carries
-only the *shared* artifacts — submission, leaderboard slot, XP pool. You are
+only the _shared_ artifacts — submission, leaderboard slot, XP pool. You are
 enrolled once; your enrollment may belong to a team.
 
 A team has a **captain** (its creator) who may rename it, manage the roster, and
@@ -507,13 +508,13 @@ hackathon may set a higher minimum. A team has **no agent of its own** — its
 The **public, read-only projection of aggregate [[hackathon]] state** — how
 outsiders (anonymous visitors, non-participating members) watch the contest from
 outside. It is deliberately **not a [[shared-surface]] or [[work-cell-surface]]**:
-those are about *where agent output flows*; the spectator view is the opposite —
-nothing is authored or returned to it, it only *reads*.
+those are about _where agent output flows_; the spectator view is the opposite —
+nothing is authored or returned to it, it only _reads_.
 
 Its defining rule is a privacy-and-competitive-integrity line: **during the live
-window spectators see the *race*, never the *work*.** That means timeline,
+window spectators see the _race_, never the _work_.** That means timeline,
 participating teams (faces respecting [[profile-visibility|`isPublic`]] — private
-members counted, not shown), and a leaderboard of *aggregate* progress (verified
+members counted, not shown), and a leaderboard of _aggregate_ progress (verified
 [[work-cell]] counts / percent) — but **never a cell's output and never another
 team's cell content**. Rival teams are outsiders to each other's grids too, so
 the same line protects the contest, not only the public. After the hackathon
@@ -547,7 +548,7 @@ Reciprocity (for the [[activation-funnel]]) is detected via
 
 A **commissioned [[work-cell]] completion does _not_ count as a contribution
 action** for [[active-member]]/[[at-risk-member]]/activation purposes (it may at
-most be discounted): activation measures *the human showing up*, and "my agent
+most be discounted): activation measures _the human showing up_, and "my agent
 claimed a cell while I slept" is not the human showing up. Such work still earns
 **Hub-global XP** — but only **verification-gated** (a [[consensus]]/test cell
 earns; a `self-report` cell earns little; a cell that fails verification earns
@@ -730,7 +731,7 @@ Recognition for a member whose personal invite brought in someone who then
 `community_invite` the member created; redemption records
 `community_membership.invited_by`. Credit is **Hub-global XP** to the referrer,
 granted **once per referred member** and **only on activation** — reconciled
-idempotently by a daily cron, since activation is a *derived* state, not a stored
+idempotently by a daily cron, since activation is a _derived_ state, not a stored
 transition. The referral leaderboard is a **view** over the credit ledger, never
 a second reputation currency. See
 [[adr-0018-referral-attribution-honours-global-xp]] and
@@ -742,12 +743,12 @@ form of a [[community-invite]].
 What lets someone join a [[Community]] through the shared `/invite/<token>`
 entry point. Two forms with deliberately different powers:
 
-- **Invite code** — an opaque `community_invite` token. It is a *grant*: it
+- **Invite code** — an opaque `community_invite` token. It is a _grant_: it
   bypasses the community's join policy, so it is the **only** form that works for
-  an `invite_only` community (the code *is* the entry secret). May carry a
+  an `invite_only` community (the code _is_ the entry secret). May carry a
   `maxUses`/expiry, records `invited_by` for [[referral-credit]], and may confer
   a role above `member` (see [[role-bearing-invite]]).
-- **Slug join link** — `/invite/<community-slug>`. A human-readable *standing*
+- **Slug join link** — `/invite/<community-slug>`. A human-readable _standing_
   link that resolves the community by its public slug and joins **per the join
   policy** (`open` → active, `approval_required` → pending). Always grants plain
   `member`, carries **no** referral attribution, and is **refused for
@@ -781,7 +782,7 @@ owner (the `conversation` of `type:"agent"`), and **no other party** — no huma
 no other agent — can message an agent, and an agent can message **no one else**.
 Agent↔agent communication does not exist and is forbidden by design (closing the
 "agent-to-agent areas" language in [[adr-0015-community-surfaces-are-human-authored]],
-which described areas never built). An agent may still *read* public,
+which described areas never built). An agent may still _read_ public,
 human-published content; reading is not communication. Distinct from publishing,
 which is governed by the [[no-go-surface]] rule and ADR-0015's draft-don't-post
 model.
@@ -794,9 +795,9 @@ their own agent to accept and execute tasks **triggered by a third party**
 without the owner approving each individual invocation. It is the deliberate
 evolution of the [[agent-communication-boundary]]: the boundary's "owner-only
 counterpart" rule becomes "owner, **or a source the owner has commissioned**".
-A commission names what may be requested (a task type, e.g. *polish text*,
-*solve a work-cell*) and from where (a source scope, e.g. *challenges I am
-enrolled in*); outside that envelope the owner-only boundary is unchanged. The
+A commission names what may be requested (a task type, e.g. _polish text_,
+_solve a work-cell_) and from where (a source scope, e.g. _challenges I am
+enrolled in_); outside that envelope the owner-only boundary is unchanged. The
 human remains the power source — nothing runs that the owner did not stand up a
 commission for, and revoking the commission instantly closes the channel.
 Distinct from a one-off owner instruction in the `type:"agent"` conversation,
@@ -820,7 +821,7 @@ Suggest and a human publishes in their own name per
 
 A third **surface class** for agent output, peer to the **draft-allowed**
 surfaces and the [[no-go-surface]]. A work-cell surface is a sandboxed, opt-in
-space that exists to *consume agent output* — today, a [[challenge]] work-cell
+space that exists to _consume agent output_ — today, a [[challenge]] work-cell
 the owner reached through an [[agent-commission]]. On a work-cell surface a
 commissioned agent's result may **auto-return without owner approval**, because
 the consent ADR-0015 wants was front-loaded into the commission grant and
@@ -847,7 +848,7 @@ challenges; the work grid is its **first and only launch consumer**
 (see the challenge-domain decisions). Power comes from the participants'
 **own** agents under an [[agent-commission]] — never an AIT-internal agent.
 
-A work grid runs in one of two **grid modes**, differing *only* in the
+A work grid runs in one of two **grid modes**, differing _only_ in the
 eligibility scope of who may claim a cell — the dispatch primitive (claim
 queue, deadlines, [[consensus]], [[orchestrator-cell]]) is identical:
 
@@ -857,7 +858,7 @@ queue, deadlines, [[consensus]], [[orchestrator-cell]]) is identical:
   roster lock by cloning the challenge's authored cell template; every team races
   the same decomposition independently, and judging compares the recombined
   per-team results. The only claim eligibility a competitive grid adds over a
-  collaborative one is "claimer's owner is a member of *this* team."
+  collaborative one is "claimer's owner is a member of _this_ team."
 - **Collaborative grid** — cells dispatch to **any** commissioned agent in the
   community; no rival teams, everyone contributes cells to one shared result.
   Not a hackathon — a distributed community effort ("the community solves X
@@ -879,7 +880,7 @@ The split/merge role of a [[work-grid]], expressed as **itself a [[work-cell]]**
 run by a participant's own commissioned agent — never an AIT-internal agent. The
 first cell decomposes the problem into cells; the last cell recombines their
 results. This enforces the platform invariant that **AIT provides only plumbing**
-(queue, dispatch, deadlines, attribution, recombination *transport*) and
+(queue, dispatch, deadlines, attribution, recombination _transport_) and
 **performs no cognition itself** — all thinking, including the thinking of
 coordinating, comes from the community's [[agent-commission|commissioned]]
 agents. For simple [[challenge]]s the sponsor hand-authors the cells up front
@@ -902,7 +903,7 @@ admin-tunable, unlike a [[Community]]'s "AI Agent Policy" rules section.
 manifest clause: it is **off until the owner accepts the manifest version that
 introduces it** (reusing the existing `MANIFEST_VERSION` bump → `contribute`
 scope suspension machinery — no silent capability gain). The clause widens
-*who may request work* (a commissioned source, not only the owner) but **not
+_who may request work_ (a commissioned source, not only the owner) but **not
 what the agent may touch**: a commissioned [[work-cell]] may request task
 output only, never the agent's owner DMs, inbox, or any [[no-go-surface]]. A
 commission authorizes **named task types** from an allowlist (e.g.
@@ -940,6 +941,231 @@ missing-capability suggestion is an idea on the Hub-wide ideas surface
 (distinguished by category), so it inherits voting, statuses, and agent
 participation like any other idea. The catalog links into that surface; it does
 not collect feedback itself.
+
+### Magazine
+
+A [[Community]]'s publication: a named series of [[issue]]s, with a name, a
+platform-wide slug (`/magazines/[slug]`), a description, a logo, topics and a
+**default visibility** for new issues. A community has **at most one**
+magazine. Created and managed by its [[magazine-team]]'s editors-in-chief;
+[[magazine-editor]]s assemble its issues. It appears as the
+community's Magazine tab and on the `/magazines` shelf. Distinct from the
+[[articles]]/blog (single pieces on the Hub-wide blog) by its one irreducible
+feature: **curated, numbered issues** that collect articles, editorial text
+and platform content. See
+[[adr-0042-magazine-issues-are-read-through-one-access-resolver]] and
+[[adr-0043-magazine-issue-items-are-a-registry-of-kind-strategies]].
+
+### Issue
+
+One numbered edition of a [[magazine]]: a title, a slug, a cover, an editor's
+note and an ordered list of [[issue-item]]s. An issue is `draft`, `scheduled`
+(editors only) or `published`; a published issue does not go back to draft,
+and its slug is locked so links do not break. Each issue stores its **own visibility**
+— `members`, `teaser` or `public` — copied from the magazine's default when it
+is created; changing the default never changes existing issues. An issue
+shown outside an unlisted [[community]] needs confirmation from an active
+community owner or admin (who and when are recorded); an appointed editor
+cannot confirm it. A public confirmation survives narrowing to preview;
+widening a preview to public needs a fresh confirmation. Choosing `members`
+clears it. Without confirmation either outsider visibility is members-only.
+Who may read an issue is one **issue access** decision: `none` (answered as
+not-found), `teaser`, `full` or `editor`. Listings use the resolver's query
+twin with an explicit reach; article surfaces require full reading access.
+See [[adr-0042-magazine-issues-are-read-through-one-access-resolver]].
+
+### Preview issue (teaser)
+
+A published [[issue]] with `teaser` visibility: members read it in full and
+outsiders get its cover, editor's note, contents and item cards. Article cards
+and their own pages expose only the first 80 words from text blocks, skipping
+code, images and embeds; editorial blocks expose their heading and intro,
+never their body. The join prompt follows the community's join policy.
+Preview issue and article pages are indexable unless staff hide the magazine,
+but preview articles are absent from profile work, agent search, the sitemap
+and the blog feed, and cannot be read or commented on through article APIs.
+The same preview mode works in all three issue layouts. Signed-in subscribers
+hear about previews through the inbox; email subscribers wait for a public
+issue. Switching back to members-only removes outsider pages and share images
+on the next request. See [[adr-0042-magazine-issues-are-read-through-one-access-resolver]].
+
+### Reader key
+
+A cookieless HMAC identifier used only for an [[issue]]'s reading numbers in
+`app.magazine_read`. A signed-in reader's key is stable across days; a
+signed-out reader's key combines the UTC day, IP address and user agent and
+changes daily. The stored tally contains none of those raw identifiers.
+Views and article read-to-end counts are checked against current access;
+editors' own visits are excluded and preview readers record views only.
+Numbers require JavaScript and start at release, with no backfill. Editors
+see them on the issue's Numbers page. See
+[[adr-0048-magazine-reading-numbers-are-first-party-tallies-keyed-by-a-cookieless-reader-key]].
+
+### Magazine subscriber
+
+An account or a confirmed email address following a [[magazine]], stored in
+`app.magazine_subscription`. An account hears about new issues in the inbox,
+including a signed-in non-member for public and preview issues; members-only
+issues reach active members. A confirmed email address hears about public
+issues only, in its saved language. Email subscription stays open on a
+preview-only magazine but sends nothing until a public issue appears.
+A subscription never grants reading
+rights. Every staff role can see subscriber counts, never names or addresses.
+See [[adr-0046-magazine-issues-are-announced-through-an-outbox-once-per-subscriber]].
+
+### Scheduled issue
+
+An [[issue]] with status `scheduled`, a `scheduledFor` instant and a
+`scheduledBy` user id. It stays editable and invisible to readers until it
+publishes through the same path as the Publish button, as the scheduler, who
+must still have `edit`. Empty issues, invalid items or lost rights return it
+to draft and tell the editors; temporary errors retry for up to an hour.
+A newer edit always wins. A missing or deleted community returns it to draft
+silently. See [[adr-0046-magazine-issues-are-announced-through-an-outbox-once-per-subscriber]].
+
+### Automatic draft
+
+An [[issue]] the [[magazine]] made itself from suggestions based on its own
+and its community's activity. Only one automatic draft may be open at a time,
+including one waiting on a schedule. Once made, it is an ordinary draft:
+editors can change it or publish it, and readers cannot see it until it is
+published. See
+[[adr-0047-magazine-auto-drafts-are-ordinary-issues-assembled-from-kind-suggesters]].
+
+### Automatic publish
+
+A [[scheduled-issue]] whose schedule was set by [[automatic-draft]] settings,
+with `scheduledVia` set to `auto`. A person's change stops that automatic
+schedule and returns the issue to draft. Going out by itself needs both the
+scheduling person's current `edit` capability and settings that still allow
+it. See
+[[adr-0047-magazine-auto-drafts-are-ordinary-issues-assembled-from-kind-suggesters]].
+
+### Issue history
+
+What happened to a [[magazine]]'s issues and who did it: drafts made or
+skipped, items changed, automatic publication stopped, publication and
+deletion. Automatic actions have no person as actor. History keeps the
+issue's number and title after deletion and is visible to editors. See
+[[adr-0047-magazine-auto-drafts-are-ordinary-issues-assembled-from-kind-suggesters]].
+
+### Issue announcement
+
+The durable record in `app.magazine_issue_announcement` written in the same
+transaction that publishes an [[issue]]. Delivery tells each eligible
+[[magazine-subscriber]] once, with a claim per issue and subscription in
+`app.magazine_issue_delivery`. The issue access resolver decides the audience
+again for each batch: members-only issues reach active members in the inbox,
+preview issues reach every signed-in subscriber in the inbox and nobody by
+email, and public issues may also reach email addresses. Only current subscriptions
+confirmed by publication time count. Inbox delivery starts after publication;
+the scheduled run finishes it and sends email. See
+[[adr-0046-magazine-issues-are-announced-through-an-outbox-once-per-subscriber]].
+
+### Issue item
+
+One entry in an [[issue]]'s ordered list, of exactly one [[item-kind]], with an
+optional intro line from the editor. Items **reference** content and render it
+live; they never copy it. An item whose content is no longer readable is
+skipped for readers and shown to editors with a "no longer available" marker.
+Being in a public issue never widens access to the referenced content.
+
+### Item kind
+
+The type of an [[issue-item]]: `article`, `editorial`, `storyline`,
+`newsItem`, `event`, `forumThread` and `launchpadProject`. Each kind is
+one strategy in a registry (input, stored shape, validation, batched load,
+readability) plus one renderer, so the issue page and the builder never
+branch on the kind. See
+[[adr-0043-magazine-issue-items-are-a-registry-of-kind-strategies]].
+
+### Reference item
+
+An [[issue-item]] that points at platform content by id and renders it live,
+such as a story, news item, event, forum thread or launchpad project. Its
+content must pass the reader's own access check; being in a public issue
+never widens access. New references are checked strictly, while kept
+references can become an [[unavailable-marker]] without blocking other edits
+or publication. See
+[[adr-0044-platform-content-in-issues-is-referenced-live-and-read-per-reader]].
+
+### Unavailable marker
+
+What editors see in place of an [[issue-item]] whose content its reader cannot
+get: it is missing, not ready, unpublished, private to its community or in
+another magazine. The marker gives the reason without exposing the content.
+Readers never receive markers; they see the remaining items in issue order.
+See [[adr-0044-platform-content-in-issues-is-referenced-live-and-read-per-reader]].
+
+### Magazine article
+
+An [[articles|article]] that belongs to a [[magazine]] (the `magazine` relation
+on `Articles`). It uses the same editor, renderer and review fields as a blog
+article, but follows the magazine [[publication-channel]]: its
+[[magazine-editor]] marks it ready (not platform staff), it never appears on
+`/blog` or in the blog feed, and it is **published and credited (XP, badges)
+when its issue is published**, not when it is approved. It is readable through
+its issue only. An article never moves into, out of, or between magazines.
+
+### Placement
+
+The [[issue]] a [[magazine-article]] is placed in, stored on the article
+(`magazineIssue`) and written only by the issue service, next to the issue's
+`article` item that holds its order. An article has **at most one** placement.
+Moving it to another issue drops the old placement, so its old URL answers
+not-found. Placement is how every surface finds the issue whose access decides
+whether the article may be read.
+
+### Publication channel
+
+How an article is reviewed, published and credited: **blog** (platform staff
+review; approval publishes and credits) or **magazine** (the magazine's editors
+review; approval means "ready for an issue"; publishing and credit happen when
+the issue is published). Decided in one place, `channelFor(article)`; no other
+code checks "is this a magazine article?" to change behaviour. See
+[[adr-0043-magazine-issue-items-are-a-registry-of-kind-strategies]].
+
+### Magazine editor
+
+A person with the `edit` capability in a [[magazine]]: an editor-in-chief or
+editor on its [[magazine-team]]. An active community owner/admin is implicitly
+editor-in-chief. Editors build and publish [[issue]]s, review
+[[magazine-article]]s, see draft and scheduled issues and unavailable items,
+and mark their own articles ready. Settings and team management require `manage`, held by
+editors-in-chief. The editorship seam (`loadMagazineEditorship` and its batched
+twin `loadEditorScope`) resolves standing from active membership and
+assignments. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
+
+### Magazine team
+
+The people assigned a [[magazine-role]] in a [[magazine]], plus its
+[[Community]]'s implicit editors-in-chief (active owners/admins). Assignments
+live in Drizzle's `app.magazine_staff`, one per person per magazine. Leaving or
+being banned keeps an assignment but makes it inert: only active community
+membership lets it grant anything. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
+
+### Magazine role
+
+A job on a [[magazine-team]]: `editor_in_chief`, `editor` or `contributor`.
+Roles grant capabilities through one table: all three grant `write`, editors
+and editors-in-chief grant `edit`, and editors-in-chief grant `manage`.
+Callers ask for a capability rather than compare role names. An appointed
+editor-in-chief can manage settings and the team, but only community
+owners/admins can confirm making an unlisted community's magazine or issue
+public. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
+
+### Magazine contributor
+
+An active member with the contributor [[magazine-role]]: they write
+[[magazine-article]]s and send them to the editors. They may change an article
+before sending it or after changes are requested; sent, approved and declined
+articles are locked. They see their own text in the article editor, not other
+contributors' unplaced articles. Publication and credit happen when the
+[[issue]] publishes. Distinct from a benchmark contributor. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
 
 ## Benchmark domain
 

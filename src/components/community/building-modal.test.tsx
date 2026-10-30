@@ -1,5 +1,9 @@
+import type { ReactElement } from "react";
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+
+import en from "../../../messages/en.json";
 
 beforeAll(() => {
   // jsdom lacks matchMedia, which BuildingModal's useIsMobile needs.
@@ -17,10 +21,18 @@ beforeAll(() => {
 
 import { BuildingModal } from "./building-modal";
 
+function renderModal(ui: ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={en}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
+
 describe("BuildingModal onMinimize", () => {
   it("calls onMinimize and keeps content mounted when provided", () => {
     const onMinimize = vi.fn();
-    render(
+    renderModal(
       <BuildingModal
         isOpen
         onClose={vi.fn()}
@@ -36,7 +48,7 @@ describe("BuildingModal onMinimize", () => {
   });
 
   it("falls back to internal minimize when onMinimize is absent", () => {
-    render(
+    renderModal(
       <BuildingModal isOpen onClose={vi.fn()} title="Design">
         <div>room-body</div>
       </BuildingModal>,
@@ -48,7 +60,7 @@ describe("BuildingModal onMinimize", () => {
 
 describe("BuildingModal maximize", () => {
   it("offsets below the navbar instead of full inset-0 so the titlebar stays reachable", () => {
-    const { container } = render(
+    const { container } = renderModal(
       <BuildingModal isOpen onClose={vi.fn()} title="Design">
         <div>room-body</div>
       </BuildingModal>,

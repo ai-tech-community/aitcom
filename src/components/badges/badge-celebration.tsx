@@ -16,12 +16,6 @@ import type {
 } from "@/server/badges/earning-moment";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 import { BadgeEmblem, emblemOutline, type EmblemSubject } from "./badge-emblem";
@@ -62,12 +56,16 @@ export function BadgeCelebrationDialog({
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copy, setCopy] = useState<CopyState>("idle");
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef<HTMLParagraphElement>(null);
   const seeBadgesRef = useRef<HTMLAnchorElement>(null);
   // The control to focus after an action removed the one that had focus.
   const [focusNext, setFocusNext] = useState<
     "share" | "pinned" | "seeBadges" | null
   >(null);
+  useEffect(() => {
+    if (open) panelRef.current?.focus();
+  }, [open]);
   useEffect(() => {
     if (!focusNext) return;
     const target = {
@@ -117,6 +115,8 @@ export function BadgeCelebrationDialog({
   function close() {
     mark([...items.map((item) => item.id), ...moreIds]);
     setOpen(false);
+    if (returnFocusTo?.isConnected) returnFocusTo.focus();
+    onDone();
   }
 
   function showNext() {
@@ -185,225 +185,224 @@ export function BadgeCelebrationDialog({
     </Button>
   );
 
+  if (!open) return null;
+  const titleId = `${shareId}-title`;
+  const descriptionId = `${shareId}-description`;
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) close();
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      tabIndex={-1}
+      data-testid="badge-celebration"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          close();
+        }
       }}
+      className="bg-background fixed right-4 bottom-4 z-40 grid w-[min(24rem,calc(100%-2rem))] gap-6 rounded-lg border p-6 shadow-lg outline-none"
     >
-      <DialogContent
-        showCloseButton={false}
-        // Opened by the page, not a trigger: Radix would drop focus on the
-        // body, so it goes back to where it was. Then the moment is over.
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          if (returnFocusTo?.isConnected) returnFocusTo.focus();
-          onDone();
-        }}
-        className="gap-6 sm:max-w-md"
-        data-testid="badge-celebration"
-      >
-        {items.length > 1 && (
-          <p className="text-muted-foreground font-mono text-xs tabular-nums">
-            {t("progress", { current: index + 1, total: items.length })}
-          </p>
-        )}
+      {items.length > 1 && (
+        <p className="text-muted-foreground font-mono text-xs tabular-nums">
+          {t("progress", { current: index + 1, total: items.length })}
+        </p>
+      )}
 
-        <div className="flex flex-col items-center gap-4 text-center">
-          {/* key: each earning gets its own entrance. */}
-          <div
-            key={current.id}
-            className="relative grid size-32 place-items-center"
-            data-testid="celebration-emblem"
+      <div className="flex flex-col items-center gap-4 text-center">
+        {/* key: each earning gets its own entrance. */}
+        <div
+          key={current.id}
+          className="relative grid size-32 place-items-center"
+          data-testid="celebration-emblem"
+        >
+          <svg
+            viewBox="-12.5 -12.5 125 125"
+            aria-hidden
+            focusable={false}
+            className="absolute inset-0 size-full overflow-visible"
+            style={colours}
           >
-            <svg
-              viewBox="-12.5 -12.5 125 125"
-              aria-hidden
-              focusable={false}
-              className="absolute inset-0 size-full overflow-visible"
-              style={colours}
-            >
-              <path
-                d={shape.d}
-                pathLength={100}
-                strokeDasharray="100"
-                fill="none"
-                strokeWidth={1}
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-                style={{ stroke: "var(--emblem-ink)" }}
-                className="motion-safe:animate-emblem-ring"
-                data-testid="celebration-ring"
-              />
-            </svg>
-            <div className="motion-safe:animate-emblem-arrive">
-              <BadgeEmblem
-                subject={subject}
-                state={{ earned: true, earnedAt: current.earnedAt }}
-                size="lg"
-              />
-            </div>
+            <path
+              d={shape.d}
+              pathLength={100}
+              strokeDasharray="100"
+              fill="none"
+              strokeWidth={1}
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+              style={{ stroke: "var(--emblem-ink)" }}
+              className="motion-safe:animate-emblem-ring"
+              data-testid="celebration-ring"
+            />
+          </svg>
+          <div className="motion-safe:animate-emblem-arrive">
+            <BadgeEmblem
+              subject={subject}
+              state={{ earned: true, earnedAt: current.earnedAt }}
+              size="lg"
+            />
           </div>
-
-          <div className="space-y-1.5">
-            <DialogTitle className="text-xl leading-tight text-balance">
-              {current.kind === "badge"
-                ? t("title", { badge: text?.name ?? "" })
-                : t("awardTitle")}
-            </DialogTitle>
-            <p className="text-muted-foreground font-mono text-xs">
-              {current.kind === "badge"
-                ? (text?.kind ?? "")
-                : tMoment("kind.award")}
-            </p>
-          </div>
-          <DialogDescription className="text-foreground max-w-prose text-sm">
-            {current.kind === "badge"
-              ? (text?.description ?? "")
-              : current.label}
-          </DialogDescription>
-          {current.kind === "badge" && rarityLabel(current.slug) && (
-            <p className="text-muted-foreground font-mono text-xs">
-              {rarityLabel(current.slug)}
-            </p>
-          )}
         </div>
 
-        {shareUrl && (
-          <div className="space-y-2">
-            <label htmlFor={shareId} className="text-sm font-medium">
-              {t("shareLabel")}
-            </label>
-            <div className="flex gap-2">
-              <Input
-                id={shareId}
-                ref={inputRef}
-                readOnly
-                value={shareUrl}
-                onFocus={(event) => event.currentTarget.select()}
-                className="font-mono text-xs"
-              />
-              <Button type="button" variant="outline" onClick={copyLink}>
-                {copy === "copied" ? t("copied") : t("copy")}
-              </Button>
-            </div>
-            <p
-              role="status"
-              className={cn(
-                "text-muted-foreground text-xs",
-                copy === "idle" && "sr-only",
-              )}
-            >
-              {copy === "copied"
-                ? t("copiedStatus")
-                : copy === "manual"
-                  ? t("copyManual")
-                  : ""}
-            </p>
-            {current.kind === "badge" && (
-              <Link
-                href={badgeShareHref(userId, current.slug)}
-                onClick={close}
-                className="text-sm underline underline-offset-4"
-              >
-                {t("openPage")}
-              </Link>
-            )}
-          </div>
-        )}
-
-        {last && moreIds.length > 0 && (
-          <p className="text-muted-foreground text-center text-sm">
-            {t.rich("more", {
-              count: moreIds.length,
-              link: (chunks) => (
-                <Link
-                  href={badgesHref}
-                  onClick={close}
-                  className="text-foreground underline underline-offset-4"
-                >
-                  {chunks}
-                </Link>
-              ),
-            })}
+        <div className="space-y-1.5">
+          <h2 id={titleId} className="text-xl leading-tight text-balance">
+            {current.kind === "badge"
+              ? t("title", { badge: text?.name ?? "" })
+              : t("awardTitle")}
+          </h2>
+          <p className="text-muted-foreground font-mono text-xs">
+            {current.kind === "badge"
+              ? (text?.kind ?? "")
+              : tMoment("kind.award")}
+          </p>
+        </div>
+        <p id={descriptionId} className="text-foreground max-w-prose text-sm">
+          {current.kind === "badge" ? (text?.description ?? "") : current.label}
+        </p>
+        {current.kind === "badge" && rarityLabel(current.slug) && (
+          <p className="text-muted-foreground font-mono text-xs">
+            {rarityLabel(current.slug)}
           </p>
         )}
+      </div>
 
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
-            {current.kind === "badge" && pinState === "open" && (
+      {shareUrl && (
+        <div className="space-y-2">
+          <label htmlFor={shareId} className="text-sm font-medium">
+            {t("shareLabel")}
+          </label>
+          <div className="flex gap-2">
+            <Input
+              id={shareId}
+              ref={inputRef}
+              readOnly
+              value={shareUrl}
+              onFocus={(event) => event.currentTarget.select()}
+              className="font-mono text-xs"
+            />
+            <Button type="button" variant="outline" onClick={copyLink}>
+              {copy === "copied" ? t("copied") : t("copy")}
+            </Button>
+          </div>
+          <p
+            role="status"
+            className={cn(
+              "text-muted-foreground text-xs",
+              copy === "idle" && "sr-only",
+            )}
+          >
+            {copy === "copied"
+              ? t("copiedStatus")
+              : copy === "manual"
+                ? t("copyManual")
+                : ""}
+          </p>
+          {current.kind === "badge" && (
+            <Link
+              href={badgeShareHref(userId, current.slug)}
+              onClick={close}
+              className="text-sm underline underline-offset-4"
+            >
+              {t("openPage")}
+            </Link>
+          )}
+        </div>
+      )}
+
+      {last && moreIds.length > 0 && (
+        <p className="text-muted-foreground text-center text-sm">
+          {t.rich("more", {
+            count: moreIds.length,
+            link: (chunks) => (
+              <Link
+                href={badgesHref}
+                onClick={close}
+                className="text-foreground underline underline-offset-4"
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
+          {current.kind === "badge" && pinState === "open" && (
+            <Button
+              type="button"
+              disabled={pin.isPending}
+              onClick={() => pinCurrent(current)}
+            >
+              {pin.isPending ? t("pinning") : t("pin")}
+            </Button>
+          )}
+          {pinState === "full" && seeBadges}
+          {current.kind === "award" && seeBadges}
+          {current.kind === "badge" &&
+            profile?.reach.kind === "public" &&
+            !shareUrl && (
               <Button
                 type="button"
-                disabled={pin.isPending}
-                onClick={() => pinCurrent(current)}
+                variant="outline"
+                onClick={() => openShare(current.slug)}
               >
-                {pin.isPending ? t("pinning") : t("pin")}
+                {t("share")}
               </Button>
             )}
-            {pinState === "full" && seeBadges}
-            {current.kind === "award" && seeBadges}
-            {current.kind === "badge" &&
-              profile?.reach.kind === "public" &&
-              !shareUrl && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => openShare(current.slug)}
-                >
-                  {t("share")}
-                </Button>
-              )}
-            {last ? (
-              <Button type="button" variant="ghost" onClick={close}>
-                {t("close")}
-              </Button>
-            ) : (
-              <Button type="button" variant="ghost" onClick={showNext}>
-                {t("next")}
-              </Button>
-            )}
-          </div>
-          {pinState === "pinned" && (
-            <p
-              ref={pinnedRef}
-              tabIndex={-1}
-              role="status"
-              className="text-muted-foreground flex items-center justify-center gap-1.5 text-sm"
-            >
-              <Check className="size-4" aria-hidden />
-              {t("pinned")}
-            </p>
-          )}
-          {current.kind === "badge" &&
-            profile &&
-            profile.reach.kind !== "public" && (
-              <p className="text-muted-foreground text-center text-sm">
-                {profile.reach.reason === "private"
-                  ? t.rich("privateNoShare", {
-                      link: (chunks) => (
-                        <Link
-                          href={PROFILE_SETTINGS_HREF}
-                          onClick={close}
-                          className="text-foreground underline underline-offset-4"
-                        >
-                          {chunks}
-                        </Link>
-                      ),
-                    })
-                  : t("hiddenNoShare")}
-              </p>
-            )}
-          {pinState === "full" && (
-            <p
-              role={pinFailed === current.id ? "alert" : undefined}
-              className="text-muted-foreground text-center text-sm"
-            >
-              {pinFailed === current.id ? t("pinError") : t("full")}
-            </p>
+          {last ? (
+            <Button type="button" variant="ghost" onClick={close}>
+              {t("close")}
+            </Button>
+          ) : (
+            <Button type="button" variant="ghost" onClick={showNext}>
+              {t("next")}
+            </Button>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+        {pinState === "pinned" && (
+          <p
+            ref={pinnedRef}
+            tabIndex={-1}
+            role="status"
+            className="text-muted-foreground flex items-center justify-center gap-1.5 text-sm"
+          >
+            <Check className="size-4" aria-hidden />
+            {t("pinned")}
+          </p>
+        )}
+        {current.kind === "badge" &&
+          profile &&
+          profile.reach.kind !== "public" && (
+            <p className="text-muted-foreground text-center text-sm">
+              {profile.reach.reason === "private"
+                ? t.rich("privateNoShare", {
+                    link: (chunks) => (
+                      <Link
+                        href={PROFILE_SETTINGS_HREF}
+                        onClick={close}
+                        className="text-foreground underline underline-offset-4"
+                      >
+                        {chunks}
+                      </Link>
+                    ),
+                  })
+                : t("hiddenNoShare")}
+            </p>
+          )}
+        {pinState === "full" && (
+          <p
+            role={pinFailed === current.id ? "alert" : undefined}
+            className="text-muted-foreground text-center text-sm"
+          >
+            {pinFailed === current.id ? t("pinError") : t("full")}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

@@ -1,10 +1,10 @@
 # Product
 
-## Register
+<!-- impeccable:product-schema 1 -->
 
-product
+## Platform
 
-> Balanced in practice. The default lens is **product** — most surfaces (dashboard, community settings, event/challenge workspaces, classroom, forum) exist to serve a workflow, and cross-page consistency is the priority. Public/marketing surfaces (home, communities directory, members leaderboard, blog, benchmark, impact) are **brand** and get more expressive latitude, but they inherit the same core system. Override per task with `/impeccable <command> --register brand` when working a marketing surface.
+web
 
 ## Users
 
@@ -21,9 +21,24 @@ Born in the Netherlands, open worldwide. Bilingual (English + Dutch via `next-in
 
 A platform for hosting and managing AI communities globally — events, hackathons/challenges, forums, classroom/courses, jobs, community discovery, XP leaderboards, and AI-model benchmarking — where human engineers and AI agents build together. Success looks like: organizers can run a thriving community without friction, members feel they belong and keep coming back, and the human↔agent collaboration feels native rather than bolted on.
 
-## Brand Personality
+## Positioning
 
-**Warm & communal, on a precise technical base.** Three words: *welcoming, credible, builder-native.*
+Community organizers bring the people; the platform brings together community spaces, events, publishing and human–agent collaboration. Members can discover a group, take part in an event and read what its community publishes in the same product.
+
+## Operating Context
+
+The product is used through a responsive website in English or Dutch. Public visitors browse communities, events, news and magazine issues; members and organizers use community pages and workspaces to participate and manage their groups. Public discovery must remain useful before sign-in.
+
+## Capabilities and Constraints
+
+- Community discovery respects directory visibility; the existing AIT Hub has a documented exception. Do not expose private communities through discovery surfaces.
+- Events carry real dates, locations or online details, and host identities. News and magazines link to their reading destinations.
+- Magazine discovery uses the existing anonymous reading model: published, publicly discoverable issues may offer full reading or a teaser. Drafts, staff-hidden magazines and restricted issues must not leak through a new listing.
+- English and Dutch are maintained together. Do not invent activity counts, issue covers, news stories or testimonials to fill a layout.
+
+## Brand Commitments
+
+**Warm & communal, on a precise technical base.** Three words: _welcoming, credible, builder-native._
 
 The existing voice is engineer-native — monospace section labels (`/ COMMUNITIES`), grid markers, OKLCH tokens, an orange-dot wordmark. That precision is an asset and stays. The strategic shift is to **humanize it**: this is a place people belong, not a terminal. Warmth is carried by copy, color, and imagery — not by softening the technical structure. Tone is confident and concrete, never hype-y or corporate.
 
@@ -36,7 +51,22 @@ This should explicitly NOT look or feel like:
 - **Crypto / Web3 hype** — no neon-on-black, aggressive gradients, or "to the moon" energy. Credible, not hype.
 - **Corporate / stuffy** — no big-consulting blandness, stock photography, navy-and-gray palettes, or jargon-heavy copy.
 
-## Design Principles
+## Evidence on Hand
+
+- `src/app/[locale]/page.tsx` loads homepage content; `src/components/home/home-sections.tsx` composes it.
+- `src/server/communities/featured-queries.ts` and `src/server/magazines/reading.ts` contain the discovery read paths, including the bounded homepage magazine shelf.
+- `docs/superpowers/specs/2026-10-28-home-discovery-design.md` records the approved homepage direction and verification.
+- `.impeccable/review/desktop.png` and `mobile.png` are layout evidence rendered with synthetic content. Their names, dates and counts are examples, not evidence of actual community activity.
+
+## Product Principles
+
+1. Make discovering a community, attending an event and reading community work straightforward.
+2. Give public visitors useful choices before asking them to participate or organize.
+3. Respect community and publication visibility on every discovery surface.
+4. Show real content and honest empty states; do not manufacture evidence of activity.
+5. Keep member and organizer workflows within one coherent product.
+
+## Shared Design Commitments
 
 1. **One system, two voices.** Product and brand surfaces share the same tokens, type scale, spacing, and components. Brand surfaces get more expressive range; they never invent a parallel system. Consistency is the through-line — a member should feel the same product whether they're on the homepage or deep in an event workspace.
 2. **Warmth lives in copy, color, and imagery — not in softening structure.** Keep the monospace precision and grid discipline; humanize through microcopy, a richer-than-gray palette, and the illustrated/community imagery already in the brand.

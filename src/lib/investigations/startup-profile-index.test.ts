@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   isThinStartupProfile,
+  startupProfileIndexInput,
   startupProfileRobots,
 } from "./startup-profile-index";
 
@@ -71,6 +72,56 @@ describe("isThinStartupProfile", () => {
         openRoleCount: 0,
       }),
     ).toBe(false);
+  });
+});
+
+describe("startupProfileIndexInput", () => {
+  it("feeds a sourced answer into the same 80-character rule when the row has no blurb", () => {
+    const kueez = startupProfileIndexInput({
+      slug: "kueez",
+      description: null,
+      openRoleCount: 0,
+    });
+    expect(kueez.description?.length).toBeGreaterThanOrEqual(80);
+    expect(isThinStartupProfile(kueez)).toBe(false);
+    expect(
+      startupProfileRobots({
+        slug: "kueez",
+        description: null,
+        openRoleCount: 0,
+      }),
+    ).toEqual({ index: true, follow: true });
+  });
+
+  it("still noindexes an empty profile that has no sourced answer", () => {
+    expect(
+      isThinStartupProfile(
+        startupProfileIndexInput({
+          slug: "blank-co",
+          description: null,
+          openRoleCount: 0,
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      startupProfileRobots({
+        slug: "blank-co",
+        description: "   ",
+        openRoleCount: 0,
+      }),
+    ).toEqual({ index: false, follow: true });
+  });
+
+  it("keeps a real short blurb on the thin side of the same rule", () => {
+    expect(
+      isThinStartupProfile(
+        startupProfileIndexInput({
+          slug: "kueez",
+          description: SHORT,
+          openRoleCount: 0,
+        }),
+      ),
+    ).toBe(true);
   });
 });
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/messages";
+
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -96,7 +98,7 @@ export function CollectorRun({ runId }: { runId: string }) {
   const statusSentence = useStatusSentence();
   const failureDetail = useFailureDetail();
   const namer = useRunNamer();
-  const locale = useLocale() === "nl" ? "nl" : "en";
+  const locale = resolveLocale(useLocale());
   const run = api.collectors.run.useQuery(
     { runId },
     {

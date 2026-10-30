@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useUnsavedChangesGuard } from "./use-autosave";
+import { useUnsavedChangesGuard } from "@/components/use-autosave";
 
 /** Marks the extra history entry the guard adds for this page. */
 const GUARD_ENTRY = "__classroomBuilderLeaveGuard";

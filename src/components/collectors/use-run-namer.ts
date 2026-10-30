@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/messages";
+
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -35,7 +37,7 @@ const NO_TITLES: CatalogTitleMaps = {
  */
 export function useRunNamer(): RunNamer {
   const t = useTranslations("collectors.run");
-  const locale = useLocale() === "nl" ? "nl" : "en";
+  const locale = resolveLocale(useLocale());
   const overview = api.collectors.overview.useQuery({ locale });
   const presets = overview.data?.presets;
   const titles = overview.data?.titles;

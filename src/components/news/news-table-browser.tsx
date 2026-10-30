@@ -48,7 +48,7 @@ function newsHrefFromAnchor(href: string): string | null {
   } catch {
     return null;
   }
-  const path = url.pathname.replace(/^\/(en|nl)(?=\/|$)/, "") || "/";
+  const path = url.pathname.replace(/^\/(en|nl|fr)(?=\/|$)/, "") || "/";
   if (path !== "/news") return null;
   return `${path}${url.search}`;
 }

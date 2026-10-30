@@ -165,6 +165,8 @@ export const MILESTONES = {
   profile_complete: { glyph: "id-card" },
   onboarding_complete: { glyph: "compass" },
   tutorial_creator: { glyph: "book" },
+  /** An article published in a community magazine issue. */
+  magazine_published: { glyph: "book" },
   /** First member to claim a breaking topic from collected reporting. */
   news_first_scoop: { glyph: "sparkle" },
   /** Five news stories published from the member's research. */

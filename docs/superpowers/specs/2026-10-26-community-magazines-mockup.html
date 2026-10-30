@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magazine Mockups v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:oklch(1 0 0);--fg:oklch(0.145 0 0);--muted:oklch(0.97 0 0);--mfg:oklch(0.556 0 0);
+  --border:oklch(0.922 0 0);--primary:oklch(0.705 0.213 47.604);--warn:oklch(0.54 0.13 85);
+  --warn-bg:oklch(0.97 0.04 90);--ok:oklch(0.5 0.13 150);--r:0.625rem;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Geist,system-ui,sans-serif;font-size:15px;line-height:1.5}
+.kicker{font-family:"Geist Mono",monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mfg)}
+.mono{font-family:"Geist Mono",monospace}
+a{color:inherit}
+.switch{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--border);display:flex;gap:4px;padding:10px 24px;overflow-x:auto;align-items:center}
+.switch button{font:inherit;font-size:13px;border:1px solid var(--border);background:var(--bg);border-radius:999px;padding:6px 14px;cursor:pointer;white-space:nowrap}
+.switch button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.switch .new{font-family:"Geist Mono",monospace;font-size:10px;margin-left:6px;color:var(--primary)}
+.screen{display:none}.screen.on{display:block}
+.nav{display:flex;align-items:center;gap:24px;padding:14px 32px;border-bottom:1px solid var(--border);font-size:14px}
+.nav b{font-weight:700;letter-spacing:-.02em}.nav .sp{flex:1}
+.nav .act{font-weight:600;border-bottom:2px solid var(--fg);padding-bottom:2px}
+.wrap{max-width:1600px;margin:0 auto;padding:28px 32px 64px}
+h1{font-size:44px;letter-spacing:-.035em;line-height:1.05;margin:8px 0}
+h2{font-size:22px;letter-spacing:-.02em;margin:0 0 4px}
+h3{font-size:17px;margin:0 0 4px;letter-spacing:-.01em;line-height:1.3}
+.sub{color:var(--mfg);margin:0}.hint{font-size:13px;color:var(--mfg)}
+.btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:14px;font-weight:500;border-radius:var(--r);padding:8px 14px;border:1px solid var(--border);background:var(--bg);cursor:pointer}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.dark{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.btn.sm{font-size:13px;padding:5px 10px}
+.chip{display:inline-block;font-size:12px;border:1px solid var(--border);border-radius:999px;padding:3px 10px;color:var(--mfg);cursor:pointer}
+.chip.on{color:var(--fg);border-color:var(--fg)}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.card{border:1px solid var(--border);border-radius:var(--r);background:var(--bg)}
+.pad{padding:20px}
+/* covers */
+.cover{aspect-ratio:3/4;border-radius:var(--r);padding:16px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;position:relative;overflow:hidden}
+.cover.wide{aspect-ratio:auto;min-height:100%}
+.cover .mast{font-weight:700;letter-spacing:-.03em;font-size:22px;line-height:1}
+.cover .iss{font-family:"Geist Mono",monospace;font-size:11px;opacity:.85}
+.cover .lead{font-size:15px;font-weight:600;line-height:1.25}
+.cover .grid{position:absolute;inset:0;background-image:linear-gradient(oklch(1 0 0/.06) 1px,transparent 1px),linear-gradient(90deg,oklch(1 0 0/.06) 1px,transparent 1px);background-size:24px 24px;pointer-events:none}
+.c1{background:linear-gradient(160deg,oklch(0.32 0.06 260),oklch(0.18 0.03 260))}
+.c2{background:linear-gradient(160deg,oklch(0.42 0.08 165),oklch(0.22 0.04 165))}
+.c3{background:linear-gradient(160deg,oklch(0.30 0.02 30),oklch(0.16 0.01 30))}
+.c4{background:linear-gradient(160deg,oklch(0.45 0.09 300),oklch(0.22 0.05 300))}
+.c5{background:linear-gradient(160deg,oklch(0.38 0.05 220),oklch(0.2 0.02 220))}
+.c6{background:linear-gradient(160deg,oklch(0.40 0.07 120),oklch(0.2 0.03 120))}
+.badge{position:absolute;top:12px;right:12px;font-family:"Geist Mono",monospace;font-size:10px;background:oklch(1 0 0/.92);color:var(--fg);border-radius:999px;padding:2px 8px}
+/* HOME */
+.home-top{display:grid;grid-template-columns:2fr 1fr;gap:24px;margin:24px 0 40px}
+.feat{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:0;overflow:hidden}
+.feat .cover{border-radius:0;aspect-ratio:auto;min-height:420px}
+.feat .body{padding:32px;display:flex;flex-direction:column;gap:14px}
+.feat .peek{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:auto}
+.feat .peek div{border-top:1px solid var(--border);padding-top:10px;font-size:14px}
+.side-list .it{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+.side-list .it:last-child{border:0}
+.side-list .cover{width:72px;flex:none;padding:8px}
+.side-list .cover .mast{font-size:11px}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:24px}
+.shelf .meta{margin-top:10px;font-size:13px}.shelf .meta .by{color:var(--mfg)}
+/* ISSUE */
+.issue{display:grid;grid-template-columns:240px 1fr 300px;gap:32px;align-items:start}
+.sticky{position:sticky;top:72px}
+.toc{list-style:none;padding:0;margin:8px 0 0}
+.toc li{padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;display:flex;gap:10px}
+.toc li.on{font-weight:600}
+.toc .n{font-family:"Geist Mono",monospace;color:var(--mfg);flex:none}
+.hero{display:grid;grid-template-columns:1.3fr 1fr;gap:0;overflow:hidden;margin-bottom:24px}
+.hero .cover{border-radius:0;aspect-ratio:auto;min-height:380px}
+.hero .body{padding:28px;display:flex;flex-direction:column;gap:12px}
+.mosaic{display:grid;grid-template-columns:repeat(6,1fr);gap:20px}
+.span6{grid-column:span 6}.span4{grid-column:span 4}.span3{grid-column:span 3}.span2{grid-column:span 2}
+.kind{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.live{font-family:"Geist Mono",monospace;font-size:11px;color:var(--ok)}
+.edintro{border-left:2px solid var(--fg);padding:2px 0 2px 12px;margin:10px 0;font-style:italic;color:oklch(0.35 0 0)}
+.big{display:grid;grid-template-columns:1.2fr 1fr;overflow:hidden}
+.big .img{background:linear-gradient(135deg,oklch(0.85 0.03 260),oklch(0.7 0.05 260));min-height:280px}
+.newslist div{padding:10px 0;border-top:1px solid var(--border);font-size:14px}
+.newslist .src{font-family:"Geist Mono",monospace;font-size:11px;color:var(--mfg)}
+.past{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.past .cover{padding:8px}.past .cover .mast{font-size:10px}.past .cover .iss{font-size:9px}
+.stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
+.stat:last-child{border:0}.stat span:last-child{font-family:"Geist Mono",monospace}
+/* TEASER */
+.teaser{display:grid;grid-template-columns:1fr 360px;gap:32px;align-items:start}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.fade{position:relative;max-height:130px;overflow:hidden}
+.fade:after{content:"";position:absolute;inset:auto 0 0 0;height:80px;background:linear-gradient(transparent,var(--bg))}
+.lock{font-family:"Geist Mono",monospace;font-size:11px;color:var(--mfg)}
+/* BUILDER */
+.builder{display:grid;grid-template-columns:minmax(320px,1fr) minmax(380px,1.3fr) 360px;gap:20px;align-items:start}
+.bitem{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;margin-bottom:8px}
+.bitem.auto{border-color:oklch(0.85 0.06 150)}
+.grip{color:var(--mfg);cursor:grab;user-select:none;padding-top:2px}
+.bitem .t{flex:1}
+.bitem .k{font-family:"Geist Mono",monospace;font-size:11px;color:var(--mfg);text-transform:uppercase}
+.bitem .why{font-size:12px;color:var(--ok);margin-top:2px}
+.x{border:0;background:none;color:var(--mfg);cursor:pointer;font-size:16px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap}
+.tabs span{font-size:13px;padding:8px 10px;cursor:pointer;color:var(--mfg)}
+.tabs span.on{color:var(--fg);border-bottom:2px solid var(--fg)}
+.pick{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px}
+.pick .t{flex:1}
+.add{font:inherit;font-size:13px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);padding:4px 10px;cursor:pointer}
+.add.done{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+input.search,select,input.num{font:inherit;font-size:14px;border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;background:var(--bg)}
+input.search{width:100%;margin-bottom:6px}
+input.num{width:64px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.seg span{padding:6px 12px;font-size:13px;cursor:pointer;border-right:1px solid var(--border)}
+.seg span:last-child{border-right:0}.seg span.on{background:var(--fg);color:var(--bg)}
+.warn{background:var(--warn-bg);border:1px solid oklch(0.85 0.08 90);border-radius:var(--r);padding:14px 16px;margin-top:12px;font-size:14px}
+.warn b{color:var(--warn)}
+.info{background:oklch(0.97 0.03 150);border:1px solid oklch(0.88 0.06 150);border-radius:var(--r);padding:12px 14px;font-size:14px}
+label.ck{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.mini{transform-origin:top left}
+.mini .cover{aspect-ratio:auto;min-height:180px}
+.prev-frame{border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.prev-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--muted)}
+/* AUTO */
+.auto-grid{display:grid;grid-template-columns:1fr 1fr 380px;gap:20px;align-items:start}
+.src-row{display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+.src-row:last-child{border:0}
+.toggle{width:36px;height:20px;border-radius:999px;background:var(--border);position:relative;cursor:pointer;flex:none}
+.toggle:after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.toggle.on{background:var(--fg)}.toggle.on:after{left:18px}
+.tl{list-style:none;padding:0;margin:0}
+.tl li{display:grid;grid-template-columns:90px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px}
+.tl li:last-child{border:0}
+.tl .d{font-family:"Geist Mono",monospace;font-size:12px;color:var(--mfg)}
+@media(max-width:1200px){.issue{grid-template-columns:1fr 280px}.issue>.toc-col{display:none}.builder,.auto-grid{grid-template-columns:1fr 1fr}.builder>:last-child,.auto-grid>:last-child{grid-column:1/-1}}
+@media(max-width:820px){.home-top,.feat,.issue,.hero,.big,.teaser,.tgrid,.builder,.auto-grid{grid-template-columns:1fr}.mosaic>*{grid-column:span 6}.feat .peek{grid-template-columns:1fr}h1{font-size:30px}.wrap{padding:20px 16px}.nav{padding:12px 16px}}
+</style>
+</head>
+<body>
+<div class="switch">
+  <button class="on" data-s="home">1 · /magazines home</button>
+  <button data-s="issue">2 · Issue (member)</button>
+  <button data-s="teaser">3 · Issue (visitor)</button>
+  <button data-s="builder">4 · Editor: review auto-draft</button>
+  <button data-s="auto">5 · Editor: auto-draft settings<span class="new">NEW</span></button>
+</div>
+
+<!-- 1 HOME -->
+<section class="screen on" id="home">
+  <div class="nav"><b>AIT</b><span>Communities</span><span>Events</span><span>News</span><span class="act">Magazines</span><span class="sp"></span><span class="hint">Sign in</span></div>
+  <div class="wrap">
+    <div class="row between">
+      <div><div class="kicker">/ Magazines</div><h1>Stories from the communities building AI</h1><p class="sub">Written and edited by community members. Free to read.</p></div>
+      <div class="row"><input class="search" style="width:280px;margin:0" placeholder="Search magazines and issues…"></div>
+    </div>
+
+    <div class="home-top">
+      <div class="card feat">
+        <div class="cover c1"><div class="grid"></div><div class="iss">ISSUE 04 · NOV 2026</div><div><div class="mast" style="font-size:30px">Agents Weekly</div><div class="lead" style="margin-top:10px;font-size:18px">The month agents learned to say “I don't know”</div></div></div>
+        <div class="body">
+          <div class="kicker">Featured issue</div>
+          <h2 style="font-size:32px;line-height:1.1">The month agents learned to say “I don't know”</h2>
+          <p class="sub">From <b style="color:var(--fg)">Amsterdam AI Builders</b> · 9 articles · 3 live stories from AIT News · 22 min read</p>
+          <div class="row"><button class="btn dark">Read the issue</button><button class="btn">Subscribe</button></div>
+          <div class="peek">
+            <div><span class="kicker">Cover story</span><br>Teaching our support agent to give up</div>
+            <div><span class="kicker">Live story</span><br>EU AI Act: the agent rules, explained</div>
+            <div><span class="kicker">Forum</span><br>“How do you test refusals?”</div>
+          </div>
+        </div>
+      </div>
+      <div class="card pad side-list">
+        <div class="kicker" style="margin-bottom:4px">/ Just published</div>
+        <div class="it"><div class="cover c2"><div class="grid"></div><div class="mast">Green Compute</div></div><div><h3>Who pays for the grid?</h3><div class="hint">Dutch Data Center Circle · today</div></div></div>
+        <div class="it"><div class="cover c4"><div class="grid"></div><div class="mast">Paper Club</div></div><div><h3>Five papers we argued about</h3><div class="hint">ML Reading Group NL · yesterday</div></div></div>
+        <div class="it"><div class="cover c3"><div class="grid"></div><span class="badge" style="font-size:8px;top:4px;right:4px">Preview</span><div class="mast">Founders' Notes</div></div><div><h3>Raising in a cold quarter</h3><div class="hint">Rotterdam AI Startups · 3 days ago</div></div></div>
+        <div class="it"><div class="cover c5"><div class="grid"></div><div class="mast">Hack Recap</div></div><div><h3>48 hours, 31 teams, 1 winner</h3><div class="hint">Utrecht Hackers · last week</div></div></div>
+      </div>
+    </div>
+
+    <div class="row between" style="margin-bottom:16px">
+      <h2>All magazines</h2>
+      <div class="row"><span class="chip on">All</span><span class="chip">Agents</span><span class="chip">Data centers</span><span class="chip">Startups</span><span class="chip">Research</span><span class="chip">Hackathons</span><span class="chip">Policy</span></div>
+    </div>
+    <div class="shelf">
+      <div><div class="cover c1"><div class="grid"></div><div class="iss">ISSUE 04</div><div><div class="mast">Agents Weekly</div><div class="lead" style="margin-top:8px">Agents that say “I don't know”</div></div></div><div class="meta"><b>Agents Weekly</b><div class="by">Amsterdam AI Builders · monthly</div></div></div>
+      <div><div class="cover c2"><div class="grid"></div><div class="iss">ISSUE 12</div><div><div class="mast">Green Compute</div><div class="lead" style="margin-top:8px">Who pays for the grid?</div></div></div><div class="meta"><b>Green Compute</b><div class="by">Dutch Data Center Circle · monthly</div></div></div>
+      <div><div class="cover c3"><div class="grid"></div><span class="badge">Preview</span><div class="iss">ISSUE 02</div><div><div class="mast">Founders' Notes</div><div class="lead" style="margin-top:8px">Raising in a cold quarter</div></div></div><div class="meta"><b>Founders' Notes</b><div class="by">Rotterdam AI Startups · quarterly</div></div></div>
+      <div><div class="cover c4"><div class="grid"></div><div class="iss">ISSUE 07</div><div><div class="mast">Paper Club</div><div class="lead" style="margin-top:8px">Five papers we argued about</div></div></div><div class="meta"><b>Paper Club</b><div class="by">ML Reading Group NL · bi-weekly</div></div></div>
+      <div><div class="cover c5"><div class="grid"></div><div class="iss">ISSUE 01</div><div><div class="mast">Hack Recap</div><div class="lead" style="margin-top:8px">48 hours, 31 teams, 1 winner</div></div></div><div class="meta"><b>Hack Recap</b><div class="by">Utrecht Hackers · after each event</div></div></div>
+      <div><div class="cover c6"><div class="grid"></div><div class="iss">ISSUE 03</div><div><div class="mast">Policy Desk</div><div class="lead" style="margin-top:8px">What Brussels decided this month</div></div></div><div class="meta"><b>Policy Desk</b><div class="by">AI &amp; Society NL · monthly</div></div></div>
+      <div><div class="cover c2"><div class="grid"></div><span class="badge">Preview</span><div class="iss">ISSUE 05</div><div><div class="mast">Edge Notes</div><div class="lead" style="margin-top:8px">Tiny models, big wins</div></div></div><div class="meta"><b>Edge Notes</b><div class="by">Eindhoven Embedded AI · monthly</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 ISSUE MEMBER -->
+<section class="screen" id="issue">
+  <div class="nav"><b>AIT</b><span>Communities</span><span>Events</span><span>News</span><span class="act">Magazines</span><span class="sp"></span><span class="hint">Signed in as member</span></div>
+  <div class="wrap">
+    <div class="issue">
+      <aside class="sticky toc-col">
+        <div class="kicker">/ Agents Weekly</div>
+        <div style="font-weight:600;margin-top:4px">Issue 04 · Nov 2026</div>
+        <ol class="toc">
+          <li class="on"><span class="n">00</span>From the editor</li>
+          <li><span class="n">01</span>Teaching our support agent to give up</li>
+          <li><span class="n">02</span>EU AI Act: the agent rules</li>
+          <li><span class="n">03</span>The race for agent eval tools</li>
+          <li><span class="n">04</span>Agents meetup field notes</li>
+          <li><span class="n">05</span>“How do you test refusals?”</li>
+          <li><span class="n">06</span>Member spotlight: Mira S.</li>
+          <li><span class="n">07</span>Five headlines worth your time</li>
+        </ol>
+        <div class="hint" style="margin-top:14px">22 min read · 7 items</div>
+      </aside>
+
+      <main>
+        <div class="card hero">
+          <div class="cover c1"><div class="grid"></div><div class="iss">ISSUE 04 · NOV 2026</div><div><div class="mast" style="font-size:34px">Agents Weekly</div><div class="lead" style="margin-top:12px;font-size:20px">The month agents learned to say “I don't know”</div></div></div>
+          <div class="body">
+            <div class="kicker">/ From the editor</div>
+            <h1 style="font-size:34px">The month agents learned to say “I don't know”</h1>
+            <p class="sub">Amsterdam AI Builders · Published 2 Nov 2026</p>
+            <p style="margin:0">This month three of our members shipped agents that stop and ask instead of guessing. We pair their stories with what the wider industry did, straight from AIT News.</p>
+            <p class="hint" style="margin:0">— Noa K., editor-in-chief</p>
+          </div>
+        </div>
+
+        <div class="mosaic">
+          <div class="card big span6">
+            <div class="img"></div>
+            <div class="pad">
+              <div class="kicker">01 · Cover story</div>
+              <h2 style="margin-top:6px;font-size:26px">Teaching our support agent to give up</h2>
+              <p class="sub" style="margin:6px 0 12px">By Daan V. · 8 min read</p>
+              <p style="margin:0">For six months our agent answered every question. Customers loved it — until it confidently invented a refund policy. Here is how we taught it to say “let me get a human”…</p>
+              <p style="margin:14px 0 0"><a href="#">Read article →</a></p>
+            </div>
+          </div>
+          <div class="card pad span3">
+            <div class="kind"><span class="kicker">02 · Story · AIT News</span><span class="live" style="margin-left:auto">● Updated 3h ago</span></div>
+            <h3>EU AI Act: the agent rules, explained</h3>
+            <p class="edintro">Our take: the “human in the loop” rule is exactly what Daan built by accident.</p>
+            <p class="hint" style="margin:0">14 sources · 3 new since this issue came out</p>
+          </div>
+          <div class="card pad span3">
+            <div class="kind"><span class="kicker">03 · Story · AIT News</span><span class="live" style="margin-left:auto">● Updated yesterday</span></div>
+            <h3>The race for agent evaluation tools</h3>
+            <p class="edintro">Two of these startups spoke at our meetup.</p>
+            <p class="hint" style="margin:0">9 sources</p>
+          </div>
+          <div class="card pad span2">
+            <div class="kicker" style="margin-bottom:10px">04 · Event recap</div>
+            <h3>Field notes from the Agents meetup</h3>
+            <p class="hint" style="margin:0">Thu 24 Oct · 86 attended</p>
+          </div>
+          <div class="card pad span2">
+            <div class="kicker" style="margin-bottom:10px">05 · From the forum</div>
+            <h3>“How do you test refusals?”</h3>
+            <p class="hint" style="margin:0">42 replies · the 3 best answers</p>
+          </div>
+          <div class="card pad span2">
+            <div class="kicker" style="margin-bottom:10px">06 · Member spotlight</div>
+            <h3>Mira S. built an agent that knows its limits</h3>
+            <p class="hint" style="margin:0">Launchpad project · 120 upvotes</p>
+          </div>
+          <div class="card pad span6">
+            <div class="row between"><div class="kicker">07 · AIT News digest</div><span class="hint">Picked by the editor</span></div>
+            <div class="newslist" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0 24px">
+              <div>Agent startup raises €40M for audit tools<div class="src">techcrunch.com · 1 Nov</div></div>
+              <div>New benchmark measures when models abstain<div class="src">arxiv.org · 30 Oct</div></div>
+              <div>Dutch bank pauses customer-facing agents<div class="src">fd.nl · 29 Oct</div></div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <aside class="sticky" style="display:flex;flex-direction:column;gap:16px">
+        <div class="card pad">
+          <div class="kicker">/ Agents Weekly</div>
+          <p style="margin:8px 0 12px">A monthly magazine by Amsterdam AI Builders about agents that work in the real world.</p>
+          <div class="row"><button class="btn dark sm">Subscribe</button><span class="hint">1,284 readers</span></div>
+        </div>
+        <div class="card pad">
+          <div class="kicker" style="margin-bottom:10px">/ Past issues</div>
+          <div class="past">
+            <div class="cover c1"><div class="grid"></div><div class="iss">03</div><div class="mast">Agents</div></div>
+            <div class="cover c5"><div class="grid"></div><div class="iss">02</div><div class="mast">Agents</div></div>
+            <div class="cover c3"><div class="grid"></div><div class="iss">01</div><div class="mast">Agents</div></div>
+          </div>
+          <p style="margin:10px 0 0;font-size:14px"><a href="#">See all issues →</a></p>
+        </div>
+        <div class="card pad">
+          <div class="kicker" style="margin-bottom:6px">/ Share</div>
+          <div class="row"><button class="btn sm">Copy link</button><button class="btn sm">LinkedIn</button><button class="btn sm">X</button></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- 3 TEASER -->
+<section class="screen" id="teaser">
+  <div class="nav"><b>AIT</b><span>Communities</span><span>Events</span><span>News</span><span class="act">Magazines</span><span class="sp"></span><span class="hint">Not signed in</span></div>
+  <div class="wrap">
+    <div class="teaser">
+      <main>
+        <div class="card hero">
+          <div class="cover c3"><div class="grid"></div><span class="badge">Preview</span><div class="iss">ISSUE 02 · Q4 2026</div><div><div class="mast" style="font-size:34px">Founders' Notes</div><div class="lead" style="margin-top:12px;font-size:20px">Raising in a cold quarter</div></div></div>
+          <div class="body">
+            <div class="kicker">/ From the editor</div>
+            <h1 style="font-size:34px">Raising in a cold quarter</h1>
+            <p class="sub">Rotterdam AI Startups · 6 items · 18 min read</p>
+            <p style="margin:0">Four founders, four very different fundraising stories. Plus what the numbers say.</p>
+          </div>
+        </div>
+        <div class="tgrid">
+          <div class="card pad">
+            <div class="kicker">01 · Article</div>
+            <h2 style="margin:6px 0">We said no to a term sheet. Here's why.</h2>
+            <p class="hint">By Sanne B. · 6 min read</p>
+            <div class="fade"><p>In March we had one offer on the table. It valued us at half of what we hoped, and came with a board seat we didn't want. Everyone told us to take it. This is the story of the eight weeks after we said no…</p></div>
+            <p class="lock">Members read the full article</p>
+          </div>
+          <div class="card pad">
+            <div class="kicker">02 · Article</div>
+            <h2 style="margin:6px 0">Our first customer was our investor</h2>
+            <p class="hint">By Joost M. · 5 min read</p>
+            <div class="fade"><p>It started as a pilot. Three months later the company that paid for it asked if they could also own a piece of us. Here is how we handled the conflict…</p></div>
+            <p class="lock">Members read the full article</p>
+          </div>
+          <div class="card pad">
+            <div class="kind"><span class="kicker">03 · Story · AIT News</span><span class="live" style="margin-left:auto">● Live</span></div>
+            <h3>AI funding in the Netherlands, Q3</h3>
+            <p class="hint" style="margin:0">News stories are open to everyone. <a href="#">Read →</a></p>
+          </div>
+          <div class="card pad">
+            <div class="kicker">04 – 06</div>
+            <p style="margin:6px 0 0">Two more founder stories and a forum digest.</p>
+            <p class="lock" style="margin-top:10px">Members only</p>
+          </div>
+        </div>
+      </main>
+      <aside class="sticky" style="display:flex;flex-direction:column;gap:16px">
+        <div class="card pad" style="text-align:center">
+          <div class="kicker">/ Rotterdam AI Startups</div>
+          <h2 style="margin:10px 0 6px">Read the whole issue</h2>
+          <p class="sub" style="margin-bottom:16px">Join 412 founders and builders in Rotterdam. It's free.</p>
+          <button class="btn primary" style="width:100%;justify-content:center">Join the community</button>
+          <button class="btn" style="width:100%;justify-content:center;margin-top:8px">Get new issues by email</button>
+        </div>
+        <div class="card pad">
+          <div class="kicker" style="margin-bottom:8px">/ What members get</div>
+          <div class="stat"><span>Full magazine archive</span><span>2 issues</span></div>
+          <div class="stat"><span>Founder dinners</span><span>monthly</span></div>
+          <div class="stat"><span>Forum threads</span><span>380</span></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- 4 BUILDER -->
+<section class="screen" id="builder">
+  <div class="nav"><b>AIT</b><span>Amsterdam AI Builders</span><span>›</span><span>Magazine</span><span class="sp"></span><span class="hint">Editor</span></div>
+  <div class="wrap">
+    <div class="row between">
+      <div><div class="kicker">/ Agents Weekly · Issue 05 · Draft</div><h1 style="font-size:32px">December issue</h1></div>
+      <div class="row"><button class="btn">Save draft</button><button class="btn">Schedule…</button><button class="btn primary">Publish</button></div>
+    </div>
+    <div class="info" style="margin:16px 0 20px">
+      <b>AIT drafted this issue for you on 1 Dec</b> from your community's last 30 days: 2 member articles, 1 event, 2 forum threads, 2 news stories. Nothing is published until you press Publish. <a href="#" data-go="auto">Change what gets picked →</a>
+    </div>
+
+    <div class="builder">
+      <div>
+        <div class="card pad" style="margin-bottom:16px">
+          <b>Who can read this issue?</b>
+          <div class="hint" style="margin-bottom:10px">Magazine default: Members only</div>
+          <div class="seg" id="vis"><span class="on" data-v="members">Members only</span><span data-v="teaser">Preview</span><span data-v="public">Everyone</span></div>
+          <div class="warn" id="warn" style="display:none">
+            <b>Heads up: your community is private.</b>
+            <div style="margin-top:4px">If you publish this issue for <span id="wv">everyone</span>, anyone on the internet will see your community's name and a link to it. Your members, posts and other pages stay private.</div>
+            <label class="ck" style="margin-top:10px"><input type="checkbox"> I understand, show this issue outside the community</label>
+          </div>
+        </div>
+        <div class="row between" style="margin-bottom:8px"><span class="kicker">/ Items · drag to reorder</span><span class="hint"><span style="color:var(--ok)">●</span> auto-picked</span></div>
+        <div id="items">
+          <div class="card bitem"><span class="grip">⋮⋮</span><div class="t"><div class="k">Editor's note</div><b>From the editor</b><div class="hint">Click to write…</div></div></div>
+          <div class="card bitem auto"><span class="grip">⋮⋮</span><div class="t"><div class="k">Article · Cover</div><b>Why our agent now asks before it acts</b><div class="why">● Most-read member article this month</div></div><button class="x">×</button></div>
+          <div class="card bitem auto"><span class="grip">⋮⋮</span><div class="t"><div class="k">Story · AIT News · live</div><b>Who owns an agent's mistake?</b><div class="why">● Matches your topic “Agents”</div></div><button class="x">×</button></div>
+          <div class="card bitem auto"><span class="grip">⋮⋮</span><div class="t"><div class="k">Event recap</div><b>Agents meetup #12</b><div class="why">● Your event, 64 attended</div></div><button class="x">×</button></div>
+          <div class="card bitem auto"><span class="grip">⋮⋮</span><div class="t"><div class="k">Forum</div><b>“Which eval framework in 2027?”</b><div class="why">● 58 replies, top thread</div></div><button class="x">×</button></div>
+          <div class="card bitem auto"><span class="grip">⋮⋮</span><div class="t"><div class="k">News digest</div><b>4 headlines</b><div class="why">● Top news in “Agents”</div></div><button class="x">×</button></div>
+        </div>
+      </div>
+
+      <div class="prev-frame sticky">
+        <div class="prev-bar"><span class="kicker">Live preview</span><div class="seg"><span class="on">Member</span><span>Visitor</span><span>Phone</span></div></div>
+        <div class="pad mini">
+          <div class="card hero" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
+            <div class="cover c1"><div class="grid"></div><div class="iss">ISSUE 05</div><div class="mast">Agents Weekly</div></div>
+            <div class="body" style="padding:16px"><div class="kicker">/ From the editor</div><h3 style="font-size:20px">December issue</h3><p class="hint" style="margin:0">Your note goes here.</p></div>
+          </div>
+          <div class="mosaic" style="gap:10px">
+            <div class="card span6" style="padding:12px"><div class="kicker">01 · Cover story</div><b>Why our agent now asks before it acts</b></div>
+            <div class="card span3" style="padding:12px"><div class="kicker">02 · Story</div><b style="font-size:14px">Who owns an agent's mistake?</b></div>
+            <div class="card span3" style="padding:12px"><div class="kicker">03 · Event</div><b style="font-size:14px">Agents meetup #12</b></div>
+            <div class="card span6" style="padding:12px"><div class="kicker">04 · Forum · 05 · News</div><b style="font-size:14px">…</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card pad sticky">
+        <div class="row between"><b>Add more</b><div class="seg"><span class="on">Cover story</span><span>Digest</span></div></div>
+        <div class="tabs" style="margin-top:10px"><span class="on">Stories</span><span>News</span><span>Events</span><span>Forum</span><span>Articles</span><span>Projects</span></div>
+        <input class="search" placeholder="Search AIT News stories…">
+        <div class="pick"><div class="t">EU AI Act: the agent rules, explained<div class="hint">14 sources · updated 3h ago</div></div><button class="add">Add</button></div>
+        <div class="pick"><div class="t">The race for agent evaluation tools<div class="hint">9 sources · updated yesterday</div></div><button class="add">Add</button></div>
+        <div class="pick"><div class="t">Open-source agent frameworks compared<div class="hint">11 sources · last week</div></div><button class="add">Add</button></div>
+        <div class="pick"><div class="t">Agents in Dutch government pilots<div class="hint">5 sources · last week</div></div><button class="add">Add</button></div>
+        <p class="hint" style="margin:12px 0 0">Stories stay live: readers always see the newest version.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 AUTO SETTINGS -->
+<section class="screen" id="auto">
+  <div class="nav"><b>AIT</b><span>Amsterdam AI Builders</span><span>›</span><span>Magazine</span><span>›</span><span>Auto-draft</span><span class="sp"></span><span class="hint">Editor</span></div>
+  <div class="wrap">
+    <div class="row between">
+      <div><div class="kicker">/ Agents Weekly · Settings</div><h1 style="font-size:32px">Auto-draft</h1><p class="sub">AIT prepares each issue from what happened in your community. You review, change and publish.</p></div>
+      <div class="row"><span class="hint">Auto-draft is</span><div class="toggle on" id="master"></div></div>
+    </div>
+
+    <div class="auto-grid" style="margin-top:24px">
+      <div class="card pad">
+        <div class="kicker" style="margin-bottom:6px">/ When</div>
+        <div class="row between" style="padding:10px 0;border-bottom:1px solid var(--border)"><span>Make a draft</span><select><option>Every month, on the 1st</option><option>Every 2 weeks</option><option>Every week</option><option>After each community event</option><option>Only when I ask</option></select></div>
+        <div class="row between" style="padding:10px 0;border-bottom:1px solid var(--border)"><span>Look back over</span><select><option>Since the last issue</option><option>Last 30 days</option><option>Last 7 days</option></select></div>
+        <div class="row between" style="padding:10px 0;border-bottom:1px solid var(--border)"><span>Layout</span><select><option>Cover story</option><option>Long read</option><option>Digest</option></select></div>
+        <div class="row between" style="padding:10px 0;border-bottom:1px solid var(--border)"><span>Who can read it</span><select><option>Magazine default (Members only)</option><option>Preview</option><option>Everyone</option></select></div>
+        <div style="padding:12px 0 0">
+          <div class="row between"><span>When a draft is ready</span></div>
+          <label class="ck" style="margin-top:8px"><input type="radio" name="pub" checked> Tell me, I'll publish it myself</label>
+          <label class="ck" style="margin-top:6px"><input type="radio" name="pub"> Publish after 3 days unless I stop it</label>
+          <p class="hint" style="margin:8px 0 0">Editors always get a message first, with a link to the draft.</p>
+        </div>
+      </div>
+
+      <div class="card pad">
+        <div class="kicker" style="margin-bottom:2px">/ What to pick</div>
+        <div class="src-row"><div class="toggle on"></div><div><b>Member articles</b><div class="hint">Approved for this magazine, most-read first</div></div><span class="row"><span class="hint">up to</span><input class="num" value="3"></span></div>
+        <div class="src-row"><div class="toggle on"></div><div><b>AIT News stories</b><div class="hint">Topics: <span class="chip on">Agents</span> <span class="chip on">Evals</span> <span class="chip">+ add</span></div></div><span class="row"><span class="hint">up to</span><input class="num" value="2"></span></div>
+        <div class="src-row"><div class="toggle on"></div><div><b>News headlines digest</b><div class="hint">Same topics, most important first</div></div><span class="row"><span class="hint">up to</span><input class="num" value="5"></span></div>
+        <div class="src-row"><div class="toggle on"></div><div><b>Community events</b><div class="hint">Past events as recaps, next event as “coming up”</div></div><span class="row"><span class="hint">up to</span><input class="num" value="2"></span></div>
+        <div class="src-row"><div class="toggle on"></div><div><b>Forum threads</b><div class="hint">Most replies and reactions</div></div><span class="row"><span class="hint">up to</span><input class="num" value="2"></span></div>
+        <div class="src-row"><div class="toggle"></div><div><b>Launchpad projects</b><div class="hint">Member projects with the most upvotes</div></div><span class="row"><span class="hint">up to</span><input class="num" value="1"></span></div>
+        <div class="src-row"><div class="toggle"></div><div><b>New member welcome</b><div class="hint">A short list of people who joined</div></div><span></span></div>
+        <label class="ck" style="margin-top:12px"><input type="checkbox" checked> Never pick something already used in an earlier issue</label>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="card pad">
+          <div class="kicker" style="margin-bottom:10px">/ Next draft</div>
+          <div style="font-size:28px;font-weight:600;letter-spacing:-.02em">1 Dec 2026</div>
+          <p class="hint" style="margin:4px 0 14px">Right now it would contain about 15 items.</p>
+          <button class="btn dark" style="width:100%;justify-content:center">Make a draft now</button>
+        </div>
+        <div class="card pad">
+          <div class="kicker" style="margin-bottom:6px">/ History</div>
+          <ul class="tl">
+            <li><span class="d">1 Nov</span><span>Draft made · you changed 3 items · <b>published 2 Nov</b></span></li>
+            <li><span class="d">1 Oct</span><span>Draft made · published unchanged</span></li>
+            <li><span class="d">1 Sep</span><span>Draft made · <span class="hint">skipped by Noa K.</span></span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+function go(id){
+  document.querySelectorAll('.switch button').forEach(x=>x.classList.toggle('on',x.dataset.s===id));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.switch button').forEach(b=>b.onclick=()=>go(b.dataset.s));
+document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();go(a.dataset.go)});
+document.querySelectorAll('#vis span').forEach(s=>s.onclick=()=>{
+  document.querySelectorAll('#vis span').forEach(x=>x.classList.toggle('on',x===s));
+  const v=s.dataset.v;document.getElementById('warn').style.display=v==='members'?'none':'block';
+  document.getElementById('wv').textContent=v==='teaser'?'preview':'everyone';
+});
+document.querySelectorAll('.seg:not(#vis) span').forEach(s=>s.onclick=()=>s.parentNode.querySelectorAll('span').forEach(x=>x.classList.toggle('on',x===s)));
+document.querySelectorAll('.tabs span').forEach(s=>s.onclick=()=>s.parentNode.querySelectorAll('span').forEach(x=>x.classList.toggle('on',x===s)));
+document.querySelectorAll('.toggle').forEach(t=>t.onclick=()=>t.classList.toggle('on'));
+document.querySelectorAll('.x').forEach(x=>x.onclick=()=>x.closest('.bitem').remove());
+document.querySelectorAll('.add').forEach(btn=>btn.onclick=()=>{
+  if(btn.classList.contains('done'))return;
+  btn.classList.add('done');btn.textContent='Added';
+  const title=btn.parentNode.querySelector('.t').firstChild.textContent;
+  const d=document.createElement('div');d.className='card bitem';
+  d.innerHTML='<span class="grip">⋮⋮</span><div class="t"><div class="k">Story · AIT News · live</div><b></b><div class="hint">Added by you · add an intro line…</div></div><button class="x">×</button>';
+  d.querySelector('b').textContent=title;d.querySelector('.x').onclick=()=>d.remove();
+  document.getElementById('items').appendChild(d);
+});
+</script>
+</body>
+</html>

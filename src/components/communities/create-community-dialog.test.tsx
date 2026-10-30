@@ -95,10 +95,9 @@ describe("CreateCommunityDialog deep link", () => {
     window.history.replaceState(null, "", "/en/communities?create=1");
     render(<Page />);
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(auth.promptAuth).toHaveBeenCalledWith(
-      "Sign in to create a community",
-      { returnTo: "/en/communities?create=1" },
-    );
+    expect(auth.promptAuth).toHaveBeenCalledWith("signInToCreate", {
+      returnTo: "/en/communities?create=1",
+    });
   });
 });
 
@@ -117,9 +116,6 @@ describe("CreateCommunityButton", () => {
     render(<Page />);
     fireEvent.click(screen.getByRole("button", { name: "header" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(auth.promptAuth).toHaveBeenCalledWith(
-      "Sign in to create a community",
-      undefined,
-    );
+    expect(auth.promptAuth).toHaveBeenCalledWith("signInToCreate", undefined);
   });
 });

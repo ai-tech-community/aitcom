@@ -218,6 +218,23 @@ export async function recordRetroactiveTiers(
 }
 
 /**
+ * A milestone found in existing data: recorded seen, no XP, activity,
+ * notification or earning moment. Returns whether it was newly earned.
+ * Throws on failure so the backfill can report it.
+ */
+export async function recordRetroactiveMilestone(
+  db: BadgeDb,
+  userId: string,
+  slug: MilestoneSlug,
+): Promise<boolean> {
+  const { earned } = await db.transaction((tx) =>
+    recordEarned(tx, userId, [{ slug, celebrate: false }]),
+  );
+  if (earned.length > 0) clearBadgeRarityCache();
+  return earned.length > 0;
+}
+
+/**
  * Records a milestone the caller has just seen happen (its trigger stays
  * at the source); it is always celebrated. Returns whether it was newly
  * earned.

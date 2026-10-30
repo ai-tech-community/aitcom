@@ -19,6 +19,24 @@ const KEYS = {
 
 type BuilderErrorCode = keyof typeof KEYS;
 
+/**
+ * The codes that mean "someone else changed this first": the builder's
+ * autosaves report a conflict (the reload banner), not an error.
+ */
+export const CLASSROOM_CONFLICT_CODES: ReadonlySet<BuilderErrorCode> = new Set([
+  "COURSE_CHANGED",
+  "LESSON_CHANGED",
+]);
+
+/** Whether a server code is one of the classroom's conflict codes. */
+export function isClassroomConflict(code: string | undefined): boolean {
+  return (
+    code !== undefined &&
+    isBuilderErrorCode(code) &&
+    CLASSROOM_CONFLICT_CODES.has(code)
+  );
+}
+
 export type BuilderErrorKey = (typeof KEYS)[BuilderErrorCode] | "errorGeneric";
 
 function isBuilderErrorCode(message: string): message is BuilderErrorCode {

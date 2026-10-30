@@ -325,12 +325,12 @@ export function CommunityEvents({
                 {past.length > 0 ? (
                   <section
                     aria-labelledby="community-past-events"
-                    className="mt-12"
+                    className="@container mt-12"
                   >
                     <SectionLabel id="community-past-events" className="pb-4">
                       {t("pastSection")}
                     </SectionLabel>
-                    <ol className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
+                    <ol className="grid gap-x-8 @xl:grid-cols-2 @4xl:grid-cols-3">
                       {rowsFor(past, "published").map(({ event, row }) => (
                         <li
                           key={row.key}

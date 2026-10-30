@@ -1,6 +1,7 @@
 "use client";
 
 import { use } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import {
@@ -22,6 +23,7 @@ export function CommunityOverviewPageClient({
   initialMemberships: HubMembershipSeed[];
 }) {
   const { slug } = use(params);
+  const t = useTranslations("communities.profile");
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(null, initialUser, session?.user);
 
@@ -55,10 +57,9 @@ export function CommunityOverviewPageClient({
                     <strong className="text-foreground">
                       {community.liveness.activeContributors}
                     </strong>{" "}
-                    {community.liveness.activeContributors === 1
-                      ? "person"
-                      : "people"}{" "}
-                    active this week
+                    {t("activeThisWeek", {
+                      count: community.liveness.activeContributors,
+                    })}
                   </>
                 )}
                 {community.liveness.activeContributors > 0 &&
@@ -69,10 +70,9 @@ export function CommunityOverviewPageClient({
                     <strong className="text-foreground">
                       {community.liveness.recentThreads}
                     </strong>{" "}
-                    new{" "}
-                    {community.liveness.recentThreads === 1
-                      ? "discussion"
-                      : "discussions"}
+                    {t("newDiscussions", {
+                      count: community.liveness.recentThreads,
+                    })}
                   </>
                 )}
               </span>

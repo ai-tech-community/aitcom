@@ -1,3 +1,4 @@
+import { createHmac } from "crypto";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,6 +13,55 @@ import {
 const SECRET = "test-unsubscribe-secret";
 
 describe("unsubscribe tokens", () => {
+  it("signs and reads a magazine token carrying the subscription id", () => {
+    const token = signUnsubscribeToken(
+      { subscriptionId: "subscription-1", scope: "magazine" },
+      SECRET,
+    );
+    expect(verifyUnsubscribeToken(token, SECRET)).toEqual({
+      subscriptionId: "subscription-1",
+      scope: "magazine",
+    });
+    expect(
+      JSON.parse(
+        Buffer.from(token.split(".")[0]!, "base64url").toString("utf8"),
+      ),
+    ).toEqual({
+      u: "subscription-1",
+      s: "magazine",
+    });
+  });
+
+  it("existing digest and story tokens still read the same", () => {
+    for (const scope of ["digest", "story"] as const) {
+      // The wire shape used before magazine subscriptions were added.
+      const body = Buffer.from(`{"u":"legacy-user","s":"${scope}"}`).toString(
+        "base64url",
+      );
+      const signature = createHmac("sha256", SECRET)
+        .update(body)
+        .digest("base64url");
+      const token = `${body}.${signature}`;
+      expect(verifyUnsubscribeToken(token, SECRET)).toEqual({
+        userId: "legacy-user",
+        scope,
+      });
+      expect(
+        signUnsubscribeToken({ userId: "legacy-user", scope }, SECRET),
+      ).toBe(token);
+    }
+  });
+
+  it("refuses an unknown scope", () => {
+    const body = Buffer.from('{"u":"subscription-1","s":"unknown"}').toString(
+      "base64url",
+    );
+    const signature = createHmac("sha256", SECRET)
+      .update(body)
+      .digest("base64url");
+    expect(verifyUnsubscribeToken(`${body}.${signature}`, SECRET)).toBeNull();
+  });
+
   it("round-trips a digest opt-out for a user", () => {
     const token = signUnsubscribeToken(
       { userId: "user-1", scope: "digest" },

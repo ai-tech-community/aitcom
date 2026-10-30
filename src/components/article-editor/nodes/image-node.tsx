@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   DecoratorNode,
   type LexicalEditor,
@@ -9,6 +10,8 @@ import {
   type SerializedLexicalNode,
   $getNodeByKey,
 } from "@payloadcms/richtext-lexical/lexical";
+
+import { uploadSharedImage } from "@/lib/upload-shared-image";
 
 export type SerializedImageNode = SerializedLexicalNode & {
   type: "image";
@@ -35,7 +38,7 @@ function isValidImageUrl(url: string): boolean {
   }
 }
 
-function ImageComponent({
+export function ArticleImageBlock({
   src,
   alt,
   nodeKey,
@@ -51,6 +54,8 @@ function ImageComponent({
   const [currentAlt, setCurrentAlt] = useState(alt);
   const [prevAlt, setPrevAlt] = useState(alt);
   const [imgError, setImgError] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync with external prop changes (e.g., undo/redo) — update during render instead of useEffect
   if (src !== prevSrc) {
@@ -83,9 +88,28 @@ function ImageComponent({
     });
   }, [editor, nodeKey]);
 
+  const handleUpload = useCallback(
+    async (file: File | undefined) => {
+      if (!file) return;
+      setUploading(true);
+      try {
+        const url = await uploadSharedImage(file, currentAlt || "upload");
+        setCurrentSrc(url);
+        setImgError(false);
+        updateNode(url, currentAlt);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Upload failed");
+      } finally {
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    },
+    [currentAlt, updateNode],
+  );
+
   return (
     <div className="border-border my-4 rounded border">
-      <div className="border-border flex items-center gap-2 border-b px-3 py-1.5">
+      <div className="border-border flex flex-wrap items-center gap-2 border-b px-3 py-1.5">
         <input
           type="text"
           value={currentSrc}
@@ -95,7 +119,8 @@ function ImageComponent({
             updateNode(e.target.value, currentAlt);
           }}
           placeholder="https://example.com/image.jpg"
-          className="text-muted-foreground flex-1 bg-transparent font-mono text-xs focus:outline-none"
+          aria-label="Image URL"
+          className="text-muted-foreground min-w-40 flex-1 bg-transparent font-mono text-xs focus:outline-none"
         />
         <input
           type="text"
@@ -105,8 +130,27 @@ function ImageComponent({
             updateNode(currentSrc, e.target.value);
           }}
           placeholder="Alt text..."
+          aria-label="Alt text"
           className="text-muted-foreground w-32 bg-transparent text-xs focus:outline-none"
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          tabIndex={-1}
+          aria-hidden="true"
+          className="sr-only"
+          onChange={(e) => void handleUpload(e.target.files?.[0])}
+          disabled={uploading}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="text-foreground hover:bg-muted rounded border px-2 py-0.5 text-xs transition-colors disabled:opacity-50"
+        >
+          {uploading ? "Uploading…" : "Upload"}
+        </button>
         <button
           type="button"
           onClick={handleDelete}
@@ -126,11 +170,13 @@ function ImageComponent({
         />
       ) : (
         <div className="text-muted-foreground flex h-32 items-center justify-center text-xs">
-          {currentSrc
-            ? imgError
-              ? "Image failed to load"
-              : "Enter a valid https:// image URL"
-            : "Enter an image URL above"}
+          {uploading
+            ? "Uploading…"
+            : currentSrc
+              ? imgError
+                ? "Image failed to load"
+                : "Enter a valid https:// image URL"
+              : "Upload an image or paste an https URL. Up to 2 MB."}
         </div>
       )}
     </div>
@@ -210,7 +256,7 @@ export class ImageNode extends DecoratorNode<React.JSX.Element> {
 
   decorate(editor: LexicalEditor): React.JSX.Element {
     return (
-      <ImageComponent
+      <ArticleImageBlock
         src={this.__src}
         alt={this.__alt}
         nodeKey={this.__key}
