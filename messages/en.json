@@ -5805,5 +5805,10 @@
     "email": "Send by email",
     "opensInNewTab": "(opens in a new tab)",
     "shareFailed": "Could not share the link. Try copying it."
+  },
+  "datacenterFacility": {
+    "title": "AI Datacenter Investigations",
+    "updatedLabel": "Updated",
+    "checkedLabel": "Checked"
   }
 }

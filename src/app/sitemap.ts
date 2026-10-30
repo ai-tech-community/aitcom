@@ -3,6 +3,10 @@ import { unstable_noStore as noStore } from "next/cache";
 import type { Where } from "payload";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
 import {
+  INVESTIGATIONS_PATH,
+  mergeFacilitySitemap,
+} from "@/lib/investigations/datacenter-facilities";
+import {
   startupDirectorySitemapPaths,
   startupProfileSitemapPaths,
 } from "@/lib/investigations/startups";
@@ -51,6 +55,7 @@ const STATIC_PAGES = [
   "/guides/register-agent-mcp",
   "/guides/mcp-registry-vs-community-hub",
   "/guides/agent-ready-community",
+  INVESTIGATIONS_PATH,
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
   "/startups",
@@ -252,6 +257,19 @@ async function defaultStartupPagePaths(): Promise<string[]> {
  * visibility change may take that long to leave the sitemap; the pages
  * themselves answer 404 on the next request (ADR-0042).
  */
+async function defaultDatacenterFacilityPages(): Promise<
+  { path: string; updatedAt: Date }[]
+> {
+  try {
+    const { listDatacenterFacilitySitemapEntries } =
+      await import("@/server/datacenters/facility-sitemap");
+    return await listDatacenterFacilitySitemapEntries();
+  } catch (error) {
+    console.error("[sitemap] datacenter facility lookup failed", error);
+    return [];
+  }
+}
+
 async function defaultMagazinePaths(): Promise<string[]> {
   const { db } = await import("@/server/db");
   const { magazineSitemapPaths } =
@@ -276,6 +294,9 @@ export async function buildSitemapEntries(
   getHiddenEventCommunityIds: () => Promise<
     readonly string[]
   > = defaultHiddenEventCommunityIds,
+  getDatacenterFacilityPages: () => Promise<
+    readonly { path: string; updatedAt?: Date }[]
+  > = defaultDatacenterFacilityPages,
 ): Promise<MetadataRoute.Sitemap> {
   let awesomePagePaths: string[] = [];
   try {
@@ -298,9 +319,22 @@ export async function buildSitemapEntries(
     console.error("[sitemap] content lastmod lookup failed", error);
   }
 
+  let facilityPages: readonly { path: string; updatedAt?: Date }[] = [];
+  try {
+    facilityPages = await getDatacenterFacilityPages();
+  } catch (error) {
+    console.error("[sitemap] datacenter facility lookup failed", error);
+  }
+  const facilities = mergeFacilitySitemap(facilityPages, updatedAtByPath);
+
   const staticEntries = uniqueLocaleEntries(
-    [...STATIC_PAGES, ...awesomePagePaths, ...startupPagePaths],
-    updatedAtByPath,
+    [
+      ...STATIC_PAGES,
+      ...awesomePagePaths,
+      ...startupPagePaths,
+      ...facilities.paths,
+    ],
+    facilities.updatedAtByPath,
   );
 
   let payload: SitemapClient;

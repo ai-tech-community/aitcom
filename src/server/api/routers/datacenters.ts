@@ -1019,7 +1019,14 @@ export const datacentersRouter = createTRPCRouter({
       },
     };
 
+    const [latestFacility] = await ctx.db
+      .select({
+        updatedAt: sql<Date | string | null>`MAX(${datacenters.updatedAt})`,
+      })
+      .from(datacenters);
+
     return {
+      updatedAt: latestFacility?.updatedAt ?? null,
       totals: totals ?? {
         facilityCount: 0,
         totalMw: 0,

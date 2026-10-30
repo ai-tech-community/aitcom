@@ -105,6 +105,7 @@ export interface Config {
     magazines: Magazine;
     'magazine-issues': MagazineIssue;
     'email-templates': EmailTemplate;
+    'datacenter-facilities': DatacenterFacility;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -151,6 +152,7 @@ export interface Config {
     magazines: MagazinesSelect<false> | MagazinesSelect<true>;
     'magazine-issues': MagazineIssuesSelect<false> | MagazineIssuesSelect<true>;
     'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
+    'datacenter-facilities': DatacenterFacilitiesSelect<false> | DatacenterFacilitiesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -1894,6 +1896,39 @@ export interface EmailTemplate {
   createdAt: string;
 }
 /**
+ * Staff editor row for an AI datacenter facility. Saving publishes the live investigations record.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "datacenter-facilities".
+ */
+export interface DatacenterFacility {
+  id: number;
+  name: string;
+  operator: string;
+  country: string;
+  city?: string | null;
+  lat: number;
+  lng: number;
+  capacityMw?: number | null;
+  status: 'announced' | 'under-construction' | 'operational' | 'expanding' | 'decommissioned' | 'cancelled';
+  sourceUrl: string;
+  checkedAt: string;
+  slug?: string | null;
+  permits?:
+    | {
+        id?: string | null;
+        kind: 'zoning' | 'environmental' | 'water' | 'grid-interconnect' | 'building' | 'other';
+        issuingBody: string;
+        status: 'pending' | 'granted' | 'denied' | 'withdrawn';
+        appliedDate?: string | null;
+        issuedDate?: string | null;
+        sourceUrl?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -2068,6 +2103,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'email-templates';
         value: number | EmailTemplate;
+      } | null)
+    | ({
+        relationTo: 'datacenter-facilities';
+        value: number | DatacenterFacility;
       } | null)
     | ({
         relationTo: 'users';
@@ -3060,6 +3099,36 @@ export interface EmailTemplatesSelect<T extends boolean = true> {
   subject?: T;
   body?: T;
   enabled?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "datacenter-facilities_select".
+ */
+export interface DatacenterFacilitiesSelect<T extends boolean = true> {
+  name?: T;
+  operator?: T;
+  country?: T;
+  city?: T;
+  lat?: T;
+  lng?: T;
+  capacityMw?: T;
+  status?: T;
+  sourceUrl?: T;
+  checkedAt?: T;
+  slug?: T;
+  permits?:
+    | T
+    | {
+        kind?: T;
+        issuingBody?: T;
+        status?: T;
+        appliedDate?: T;
+        issuedDate?: T;
+        sourceUrl?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

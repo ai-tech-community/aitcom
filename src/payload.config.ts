@@ -45,6 +45,7 @@ import { HostedMaterials } from "./collections/HostedMaterials";
 import { Magazines } from "./collections/Magazines";
 import { MagazineIssues } from "./collections/MagazineIssues";
 import { EmailTemplates } from "./collections/EmailTemplates";
+import { DatacenterFacilities } from "./collections/DatacenterFacilities";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -119,6 +120,7 @@ export default buildConfig({
     Magazines,
     MagazineIssues,
     EmailTemplates,
+    DatacenterFacilities,
     {
       slug: "users",
       auth: {

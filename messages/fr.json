@@ -5805,5 +5805,10 @@
     "email": "Envoyer par e-mail",
     "opensInNewTab": "(s’ouvre dans un nouvel onglet)",
     "shareFailed": "Impossible de partager le lien. Essayez de le copier."
+  },
+  "datacenterFacility": {
+    "title": "Enquêtes sur les centres de données IA",
+    "updatedLabel": "Mis à jour",
+    "checkedLabel": "Vérifié"
   }
 }

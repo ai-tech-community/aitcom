@@ -1,36 +1,43 @@
+import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
 import { AWESOME_AI_OSS_PATH } from "@/lib/investigations/awesome-ai-oss";
+import { INVESTIGATIONS_PATH } from "@/lib/investigations/datacenter-facilities";
 import { STARTUPS_H1, STARTUPS_PATH } from "@/lib/investigations/startups";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { MissionDialog } from "@/components/datacenters/mission-dialog";
+import { InvestigationsUpdated } from "@/components/datacenters/investigations-updated";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("datacenterFacility");
   return {
-    title: "Investigations",
+    title: t("title"),
     description:
       "Community-driven investigations into the AI economy — datacenter ecosystems, supply chains, energy deals, and the companies behind them.",
     ...buildOgMeta(
-      "Investigations",
+      t("title"),
       "Community-driven investigations into the AI economy.",
-      "Investigations",
+      "AI Datacenters",
     ),
-    alternates: await localeAlternates("/investigations"),
+    alternates: await localeAlternates(INVESTIGATIONS_PATH),
   };
 }
 
 export const revalidate = 300;
 
 export default async function InvestigationsPage() {
-  const stats = await api.datacenters.investigationStats();
+  const [stats, t] = await Promise.all([
+    api.datacenters.investigationStats(),
+    getTranslations("datacenterFacility"),
+  ]);
 
   return (
     <main className="container mx-auto flex flex-col gap-8 p-6">
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">
-            Investigations
+            {t("title")}
           </h1>
           <MissionDialog label="Why this matters" variant="outline" />
         </div>
@@ -40,9 +47,7 @@ export default async function InvestigationsPage() {
           infrastructure that powers AI. Open data, sourced facts, member
           verification.
         </p>
-        <p className="text-muted-foreground font-mono text-xs">
-          <time dateTime="2026-10-29">Updated 2026.10.29</time>
-        </p>
+        <InvestigationsUpdated updatedAt={stats.updatedAt} />
       </header>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">

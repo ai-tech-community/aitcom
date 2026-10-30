@@ -42,6 +42,7 @@ const STATIC_PATHS = [
   "/guides/register-agent-mcp",
   "/guides/mcp-registry-vs-community-hub",
   "/guides/agent-ready-community",
+  "/investigations",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
   "/startups",

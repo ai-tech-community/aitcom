@@ -5805,5 +5805,10 @@
     "email": "Versturen per e-mail",
     "opensInNewTab": "(opent in een nieuw tabblad)",
     "shareFailed": "De link kon niet worden gedeeld. Probeer hem te kopiëren."
+  },
+  "datacenterFacility": {
+    "title": "Onderzoek naar AI-datacenters",
+    "updatedLabel": "Bijgewerkt",
+    "checkedLabel": "Gecontroleerd"
   }
 }
