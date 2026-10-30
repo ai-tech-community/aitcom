@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 import type { MagazineJoinSource } from "@/lib/communities/join-source";
 import type { JoinSourceEntry } from "@/server/communities/join-sources";
@@ -37,9 +37,13 @@ export const magazineJoinSource: JoinSourceEntry<MagazineJoinSource> = {
     magazineId: source.magazineId,
     issueId: source.issueId,
   }),
-  condition: (source) =>
-    sql`(${activityEvents.metadata}->>'via' = ${source.via} AND ${activityEvents.metadata}->>'issueId' = ${String(source.issueId)})`,
+  condition: (source) => magazineIssueSourceCondition(source.issueId),
 };
+
+/** Matches one issue or a trusted issue-ID SQL expression in an aggregate join. */
+export function magazineIssueSourceCondition(issueId: number | SQL): SQL {
+  return sql`(${activityEvents.metadata}->>'via' = ${"magazine"} AND ${activityEvents.metadata}->>'issueId' = ${typeof issueId === "number" ? String(issueId) : issueId})`;
+}
 
 /** Only a published issue of this community and magazine can bring a join. */
 export async function verifyMagazineJoinSource(

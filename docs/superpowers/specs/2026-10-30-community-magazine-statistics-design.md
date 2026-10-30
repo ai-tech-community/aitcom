@@ -17,7 +17,7 @@ Each community has at most one magazine. Resolve it by the authenticated communi
 Summary values:
 
 - **Published issues:** all currently published issues belonging to this community's magazine.
-- **Issue views:** sum the stored view counters for issue-page records (`articleId IS NULL`) of those issues. Do not add article-page views to issue views.
+- **Issue openings:** sum the stored view counters for issue-page records (`articleId IS NULL`) of those issues. Do not add article-page views to issue openings.
 - **Recorded readers:** distinct stored reader keys across all pages of those published issues. Deduplicate across issues and articles; never sum per-issue distinct counts. Signed-in keys are stable, while signed-out keys rotate daily and may be shared, so this is not an exact number of people.
 - **Current confirmed subscribers:** existing subscription records with `confirmedAt` set for the magazine, including account and email subscribers. Exclude pending email confirmations. This is a current snapshot, not lifetime subscription acquisitions or email reach.
 
@@ -48,4 +48,12 @@ Run only new/touched unit-test files and workspace `pnpm typecheck`, plus target
 - [x] Compare approaches and define the recommended integrated section.
 - [x] Self-review metric definitions, scope, privacy and period limitations.
 - [x] Greg approves the written design.
-- [ ] Write implementation plan, implement and run permitted checks.
+- [x] Write implementation plan, implement and run permitted checks.
+
+## Implementation and validation
+
+Implemented the scoped read module, owner/admin endpoint, independent Magazine performance section, localized definitions and paginated issue table. Existing issue-view counters are labeled **Issue openings**. Shared source and join conditions preserve the existing issue-statistics attribution semantics.
+
+All 44 tests in the four new/touched test files passed with mocked data and no database access. Workspace `pnpm typecheck`, targeted ESLint and formatting checks passed. Independent review found no issues. A synthetic preview of the actual components was inspected at desktop width and at 400px with Dutch copy and the dark theme; long titles, the scrollable table and pagination fit as intended.
+
+Greg also asked about impressions and time spent during implementation. Issue openings use existing data. Card appearances and active reading time require new tracking and are not included in this implementation; the clarification questions about those additions remain pending. Historical reading duration is unavailable.

@@ -5,6 +5,8 @@ const fake = vi.hoisted(() => ({
   community: vi.fn(),
   membership: vi.fn(),
   load: vi.fn(),
+  magazine: vi.fn(),
+  payload: vi.fn(),
 }));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/server/better-auth", () => ({
@@ -13,6 +15,10 @@ vi.mock("@/server/better-auth", () => ({
 vi.mock("@/server/inbox/dm", () => ({ sendDirectMessage: vi.fn() }));
 vi.mock("@/server/communities/statistics-queries", () => ({
   loadCommunityStatistics: fake.load,
+}));
+vi.mock("@/server/payload", () => ({ getPayloadClient: fake.payload }));
+vi.mock("@/server/magazines/stats/community-stats", () => ({
+  loadCommunityMagazineStats: fake.magazine,
 }));
 
 import { insightsRouter } from "./insights";
@@ -40,6 +46,70 @@ beforeEach(() => {
   });
   fake.membership.mockResolvedValue({ role: "owner", status: "active" });
   fake.load.mockResolvedValue({ aggregate: true });
+  fake.payload.mockResolvedValue({ marker: "payload" });
+  fake.magazine.mockResolvedValue({ magazine: null });
+});
+
+describe("insights.magazinePerformance", () => {
+  it.each(["owner", "admin"])(
+    "serves an active %s with resolved community scope and defaults",
+    async (role) => {
+      fake.membership.mockResolvedValue({ role, status: "active" });
+      await expect(
+        caller().magazinePerformance({ slug: "builders" }),
+      ).resolves.toEqual({ magazine: null });
+      expect(fake.magazine).toHaveBeenCalledWith(
+        { db: database, payload: { marker: "payload" } },
+        "resolved-community",
+        "en",
+        1,
+      );
+    },
+  );
+  it.each([
+    { role: "moderator", status: "active" },
+    { role: "member", status: "active" },
+    { role: "owner", status: "invited" },
+    { role: "admin", status: "pending_approval" },
+    { role: "admin", status: "banned" },
+    null,
+  ])(
+    "rejects $role/$status before magazine or Payload reads",
+    async (membership) => {
+      fake.membership.mockResolvedValue(membership);
+      await expect(
+        caller().magazinePerformance({ slug: "builders" }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(fake.magazine).not.toHaveBeenCalled();
+      expect(fake.payload).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects guests before magazine reads", async () => {
+    await expect(
+      caller(false).magazinePerformance({ slug: "builders" }),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(fake.payload).not.toHaveBeenCalled();
+  });
+  it("validates page and locale, and passes a valid selection through", async () => {
+    await expect(
+      caller().magazinePerformance({ slug: "builders", page: 0 }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      caller().magazinePerformance({ slug: "builders", locale: "de" as "nl" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(fake.payload).not.toHaveBeenCalled();
+    await caller().magazinePerformance({
+      slug: "builders",
+      locale: "nl",
+      page: 2,
+    });
+    expect(fake.magazine).toHaveBeenCalledWith(
+      expect.anything(),
+      "resolved-community",
+      "nl",
+      2,
+    );
+  });
 });
 
 describe("insights.statistics authorization", () => {

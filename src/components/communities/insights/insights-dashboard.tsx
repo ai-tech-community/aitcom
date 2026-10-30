@@ -5,6 +5,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatisticsDashboard } from "./statistics-dashboard";
+import { MagazinePerformance } from "./magazine-performance";
 import { HealthPulse } from "./health-pulse";
 import { AtRiskList } from "./at-risk-list";
 import { UnactivatedList } from "./unactivated-list";
@@ -44,6 +45,7 @@ export function InsightsDashboard({ slug }: { slug: string }) {
       ) : (
         <HealthPulse slug={slug} />
       )}
+      {canViewStatistics && <MagazinePerformance slug={slug} />}
       <div className="space-y-2">
         <SectionLabel>{t("followUpTitle")}</SectionLabel>
         <p className="text-muted-foreground text-sm">

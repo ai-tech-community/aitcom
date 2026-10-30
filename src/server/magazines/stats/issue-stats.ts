@@ -1,17 +1,17 @@
-import { and, count, countDistinct, eq, isNotNull, or, sql } from "drizzle-orm";
+import { and, count, countDistinct, eq, isNotNull, sql } from "drizzle-orm";
 
 import type { AppLocale } from "@/i18n/messages";
 import type { IssueStatus } from "@/lib/magazines/values";
 import { joinSourceCondition } from "@/server/communities/join-sources";
 import {
   activityEvents,
-  communityMemberships,
   magazineReads,
   magazineSubscriptions,
 } from "@/server/db/schema";
 
 import type { Deps } from "../deps";
 import { requireRelationId } from "../relation-id";
+import { magazineJoinEventCondition } from "./join-condition";
 
 export type IssueStats = {
   issue: {
@@ -104,18 +104,7 @@ export async function loadIssueStats(
             magazineId,
             issueId,
           }),
-          or(
-            eq(activityEvents.action, "community.joined"),
-            and(
-              eq(activityEvents.action, "community.join_requested"),
-              sql`EXISTS (
-                SELECT 1 FROM ${communityMemberships}
-                WHERE ${communityMemberships.communityId} = ${activityEvents.communityId}
-                  AND ${communityMemberships.userId} = ${activityEvents.actorId}
-                  AND ${communityMemberships.status} = 'active'
-              )`,
-            ),
-          ),
+          magazineJoinEventCondition(),
         ),
       ),
   ]);
