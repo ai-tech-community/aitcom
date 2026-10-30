@@ -8,6 +8,8 @@ import {
 } from "@/lib/events/public-events";
 import { db } from "@/server/db";
 import { curatedPublicEvents } from "@/server/db/schema";
+import { publishedEventsVisibleWhere } from "@/lib/events/public-event-access";
+import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
 import { getPayloadClient } from "@/server/payload";
 
 function toCuratedCard(
@@ -43,14 +45,10 @@ export async function listHostedPublicEventCards(
 ): Promise<PublicEventCard[]> {
   try {
     const payload = await getPayloadClient();
+    const hiddenEventCommunityIds = await loadHiddenEventCommunityIds(db, null);
     const { docs } = await payload.find({
       collection: "events",
-      where: {
-        and: [
-          { status: { equals: "published" } },
-          { discoverySource: { not_equals: "luma" } },
-        ],
-      },
+      where: publishedEventsVisibleWhere(hiddenEventCommunityIds),
       sort: "date",
       locale,
       draft: false,

@@ -1,3 +1,4 @@
+import type { RegistrationSource } from "@/lib/events/registration-source";
 import { relations, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { UiProducerTrust, UiResource } from "@/lib/chat/types";
@@ -227,6 +228,12 @@ export const eventRegistrations = appSchema.table(
      * the organizer sees name and status only.
      */
     organizerNoticeAt: d.timestamp({ withTimezone: true }),
+    registrationSource: d
+      .varchar({ length: 32 })
+      .notNull()
+      .default("direct_or_unknown")
+      .$type<RegistrationSource>(),
+    attributedAt: d.timestamp({ withTimezone: true }),
     /**
      * Answers to the event's registration questions, keyed by question id:
      * text, or the chosen option id(s). See lib/events/registration-questions.

@@ -1,3 +1,7 @@
+import {
+  registrationSource,
+  type RegistrationSource,
+} from "@/lib/events/registration-source";
 import { formatInstantInZone, isValidTimeZone } from "@/lib/event-time";
 import type {
   AttendeeDetails,
@@ -26,6 +30,8 @@ export interface AttendeeCsvLabels {
   experience: string;
   skills: string;
   interests: string;
+  source: string;
+  sources: Record<RegistrationSource, string>;
   statuses: Record<AttendeeStatus, string>;
 }
 
@@ -92,6 +98,7 @@ export function toAttendeesCsv(
     l.skills,
     l.interests,
     ...questions.map((q) => q.label),
+    l.source,
   ];
 
   const lines = rows.map((row) => [
@@ -117,6 +124,7 @@ export function toAttendeesCsv(
       const value = row.answers.find((a) => a.questionId === q.id)?.value;
       return Array.isArray(value) ? value.join("; ") : value;
     }),
+    l.sources[registrationSource(row.registrationSource)],
   ]);
 
   return (

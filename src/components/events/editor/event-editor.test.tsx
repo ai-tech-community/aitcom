@@ -109,6 +109,9 @@ function fillRequired() {
   fireEvent.change(screen.getByLabelText(en.events.eventTitle), {
     target: { value: "Builders night" },
   });
+  fireEvent.change(screen.getByLabelText(en.events.eventDescription), {
+    target: { value: "A night for builders." },
+  });
   fireEvent.change(screen.getByLabelText(en.events.eventDate), {
     target: { value: "2026-11-02" },
   });
@@ -219,6 +222,20 @@ describe("EventEditor — saving", () => {
     save(en.events.submitForApproval);
     expect(m.create).not.toHaveBeenCalled();
     expect(m.submit).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a validation error and does not save when Description is empty", () => {
+    renderEditor();
+    fillRequired();
+    fireEvent.change(screen.getByLabelText(en.events.eventDescription), {
+      target: { value: "   " },
+    });
+    save(en.events.createEvent);
+
+    expect(m.create).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      en.events.editor.descriptionRequired,
+    );
   });
 
   it("stops at an unfinished question and says what to fix", () => {

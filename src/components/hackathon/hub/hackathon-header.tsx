@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import type { Event, Media } from "@/payload-types";
 import type { HackathonPhase } from "@/server/hackathon/phase";
 import { Badge } from "@/components/ui/badge";
+import { CancelledEventBadge } from "@/components/events/cancelled-event-badge";
 import { EventTimeDisplay } from "@/components/event-time-display";
 
 // Mirrors the event page's getMedia: the cover image is a relation that may be
@@ -33,8 +34,10 @@ export async function HackathonHeader({
   phase: HackathonPhase;
 }) {
   const t = await getTranslations("hackathon");
+  const tEvents = await getTranslations("events");
   const cover = getCoverImage(event.coverImage ?? event.image);
   const statusLabel = t(PHASE_LABEL_KEY[phase]);
+  const cancelled = event.status === "cancelled";
 
   return (
     <div className="border-border bg-secondary/30 relative overflow-hidden rounded-2xl border">
@@ -55,10 +58,13 @@ export async function HackathonHeader({
       </div>
 
       <div className="absolute inset-x-0 bottom-0 space-y-3 p-6 sm:p-8">
-        {/* Same variant rule as the manage page: outline for draft, secondary otherwise. */}
-        <Badge variant={phase === "draft" ? "outline" : "secondary"}>
-          {statusLabel}
-        </Badge>
+        {cancelled ? (
+          <CancelledEventBadge label={tEvents("cancelledLabel")} />
+        ) : (
+          <Badge variant={phase === "draft" ? "outline" : "secondary"}>
+            {statusLabel}
+          </Badge>
+        )}
         <h1 className="text-2xl leading-tight font-semibold tracking-tight text-white sm:text-4xl">
           {event.title}
         </h1>
