@@ -1,8 +1,13 @@
+import { formatFacilityMw } from "@/lib/investigations/facility-capacity";
+
 type PeerData = {
   country: string;
   peerCount: number;
   thisFacility: {
-    mw: number;
+    /** Operating MW (`capacityMw`). Null when the record does not state it. */
+    currentMw: number | null;
+    /** Build-out target (`capacityMwPlanned`). Not added to currentMw. */
+    plannedMw: number | null;
     lagDays: number | null;
     supplierCount: number;
     aiDedicated: boolean;
@@ -41,7 +46,10 @@ export function PeerComparison({ data }: { data: PeerData }) {
     );
   }
 
-  const mwBand = bandLabel(data.thisFacility.mw, data.countryStats.medianMw);
+  const mwBand =
+    data.thisFacility.currentMw == null
+      ? null
+      : bandLabel(data.thisFacility.currentMw, data.countryStats.medianMw);
   const supBand = bandLabel(
     data.thisFacility.supplierCount,
     data.countryStats.medianSuppliers,
@@ -54,9 +62,9 @@ export function PeerComparison({ data }: { data: PeerData }) {
         <span className="font-medium">{data.country}</span>.
       </p>
       <dl className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <Row
-          label="Capacity (MW)"
-          thisValue={`${Math.round(data.thisFacility.mw).toLocaleString()}`}
+        <CapacityRow
+          currentMw={data.thisFacility.currentMw}
+          plannedMw={data.thisFacility.plannedMw}
           peerValue={`median ${Math.round(data.countryStats.medianMw).toLocaleString()} · p95 ${Math.round(data.countryStats.p95Mw).toLocaleString()}`}
           band={mwBand}
         />
@@ -82,8 +90,46 @@ export function PeerComparison({ data }: { data: PeerData }) {
         />
       </dl>
       <p className="text-muted-foreground/70 mt-3 text-xs">
-        Bands describe deviation from peer median; not a judgment.
+        Bands compare operating capacity with the peer median. Planned capacity
+        is shown separately and is not added.
       </p>
+    </div>
+  );
+}
+
+function CapacityRow({
+  currentMw,
+  plannedMw,
+  peerValue,
+  band,
+}: {
+  currentMw: number | null;
+  plannedMw: number | null;
+  peerValue: string;
+  band: { label: string; tone: string } | null;
+}) {
+  return (
+    <div className="border-border rounded border p-3">
+      <dt className="text-muted-foreground text-xs tracking-wider uppercase">
+        Current capacity
+      </dt>
+      <dd className="mt-1 flex items-baseline justify-between gap-2">
+        <span className="text-lg font-semibold">
+          {formatFacilityMw(currentMw)}
+        </span>
+        {band && <span className={`text-xs ${band.tone}`}>{band.label}</span>}
+      </dd>
+      <dd className="text-muted-foreground mt-0.5 text-xs">{peerValue}</dd>
+      {plannedMw != null && (
+        <>
+          <dt className="text-muted-foreground mt-3 text-xs tracking-wider uppercase">
+            Planned capacity
+          </dt>
+          <dd className="mt-1 text-lg font-semibold">
+            {formatFacilityMw(plannedMw)}
+          </dd>
+        </>
+      )}
     </div>
   );
 }
