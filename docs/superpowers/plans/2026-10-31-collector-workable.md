@@ -111,3 +111,8 @@ persisted runs were performed.
 Only `pnpm build:workers` ran; no production build or full/integration/Chromium
 tier ran locally. Workable remains unpublished for owner app review. The
 preceding Lever branch has separate PR/merge authorization from the owner.
+
+PR #544 (Lever) merged as `c3f0dee7` after all checks passed. Workable was
+rebased onto that main without conflicts; its reviewed feature patch remained
+byte-for-byte identical. The owner's checkout now exposes Workable for app
+review. The unrelated Payload type changes were preserved and excluded.
