@@ -1,6 +1,6 @@
 # Data collectors: visible delivery slices
 
-**Status:** approved in conversation on 2026-10-31; slice 1 implemented locally.
+**Status:** slice 1 accepted in the local app on 2026-10-31; PR and deployment pending. Slice 2 (Ashby) approved next.
 
 ## Delivery agreement
 
@@ -14,7 +14,7 @@ foundation. ADR-0040 and ADR-0041 still apply.
 Individual work tickets are saved locally under
 `.scratch/collector-resume/issues/` (one file per numbered slice, with blockers
 and acceptance criteria). No remote tracker issues were created. Slice 1 is
-implemented locally; its owner review in the normally deployed app is pending.
+accepted locally; its review in the normally deployed app is pending.
 
 | Slice                  | Visible result                                                                 | Blocked by    |
 | ---------------------- | ------------------------------------------------------------------------------ | ------------- |
@@ -97,6 +97,11 @@ normal deployment: `/dashboard/collectors/new/greenhouse-board`, enter a board
 name or paste its link from the workspace, start, inspect results and download.
 
 ### Slice 1 delivery record
+
+- The owner confirmed collection works in the local app on 2026-10-31 after
+  fixing local worker wake-up and local rate-limiter dependencies, and asked
+  to create/merge the PR and continue with Ashby. Deployment review remains
+  separate from the completed local review.
 
 - Implemented on branch `feat/collector-greenhouse`; initial feature commit
   `6d97f264`. No migration is needed. No push or deployment performed.
