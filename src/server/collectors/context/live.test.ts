@@ -108,6 +108,11 @@ describe("live collector rate limiting", () => {
             department: null,
             url: "https://example.com/jobs/1",
             postedAt: null,
+            description: null,
+            applyUrl: "https://example.com/jobs/1",
+            employmentType: null,
+            workplaceType: null,
+            descriptionTruncated: false,
           },
         ],
       });

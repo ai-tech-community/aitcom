@@ -85,3 +85,11 @@ To verify the visible slice, refresh the local app, start a **new** Greenhouse
 or Ashby collection, then select **View details** beside a job. Read the full
 text, use the application link, close with Escape and check CSV/JSON downloads.
 Older rows show a new-run hint because no historical data is backfilled.
+
+CI follow-up: its full suite caught two local-worker assertions in
+`src/server/collectors/context/live.test.ts` that still expected the five-field
+row. Updated the exact expected row with all five added detail fields, keeping
+the rate-limit/robots/Redis assertions intact. All five tests in that file
+passed locally, along with targeted lint/format and the workspace type-check.
+No production behavior changed; the final focused total is 179 tests in ten
+files. CI remains responsible for the full suite.
