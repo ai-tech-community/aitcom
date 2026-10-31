@@ -71,10 +71,11 @@ export const SPONSORS_LINK = {
 } as const satisfies NavItem;
 
 /**
- * Guest door. Pass this to the locale-aware `Link` / `router.push`.
- * next-intl prefixes it, so English renders `/en/join` and Dutch `/nl/join`.
+ * Join opens account creation directly (with a link to sign in).
+ * Pass this to the locale-aware `Link` / `router.push`; next-intl prefixes it.
+ * The public /join landing can redirect a leftover session cookie to the Hub.
  */
-export const JOIN_HREF = "/join";
+export const JOIN_HREF = "/auth/signup";
 
 /** Every destination a letter shortcut opens, including footer-only Sponsors. */
 export function keyboardNavItems(): NavItem[] {

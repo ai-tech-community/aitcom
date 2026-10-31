@@ -25,8 +25,15 @@ shortcuts are unchanged (`C` still opens Explore, `W` still opens Jobs,
 `S` shortcut still opens that page.
 
 Guests get a Join control on the right of the bar, in both the desktop
-cluster and the mobile cluster. It uses the locale-aware link to `/join`,
-which renders as `/en/join` or `/nl/join`. `J` follows that same path.
+cluster and the mobile cluster. It uses the locale-aware link to `/auth/signup`,
+which renders as `/en/auth/signup`, `/nl/auth/signup` or `/fr/auth/signup`.
+The form links to sign-in for existing accounts. `J` follows that same path.
+
+Updated on 2026-10-31 after Join incorrectly landed at `/en/communities/ait`:
+the old `/join` destination has a middleware shortcut based on cookie presence,
+so a leftover session cookie could send a guest to the Hub. Account-entry
+controls now open the auth form directly. The public `/join` landing remains
+available for its existing links.
 
 ### 2. Every destination is in the server HTML
 

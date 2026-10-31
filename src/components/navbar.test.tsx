@@ -248,7 +248,7 @@ describe("Navbar", () => {
     expect(html).toContain(nl.nav.descriptions.jobs);
     expect(html).toContain('href="/forum"');
     expect(html).not.toContain('href="/communities/ait/forum"');
-    expect(html).toContain('href="/join"');
+    expect(html).toContain('href="/auth/signup"');
   });
 
   it("orders the bar Community, Events, Read, Startups, Work", () => {
@@ -338,12 +338,12 @@ describe("Navbar", () => {
     expect(read).toHaveFocus();
   });
 
-  it("points guests at the locale-free join door", () => {
+  it("takes desktop and mobile Join controls directly to the account form", () => {
     renderNavbar();
     const joins = screen.getAllByRole("link", { name: /\[J\] JOIN/ });
     expect(joins.length).toBeGreaterThan(0);
     for (const link of joins) {
-      expect(link).toHaveAttribute("href", JOIN_HREF);
+      expect(link).toHaveAttribute("href", "/auth/signup");
     }
   });
 
@@ -354,7 +354,7 @@ describe("Navbar", () => {
     fireEvent.keyDown(window, { key: "s" });
     expect(router.push).toHaveBeenCalledWith("/sponsors");
     fireEvent.keyDown(window, { key: "j" });
-    expect(router.push).toHaveBeenCalledWith(JOIN_HREF);
+    expect(router.push).toHaveBeenCalledWith("/auth/signup");
     fireEvent.keyDown(window, { key: "w" });
     expect(router.push).toHaveBeenCalledWith("/jobs");
     fireEvent.keyDown(window, { key: "r" });
