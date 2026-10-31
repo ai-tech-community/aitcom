@@ -65,6 +65,21 @@ describe("splitFields", () => {
 });
 
 describe("formValueOf", () => {
+  it("uses a preset's choice and clears an unsupported pasted choice", () => {
+    const board: FormField = {
+      ...base,
+      name: "board",
+      label: "Job board",
+      kind: "choice",
+      options: ["greenhouse"],
+    };
+    expect(presetInitialValues([board], { board: "greenhouse" }, {})).toEqual({
+      board: "greenhouse",
+    });
+    expect(
+      presetInitialValues([board], { board: "greenhouse" }, { board: "ashby" }),
+    ).toEqual({ board: "" });
+  });
   it("turns stored values into what each field holds", () => {
     expect(formValueOf(url, "https://example.com")).toBe("https://example.com");
     expect(formValueOf(pages, 2)).toBe("2");

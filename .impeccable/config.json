@@ -99,6 +99,13 @@
         "files": ["src/styles/magazine.css"],
         "createdAt": "2026-10-29T17:04:08.600Z",
         "reason": "Greg approved the fashion-magazine editorial design and font choice on 29 October 2026; DESIGN.md documents this publication-only type scale and cover readability scrim."
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": ["src/lib/investigations/startup-job-boards.test.ts"],
+        "createdAt": "2026-10-31T05:54:46.815Z",
+        "reason": "Existing parser fixtures intentionally contain source HTML with icons lacking src; these strings test job extraction and are never rendered in the app."
       }
     ]
   }

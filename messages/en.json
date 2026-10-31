@@ -4557,6 +4557,9 @@
     "failure": {
       "not_a_feed": "This address is not an RSS or Atom feed. Check that you copied the feed's address, not the website's.",
       "feed_status": "The feed answered with error {status}. Check the address, or try again later.",
+      "board_not_found": "We couldn’t find this job board on {host}. Check the board name in the address.",
+      "board_status": "The job board answered with error {status}. Try again later.",
+      "board_response_invalid": "The job board did not return a readable jobs list. Try again later, or check the board’s website.",
       "https_only": "Only addresses that start with https:// can be collected.",
       "invalid_address": "The collector found an address that is not a valid web address.",
       "redirect_loop": "A page sent us on to other pages too many times.",
@@ -4593,6 +4596,7 @@
       "next_page_too_long": "Next page link too long"
     },
     "start": {
+      "chooseOption": "Choose an option",
       "firstUseTitle": "Before your first run",
       "firstUse1": "Use what you collect for your own research.",
       "firstUse2": "Respect each site's terms. We follow every site's rules for automated visitors and visit a site at most once a second.",

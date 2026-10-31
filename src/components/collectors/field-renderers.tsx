@@ -9,6 +9,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   type FieldKind,
   type FieldValue,
   type FormColumn,
@@ -91,6 +98,45 @@ function textual(type: "url" | "text" | "number"): FieldRenderer {
       </div>
     );
   };
+}
+
+function ChoiceField({
+  field,
+  id,
+  value,
+  error,
+  onChange,
+}: FieldRendererProps) {
+  const t = useTranslations("collectors.start");
+  if (field.kind !== "choice") return null;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{field.label}</Label>
+      <Select
+        name={field.name}
+        required={field.required}
+        value={typeof value === "string" ? value : ""}
+        onValueChange={onChange}
+      >
+        <SelectTrigger
+          id={id}
+          className="w-full"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy(id, field, error)}
+        >
+          <SelectValue placeholder={field.placeholder ?? t("chooseOption")} />
+        </SelectTrigger>
+        <SelectContent>
+          {field.options.map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <FieldNotes id={id} field={field} error={error} />
+    </div>
+  );
 }
 
 function CheckboxField({
@@ -315,6 +361,7 @@ function RowsField({
 
 /** One renderer per field kind (Strategy): a new kind is one more entry. */
 export const FIELD_RENDERERS: Record<FieldKind, FieldRenderer> = {
+  choice: ChoiceField,
   url: textual("url"),
   text: textual("text"),
   number: textual("number"),
@@ -331,6 +378,7 @@ export const FIELD_REJECTION_KEYS: Record<
   FieldKind,
   "start.invalidUrl" | "start.invalidField"
 > = {
+  choice: "start.invalidField",
   url: "start.invalidUrl",
   text: "start.invalidField",
   number: "start.invalidField",

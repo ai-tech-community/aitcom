@@ -9,6 +9,7 @@ import {
   extractJobPostingFromHtml,
   extractListingsFromCareersHtml,
   greenhouseTokenFromGhJid,
+  greenhouseBoardUrl,
   htmlToPlainText,
   isPublishableJobTitle,
   mergePostingIntoListing,
@@ -74,6 +75,11 @@ describe("detectJobBoardFromUrl", () => {
 });
 
 describe("ATS JSON parsers", () => {
+  it("keeps the shared Greenhouse API URL available to the startup scan", () => {
+    expect(greenhouseBoardUrl("acme")).toBe(
+      "https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true",
+    );
+  });
   it("parses Greenhouse jobs without inventing titles", () => {
     const listings = parseGreenhouseJobs({
       jobs: [

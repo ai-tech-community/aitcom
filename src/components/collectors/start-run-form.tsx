@@ -218,7 +218,9 @@ function PresetStart({
         : undefined;
     const target =
       area?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
-      area?.querySelector<HTMLElement>("input, textarea, select") ??
+      area?.querySelector<HTMLElement>(
+        'input, textarea, select, [role="combobox"]',
+      ) ??
       alertRef.current;
     target?.focus();
   }, [focusTarget]);

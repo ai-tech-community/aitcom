@@ -5,6 +5,7 @@ import { STOP_REASONS } from "@/server/collectors/run-status";
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
+import fr from "../../../messages/fr.json";
 
 function keyPaths(value: unknown, prefix = ""): string[] {
   if (value === null || typeof value !== "object") return [prefix];
@@ -14,6 +15,14 @@ function keyPaths(value: unknown, prefix = ""): string[] {
 }
 
 describe("collectors copy", () => {
+  it("words the job-board failures and choice placeholder in all supported languages", () => {
+    for (const messages of [en, nl, fr]) {
+      expect(messages.collectors.failure.board_not_found).toContain("{host}");
+      expect(messages.collectors.failure.board_status).toContain("{status}");
+      expect(messages.collectors.failure.board_response_invalid).toBeTruthy();
+      expect(messages.collectors.start.chooseOption).toBeTruthy();
+    }
+  });
   it.each(["collectors", "collectorsAbout"] as const)(
     "%s has the same keys in English and Dutch",
     (ns) => {

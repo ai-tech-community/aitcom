@@ -1,0 +1,40 @@
+{
+  "jobs": [
+    {
+      "id": 8126988,
+      "title": "Commercial Counsel",
+      "absolute_url": "https://job-boards.greenhouse.io/greenhouse/jobs/8126988?gh_jid=8126988",
+      "location": {
+        "name": "Eastern Timezone"
+      },
+      "departments": [
+        {
+          "id": 229069,
+          "name": "Legal Team",
+          "child_ids": [],
+          "parent_id": 228809
+        }
+      ],
+      "updated_at": "2026-10-27T12:34:27-04:00",
+      "first_published": "2026-08-24T13:52:04-04:00"
+    },
+    {
+      "id": 8279752,
+      "title": "Enterprise Account Executive",
+      "absolute_url": "https://job-boards.greenhouse.io/greenhouse/jobs/8279752?gh_jid=8279752",
+      "location": {
+        "name": "London, United Kingdom"
+      },
+      "departments": [
+        {
+          "id": 229095,
+          "name": "Account Executive",
+          "child_ids": [],
+          "parent_id": 228804
+        }
+      ],
+      "updated_at": "2026-10-14T11:52:46-04:00",
+      "first_published": "2026-10-14T11:52:46-04:00"
+    }
+  ]
+}

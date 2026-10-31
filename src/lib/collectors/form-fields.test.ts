@@ -134,9 +134,56 @@ describe("formFieldsFor", () => {
       }),
     ).toEqual({
       ok: false,
-      unsupported: ["tags", "mode", "contact", "fixed", "always"],
+      unsupported: ["tags", "contact", "always"],
     });
   });
+
+  it("draws string enums and single string values as choices", () => {
+    const result = formFieldsFor({
+      fields: ["board", "version"].map(hint),
+      inputJsonSchema: z.toJSONSchema(
+        z.object({
+          board: z.enum(["greenhouse", "lever"]),
+          version: z.literal("v1"),
+        }),
+      ),
+    });
+    expect(result).toEqual({
+      ok: true,
+      fields: [
+        {
+          ...column("board"),
+          kind: "choice",
+          options: ["greenhouse", "lever"],
+          required: true,
+        },
+        {
+          ...column("version"),
+          kind: "choice",
+          options: ["v1"],
+          required: true,
+        },
+      ],
+    });
+  });
+
+  it.each(
+    [[], [1, 2], [true, false], ["", "greenhouse"], ["greenhouse", 1]].map(
+      (options) => ({ options }),
+    ),
+  )(
+    "refuses choices the string control cannot safely draw: $options",
+    ({ options }) => {
+      expect(
+        formFieldsFor({
+          fields: [hint("board")],
+          inputJsonSchema: {
+            properties: { board: { type: "string", enum: options } },
+          },
+        }),
+      ).toEqual({ ok: false, unsupported: ["board"] });
+    },
+  );
 
   it("draws a list of objects as rows, with columns in hint order", () => {
     const schema = z.toJSONSchema(z.object({ fields: columnList }));
@@ -282,6 +329,23 @@ describe("formFieldsFor", () => {
 });
 
 describe("coerceInput", () => {
+  it("submits a selected choice and omits an empty optional choice", () => {
+    const choice: FormField = {
+      ...column("board"),
+      kind: "choice",
+      options: ["greenhouse"],
+      required: true,
+    };
+    expect(coerceInput([choice], { board: "greenhouse" })).toEqual({
+      board: "greenhouse",
+    });
+    expect(
+      coerceInput([{ ...choice, required: false }], { board: "" }),
+    ).toEqual({});
+    expect(
+      coerceInput([{ ...choice, options: ["A B "] }], { board: "A B " }),
+    ).toEqual({ board: "A B " });
+  });
   const fields: FormField[] = [
     { ...column("url"), kind: "url", required: true },
     { ...column("count"), kind: "number", integer: true, required: false },

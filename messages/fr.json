@@ -4557,6 +4557,9 @@
     "failure": {
       "not_a_feed": "Cette adresse n’est pas un flux RSS ou Atom. Vérifiez que vous avez copié l’adresse du flux et non celle du site.",
       "feed_status": "Le flux a renvoyé l’erreur {status}. Vérifiez l’adresse ou réessayez plus tard.",
+      "board_not_found": "Ce site d’emploi est introuvable sur {host}. Vérifiez son nom dans l’adresse.",
+      "board_status": "Le site d’emploi a renvoyé l’erreur {status}. Réessayez plus tard.",
+      "board_response_invalid": "Le site d’emploi n’a pas renvoyé de liste d’offres lisible. Réessayez plus tard ou consultez le site de l’entreprise.",
       "https_only": "Seules les adresses commençant par https:// peuvent être collectées.",
       "invalid_address": "Le collecteur a trouvé une adresse web non valide.",
       "redirect_loop": "Une page nous a redirigés trop de fois vers d’autres pages.",
@@ -4593,6 +4596,7 @@
       "next_page_too_long": "Lien de page suivante trop long"
     },
     "start": {
+      "chooseOption": "Choisir une option",
       "firstUseTitle": "Avant votre première collecte",
       "firstUse1": "Utilisez les données recueillies pour vos propres recherches.",
       "firstUse2": "Respectez les conditions de chaque site. Nous suivons les règles de chaque site pour les visiteurs automatisés et ne le consultons pas plus d’une fois par seconde.",

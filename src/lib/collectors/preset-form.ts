@@ -26,6 +26,8 @@ export function splitFields(
 /** A stored or pasted value as the form holds it; a value that does not fit starts empty. */
 export function formValueOf(field: FormField, raw: unknown): FieldValue {
   switch (field.kind) {
+    case "choice":
+      return typeof raw === "string" && field.options.includes(raw) ? raw : "";
     case "checkbox":
       return raw === true || raw === "true";
     case "rows": {

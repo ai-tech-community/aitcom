@@ -93,13 +93,13 @@ describe("recognizePreset", () => {
     ).toBeNull();
   });
 
-  it("sends every address to the Custom page in this slice", () => {
+  it("recognises Greenhouse boards from the live catalog", () => {
     expect(
       recognizePreset(url("https://boards.greenhouse.io/acme"), allPresets()),
     ).toEqual({
-      presetId: "custom-page",
-      input: { url: "https://boards.greenhouse.io/acme" },
-      matched: false,
+      presetId: "greenhouse-board",
+      input: { name: "acme" },
+      matched: true,
     });
   });
 });
