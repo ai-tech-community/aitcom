@@ -249,7 +249,8 @@ export function CollectorRun({ runId }: { runId: string }) {
                 </div>
               )}
               <SectionBody status={statusFromQueries(items)}>
-                {data.collectorId === "job-board" ? (
+                {data.collectorId === "job-board" ||
+                data.collectorId === "personio-jobs" ? (
                   <JobResults key={afterSeq} rows={rows} />
                 ) : (
                   <div className="border-border overflow-x-auto rounded-lg border">

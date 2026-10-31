@@ -4589,6 +4589,7 @@
       "worker_lost": "Mislukt: de run werd twee keer onderbroken en is daarom gestopt."
     },
     "failure": {
+      "personio_feed_unavailable": "We konden geen openbare vacaturefeed vinden voor deze Personio-vacaturesite. Controleer de link; het bedrijf heeft de feed mogelijk niet ingeschakeld.",
       "not_a_feed": "Dit adres is geen RSS- of Atom-feed. Controleer of je het adres van de feed hebt gekopieerd, en niet dat van de website.",
       "feed_status": "De feed antwoordde met fout {status}. Controleer het adres, of probeer het later opnieuw.",
       "board_not_found": "We konden deze vacaturesite niet vinden op {host}. Controleer de naam in het adres.",

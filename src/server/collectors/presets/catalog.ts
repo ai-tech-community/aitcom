@@ -4,6 +4,8 @@ import { recognizeWorkableBoard } from "@/lib/job-boards/workable";
 import { recognizeLeverBoard } from "@/lib/job-boards/lever";
 import { recognizeAshbyBoard } from "@/lib/job-boards/ashby";
 
+import { recognizePersonioBoard } from "@/lib/job-boards/personio";
+import { personioJobs } from "../collectors/personio-jobs";
 import { feedItems } from "../collectors/feed-items";
 import { jobBoard } from "../collectors/job-board";
 import { pageList } from "../collectors/page-list";
@@ -133,6 +135,19 @@ const workable = definePreset(jobBoard, {
   },
 });
 
+const personio = definePreset(personioJobs, {
+  id: "personio-board",
+  group: "jobs",
+  title: personioJobs.title,
+  summary: personioJobs.description,
+  base: { language: "en" },
+  ask: ["url", "language"],
+  recognize: (url) => {
+    const board = recognizePersonioBoard(url);
+    return board ? { url: `${board.origin}/`, language: board.language } : null;
+  },
+});
+
 const feed = definePreset(feedItems, {
   id: "feed",
   group: "research",
@@ -177,6 +192,7 @@ const PRESETS: readonly AnyPreset[] = Object.freeze([
   ashby,
   lever,
   workable,
+  personio,
   feed,
   customPage,
 ]);

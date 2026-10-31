@@ -218,6 +218,9 @@ importers:
       robots-parser:
         specifier: ^3.0.1
         version: 3.0.1
+      saxes:
+        specifier: 6.0.0
+        version: 6.0.0
       server-only:
         specifier: ^0.0.1
         version: 0.0.1

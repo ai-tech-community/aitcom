@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { AnyCollector } from "./collector";
 import { feedItems } from "./collectors/feed-items";
+import { personioJobs } from "./collectors/personio-jobs";
 import { jobBoard } from "./collectors/job-board";
 import { pageList } from "./collectors/page-list";
 
@@ -9,7 +10,12 @@ import { pageList } from "./collectors/page-list";
  * Every data collector, as typed data in code (ADR-0040; same approach as
  * the badge catalog, ADR-0039). Adding a collector = one file + one line.
  */
-const COLLECTORS: readonly AnyCollector[] = [feedItems, pageList, jobBoard];
+const COLLECTORS: readonly AnyCollector[] = [
+  feedItems,
+  pageList,
+  jobBoard,
+  personioJobs,
+];
 
 export function allCollectors(): readonly AnyCollector[] {
   return COLLECTORS;

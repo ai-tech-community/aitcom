@@ -27,6 +27,44 @@ function facade(over: Partial<CollectorRunsDeps> = {}) {
 }
 
 describe("listPresets", () => {
+  it("lists localized Personio fields and disables recognition with its collector", () => {
+    const personio = getCollector("personio-jobs")!;
+    const runs = facade({
+      catalog: {
+        all: () => [personio],
+        get: getCollector,
+        everything: () => [personio],
+      },
+    });
+    for (const [locale, title] of [
+      ["en", "Personio jobs"],
+      ["nl", "Personio-vacatures"],
+      ["fr", "Offres Personio"],
+    ] as const) {
+      expect(
+        runs.listPresets(locale).find((p) => p.id === "personio-board"),
+      ).toMatchObject({
+        title,
+        base: { language: "en" },
+        ask: ["url", "language"],
+      });
+    }
+    expect(
+      runs.recognize("https://demo.jobs.personio.com/xml?language=nl"),
+    ).toEqual({
+      ok: true,
+      presetId: "personio-board",
+      prefill: { url: "https://demo.jobs.personio.com/", language: "nl" },
+      matched: true,
+    });
+    expect(facade().recognize("https://demo.jobs.personio.de/")).toEqual({
+      ok: true,
+      presetId: "custom-page",
+      prefill: { url: "https://demo.jobs.personio.de/" },
+      matched: false,
+    });
+  });
+
   it("offers localized Workable jobs and falls back when the collector is disabled", () => {
     const jobBoard = getCollector("job-board")!;
     const runs = facade({

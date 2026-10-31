@@ -4589,6 +4589,7 @@
       "worker_lost": "Failed: the run was interrupted twice, so it was stopped."
     },
     "failure": {
+      "personio_feed_unavailable": "We couldn't find a public jobs feed for this Personio board. Check the link; the company may not have enabled its feed.",
       "not_a_feed": "This address is not an RSS or Atom feed. Check that you copied the feed's address, not the website's.",
       "feed_status": "The feed answered with error {status}. Check the address, or try again later.",
       "board_not_found": "We couldn’t find this job board on {host}. Check the board name in the address.",

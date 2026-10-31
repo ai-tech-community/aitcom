@@ -225,6 +225,31 @@ beforeEach(() => {
 });
 
 describe("StartRunForm", () => {
+  it("starts a recognized Personio board with the selected feed language and opens results", () => {
+    jobBoardOverview();
+    renderForm(
+      "personio-board",
+      { url: "https://demo.jobs.personio.com/", language: "de" },
+      true,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Personio jobs" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Feed language" }),
+    ).toHaveTextContent("de");
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledWith({
+      presetId: "personio-board",
+      input: { url: "https://demo.jobs.personio.com/", language: "de" },
+      acknowledged: false,
+    });
+    act(() => h.options.onSuccess?.({ ok: true, runId: "personio-result" }));
+    expect(h.push).toHaveBeenCalledWith(
+      "/dashboard/collectors/runs/personio-result",
+    );
+  });
+
   it("starts a recognized Workable board without selectors and opens its result run", () => {
     jobBoardOverview();
     renderForm("workable-board", { name: "careers" }, true);

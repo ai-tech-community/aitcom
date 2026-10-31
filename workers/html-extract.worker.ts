@@ -3,6 +3,7 @@ import {
   extractList,
   extractText,
 } from "../src/server/collectors/extract/extract-list";
+import { extractXml } from "../src/server/collectors/extract/extract-xml";
 import {
   ExtractError,
   type WorkerMessage,
@@ -47,7 +48,11 @@ port.on("message", (message: unknown) => {
       id,
       ok: true,
       result:
-        "kind" in spec ? extractText(html, spec) : extractList(html, spec),
+        "kind" in spec
+          ? spec.kind === "xml"
+            ? extractXml(html)
+            : extractText(html, spec)
+          : extractList(html, spec),
     });
   } catch (error) {
     send({

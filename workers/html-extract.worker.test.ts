@@ -62,6 +62,22 @@ afterAll(async () => {
 });
 
 describe("html-extract worker bundle", () => {
+  it("decodes XML in the self-contained bounded worker", async () => {
+    const reply = nextMessage(worker);
+    worker.postMessage({
+      id: 50,
+      html: "<root><id>9007199254740993</id><body><![CDATA[<p>text</p>]]></body></root>",
+      spec: { kind: "xml", baseUrl: "https://example.com/xml" },
+    } satisfies WorkerRequest);
+    const answer = await reply;
+    expect(answer).toMatchObject({ id: 50, ok: true });
+    if (!("ok" in answer) || !answer.ok)
+      throw new Error("worker did not decode XML");
+    expect(JSON.parse(answer.result.rows[0]!.json!)).toEqual({
+      root: { id: "9007199254740993", body: "<p>text</p>" },
+    });
+  });
+
   it("extracts encoded full descriptions in the self-contained worker", async () => {
     const reply = nextMessage(worker);
     worker.postMessage({

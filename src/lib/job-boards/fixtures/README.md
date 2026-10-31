@@ -24,3 +24,9 @@ The documented URL redirected to the public widget account endpoint. Only
 title, shortcode, posting/application URLs, publication/creation dates, flat
 location fields, department, employment type and telecommuting were retained.
 Descriptions use synthetic test cases. These saved postings may close later.
+
+`personio.xml` contains the first two positions from the public English feed
+`https://demo.jobs.personio.de/xml?language=en`, retrieved 2026-10-31. The
+jobDescriptions block was omitted to keep this fixture small. Titles, offices,
+IDs, employment/schedule and creation metadata are unchanged. Synthetic tests
+exercise CDATA, escaped HTML, optional fields and malformed XML.

@@ -9,6 +9,7 @@ import type { StopReason } from "./run-status";
 export type FailureCode =
   | "not_a_feed"
   | "feed_status"
+  | "personio_feed_unavailable"
   | "board_not_found"
   | "board_status"
   | "board_response_invalid"
@@ -36,6 +37,7 @@ export type FailureCode =
 export const FAILURE_CODES = [
   "not_a_feed",
   "feed_status",
+  "personio_feed_unavailable",
   "board_not_found",
   "board_status",
   "board_response_invalid",

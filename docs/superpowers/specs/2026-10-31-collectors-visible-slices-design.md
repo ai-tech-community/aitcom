@@ -3,7 +3,7 @@
 **Status:** Greenhouse ([PR #542](https://github.com/ai-tech-community/aitcom/pull/542)),
 Ashby/job details ([PR #543](https://github.com/ai-tech-community/aitcom/pull/543))
 and Lever ([PR #544](https://github.com/ai-tech-community/aitcom/pull/544)) are merged.
-Workable is reviewed locally and ready for the owner's app check.
+Workable and Personio are reviewed locally and ready for the owner's app check.
 
 ## Delivery agreement
 
@@ -184,3 +184,18 @@ Owner check: refresh Data collectors, select **Workable jobs**, enter `careers`
 and start a fresh run. Also paste `https://apply.workable.com/huggingface/`.
 Inspect descriptions, application links, publication dates, log/history and
 CSV/JSON. The next planned source after owner review is Personio (slice 5).
+
+## Personio local delivery
+
+The owner's “ok next” instruction continued to Personio without publishing
+Workable. Branch `feat/collector-personio` includes both local slices. Personio
+adds a board-link/language form, strict .de/.com recognition, a bounded XML
+worker operation and the common job details/history/downloads. Creation times
+are not presented as publication dates. Descriptions absent in the chosen
+language remain empty with the existing explanation.
+
+229 focused tests, type-check, targeted lint/format and final Standards/Spec
+reviews passed. Guarded stub-storage replays returned four demo jobs for each
+domain and a valid empty feed. Select German on the demo board to get all four
+descriptions. No push or database write was performed. The next planned slice
+after owner review is Hacker News (slice 6).

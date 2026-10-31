@@ -26,6 +26,22 @@ const url = (href: string) => new URL(href);
 afterEach(() => vi.restoreAllMocks());
 
 describe("recognizePreset", () => {
+  it("recognizes a Personio XML/job link with domain and language intact", () => {
+    expect(
+      recognizePreset(
+        url("https://demo.jobs.personio.com/xml?language=de"),
+        allPresets(),
+      ),
+    ).toEqual({
+      presetId: "personio-board",
+      input: { url: "https://demo.jobs.personio.com/", language: "de" },
+      matched: true,
+    });
+    expect(
+      recognizePreset(url("https://demo.jobs.personio.de/admin"), allPresets()),
+    ).toMatchObject({ presetId: "custom-page", matched: false });
+  });
+
   it("recognizes Workable company boards but leaves anonymous job links custom", () => {
     expect(
       recognizePreset(
