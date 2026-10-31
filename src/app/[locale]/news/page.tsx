@@ -58,9 +58,15 @@ export async function generateMetadata({
   const t = await getTranslations("newsPage");
   const params = await searchParams;
   const sector = parseNewsSector(params.sector);
+  const title = t("metaTitle");
+  const description = t("metaDescription");
   const base = {
-    title: t("metaTitle"),
-    description: t("metaDescription"),
+    title,
+    description,
+    // Own social tags, so the site-wide share image does not replace this
+    // page's technology-and-business wording.
+    openGraph: { title, description },
+    twitter: { title, description },
     robots: newsGameRobots(),
   };
   if (!sector) return base;

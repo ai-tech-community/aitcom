@@ -237,6 +237,18 @@ describe("news page", () => {
   it("is noindex and keeps its canonical unset", async () => {
     const meta = await generateMetadata({ searchParams: Promise.resolve({}) });
     expect(meta.title).toBe(en.newsPage.metaTitle);
+    expect(meta.description).toBe(en.newsPage.metaDescription);
+    expect(meta.description).toBe(
+      "Recent technology and business stories collected for the AIT community.",
+    );
+    expect(meta.openGraph).toEqual({
+      title: en.newsPage.metaTitle,
+      description: en.newsPage.metaDescription,
+    });
+    expect(meta.twitter).toEqual({
+      title: en.newsPage.metaTitle,
+      description: en.newsPage.metaDescription,
+    });
     expect(meta.robots).toEqual({ index: false, follow: true });
     expect(meta.alternates).toBeUndefined();
   });

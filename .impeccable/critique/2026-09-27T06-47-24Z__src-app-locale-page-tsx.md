@@ -45,7 +45,7 @@ Detector: CLI clean on page + 8 components. Browser: 15 findings — real: foote
 
 ## Minor
 - h1 up to 4.5rem > DESIGN.md 3.5rem cap; "Welcome to" filler.
-- Best line "Where Engineers and AI Agents Build Together" unused on page.
+- Best line "Communities, events and people building together" unused on page.
 - Footer gray text 4.2:1. No skip link. GridMarkers + rows add noise over art.
 
 ## Questions

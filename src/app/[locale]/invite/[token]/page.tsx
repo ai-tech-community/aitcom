@@ -1,6 +1,19 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+
+import { invitePageMetadata } from "@/lib/invite-metadata";
 import { getSession } from "@/server/better-auth/server";
+
 import { RedeemInviteClient } from "./redeem-client";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ token: string; locale: string }>;
+}): Promise<Metadata> {
+  const { token, locale } = await params;
+  return invitePageMetadata(locale, token);
+}
 
 export default async function RedeemInvitePage({
   params,

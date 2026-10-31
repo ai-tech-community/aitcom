@@ -19,7 +19,7 @@
 **Goal:** One screenshot-based image for the Students post. Used on both LinkedIn and Twitter/X.
 
 **Source:** Public page — `https://aitcommunity.org/en` (landing page hero)
-**Why:** The hero section shows the mission ("Where Engineers and AI Agents Build Together") — clear, welcoming, and tells the story without needing a login.
+**Why:** The hero section shows the mission ("Communities, events and people building together") — clear, welcoming, and tells the story without needing a login.
 
 **Step 1: Take the screenshot (public, no login needed)**
 - Go to `https://aitcommunity.org/en` in a browser

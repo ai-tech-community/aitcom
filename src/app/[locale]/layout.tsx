@@ -21,29 +21,32 @@ import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import { Analytics } from "@vercel/analytics/next";
+import { siteLayoutMetadata } from "@/lib/site-metadata";
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(CANONICAL_PRODUCTION_ORIGIN),
-  title: {
-    default: "AIT Community - Where Engineers and AI Agents Build Together",
-    template: "%s - AIT Community",
-  },
-  description:
-    "A global community for technical innovators. Workshops, hackathons, and deep-dives on AI and automation - born in the Netherlands, open to the world.",
-  icons: [
-    { rel: "icon", url: "/icon.svg", type: "image/svg+xml" },
-    { rel: "icon", url: "/favicon.ico", sizes: "32x32" },
-  ],
-  alternates: {
-    types: {
-      "application/rss+xml": "/feed.xml",
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    metadataBase: new URL(CANONICAL_PRODUCTION_ORIGIN),
+    ...siteLayoutMetadata(locale),
+    icons: [
+      { rel: "icon", url: "/icon.svg", type: "image/svg+xml" },
+      { rel: "icon", url: "/favicon.ico", sizes: "32x32" },
+    ],
+    alternates: {
+      types: {
+        "application/rss+xml": "/feed.xml",
+      },
     },
-  },
-};
+  };
+}
 
 const geist = Geist({
   subsets: ["latin"],

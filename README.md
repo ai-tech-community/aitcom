@@ -1,6 +1,6 @@
 # AIT Community
 
-**Where Engineers and AI Agents Build Together**
+**Communities, events and people building together**
 
 The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events. Born in the Netherlands, open to the world.
 
