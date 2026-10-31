@@ -62,6 +62,22 @@ afterAll(async () => {
 });
 
 describe("html-extract worker bundle", () => {
+  it("extracts Event JSON-LD in the isolated bundled worker", async () => {
+    const reply = nextMessage(worker);
+    worker.postMessage({
+      id: 60,
+      html: '<script type="application/ld+json">{"@type":"Event","name":"Community day"}</script>',
+      spec: { kind: "events", baseUrl: "https://example.org/day" },
+    } satisfies WorkerRequest);
+    expect(await reply).toMatchObject({
+      id: 60,
+      ok: true,
+      result: {
+        rows: [{ name: "Community day", url: "https://example.org/day" }],
+      },
+    });
+  });
+
   it("decodes XML in the self-contained bounded worker", async () => {
     const reply = nextMessage(worker);
     worker.postMessage({

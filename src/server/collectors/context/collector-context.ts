@@ -6,6 +6,7 @@ import {
   extractListVia,
   extractTextVia,
   parseXmlVia,
+  extractEventsVia,
 } from "./extract-capability";
 import { decodeHtml } from "./html-charset";
 import { createRobotsCheck } from "./robots";
@@ -190,6 +191,7 @@ export function createCollectorContext(deps: ContextDeps): {
     log: deps.onLog,
     extractList: extractListVia(deps.extractor, clock),
     extractText: extractTextVia(deps.extractor, clock),
+    extractEvents: extractEventsVia(deps.extractor, clock),
     parseXml: parseXmlVia(deps.extractor, clock),
     async fetch(rawUrl, opts) {
       try {

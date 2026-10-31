@@ -12,6 +12,7 @@ import type { CatalogTool } from "./catalog-meta";
 // All scopes, so scope-conditional registration (if any ever appears) is included.
 const ALL_SCOPES = [
   "read",
+  "collect",
   "contribute",
   "self-profile",
   "commission:claim-cell",
@@ -51,7 +52,7 @@ async function loadToolCatalog(): Promise<CatalogTool[]> {
   const registration = await listServerTools(createRegistrationMcpServer());
   const authenticated = await listServerTools(
     createMcpServer(createStubCaller(), {
-      ownerId: null,
+      ownerId: "tool-catalog",
       agentId: "tool-catalog",
       scopes: ALL_SCOPES,
     }),

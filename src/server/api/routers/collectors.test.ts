@@ -29,10 +29,14 @@ vi.mock("@/server/payload", () => ({ getPayloadClient: vi.fn() }));
 
 import { createCaller } from "@/server/api/root";
 
-function caller(userId: string | null = "user-1") {
+function caller(
+  userId: string | null = "user-1",
+  role = "user",
+  db: unknown = {},
+) {
   return createCaller({
-    db: {},
-    session: userId ? ({ user: { id: userId } } as never) : null,
+    db,
+    session: userId ? ({ user: { id: userId, role } } as never) : null,
     headers: new Headers(),
   } as never);
 }
@@ -125,6 +129,7 @@ describe("collectors router", () => {
       },
       recentRuns: [run],
       usage: { runsToday: 1, runsPerDay: 20 },
+      canManageOptOuts: false,
       needsAcknowledgement: false,
     });
   });
@@ -244,5 +249,73 @@ describe("collectors router", () => {
       afterSeq: 49,
       limit: 50,
     });
+  });
+});
+
+describe("staff opt-out permissions", () => {
+  it("denies every opt-out operation to ordinary members", async () => {
+    for (const op of [
+      () => caller().collectors.optOuts(),
+      () =>
+        caller().collectors.addOptOut({
+          domain: "example.org",
+          reason: "Owner request",
+        }),
+      () => caller().collectors.removeOptOut({ domain: "example.org" }),
+    ]) {
+      await expect(op()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
+  });
+  it("enforces the feature flag for staff reads and mutations", async () => {
+    h.enabled = false;
+    for (const op of [
+      () => caller("staff", "admin").collectors.optOuts(),
+      () =>
+        caller("staff", "admin").collectors.addOptOut({
+          domain: "example.org",
+          reason: "Owner request",
+        }),
+      () =>
+        caller("staff", "admin").collectors.removeOptOut({
+          domain: "example.org",
+        }),
+    ]) {
+      await expect(op()).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+  });
+  it("canonicalizes writes and supports listing and removing using the guarded table", async () => {
+    const builder = {
+      from: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([]),
+      values: vi.fn().mockReturnThis(),
+      onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+      where: vi.fn().mockResolvedValue(undefined),
+    };
+    const db = {
+      select: () => builder,
+      insert: () => builder,
+      delete: () => builder,
+    };
+    const c = caller("staff", "admin", db);
+    expect(
+      (await c.collectors.overview({ locale: "en" })).canManageOptOuts,
+    ).toBe(true);
+    await c.collectors.addOptOut({
+      domain: " Example.ORG. ",
+      reason: " Owner request ",
+    });
+    expect(builder.values).toHaveBeenCalledWith({
+      domain: "example.org",
+      reason: "Owner request",
+    });
+    expect(await c.collectors.optOuts()).toEqual([]);
+    await c.collectors.removeOptOut({ domain: "example.org" });
+    expect(builder.where).toHaveBeenCalledOnce();
+    await expect(
+      c.collectors.addOptOut({
+        domain: "https://example.org",
+        reason: "request",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });

@@ -14,6 +14,7 @@ describe("filterScopesByManifest (security gate)", () => {
     "contribute",
     "contribute:forum",
     "contribute:feed",
+    "collect",
     "commission",
     "commission:accept",
     "commission:polish-text",

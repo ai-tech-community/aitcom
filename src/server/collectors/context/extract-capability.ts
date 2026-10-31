@@ -108,3 +108,15 @@ async function guardedExtract(
     });
   }
 }
+
+/** JSON-LD uses the same per-page deadline and heap bound as every page read. */
+export function extractEventsVia(
+  extractor: PageExtractor,
+  clock: RunClock,
+): CollectorContext["extractEvents"] {
+  return (page) =>
+    guardedExtract(extractor, clock, page.html, {
+      kind: "events",
+      baseUrl: page.url,
+    });
+}

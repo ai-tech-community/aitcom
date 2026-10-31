@@ -44,11 +44,18 @@ export type ExtractTextSpec = {
   decodeEntities: boolean;
 };
 
+export type ExtractEventsSpec = { kind: "events"; baseUrl: string };
+
 export type ExtractXmlSpec = { kind: "xml"; baseUrl: string };
 
-export type ExtractRequestSpec = ExtractSpec | ExtractTextSpec | ExtractXmlSpec;
+export type ExtractRequestSpec =
+  | ExtractSpec
+  | ExtractTextSpec
+  | ExtractXmlSpec
+  | ExtractEventsSpec;
 
 export type ExtractResult = {
+  eventIssues?: { malformedScripts: number; invalidEvents: number };
   rows: Record<string, string | null>[];
   /** The next-page link's address, resolved; null when there is none. */
   nextUrl: string | null;

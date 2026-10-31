@@ -1,4 +1,5 @@
 "use client";
+import { CollectorAgentAccess } from "./collector-agent-access";
 
 import { resolveLocale } from "@/i18n/messages";
 
@@ -74,6 +75,11 @@ export function CollectorsLanding() {
                     </>
                   ) : null}
                 </Link>
+                {run.origin === "mcp" ? (
+                  <span className="text-muted-foreground text-xs">
+                    {t("run.agentOrigin")}
+                  </span>
+                ) : null}
                 <RunStatusBadge
                   status={run.status}
                   stopReason={run.stopReason}
@@ -87,6 +93,7 @@ export function CollectorsLanding() {
           })}
         </ul>
       </SectionBody>
+      <CollectorAgentAccess />
     </div>
   );
 }

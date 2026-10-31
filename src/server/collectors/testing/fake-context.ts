@@ -1,9 +1,11 @@
+import { extractEvents } from "../extract/extract-events";
 import type { CollectorContext } from "../collector";
 import { toCollectorResponse } from "../context/collector-context";
 import {
   extractListVia,
   extractTextVia,
   parseXmlVia,
+  extractEventsVia,
   type PageExtractor,
 } from "../context/extract-capability";
 import { extractXml } from "../extract/extract-xml";
@@ -32,7 +34,9 @@ export function fakeContext(pages: Record<string, FakePage>) {
       "kind" in spec
         ? spec.kind === "xml"
           ? extractXml(html)
-          : extractText(html, spec)
+          : spec.kind === "events"
+            ? extractEvents(html, spec)
+            : extractText(html, spec)
         : extractList(html, spec),
   };
   const clock = { isOver: () => signal.aborted };
@@ -43,6 +47,7 @@ export function fakeContext(pages: Record<string, FakePage>) {
     },
     extractList: extractListVia(extractor, clock),
     extractText: extractTextVia(extractor, clock),
+    extractEvents: extractEventsVia(extractor, clock),
     parseXml: parseXmlVia(extractor, clock),
     async fetch(url, opts) {
       requests.push({ url, accept: opts?.accept });

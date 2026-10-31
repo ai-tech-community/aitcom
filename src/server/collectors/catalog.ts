@@ -1,3 +1,6 @@
+import { eventPage } from "./collectors/event-page";
+import { hackerNews } from "./collectors/hacker-news";
+import { githubRepositories } from "./collectors/github-repositories";
 import { z } from "zod";
 
 import type { AnyCollector } from "./collector";
@@ -15,6 +18,9 @@ const COLLECTORS: readonly AnyCollector[] = [
   pageList,
   jobBoard,
   personioJobs,
+  hackerNews,
+  githubRepositories,
+  eventPage,
 ];
 
 export function allCollectors(): readonly AnyCollector[] {

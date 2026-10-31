@@ -24,6 +24,10 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
+vi.mock("./collector-agent-access", () => ({
+  CollectorAgentAccess: () => null,
+}));
+
 import { CollectorsLanding } from "./collectors-landing";
 
 const run = {
@@ -218,4 +222,10 @@ describe("CollectorsLanding", () => {
     expect(screen.queryByRole("list")).toBeNull();
     expect(document.body.textContent).not.toContain("feed-items");
   });
+});
+
+it("marks an agent-started recent run visibly", () => {
+  withData([{ ...run, origin: "mcp" }]);
+  renderLanding();
+  expect(screen.getByText("Agent")).toBeInTheDocument();
 });

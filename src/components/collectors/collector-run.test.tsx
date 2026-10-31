@@ -135,6 +135,22 @@ describe("runPollInterval", () => {
 });
 
 describe("CollectorRun", () => {
+  it("shows the stored expiry as a localized exact date", () => {
+    h.run.mockReturnValue(ok(base));
+    const { container } = renderRun();
+    const expiry = container.querySelector(
+      `time[datetime="${base.expiresAt}"]`,
+    );
+    expect(expiry).toHaveTextContent(
+      new Intl.DateTimeFormat("en", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }).format(new Date(base.expiresAt)),
+    );
+    expect(screen.getByText(/Deleted on/)).toBeInTheDocument();
+  });
+
   it("shows Personio descriptions in the common details panel", () => {
     h.run.mockReturnValue(
       ok({ ...base, collectorId: "personio-jobs", presetId: "personio-board" }),

@@ -1,4 +1,4 @@
-import { and, asc, eq, lt, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, lt, or, sql } from "drizzle-orm";
 
 import type { db as appDb } from "@/server/db";
 import { collectorItems, collectorRuns } from "@/server/db/schema";
@@ -77,11 +77,14 @@ export async function claimNextRun(
       .select({ id: collectorRuns.id })
       .from(collectorRuns)
       .where(
-        or(
-          eq(collectorRuns.status, "queued"),
-          and(
-            eq(collectorRuns.status, "running"),
-            lt(collectorRuns.leaseUntil, now),
+        and(
+          gt(collectorRuns.expiresAt, now),
+          or(
+            eq(collectorRuns.status, "queued"),
+            and(
+              eq(collectorRuns.status, "running"),
+              lt(collectorRuns.leaseUntil, now),
+            ),
           ),
         ),
       )

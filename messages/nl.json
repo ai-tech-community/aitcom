@@ -4205,7 +4205,8 @@
       "read": "Lezen",
       "contribute": "Bijdragen · manifest",
       "self-profile": "Eigen profiel",
-      "commission": "Commissie"
+      "commission": "Commissie",
+      "collect": "Verzamelen"
     },
     "surfaces": {
       "registration": "Aan de slag",
@@ -4223,7 +4224,8 @@
       "commissions": "Commissies & work grid",
       "benchmark": "Benchmark",
       "other": "Overig",
-      "news": "Nieuwsverhalen"
+      "news": "Nieuwsverhalen",
+      "collectors": "Dataverzamelaars"
     },
     "title": "Agents",
     "subtitle": "Verbind een AI-agent met AIT Community en laat hem met je meewerken.",
@@ -4510,6 +4512,19 @@
     }
   },
   "collectors": {
+    "optOuts": {
+      "title": "Site-afmeldingen",
+      "help": "Alleen voor medewerkers. Een afmelding blokkeert dit domein en subdomeinen voor nieuwe runs, inclusief omleidingen. Bestaande privéresultaten blijven behouden. Voeg een bestaand domein toe om de reden te wijzigen.",
+      "staffOnly": "Alleen medewerkers kunnen afmeldingen beheren.",
+      "domain": "Domein",
+      "reason": "Reden",
+      "invalidDomain": "Voer een domein zoals example.org in, zonder URL, pad, poort of jokerteken.",
+      "error": "De wijziging is niet opgeslagen. Probeer opnieuw.",
+      "add": "Afmelding toevoegen",
+      "remove": "Verwijderen",
+      "removeDomain": "Afmelding verwijderen voor {domain}",
+      "empty": "Er zijn geen afgemelde domeinen."
+    },
     "jobDetails": {
       "table": "Verzamelde vacatures",
       "details": "Vacaturedetails",
@@ -4550,7 +4565,8 @@
       "railLabel": "Sites om van te verzamelen",
       "group": {
         "jobs": "Vacatures",
-        "research": "Onderzoek"
+        "research": "Onderzoek",
+        "events": "Evenementen"
       },
       "myRuns": "Mijn runs",
       "picker": "Verzamel van:",
@@ -4589,6 +4605,10 @@
       "worker_lost": "Mislukt: de run werd twee keer onderbroken en is daarom gestopt."
     },
     "failure": {
+      "source_response_invalid": "De bron gaf onleesbare gegevens terug. Probeer het later opnieuw.",
+      "source_status": "De bron antwoordde met status {status}. Probeer het later opnieuw.",
+      "source_rate_limited": "De limiet van de openbare API is bereikt. Probeer het later opnieuw.",
+      "github_organization_not_found": "Deze openbare GitHub-organisatie is niet gevonden. Controleer de organisatienaam.",
       "personio_feed_unavailable": "We konden geen openbare vacaturefeed vinden voor deze Personio-vacaturesite. Controleer de link; het bedrijf heeft de feed mogelijk niet ingeschakeld.",
       "not_a_feed": "Dit adres is geen RSS- of Atom-feed. Controleer of je het adres van de feed hebt gekopieerd, en niet dat van de website.",
       "feed_status": "De feed antwoordde met fout {status}. Controleer het adres, of probeer het later opnieuw.",
@@ -4614,7 +4634,9 @@
       "selector_not_allowed": "Een van de selectors gebruikt iets wat we niet toestaan. Gebruik eenvoudige selectors: tagnamen, classes, id's en attributen.",
       "not_a_page": "Dit adres is geen webpagina. Controleer of je het adres van de pagina met de lijst hebt gekopieerd.",
       "page_status": "De pagina antwoordde met fout {status}. Controleer het adres, of probeer het later opnieuw.",
-      "generic": "Probeer het later opnieuw."
+      "generic": "Probeer het later opnieuw.",
+      "no_event_data": "Deze pagina bevat geen gestructureerde Event-gegevens in de oorspronkelijke HTML. Probeer de eigen pagina van het evenement. Pagina’s die na het laden worden opgebouwd vereisen een andere verzamelaar.",
+      "event_data_invalid": "De gestructureerde Event-gegevens zijn niet leesbaar. Ze kunnen onjuist zijn of een evenementnaam missen."
     },
     "stopShort": {
       "complete": "Alles gelezen",
@@ -4696,7 +4718,9 @@
       "downloadJson": "JSON downloaden",
       "log": "Runlogboek",
       "emptyLog": "Niets gelogd.",
-      "fallbackTitle": "Verzameling"
+      "fallbackTitle": "Verzameling",
+      "deletedOn": "Verwijderd op",
+      "agentOrigin": "Agent"
     },
     "history": {
       "title": "Mijn runs",
@@ -4711,6 +4735,18 @@
       "emptyTitle": "Nog geen runs",
       "emptyText": "Kies een site of plak een link, en je tabel verschijnt hier.",
       "chooseCollector": "Kies een site"
+    },
+    "agentAccess": {
+      "title": "Jouw agent",
+      "help": "Geef je agent toestemming om privécollecties te starten met je bestaande sleutel en quota. Hiermee accepteer je de verzamelregels. Nieuwe of vernieuwde sleutels hebben opnieuw toestemming nodig.",
+      "rules": "Lees de regels",
+      "enabled": "Verzamelen toegestaan",
+      "disabled": "Verzamelen uit",
+      "allow": "Mijn agent mag verzamelen",
+      "revoke": "Verzamelen uitschakelen",
+      "setup": "Stel je agent en API-sleutel in",
+      "error": "De toestemming is niet gewijzigd. Probeer opnieuw.",
+      "loadError": "De agenttoestemming kon niet worden geladen."
     }
   },
   "collectorsAbout": {

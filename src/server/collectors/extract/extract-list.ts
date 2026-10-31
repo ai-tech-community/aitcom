@@ -211,7 +211,7 @@ function parseBaseUrl(raw: string): URL {
  * nesting inside a `<template>` (whose content parse5 keeps in a fragment
  * node with no attributes) is counted too; only elements add depth.
  */
-function assertDepthWithin(root: DocumentNode, maxDepth: number): void {
+export function assertDepthWithin(root: DocumentNode, maxDepth: number): void {
   const stack: { node: TreeNode; depth: number }[] = [{ node: root, depth: 0 }];
   for (let entry = stack.pop(); entry !== undefined; entry = stack.pop()) {
     if (entry.depth > maxDepth) {

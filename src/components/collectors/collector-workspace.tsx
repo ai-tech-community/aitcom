@@ -238,13 +238,21 @@ export function CollectorWorkspace({
         </details>
 
         {overview.data ? (
-          <div className="border-border flex flex-col gap-1.5 border-t pt-3 text-[13px]">
+          <div className="border-border flex flex-col gap-1.5 border-t pt-3 text-sm">
             <span className="text-muted-foreground font-mono text-xs">
               {t("usage", {
                 used: overview.data.usage.runsToday,
                 limit: overview.data.usage.runsPerDay,
               })}
             </span>
+            {overview.data.canManageOptOuts ? (
+              <Link
+                href="/dashboard/collectors/opt-outs"
+                className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+              >
+                {t("optOuts.title")}
+              </Link>
+            ) : null}
             <Link
               href={COLLECTOR_ABOUT_PATH}
               className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"

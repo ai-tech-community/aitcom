@@ -184,6 +184,11 @@ export function CollectorRun({ runId }: { runId: string }) {
                   </>
                 ) : null}
               </h2>
+              {data.origin === "mcp" ? (
+                <span className="text-muted-foreground text-xs">
+                  {t("run.agentOrigin")}
+                </span>
+              ) : null}
               <span role="status">
                 <RunStatusBadge
                   status={data.status}
@@ -202,7 +207,15 @@ export function CollectorRun({ runId }: { runId: string }) {
                 </>
               ) : null}
               {" · "}
-              {t("run.deleted")} <RelativeTime date={data.expiresAt} />
+              {t("run.deletedOn")}{" "}
+              <time dateTime={data.expiresAt}>
+                {new Intl.DateTimeFormat(locale, {
+                  dateStyle: "long",
+                  timeStyle: "short",
+                  timeZone: "UTC",
+                }).format(new Date(data.expiresAt))}{" "}
+                UTC
+              </time>
             </p>
           </div>
 
