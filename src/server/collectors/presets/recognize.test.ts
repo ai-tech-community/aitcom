@@ -26,6 +26,17 @@ const url = (href: string) => new URL(href);
 afterEach(() => vi.restoreAllMocks());
 
 describe("recognizePreset", () => {
+  it.each([
+    ["https://jobs.lever.co/acme", { name: "acme" }],
+    ["https://jobs.eu.lever.co/acme", { name: "acme", board: "lever-eu" }],
+  ])("recognizes %s in the real Lever preset", (address, input) => {
+    expect(recognizePreset(url(address), allPresets())).toEqual({
+      presetId: "lever-board",
+      input,
+      matched: true,
+    });
+  });
+
   it("recognises Ashby with the real preset catalog and leaves near misses custom", () => {
     expect(
       recognizePreset(url("https://jobs.ashbyhq.com/Ashby"), allPresets()),

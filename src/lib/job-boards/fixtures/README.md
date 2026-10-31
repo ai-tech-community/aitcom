@@ -11,3 +11,9 @@ It is a saved response sample, not a promise that these roles are still open.
 title, location, department, publishedAt, jobUrl, applyUrl and isListed were
 retained. Descriptions and compensation were omitted. These jobs are saved
 parser examples; their current availability can change.
+
+`lever.json` contains the first posting from the public global `leverdemo` board
+(`GET https://api.lever.co/v0/postings/leverdemo?mode=json&limit=1&skip=0`),
+retrieved 2026-10-31. Only id, text, categories, createdAt, workplaceType,
+hostedUrl and applyUrl were retained. Descriptions use synthetic test examples
+to cover each section without storing the full public demo advert.

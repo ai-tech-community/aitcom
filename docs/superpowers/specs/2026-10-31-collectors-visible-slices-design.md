@@ -1,6 +1,8 @@
 # Data collectors: visible delivery slices
 
-**Status:** slice 1 merged in [PR #542](https://github.com/ai-tech-community/aitcom/pull/542) after all checks passed. Slice 2 (Ashby) reviewed locally; owner app check pending.
+**Status:** Greenhouse merged in [PR #542](https://github.com/ai-tech-community/aitcom/pull/542).
+Ashby and full job details merged in [PR #543](https://github.com/ai-tech-community/aitcom/pull/543).
+Lever is reviewed locally and ready for the owner's app check.
 
 ## Delivery agreement
 
@@ -138,3 +140,25 @@ type-check, lint and formatting passed; a guarded public API replay returned
 issues. Review plan:
 `../plans/2026-10-31-collector-ashby.md`. Owner route after checkout:
 `/dashboard/collectors/new/ashby-board`, board name `Ashby`.
+
+## Ashby/details merge and Lever handoff
+
+On 2026-10-31 the owner authorized PR creation, merge and continuation.
+PR #543 merged as `762b205e` after all GitHub checks (full tests, lint/type-check,
+format and build) and the Vercel preview passed. CI identified a stale
+five-column expectation in the local-worker tests; its exact row was updated
+for the richer schema and all five tests passed locally. A preview font-loader
+failure in unchanged magazine code cleared on a preview retry without a source
+change. No database writes were performed by local verification.
+
+Slice 3, Lever, is implemented and reviewed on `feat/collector-lever`, based
+on that merged main. It supports global/EU board links, complete descriptions,
+five-page bounded pagination, existing history/details and CSV/JSON. All 121
+focused tests, type-check, targeted lint/format and independent Standards/Spec
+reviews passed. Guarded stub-storage API replays returned 10 global and 324 EU
+jobs. The rebase preserved the reviewed feature diff byte-for-byte.
+
+Owner review: refresh `/dashboard/collectors`, choose **Lever jobs** and enter
+`leverdemo`, or paste `https://jobs.eu.lever.co/leverdemo`. Inspect View details,
+application links, run log/history and CSV/JSON. Lever remains unpublished;
+next planned source after owner review is Workable (slice 4).

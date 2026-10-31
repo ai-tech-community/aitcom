@@ -8,6 +8,126 @@ const url = "https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true";
 const input = { board: "greenhouse" as const, name: "acme" };
 
 describe("job-board collector", () => {
+  const leverUrl = (skip = 0, eu = false) =>
+    `https://api.${eu ? "eu." : ""}lever.co/v0/postings/acme?mode=json&limit=100&skip=${skip}`;
+  const leverJob = (id: number) => ({
+    text: `Job ${id}`,
+    hostedUrl: `https://jobs.lever.co/acme/${id}`,
+  });
+
+  it("collects Lever's complete description, lists and closing without additional fetches", async () => {
+    const { ctx, requests, logs } = fakeContext({
+      [leverUrl()]: {
+        body: JSON.stringify([
+          {
+            ...leverJob(1),
+            descriptionPlain: "Build <tools>",
+            lists: [
+              {
+                text: "Skills",
+                content:
+                  "<li>TypeScript</li><li>Curiosity</li><script>bad()</script>",
+              },
+            ],
+            additionalPlain: "Join us",
+            applyUrl: "https://jobs.lever.co/acme/1/apply",
+            workplaceType: "remote",
+          },
+        ]),
+      },
+    });
+    const rows = await collectAll(
+      jobBoard.run({ board: "lever", name: "acme" }, ctx),
+    );
+    expect(rows[0]).toMatchObject({
+      description:
+        "Build <tools>\n\nSkills\n\nTypeScript\n\nCuriosity\n\nJoin us",
+      workplaceType: "Remote",
+      applyUrl: "https://jobs.lever.co/acme/1/apply",
+    });
+    expect(rows[0]).not.toHaveProperty("descriptionMarkup");
+    expect(jobBoard.itemSchema.safeParse(rows[0]).success).toBe(true);
+    expect(requests).toHaveLength(1);
+    expect(logs).toEqual(["Page 1: 1 job."]);
+  });
+
+  it("paginates using the raw page length and deduplicates overlapping postings", async () => {
+    const first = Array.from({ length: 100 }, (_, i) => leverJob(i));
+    const { ctx, requests } = fakeContext({
+      [leverUrl()]: { body: JSON.stringify(first) },
+      [leverUrl(100)]: { body: JSON.stringify(first) },
+      [leverUrl(200)]: { body: JSON.stringify([leverJob(100)]) },
+    });
+    const rows = await collectAll(
+      jobBoard.run({ board: "lever", name: "acme" }, ctx),
+    );
+    expect(rows).toHaveLength(101);
+    expect(requests.map((r) => r.url)).toEqual([
+      leverUrl(),
+      leverUrl(100),
+      leverUrl(200),
+    ]);
+  });
+
+  it("reports partial results when the final allowed page is full", async () => {
+    const pages = Object.fromEntries(
+      Array.from({ length: 5 }, (_, page) => [
+        leverUrl(page * 100),
+        {
+          body: JSON.stringify(
+            Array.from({ length: 100 }, (_, i) => leverJob(page * 100 + i)),
+          ),
+        },
+      ]),
+    );
+    const { ctx, requests } = fakeContext(pages);
+    const rows: unknown[] = [];
+    const run = async () => {
+      for await (const row of jobBoard.run(
+        { board: "lever", name: "acme" },
+        ctx,
+      ))
+        rows.push(row);
+    };
+    await expect(run()).rejects.toMatchObject({
+      reason: "page_limit",
+      outcome: "succeeded",
+    });
+    expect(rows).toHaveLength(500);
+    expect(requests).toHaveLength(5);
+  });
+
+  it.each([false, true])(
+    "handles empty, missing and malformed Lever boards (EU: %s)",
+    async (eu) => {
+      const input = {
+        board: eu ? ("lever-eu" as const) : ("lever" as const),
+        name: "acme",
+      };
+      for (const [status, body, detail] of [
+        [200, "[]", null],
+        [
+          404,
+          "",
+          {
+            code: "board_not_found",
+            params: { host: eu ? "jobs.eu.lever.co" : "jobs.lever.co" },
+          },
+        ],
+        [503, "", { code: "board_status", params: { status: 503 } }],
+        [200, "{}", { code: "board_response_invalid" }],
+        [200, "not JSON", { code: "board_response_invalid" }],
+      ] as const) {
+        const { ctx } = fakeContext({ [leverUrl(0, eu)]: { status, body } });
+        if (detail)
+          await expect(
+            collectAll(jobBoard.run(input, ctx)),
+          ).rejects.toMatchObject({ detail });
+        else expect(await collectAll(jobBoard.run(input, ctx))).toEqual([]);
+      }
+    },
+  );
+
   it("converts encoded Greenhouse descriptions through the context without leaking markup", async () => {
     const { ctx, requests } = fakeContext({
       [url]: {
@@ -186,7 +306,7 @@ describe("job-board collector", () => {
     expect(jobBoard.inputSchema.safeParse(input).success).toBe(true);
     expect(jobBoard.inputSchema.safeParse(ashbyInput).success).toBe(true);
     expect(
-      jobBoard.inputSchema.safeParse({ ...input, board: "lever" }).success,
+      jobBoard.inputSchema.safeParse({ ...input, board: "workable" }).success,
     ).toBe(false);
     expect(
       jobBoard.inputSchema.safeParse({ ...input, name: "../acme" }).success,

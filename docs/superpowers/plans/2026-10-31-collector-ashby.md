@@ -1,6 +1,6 @@
 # Ashby Jobs Implementation Plan
 
-**Status:** slice 2 reviewed locally; owner app check pending.
+**Status:** merged in PR #543 (`762b205e`) after all checks passed.
 
 **Goal:** A member selects Ashby jobs or pastes an Ashby board link, starts a
 run and gets private job rows, history and CSV/JSON downloads in the existing
@@ -74,3 +74,7 @@ writes or live persisted runs were performed.
 Independent Standards and Spec reviews reported no findings.
 The Ashby commits were rebased onto merged main; the feature diff remained
 byte-for-byte identical, so no code changes or further test runs were needed.
+
+Delivery update: the owner's 2026-10-31 instruction authorized publishing and
+merging Ashby together with full job details in PR #543. The earlier local-only
+status above describes the initial handoff. Both slices are now merged.
