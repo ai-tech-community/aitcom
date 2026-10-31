@@ -100,3 +100,8 @@ completed normally. No database writes or persisted app runs were performed.
 The worker bundle was rebuilt with `pnpm build:workers`. No new worker code
 was needed for this source. Lever remains local and unpublished for owner
 review; the preceding Ashby/details PR has separate push/merge authorization.
+
+PR #543 (Ashby and job details) merged as `762b205e` after all CI/preview checks.
+The Lever commit was rebased onto that main without conflicts; its feature
+patch remained byte-for-byte identical. The local checkout now exposes this
+slice for owner app testing. No Lever push or database write was performed.

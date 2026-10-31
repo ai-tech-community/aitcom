@@ -1,6 +1,6 @@
 # Collector Job Details Implementation Plan
 
-**Status:** implemented and independently reviewed; ready for local app testing.
+**Status:** merged in PR #543 (`762b205e`) after all checks passed.
 
 **Goal:** Greenhouse and Ashby runs collect readable descriptions, application
 links, employment type and workplace type where supplied. A View details
