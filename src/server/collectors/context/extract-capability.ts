@@ -4,12 +4,12 @@ import {
   ExtractError,
   type ExtractErrorCode,
   type ExtractResult,
-  type ExtractSpec,
+  type ExtractRequestSpec,
 } from "../extract/protocol";
 
-/** Whatever reads a page's list: the sandboxed worker, or the pure extractor. */
+/** Reads page lists or full text: the sandboxed worker, or the test extractor. */
 export interface PageExtractor {
-  extract(html: string, spec: ExtractSpec): Promise<ExtractResult>;
+  extract(html: string, spec: ExtractRequestSpec): Promise<ExtractResult>;
 }
 
 /** The run's time budget, as extraction needs to see it. */
@@ -57,20 +57,40 @@ export function extractListVia(
   extractor: PageExtractor,
   clock: RunClock,
 ): CollectorContext["extractList"] {
-  return async (page, spec) => {
-    if (clock.isOver()) throw timeLimitStop();
-    try {
-      return await extractor.extract(page.html, {
-        ...spec,
-        baseUrl: page.url,
-      });
-    } catch (err) {
-      if (clock.isOver()) throw timeLimitStop();
-      if (!(err instanceof ExtractError)) throw err;
-      const failure = EXTRACT_FAILURES[err.code];
-      throw new CollectorStop("error", "failed", failure.message, {
-        code: failure.code,
-      });
-    }
+  return (page, spec) =>
+    guardedExtract(extractor, clock, page.html, { ...spec, baseUrl: page.url });
+}
+
+/** Readable full text uses the same worker and run deadlines as list extraction. */
+export function extractTextVia(
+  extractor: PageExtractor,
+  clock: RunClock,
+): CollectorContext["extractText"] {
+  return async (page, options) => {
+    const result = await guardedExtract(extractor, clock, page.html, {
+      kind: "text",
+      baseUrl: page.url,
+      decodeEntities: options?.decodeEntities ?? false,
+    });
+    return { text: result.rows[0]?.text ?? null, truncated: result.truncated };
   };
+}
+
+async function guardedExtract(
+  extractor: PageExtractor,
+  clock: RunClock,
+  html: string,
+  spec: ExtractRequestSpec,
+): Promise<ExtractResult> {
+  if (clock.isOver()) throw timeLimitStop();
+  try {
+    return await extractor.extract(html, spec);
+  } catch (err) {
+    if (clock.isOver()) throw timeLimitStop();
+    if (!(err instanceof ExtractError)) throw err;
+    const failure = EXTRACT_FAILURES[err.code];
+    throw new CollectorStop("error", "failed", failure.message, {
+      code: failure.code,
+    });
+  }
 }

@@ -4510,6 +4510,40 @@
     }
   },
   "collectors": {
+    "jobDetails": {
+      "table": "Offres collectées",
+      "details": "Détails de l’offre",
+      "untitled": "Offre sans titre",
+      "view": "Voir les détails",
+      "viewNamed": "Voir les détails de {title}",
+      "close": "Fermer",
+      "description": "Description du poste",
+      "older": "Cette collecte a été effectuée avant la disponibilité des détails. Lancez une nouvelle collecte pour obtenir les descriptions.",
+      "missing": "Ce site d’emploi n’a pas fourni de description.",
+      "truncated": "Cette description a été raccourcie. Ouvrez l’offre originale pour lire la suite.",
+      "apply": "Postuler à cette offre",
+      "source": "Ouvrir l’offre originale",
+      "columns": {
+        "title": "Titre",
+        "location": "Lieu",
+        "department": "Service",
+        "employmentType": "Contrat",
+        "workplaceType": "Lieu de travail",
+        "postedAt": "Publication"
+      },
+      "employment": {
+        "FullTime": "Temps plein",
+        "PartTime": "Temps partiel",
+        "Intern": "Stage",
+        "Contract": "Contrat",
+        "Temporary": "Temporaire"
+      },
+      "workplace": {
+        "Remote": "À distance",
+        "Hybrid": "Hybride",
+        "OnSite": "Sur site"
+      }
+    },
     "aboutLink": "Comment notre collecteur consulte les sites",
     "usage": "{used} collectes utilisées sur {limit} · dernières 24 heures",
     "workspace": {

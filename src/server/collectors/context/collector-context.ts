@@ -1,7 +1,11 @@
 import type { CollectorContext, CollectorResponse } from "../collector";
 import { CollectorStop, timeLimitStop } from "../errors";
 import { isBlockedHost } from "./blocklist";
-import { type PageExtractor, extractListVia } from "./extract-capability";
+import {
+  type PageExtractor,
+  extractListVia,
+  extractTextVia,
+} from "./extract-capability";
 import { decodeHtml } from "./html-charset";
 import { createRobotsCheck } from "./robots";
 import type { SiteRateLimiter, Sleep } from "./site-rate-limit";
@@ -184,6 +188,7 @@ export function createCollectorContext(deps: ContextDeps): {
     signal: deps.signal,
     log: deps.onLog,
     extractList: extractListVia(deps.extractor, clock),
+    extractText: extractTextVia(deps.extractor, clock),
     async fetch(rawUrl, opts) {
       try {
         let url = parseWebUrl(rawUrl);

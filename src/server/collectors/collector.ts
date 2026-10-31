@@ -49,6 +49,11 @@ export interface CollectorContext {
     page: { html: string; url: string },
     spec: Omit<ExtractSpec, "baseUrl">,
   ): Promise<ExtractResult>;
+  /** Full readable text, parsed only inside the bounded extraction worker. */
+  extractText(
+    page: { html: string; url: string },
+    options?: { decodeEntities?: boolean },
+  ): Promise<{ text: string | null; truncated: boolean }>;
   /** A short line the member sees on the run page. */
   log(message: string): void;
   /** Aborts when the run's time budget ends. */

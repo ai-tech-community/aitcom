@@ -4510,6 +4510,40 @@
     }
   },
   "collectors": {
+    "jobDetails": {
+      "table": "Verzamelde vacatures",
+      "details": "Vacaturedetails",
+      "untitled": "Vacature zonder titel",
+      "view": "Bekijk details",
+      "viewNamed": "Bekijk details voor {title}",
+      "close": "Sluiten",
+      "description": "Functieomschrijving",
+      "older": "Deze run is verzameld voordat vacaturedetails beschikbaar waren. Start een nieuwe run om omschrijvingen te verzamelen.",
+      "missing": "Deze vacaturesite heeft geen omschrijving verstrekt.",
+      "truncated": "Deze omschrijving is ingekort. Open de oorspronkelijke vacature om verder te lezen.",
+      "apply": "Solliciteer op deze vacature",
+      "source": "Open oorspronkelijke vacature",
+      "columns": {
+        "title": "Titel",
+        "location": "Locatie",
+        "department": "Afdeling",
+        "employmentType": "Dienstverband",
+        "workplaceType": "Werkplek",
+        "postedAt": "Gepubliceerd"
+      },
+      "employment": {
+        "FullTime": "Fulltime",
+        "PartTime": "Parttime",
+        "Intern": "Stage",
+        "Contract": "Contract",
+        "Temporary": "Tijdelijk"
+      },
+      "workplace": {
+        "Remote": "Op afstand",
+        "Hybrid": "Hybride",
+        "OnSite": "Op locatie"
+      }
+    },
     "aboutLink": "Hoe onze verzamelaar websites bezoekt",
     "usage": "{used} van {limit} runs gebruikt · afgelopen 24 uur",
     "workspace": {

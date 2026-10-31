@@ -62,6 +62,29 @@ afterAll(async () => {
 });
 
 describe("html-extract worker bundle", () => {
+  it("extracts encoded full descriptions in the self-contained worker", async () => {
+    const reply = nextMessage(worker);
+    worker.postMessage({
+      id: 40,
+      html: "&lt;p&gt;Build &amp;amp; learn&lt;/p&gt;&lt;p&gt;Together&lt;/p&gt;",
+      spec: {
+        kind: "text",
+        baseUrl: "https://example.com/job",
+        decodeEntities: true,
+      },
+    } satisfies WorkerRequest);
+    expect(await reply).toEqual({
+      id: 40,
+      ok: true,
+      result: {
+        rows: [{ text: "Build & learn\n\nTogether" }],
+        nextUrl: null,
+        nextUrlTooLong: false,
+        truncated: false,
+      },
+    });
+  });
+
   it("extracts rows from a page", async () => {
     const spec: ExtractSpec = {
       baseUrl: "https://example.com/list",

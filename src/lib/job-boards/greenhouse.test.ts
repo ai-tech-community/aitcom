@@ -52,6 +52,34 @@ describe("Greenhouse board addresses", () => {
 });
 
 describe("parseGreenhouseBoard", () => {
+  it("keeps the shared optional-field and date normalisation compatible", () => {
+    expect(
+      parseGreenhouseBoard({
+        jobs: [
+          {
+            title: "Engineer",
+            absolute_url: "https://example.com/jobs/1",
+            location: { name: "  " },
+            departments: [{ name: "  " }],
+            first_published: "not a date",
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        title: "Engineer",
+        location: null,
+        department: null,
+        url: "https://example.com/jobs/1",
+        postedAt: null,
+        description: null,
+        applyUrl: "https://example.com/jobs/1",
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
+      },
+    ]);
+  });
   it("reads a saved public Greenhouse response", () => {
     expect(parseGreenhouseBoard(fixture)).toEqual([
       {
@@ -60,6 +88,12 @@ describe("parseGreenhouseBoard", () => {
         department: "Legal Team",
         url: "https://job-boards.greenhouse.io/greenhouse/jobs/8126988?gh_jid=8126988",
         postedAt: "2026-08-24T17:52:04.000Z",
+        description: null,
+        applyUrl:
+          "https://job-boards.greenhouse.io/greenhouse/jobs/8126988?gh_jid=8126988",
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
       },
       {
         title: "Enterprise Account Executive",
@@ -67,6 +101,12 @@ describe("parseGreenhouseBoard", () => {
         department: "Account Executive",
         url: "https://job-boards.greenhouse.io/greenhouse/jobs/8279752?gh_jid=8279752",
         postedAt: "2026-10-14T15:52:46.000Z",
+        description: null,
+        applyUrl:
+          "https://job-boards.greenhouse.io/greenhouse/jobs/8279752?gh_jid=8279752",
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
       },
     ]);
   });
@@ -90,6 +130,11 @@ describe("parseGreenhouseBoard", () => {
         location: "Amsterdam",
         department: "Research, Engineering",
         postedAt: null,
+        description: null,
+        applyUrl: "https://boards.greenhouse.io/acme/jobs/1",
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
       },
     ]);
   });
@@ -112,6 +157,11 @@ describe("parseGreenhouseBoard", () => {
         location: null,
         department: null,
         postedAt: "2026-10-02T08:00:00.000Z",
+        description: null,
+        applyUrl: "https://example.com/jobs/1",
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
       },
     ]);
   });

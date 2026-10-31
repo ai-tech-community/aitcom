@@ -1,7 +1,11 @@
 import type { CollectorContext } from "../collector";
 import { toCollectorResponse } from "../context/collector-context";
-import { extractListVia } from "../context/extract-capability";
-import { extractList } from "../extract/extract-list";
+import {
+  extractListVia,
+  extractTextVia,
+  type PageExtractor,
+} from "../context/extract-capability";
+import { extractList, extractText } from "../extract/extract-list";
 
 type FakePage = {
   /** Where the request landed after redirects; the requested URL if absent. */
@@ -21,15 +25,18 @@ export function fakeContext(pages: Record<string, FakePage>) {
   const requests: { url: string; accept?: string }[] = [];
   const logs: string[] = [];
   const signal = new AbortController().signal;
+  const extractor: PageExtractor = {
+    extract: async (html, spec) =>
+      "kind" in spec ? extractText(html, spec) : extractList(html, spec),
+  };
+  const clock = { isOver: () => signal.aborted };
   const ctx: CollectorContext = {
     signal,
     log: (message) => {
       logs.push(message);
     },
-    extractList: extractListVia(
-      { extract: async (html, spec) => extractList(html, spec) },
-      { isOver: () => signal.aborted },
-    ),
+    extractList: extractListVia(extractor, clock),
+    extractText: extractTextVia(extractor, clock),
     async fetch(url, opts) {
       requests.push({ url, accept: opts?.accept });
       const page = pages[url];

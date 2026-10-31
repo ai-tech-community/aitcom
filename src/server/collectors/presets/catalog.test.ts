@@ -18,6 +18,7 @@ import { allPresets, getPreset } from "./catalog";
  */
 const ASK_SAMPLES: Record<string, Record<string, unknown>> = {
   "greenhouse-board": { name: "acme" },
+  "ashby-board": { name: "Ashby" },
   feed: { url: "https://example.com/feed.xml" },
   "custom-page": {
     url: "https://example.com/jobs",

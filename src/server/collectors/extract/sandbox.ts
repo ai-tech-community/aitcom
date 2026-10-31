@@ -3,7 +3,7 @@ import {
   ExtractError,
   isExtractErrorCode,
   type ExtractResult,
-  type ExtractSpec,
+  type ExtractRequestSpec,
   type WorkerRequest,
 } from "./protocol";
 
@@ -31,7 +31,7 @@ export interface ExtractSandbox {
    * code when it refuses the page, `extract_failed` when the worker crashes
    * another way or the sandbox is closed.
    */
-  extract(html: string, spec: ExtractSpec): Promise<ExtractResult>;
+  extract(html: string, spec: ExtractRequestSpec): Promise<ExtractResult>;
   /**
    * Ends the worker. The call in flight and calls still waiting fail with
    * `extract_failed`, as do later calls. Resolves once the worker has ended;
@@ -189,7 +189,7 @@ export function createExtractSandbox(
 
   async function runOne(
     html: string,
-    spec: ExtractSpec,
+    spec: ExtractRequestSpec,
   ): Promise<ExtractResult> {
     if (closed) throw new ExtractError("extract_failed", "sandbox is closed");
 

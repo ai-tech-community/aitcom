@@ -1,5 +1,5 @@
 /**
- * Shared shapes for HTML list extraction. Imported by the pure extractor,
+ * Shared shapes for HTML list and full-text extraction. Imported by the pure extractor,
  * the sandboxed worker and the code that starts the worker, so it must stay
  * free of Node-only and Next-only imports.
  */
@@ -38,6 +38,14 @@ export type ExtractSpec = {
   nextPageSelector?: string;
 };
 
+export type ExtractTextSpec = {
+  kind: "text";
+  baseUrl: string;
+  decodeEntities: boolean;
+};
+
+export type ExtractRequestSpec = ExtractSpec | ExtractTextSpec;
+
 export type ExtractResult = {
   rows: Record<string, string | null>[];
   /** The next-page link's address, resolved; null when there is none. */
@@ -49,7 +57,8 @@ export type ExtractResult = {
   nextUrlTooLong: boolean;
   /**
    * True when rows were dropped: the page had more than MAX_ROWS_PER_PAGE
-   * items, or the rows would pass MAX_OUTPUT_CHARS_PER_PAGE.
+   * items, or the rows would pass MAX_OUTPUT_CHARS_PER_PAGE. For text requests,
+   * the description exceeded its own character limit.
    */
   truncated: boolean;
 };
@@ -91,7 +100,7 @@ export class ExtractError extends Error {
 export type WorkerRequest = {
   id: number;
   html: string;
-  spec: ExtractSpec;
+  spec: ExtractRequestSpec;
 };
 
 /** Worker → main thread: sent once, when the worker can take requests. */

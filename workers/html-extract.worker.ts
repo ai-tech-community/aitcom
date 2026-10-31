@@ -1,5 +1,8 @@
 import { parentPort } from "node:worker_threads";
-import { extractList } from "../src/server/collectors/extract/extract-list";
+import {
+  extractList,
+  extractText,
+} from "../src/server/collectors/extract/extract-list";
 import {
   ExtractError,
   type WorkerMessage,
@@ -40,7 +43,12 @@ port.on("message", (message: unknown) => {
   const { id } = message;
   try {
     const { html, spec } = message as WorkerRequest;
-    send({ id, ok: true, result: extractList(html, spec) });
+    send({
+      id,
+      ok: true,
+      result:
+        "kind" in spec ? extractText(html, spec) : extractList(html, spec),
+    });
   } catch (error) {
     send({
       id,

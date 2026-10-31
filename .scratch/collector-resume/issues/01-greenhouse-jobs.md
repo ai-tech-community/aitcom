@@ -4,7 +4,7 @@
 
 **Blocked by:** None — existing collector core.
 
-**Status:** accepted locally on 2026-10-31 — PR and deployment pending
+**Status:** merged in [PR #542](https://github.com/ai-tech-community/aitcom/pull/542) — production app review pending
 
 - [x] Greenhouse jobs appears under Jobs; supported links fill the board name and show the recognised-source line.
 - [x] Runs return title, location, department, URL and an optional genuine publication date.

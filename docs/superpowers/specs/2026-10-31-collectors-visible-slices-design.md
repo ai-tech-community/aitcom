@@ -1,6 +1,6 @@
 # Data collectors: visible delivery slices
 
-**Status:** slice 1 accepted in the local app on 2026-10-31; PR and deployment pending. Slice 2 (Ashby) approved next.
+**Status:** slice 1 merged in [PR #542](https://github.com/ai-tech-community/aitcom/pull/542) after all checks passed. Slice 2 (Ashby) reviewed locally; owner app check pending.
 
 ## Delivery agreement
 
@@ -102,6 +102,10 @@ name or paste its link from the workspace, start, inspect results and download.
   fixing local worker wake-up and local rate-limiter dependencies, and asked
   to create/merge the PR and continue with Ashby. Deployment review remains
   separate from the completed local review.
+- PR #542 merged on 2026-10-31 as `a0740dac` after CI formatting, lint/type-check,
+  full tests, production build and the Vercel preview all passed. The owner
+  granted a specific exception to the standing no-push rule for the reviewed
+  Greenhouse branch. Ashby remains local and unpublished.
 
 - Implemented on branch `feat/collector-greenhouse`; initial feature commit
   `6d97f264`. No migration is needed. No push or deployment performed.
@@ -122,3 +126,15 @@ name or paste its link from the workspace, start, inspect results and download.
   location, department, URL and postedAt columns and download CSV/JSON. This
   manual persisted-run check remains for the owner's normal app review.
 - Next slice: Ashby jobs (slice 2).
+
+## Slice 2 local delivery
+
+The Ashby job-board adapter, preset, strict board/job link recognition and
+EN/NL/FR copy are implemented on `feat/collector-ashby`. The form and existing
+private run history/table/exports use the same job columns as Greenhouse.
+Unlisted Ashby postings are omitted. Eight focused test files (168 tests),
+type-check, lint and formatting passed; a guarded public API replay returned
+74 job rows without database storage. Standards and Spec reviews found no
+issues. Review plan:
+`../plans/2026-10-31-collector-ashby.md`. Owner route after checkout:
+`/dashboard/collectors/new/ashby-board`, board name `Ashby`.
