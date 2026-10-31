@@ -23,6 +23,16 @@ machine. Design: `docs/superpowers/specs/2026-10-03-data-collectors-design.md`.
    (`CollectorContext`) that owns every safety rule: SSRF guard, robots.txt,
    a shared per-site rate limit, budgets, blocklist and metering.
 
+**Local development (2026-10-31):** `next dev` has no cron scheduler. After a
+member starts a run, development mode runs the same worker executor in the
+local process after the response, taking additional ticks until the queue is
+empty or collection is disabled. It needs neither an app URL nor a cron
+secret and does not call a deployed worker if an app URL points there.
+Previously, a missing `NEXT_PUBLIC_APP_URL` silently skipped the wake-up and
+left runs queued indefinitely. Deployed apps retain the authenticated HTTP
+wake-up and cron; missing configuration, refused requests and network failures
+now produce server warnings rather than disappearing silently.
+
 ## Why built-in first
 
 - **Safety without a sandbox.** Reviewed code that only fetches pages needs no
