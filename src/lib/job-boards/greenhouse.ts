@@ -66,7 +66,7 @@ export function parseGreenhouseBoard(
   const parsed = responseSchema.safeParse(payload);
   if (!parsed.success) return null;
   return parsed.data.jobs.map((job) => {
-    // The list API usually supplies only updated_at: that is not a posting date.
+    // An update timestamp is not a posting date: use only first_published.
     const published = job.first_published
       ? Date.parse(job.first_published)
       : NaN;

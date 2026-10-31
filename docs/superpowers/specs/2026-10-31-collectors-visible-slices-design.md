@@ -1,6 +1,6 @@
 # Data collectors: visible delivery slices
 
-**Status:** approved in conversation on 2026-10-31; slice 1 in implementation.
+**Status:** approved in conversation on 2026-10-31; slice 1 implemented locally.
 
 ## Delivery agreement
 
@@ -10,6 +10,11 @@ member can perform in `/dashboard/collectors` and an observable result.
 Shared changes belong to the first feature that needs them. Existing queued
 execution, guarded context, ownership, quotas, history and exports remain the
 foundation. ADR-0040 and ADR-0041 still apply.
+
+Individual work tickets are saved locally under
+`.scratch/collector-resume/issues/` (one file per numbered slice, with blockers
+and acceptance criteria). No remote tracker issues were created. Slice 1 is
+implemented locally; its owner review in the normally deployed app is pending.
 
 | Slice                  | Visible result                                                                 | Blocked by    |
 | ---------------------- | ------------------------------------------------------------------------------ | ------------- |
@@ -90,3 +95,24 @@ to the existing run-page navigation. Run only added/touched test files and
 `pnpm typecheck`, plus lint/format checks for touched files. In-app review after
 normal deployment: `/dashboard/collectors/new/greenhouse-board`, enter a board
 name or paste its link from the workspace, start, inspect results and download.
+
+### Slice 1 delivery record
+
+- Implemented on branch `feat/collector-greenhouse`; initial feature commit
+  `6d97f264`. No migration is needed. No push or deployment performed.
+- 206 tests across the 11 added/touched test files passed, including a saved
+  two-job response from Greenhouse's own board, schema-driven form submission,
+  keyboard selection, translated failures, disabled-preset fallback and startup
+  scanner compatibility. All tests used a nonworking database URL; no database
+  writes or live persisted runs were performed.
+- `pnpm typecheck`, targeted ESLint and formatting checks passed. Independent
+  Standards and Spec reviews reported no findings.
+- Design detector: suppressed the broken-image false positive only for the
+  existing startup parser fixture test; pre-existing 13px/15px typography
+  advisories remain outside this feature's scope.
+- Review after normal deployment: open `/dashboard/collectors`, choose
+  Greenhouse jobs or paste `https://job-boards.greenhouse.io/greenhouse`,
+  verify the board name is `greenhouse`, start a run, then inspect the title,
+  location, department, URL and postedAt columns and download CSV/JSON. This
+  manual persisted-run check remains for the owner's normal app review.
+- Next slice: Ashby jobs (slice 2).
