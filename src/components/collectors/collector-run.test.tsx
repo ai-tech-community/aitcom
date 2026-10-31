@@ -135,6 +135,32 @@ describe("runPollInterval", () => {
 });
 
 describe("CollectorRun", () => {
+  it("uses the compact details view for job-board runs", () => {
+    h.run.mockReturnValue(
+      ok({ ...base, collectorId: "job-board", presetId: "greenhouse" }),
+    );
+    h.items.mockReturnValue(
+      ok({
+        items: [
+          {
+            title: "Engineer",
+            description: "Full job description",
+            url: "https://example.com/job",
+          },
+        ],
+        nextSeq: null,
+      }),
+    );
+    renderRun();
+    expect(screen.queryByText("Full job description")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "View details for Engineer" }),
+    );
+    expect(screen.getByRole("dialog", { name: "Engineer" })).toHaveTextContent(
+      "Full job description",
+    );
+  });
+
   it("asks for this run and polls by the run's own status", () => {
     h.run.mockReturnValue(ok({ ...base, status: "running", stopReason: null }));
     renderRun();

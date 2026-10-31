@@ -5,7 +5,7 @@ import {
   ExtractError,
   type ExtractErrorCode,
   type ExtractResult,
-  type ExtractSpec,
+  type ExtractRequestSpec,
 } from "../extract/protocol";
 import {
   type ContextDeps,
@@ -53,7 +53,10 @@ function setup(
     url,
   }));
   const extract = vi.fn(
-    async (_html: string, _spec: ExtractSpec): Promise<ExtractResult> => ({
+    async (
+      _html: string,
+      _spec: ExtractRequestSpec,
+    ): Promise<ExtractResult> => ({
       rows: [],
       nextUrl: null,
       nextUrlTooLong: false,
@@ -385,6 +388,42 @@ describe("collector context failure details", () => {
 });
 
 describe("collector context extractList", () => {
+  it("serves full text through the worker and retains truncation", async () => {
+    const t = setup();
+    t.extract.mockResolvedValueOnce({
+      rows: [{ text: "Full description" }],
+      nextUrl: null,
+      nextUrlTooLong: false,
+      truncated: true,
+    });
+    await expect(
+      t.ctx.extractText(
+        { html: "encoded markup", url: "https://e.com/job" },
+        { decodeEntities: true },
+      ),
+    ).resolves.toEqual({ text: "Full description", truncated: true });
+    expect(t.extract).toHaveBeenCalledWith("encoded markup", {
+      kind: "text",
+      baseUrl: "https://e.com/job",
+      decodeEntities: true,
+    });
+  });
+
+  it("applies extraction refusals and run deadlines to descriptions", async () => {
+    const t = setup();
+    t.extract.mockRejectedValueOnce(new ExtractError("page_too_deep"));
+    expect(
+      (await stopOf(t.ctx.extractText({ html: "", url: "https://e.com" })))
+        .detail,
+    ).toEqual({ code: "page_too_deep" });
+    t.controller.abort();
+    expect(
+      (await stopOf(t.ctx.extractText({ html: "", url: "https://e.com" })))
+        .reason,
+    ).toBe("time_limit");
+    expect(t.extract).toHaveBeenCalledTimes(1);
+  });
+
   const page = { html: "<ul><li>One</li></ul>", url: "https://e.com/list" };
   const spec = {
     itemSelector: "li",

@@ -4510,6 +4510,40 @@
     }
   },
   "collectors": {
+    "jobDetails": {
+      "table": "Collected jobs",
+      "details": "Job details",
+      "untitled": "Untitled job",
+      "view": "View details",
+      "viewNamed": "View details for {title}",
+      "close": "Close",
+      "description": "Job description",
+      "older": "This run was collected before job details were available. Start a new run to collect descriptions.",
+      "missing": "This job board did not provide a description.",
+      "truncated": "This description was shortened. Open the original posting to read the rest.",
+      "apply": "Apply for this job",
+      "source": "Open original posting",
+      "columns": {
+        "title": "Title",
+        "location": "Location",
+        "department": "Department",
+        "employmentType": "Employment",
+        "workplaceType": "Workplace",
+        "postedAt": "Published"
+      },
+      "employment": {
+        "FullTime": "Full time",
+        "PartTime": "Part time",
+        "Intern": "Internship",
+        "Contract": "Contract",
+        "Temporary": "Temporary"
+      },
+      "workplace": {
+        "Remote": "Remote",
+        "Hybrid": "Hybrid",
+        "OnSite": "On site"
+      }
+    },
     "aboutLink": "How our collector visits sites",
     "usage": "{used} of {limit} runs used · last 24 hours",
     "workspace": {

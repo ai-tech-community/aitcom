@@ -8,6 +8,79 @@ const url = "https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true";
 const input = { board: "greenhouse" as const, name: "acme" };
 
 describe("job-board collector", () => {
+  it("converts encoded Greenhouse descriptions through the context without leaking markup", async () => {
+    const { ctx, requests } = fakeContext({
+      [url]: {
+        body: JSON.stringify({
+          jobs: [
+            {
+              title: "Engineer",
+              absolute_url: "https://example.com/job/1",
+              content:
+                "&lt;p&gt;Build &amp;amp; learn&lt;/p&gt;&lt;p&gt;With us&lt;/p&gt;",
+              metadata: [
+                { name: "Employment Type", value: "Contract" },
+                { name: "Workplace Type", value: "Hybrid" },
+              ],
+            },
+          ],
+        }),
+      },
+    });
+    const rows = await collectAll(jobBoard.run(input, ctx));
+    expect(rows[0]).toMatchObject({
+      description: "Build & learn\n\nWith us",
+      applyUrl: "https://example.com/job/1",
+      employmentType: "Contract",
+      workplaceType: "Hybrid",
+      descriptionTruncated: false,
+    });
+    expect(rows[0]).not.toHaveProperty("descriptionMarkup");
+    expect(jobBoard.itemSchema.safeParse(rows[0]).success).toBe(true);
+    expect(requests).toHaveLength(1);
+  });
+
+  it("prefers Ashby plain text, falls back to sandboxed HTML, and omits unlisted jobs", async () => {
+    const { ctx } = fakeContext({
+      "https://api.ashbyhq.com/posting-api/job-board/Ashby": {
+        body: JSON.stringify({
+          jobs: [
+            {
+              title: "Plain",
+              jobUrl: "https://example.com/1",
+              descriptionPlain: "Readable\n\nAlready",
+              descriptionHtml: "<p>Wrong</p>",
+              applyUrl: "https://example.com/1/apply",
+              employmentType: "FullTime",
+              workplaceType: "Remote",
+            },
+            {
+              title: "HTML",
+              jobUrl: "https://example.com/2",
+              descriptionPlain: " ",
+              descriptionHtml: "<p>Fallback</p><script>bad()</script>",
+            },
+            { isListed: false, descriptionHtml: "private" },
+          ],
+        }),
+      },
+    });
+    const rows = await collectAll(
+      jobBoard.run({ board: "ashby", name: "Ashby" }, ctx),
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      description: "Readable\n\nAlready",
+      applyUrl: "https://example.com/1/apply",
+      employmentType: "FullTime",
+      workplaceType: "Remote",
+    });
+    expect(rows[1]).toMatchObject({ description: "Fallback", applyUrl: null });
+    expect(rows.every((row) => !Object.hasOwn(row, "descriptionMarkup"))).toBe(
+      true,
+    );
+  });
+
   const ashbyUrl = "https://api.ashbyhq.com/posting-api/job-board/Ashby";
   const ashbyInput = { board: "ashby" as const, name: "Ashby" };
 
@@ -23,6 +96,12 @@ describe("job-board collector", () => {
       department: "Engineering",
       url: "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2",
       postedAt: "2024-03-04T14:29:08.532Z",
+      description: null,
+      applyUrl:
+        "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2/application",
+      employmentType: null,
+      workplaceType: null,
+      descriptionTruncated: false,
     });
     expect(requests).toEqual([{ url: ashbyUrl, accept: "application/json" }]);
     expect(logs).toEqual(["Found 2 jobs."]);
@@ -70,6 +149,11 @@ describe("job-board collector", () => {
         department: "Engineering",
         url: "https://example.com/job/1",
         postedAt: null,
+        description: null,
+        applyUrl: "https://example.com/job/1",
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
       },
     ]);
     expect(requests).toEqual([{ url, accept: "application/json" }]);

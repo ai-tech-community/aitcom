@@ -44,7 +44,7 @@ export const jobBoard: Collector<
   z.infer<typeof jobBoardRowSchema>
 > = {
   id: "job-board",
-  version: 2,
+  version: 3,
   author: "platform",
   kind: "api",
   title: { en: "Job board", nl: "Vacaturesite", fr: "Site d’emploi" },
@@ -79,6 +79,11 @@ export const jobBoard: Collector<
     department: "Engineering",
     url: "https://boards.greenhouse.io/acme/jobs/123",
     postedAt: null,
+    description: "Help our research team build useful tools.",
+    applyUrl: "https://boards.greenhouse.io/acme/jobs/123",
+    employmentType: "FullTime",
+    workplaceType: "Hybrid",
+    descriptionTruncated: false,
   },
   limits: { maxPages: 5, maxItems: 5_000, maxDurationMs: 60_000 },
   async *run(input, ctx) {
@@ -118,6 +123,16 @@ export const jobBoard: Collector<
     const rows = board.parse(payload);
     if (rows === null) throw invalidResponse();
     ctx.log(`Found ${rows.length} ${rows.length === 1 ? "job" : "jobs"}.`);
-    yield* rows;
+    for (const { descriptionMarkup, ...row } of rows) {
+      if (descriptionMarkup) {
+        const extracted = await ctx.extractText(
+          { html: descriptionMarkup.html, url: row.url },
+          { decodeEntities: descriptionMarkup.encoded },
+        );
+        row.description = extracted.text;
+        row.descriptionTruncated = extracted.truncated;
+      }
+      yield row;
+    }
   },
 };

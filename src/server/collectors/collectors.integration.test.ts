@@ -283,6 +283,9 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
             fetch: async () => {
               throw new Error("no network in tests");
             },
+            extractText: async () => {
+              throw new Error("unused");
+            },
             extractList: async () => {
               throw new Error("no extraction in tests");
             },

@@ -49,6 +49,27 @@ describe("csvCell", () => {
 });
 
 describe("CSV export", () => {
+  it("retains full multiline job descriptions and added columns in both formats", async () => {
+    const job = {
+      title: "Engineer",
+      description: 'Build "useful" things\n\n' + "x".repeat(4000),
+      applyUrl: "https://example.com/apply",
+      employmentType: "FullTime",
+      workplaceType: "Remote",
+      descriptionTruncated: false,
+    };
+    const csv = await text(
+      EXPORT_FORMATS.csv.write(rows(job), Object.keys(job)),
+    );
+    expect(csv).toContain(csvCell(job.description));
+    expect(csv).toContain(
+      "description,applyUrl,employmentType,workplaceType,descriptionTruncated",
+    );
+    expect(
+      JSON.parse(await text(EXPORT_FORMATS.json.write(rows(job), null))),
+    ).toEqual([job]);
+  });
+
   it("writes a header from the columns and one line per row", async () => {
     const out = await text(
       EXPORT_FORMATS.csv.write(rows({ b: 2, a: 1 }, { a: 3 }), ["a", "b"]),

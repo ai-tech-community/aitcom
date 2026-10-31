@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { normalizeDescription } from "./description-text";
 
 import {
   jobBoardName,
+  jobHttpUrl,
   jobPublicationDate,
   optionalJobText,
-  type JobBoardRow,
+  type JobBoardSourceRow,
 } from "./job-board";
 
 /** Public posting data; no API key or browser rendering is needed. */
@@ -39,13 +41,18 @@ const jobSchema = z.object({
   department: z.string().nullish(),
   publishedAt: z.string().nullish(),
   isListed: z.boolean().optional(),
+  descriptionPlain: z.string().nullish(),
+  descriptionHtml: z.string().nullish(),
+  applyUrl: z.unknown(),
+  employmentType: z.string().nullish(),
+  workplaceType: z.string().nullish(),
 });
 
 /** Unlisted postings are direct-link-only and must not become collected rows. */
-export function parseAshbyBoard(payload: unknown): JobBoardRow[] | null {
+export function parseAshbyBoard(payload: unknown): JobBoardSourceRow[] | null {
   const envelope = envelopeSchema.safeParse(payload);
   if (!envelope.success) return null;
-  const rows: JobBoardRow[] = [];
+  const rows: JobBoardSourceRow[] = [];
   for (const raw of envelope.data.jobs) {
     if (
       raw &&
@@ -57,12 +64,23 @@ export function parseAshbyBoard(payload: unknown): JobBoardRow[] | null {
     const parsed = jobSchema.safeParse(raw);
     if (!parsed.success) return null;
     const job = parsed.data;
+    const description = normalizeDescription(job.descriptionPlain);
     rows.push({
       title: job.title,
       location: optionalJobText(job.location),
       department: optionalJobText(job.department),
       url: job.jobUrl,
       postedAt: jobPublicationDate(job.publishedAt),
+      description: description.text,
+      descriptionTruncated: description.truncated,
+      applyUrl: jobHttpUrl(job.applyUrl),
+      employmentType: optionalJobText(job.employmentType),
+      workplaceType: optionalJobText(job.workplaceType),
+      ...(!description.text && job.descriptionHtml?.trim()
+        ? {
+            descriptionMarkup: { html: job.descriptionHtml, encoded: false },
+          }
+        : {}),
     });
   }
   return rows;

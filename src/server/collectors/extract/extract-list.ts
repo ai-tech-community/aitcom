@@ -1,4 +1,5 @@
 import { load, type Cheerio, type CheerioAPI } from "cheerio";
+import { normalizeDescription } from "../../../lib/job-boards/description-text";
 import { checkSelector } from "../../../lib/collectors/selector-policy";
 import {
   ExtractError,
@@ -9,6 +10,7 @@ import {
   type ExtractField,
   type ExtractResult,
   type ExtractSpec,
+  type ExtractTextSpec,
 } from "./protocol";
 
 /*
@@ -95,6 +97,46 @@ const BLOCK_END = Symbol("block end");
 
 /** Characters of one text value scanned per step. */
 const SCAN_CHUNK_CHARS = 4_096;
+
+/** Full visible text, still parsed within the worker's heap and time bounds. */
+export function extractText(
+  html: string,
+  spec: ExtractTextSpec,
+): ExtractResult {
+  parseBaseUrl(spec.baseUrl);
+  if (spec.decodeEntities) {
+    // Decode exactly one outer layer. Escaping literal '<' prevents source
+    // markup (including </textarea>) from escaping the decoding container.
+    const decoder = load(
+      `<textarea>${html.replaceAll("<", "&lt;")}</textarea>`,
+    );
+    html = decoder("textarea").text();
+  }
+  const $ = load(html);
+  const root = $.root()[0];
+  if (!root) throw new ExtractError("extract_failed");
+  assertDepthWithin(root, MAX_DEPTH);
+  const parts: string[] = [];
+  const stack: (TreeNode | typeof BLOCK_END)[] = [root];
+  for (let node = stack.pop(); node !== undefined; node = stack.pop()) {
+    if (node === BLOCK_END) parts.push("\n");
+    else if ((node.type as string) === "text" && "data" in node)
+      parts.push(node.data);
+    else if ("attribs" in node && NON_TEXT_ELEMENTS.has(node.name)) continue;
+    else if ("children" in node) {
+      if ("attribs" in node && BLOCK_ELEMENTS.has(node.name)) {
+        parts.push("\n");
+        stack.push(BLOCK_END);
+      }
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        const child = node.children[i];
+        if (child) stack.push(child);
+      }
+    }
+  }
+  const { text, truncated } = normalizeDescription(parts.join(""));
+  return { rows: [{ text }], nextUrl: null, nextUrlTooLong: false, truncated };
+}
 
 export function extractList(html: string, spec: ExtractSpec): ExtractResult {
   assertSelectorsAllowed(spec);

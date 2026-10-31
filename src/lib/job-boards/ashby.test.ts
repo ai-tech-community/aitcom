@@ -44,6 +44,35 @@ describe("Ashby board addresses", () => {
 });
 
 describe("parseAshbyBoard", () => {
+  it("keeps source types, refuses unsafe application links, and never infers remote from isRemote", () => {
+    const parse = (applyUrl: unknown) =>
+      parseAshbyBoard({
+        jobs: [
+          {
+            title: "Engineer",
+            jobUrl: "https://example.com/job",
+            applyUrl,
+            isRemote: true,
+            employmentType: "Something new",
+            descriptionPlain: "x".repeat(100001),
+          },
+        ],
+      })?.[0];
+    for (const url of [
+      "javascript:alert(1)",
+      "https://user:pass@example.com",
+      "/apply",
+      null,
+    ])
+      expect(parse(url)?.applyUrl).toBeNull();
+    expect(parse("https://example.com/apply")).toMatchObject({
+      employmentType: "Something new",
+      workplaceType: null,
+      descriptionTruncated: true,
+    });
+    expect(parse(null)?.description).toHaveLength(100000);
+  });
+
   it("reads a saved public response into the shared job columns", () => {
     expect(parseAshbyBoard(fixture)).toEqual([
       {
@@ -52,6 +81,11 @@ describe("parseAshbyBoard", () => {
         department: "Engineering",
         url: `https://jobs.ashbyhq.com/Ashby/${id}`,
         postedAt: "2024-03-04T14:29:08.532Z",
+        description: null,
+        applyUrl: `https://jobs.ashbyhq.com/Ashby/${id}/application`,
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
       },
       {
         title: "Mid Market Account Executive - EMEA (French Speaking)",
@@ -59,6 +93,12 @@ describe("parseAshbyBoard", () => {
         department: "Sales",
         url: "https://jobs.ashbyhq.com/Ashby/86a60834-ba64-484d-9658-afa1bc97a957",
         postedAt: "2026-09-08T16:27:26.694Z",
+        description: null,
+        applyUrl:
+          "https://jobs.ashbyhq.com/Ashby/86a60834-ba64-484d-9658-afa1bc97a957/application",
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
       },
     ]);
   });
@@ -82,6 +122,11 @@ describe("parseAshbyBoard", () => {
         department: null,
         url: "https://example.com/job/1",
         postedAt: null,
+        description: null,
+        applyUrl: null,
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
       },
     ]);
   });
@@ -107,6 +152,11 @@ describe("parseAshbyBoard", () => {
         department: null,
         url: "https://example.com/job/1",
         postedAt: null,
+        description: null,
+        applyUrl: null,
+        employmentType: null,
+        workplaceType: null,
+        descriptionTruncated: false,
       },
     ]);
   });

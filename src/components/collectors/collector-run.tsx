@@ -5,6 +5,7 @@ import { resolveLocale } from "@/i18n/messages";
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 
+import { JobResults } from "./job-results";
 import { RunStatusBadge } from "@/components/collectors/run-status-badge";
 import { untilNamed, useRunNamer } from "@/components/collectors/use-run-namer";
 import {
@@ -206,7 +207,7 @@ export function CollectorRun({ runId }: { runId: string }) {
           </div>
 
           <div className="border-border flex flex-col gap-1.5 rounded-xl border px-5 py-4">
-            <p className="text-[15px] font-medium">{statusSentence(data)}</p>
+            <p className="text-base font-medium">{statusSentence(data)}</p>
             {detail ? (
               <p data-testid="failure-detail" className="text-sm">
                 {detail}
@@ -248,38 +249,42 @@ export function CollectorRun({ runId }: { runId: string }) {
                 </div>
               )}
               <SectionBody status={statusFromQueries(items)}>
-                <div className="border-border overflow-x-auto rounded-lg border">
-                  <table className="w-full min-w-[640px] border-collapse text-[13px]">
-                    <caption className="sr-only">{t("run.rows")}</caption>
-                    <thead>
-                      <tr>
-                        {columns.map((c) => (
-                          <th
-                            key={c}
-                            scope="col"
-                            className="text-muted-foreground border-border border-b px-3 py-2.5 text-left font-mono text-xs font-medium whitespace-nowrap"
-                          >
-                            {c}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row, i) => (
-                        <tr key={afterSeq + 1 + i}>
+                {data.collectorId === "job-board" ? (
+                  <JobResults key={afterSeq} rows={rows} />
+                ) : (
+                  <div className="border-border overflow-x-auto rounded-lg border">
+                    <table className="w-full min-w-[640px] border-collapse text-sm">
+                      <caption className="sr-only">{t("run.rows")}</caption>
+                      <thead>
+                        <tr>
                           {columns.map((c) => (
-                            <td
+                            <th
                               key={c}
-                              className="border-border border-b px-3 py-2.5 align-top"
+                              scope="col"
+                              className="text-muted-foreground border-border border-b px-3 py-2.5 text-left font-mono text-xs font-medium whitespace-nowrap"
                             >
-                              {cellText(row[c])}
-                            </td>
+                              {c}
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {rows.map((row, i) => (
+                          <tr key={afterSeq + 1 + i}>
+                            {columns.map((c) => (
+                              <td
+                                key={c}
+                                className="border-border border-b px-3 py-2.5 align-top"
+                              >
+                                {cellText(row[c])}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                   <span className="text-muted-foreground font-mono text-xs">
                     {t("run.showing", {
@@ -328,9 +333,7 @@ export function CollectorRun({ runId }: { runId: string }) {
           )}
 
           <details className="border-border border-t pt-3">
-            <summary className="cursor-pointer text-[13px]">
-              {t("run.log")}
-            </summary>
+            <summary className="cursor-pointer text-sm">{t("run.log")}</summary>
             <pre className="bg-sidebar border-border mt-2.5 rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
               {data.log.length ? data.log.join("\n") : t("run.emptyLog")}
             </pre>

@@ -2,9 +2,10 @@ import { z } from "zod";
 
 import {
   jobBoardName,
+  jobHttpUrl,
   jobPublicationDate,
   optionalJobText,
-  type JobBoardRow,
+  type JobBoardSourceRow,
 } from "./job-board";
 
 export { jobBoardName as greenhouseBoardName } from "./job-board";
@@ -46,12 +47,18 @@ const responseSchema = z.object({
       location: z.object({ name: z.string().nullish() }).nullish(),
       departments: z.array(z.object({ name: z.string() })).nullish(),
       first_published: z.string().nullish(),
+      content: z.string().nullish(),
+      metadata: z
+        .array(z.object({ name: z.string(), value: z.unknown() }))
+        .nullish(),
     }),
   ),
 });
 
 /** A malformed response is different from a board with no open roles. */
-export function parseGreenhouseBoard(payload: unknown): JobBoardRow[] | null {
+export function parseGreenhouseBoard(
+  payload: unknown,
+): JobBoardSourceRow[] | null {
   const parsed = responseSchema.safeParse(payload);
   if (!parsed.success) return null;
   return parsed.data.jobs.map((job) => {
@@ -66,6 +73,22 @@ export function parseGreenhouseBoard(payload: unknown): JobBoardRow[] | null {
       ),
       url: job.absolute_url,
       postedAt: jobPublicationDate(job.first_published),
+      description: null,
+      applyUrl: jobHttpUrl(job.absolute_url),
+      employmentType: metadataText(job.metadata, "Employment Type"),
+      workplaceType: metadataText(job.metadata, "Workplace Type"),
+      descriptionTruncated: false,
+      ...(job.content?.trim()
+        ? { descriptionMarkup: { html: job.content, encoded: true } }
+        : {}),
     };
   });
+}
+
+function metadataText(
+  entries: { name: string; value: unknown }[] | null | undefined,
+  name: string,
+): string | null {
+  const value = entries?.find((entry) => entry.name === name)?.value;
+  return typeof value === "string" ? optionalJobText(value) : null;
 }
