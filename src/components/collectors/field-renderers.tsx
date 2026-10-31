@@ -57,12 +57,12 @@ function FieldNotes({
   return (
     <>
       {field.help ? (
-        <p id={`${id}-help`} className="text-muted-foreground text-[13px]">
+        <p id={`${id}-help`} className="text-muted-foreground text-sm">
           {field.help}
         </p>
       ) : null}
       {error ? (
-        <p id={`${id}-error`} className="text-destructive text-[13px]">
+        <p id={`${id}-error`} className="text-destructive text-sm">
           {error}
         </p>
       ) : null}
@@ -234,10 +234,7 @@ function RowsField({
         {field.label}
       </legend>
       {field.help ? (
-        <p
-          id={`${id}-help`}
-          className="text-muted-foreground -mt-1.5 text-[13px]"
-        >
+        <p id={`${id}-help`} className="text-muted-foreground -mt-1.5 text-sm">
           {field.help}
         </p>
       ) : null}
@@ -256,7 +253,7 @@ function RowsField({
             {column.help ? (
               <span
                 id={columnHelpId(column.name)}
-                className="text-muted-foreground text-[13px]"
+                className="text-muted-foreground text-sm"
               >
                 {column.help}
               </span>
@@ -303,7 +300,7 @@ function RowsField({
                   {cellError ? (
                     <p
                       id={`${cell}-error`}
-                      className="text-destructive text-[13px]"
+                      className="text-destructive text-sm"
                     >
                       {cellError}
                     </p>
@@ -314,7 +311,7 @@ function RowsField({
                     // input's description, so this copy is hidden from them.
                     <span
                       aria-hidden="true"
-                      className="text-muted-foreground text-[13px] md:hidden"
+                      className="text-muted-foreground text-sm md:hidden"
                     >
                       {column.help}
                     </span>
@@ -351,7 +348,7 @@ function RowsField({
         {t("addRow")}
       </Button>
       {error ? (
-        <p id={`${id}-error`} className="text-destructive text-[13px]">
+        <p id={`${id}-error`} className="text-destructive text-sm">
           {error}
         </p>
       ) : null}

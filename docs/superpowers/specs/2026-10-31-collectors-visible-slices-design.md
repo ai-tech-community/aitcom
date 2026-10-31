@@ -108,8 +108,9 @@ name or paste its link from the workspace, start, inspect results and download.
 - `pnpm typecheck`, targeted ESLint and formatting checks passed. Independent
   Standards and Spec reviews reported no findings.
 - Design detector: suppressed the broken-image false positive only for the
-  existing startup parser fixture test; pre-existing 13px/15px typography
-  advisories remain outside this feature's scope.
+  existing startup parser fixture test. Follow-up review aligned all ten flagged
+  13px/15px text sizes in the touched collector forms to the documented
+  `text-sm`/`text-base` scale; no typography suppressions were added.
 - Review after normal deployment: open `/dashboard/collectors`, choose
   Greenhouse jobs or paste `https://job-boards.greenhouse.io/greenhouse`,
   verify the board name is `greenhouse`, start a run, then inspect the title,
