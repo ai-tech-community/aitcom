@@ -203,6 +203,8 @@ The app will be available at [http://localhost:3000](http://localhost:3000). The
 With `FEATURE_COLLECTORS=on`, starting a data-collector run in `pnpm dev`
 wakes the worker in the local process after the response. It drains queued
 work without needing `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` or a cron scheduler.
+Local runs share an in-memory one-request-per-second site limiter; configured
+Redis credentials are used only outside development.
 Starting a new run also wakes runs left queued before this worker fix. The
 deployed app uses the authenticated worker route and scheduled cron instead.
 

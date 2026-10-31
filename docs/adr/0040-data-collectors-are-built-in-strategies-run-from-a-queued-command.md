@@ -33,6 +33,16 @@ left runs queued indefinitely. Deployed apps retain the authenticated HTTP
 wake-up and cron; missing configuration, refused requests and network failures
 now produce server warnings rather than disappearing silently.
 
+Local development also uses the existing per-process site limiter even when
+Redis credentials are configured. It preserves one request per second per
+host across local runs. An unreachable Redis hostname in a local `.env` had
+prevented the robots.txt request and surfaced as `robots_unreachable`;
+development must not depend on or write to that deployed service. Deployed
+instances retain their shared Redis limiter and do not bypass it on failure.
+The real Greenhouse collector, guarded network transport, robots rules and
+local limiter were replayed without database storage on 2026-10-31: 19 job
+rows, one API page, and the log `Found 19 jobs.` in about 1.3 seconds.
+
 ## Why built-in first
 
 - **Safety without a sandbox.** Reviewed code that only fetches pages needs no
