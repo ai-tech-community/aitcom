@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Greenhouse jobs.
 
-**Status:** implemented locally — review and owner app check pending
+**Status:** reviewed locally — owner app check pending
 
 - [x] Ashby jobs appears under Jobs and supported board links select it with the company filled in.
 - [x] The collector reads the public structured board data through the guarded context and returns the shared job columns.

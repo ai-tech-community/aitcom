@@ -1,6 +1,6 @@
 # Ashby Jobs Implementation Plan
 
-**Status:** slice 2 implemented locally; final review and owner app check pending.
+**Status:** slice 2 reviewed locally; owner app check pending.
 
 **Goal:** A member selects Ashby jobs or pastes an Ashby board link, starts a
 run and gets private job rows, history and CSV/JSON downloads in the existing
@@ -58,7 +58,7 @@ Do not bypass or weaken that existing policy for this source.
       tiers, builds, migrations, pushes or database writes.
 - [x] Replay the guarded collector against the real public board with a stub
       database and local in-memory limiter; report counts/logs without persisting.
-- [ ] Review and commit the slice locally. Owner review route:
+- [x] Review and commit the slice locally. Owner review route:
       `/dashboard/collectors/new/ashby-board`, board name `Ashby`.
 
 Work is prepared on a separate local branch while the Greenhouse PR is
@@ -71,3 +71,4 @@ A guarded replay against the real Ashby public API returned 74 rows in about
 1.3 seconds with one API page and `Found 74 jobs.` in the log. The database
 port was a stub and the database URL was deliberately unusable; no database
 writes or live persisted runs were performed.
+Independent Standards and Spec reviews reported no findings.
