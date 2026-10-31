@@ -1,6 +1,6 @@
 # Collector Completion Plan
 
-**Status:** authorized for autonomous implementation, PR publication and merge.
+**Status:** implementation complete; published in [PR #547](https://github.com/ai-tech-community/aitcom/pull/547).
 
 **Objective:** finish the approved twelve-slice Data collectors roadmap. Continue
 without owner checkpoints between slices; each completed slice has a reachable

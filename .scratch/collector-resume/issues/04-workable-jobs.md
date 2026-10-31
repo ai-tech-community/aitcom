@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Greenhouse jobs.
 
-**Status:** reviewed-locally; owner app check pending
+**Status:** merged in [PR #546](https://github.com/ai-tech-community/aitcom/pull/546) (`14a5195d`)
 
 - [x] Workable jobs appears under Jobs with correct company recognition.
 - [x] The supported public structured source is verified before the preset is offered.
