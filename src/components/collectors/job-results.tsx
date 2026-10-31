@@ -52,7 +52,10 @@ export function JobResults({ rows }: { rows: readonly Row[] }) {
     if (column === "postedAt") {
       const date = new Date(raw);
       return Number.isFinite(date.getTime())
-        ? date.toLocaleDateString(locale)
+        ? date.toLocaleDateString(
+            locale,
+            /^\d{4}-\d{2}-\d{2}$/.test(raw) ? { timeZone: "UTC" } : undefined,
+          )
         : "—";
     }
     return raw;

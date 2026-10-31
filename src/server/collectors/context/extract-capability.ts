@@ -76,6 +76,20 @@ export function extractTextVia(
   };
 }
 
+/** XML decoding shares the same worker deadline and failure handling. */
+export function parseXmlVia(
+  extractor: PageExtractor,
+  clock: RunClock,
+): CollectorContext["parseXml"] {
+  return async (page) => {
+    const result = await guardedExtract(extractor, clock, page.xml, {
+      kind: "xml",
+      baseUrl: page.url,
+    });
+    return JSON.parse(result.rows[0]?.json ?? "null") as unknown;
+  };
+}
+
 async function guardedExtract(
   extractor: PageExtractor,
   clock: RunClock,

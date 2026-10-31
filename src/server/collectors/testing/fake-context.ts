@@ -3,8 +3,10 @@ import { toCollectorResponse } from "../context/collector-context";
 import {
   extractListVia,
   extractTextVia,
+  parseXmlVia,
   type PageExtractor,
 } from "../context/extract-capability";
+import { extractXml } from "../extract/extract-xml";
 import { extractList, extractText } from "../extract/extract-list";
 
 type FakePage = {
@@ -27,7 +29,11 @@ export function fakeContext(pages: Record<string, FakePage>) {
   const signal = new AbortController().signal;
   const extractor: PageExtractor = {
     extract: async (html, spec) =>
-      "kind" in spec ? extractText(html, spec) : extractList(html, spec),
+      "kind" in spec
+        ? spec.kind === "xml"
+          ? extractXml(html)
+          : extractText(html, spec)
+        : extractList(html, spec),
   };
   const clock = { isOver: () => signal.aborted };
   const ctx: CollectorContext = {
@@ -37,6 +43,7 @@ export function fakeContext(pages: Record<string, FakePage>) {
     },
     extractList: extractListVia(extractor, clock),
     extractText: extractTextVia(extractor, clock),
+    parseXml: parseXmlVia(extractor, clock),
     async fetch(url, opts) {
       requests.push({ url, accept: opts?.accept });
       const page = pages[url];

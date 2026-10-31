@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Greenhouse jobs.
 
-**Status:** reviewed-locally; owner app check pending
+**Status:** merged in PR #544 (`c3f0dee7`)
 
 - [x] Lever jobs appears under Jobs; supported links prefill the correct company.
 - [x] Public structured data is read through the guarded context and mapped to the common job columns.

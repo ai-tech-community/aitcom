@@ -135,6 +135,49 @@ describe("runPollInterval", () => {
 });
 
 describe("CollectorRun", () => {
+  it("shows Personio descriptions in the common details panel", () => {
+    h.run.mockReturnValue(
+      ok({ ...base, collectorId: "personio-jobs", presetId: "personio-board" }),
+    );
+    h.items.mockReturnValue(
+      ok({
+        items: [
+          {
+            title: "Engineer",
+            description: "Personio role description",
+            url: "https://demo.jobs.personio.de/job/1",
+          },
+        ],
+        nextSeq: null,
+      }),
+    );
+    renderRun();
+    expect(screen.queryByText("Personio role description")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "View details for Engineer" }),
+    );
+    expect(screen.getByRole("dialog", { name: "Engineer" })).toHaveTextContent(
+      "Personio role description",
+    );
+  });
+
+  it("explains a Personio feed that may not have been enabled", () => {
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        collectorId: "personio-jobs",
+        status: "failed",
+        itemCount: 0,
+        stopReason: "error",
+        errorDetail: { code: "personio_feed_unavailable" },
+      }),
+    );
+    renderRun();
+    expect(
+      screen.getByText(en.collectors.failure.personio_feed_unavailable),
+    ).toBeInTheDocument();
+  });
+
   it("uses the compact details view for job-board runs", () => {
     h.run.mockReturnValue(
       ok({ ...base, collectorId: "job-board", presetId: "greenhouse" }),

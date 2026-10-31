@@ -27,6 +27,81 @@ function facade(over: Partial<CollectorRunsDeps> = {}) {
 }
 
 describe("listPresets", () => {
+  it("lists localized Personio fields and disables recognition with its collector", () => {
+    const personio = getCollector("personio-jobs")!;
+    const runs = facade({
+      catalog: {
+        all: () => [personio],
+        get: getCollector,
+        everything: () => [personio],
+      },
+    });
+    for (const [locale, title] of [
+      ["en", "Personio jobs"],
+      ["nl", "Personio-vacatures"],
+      ["fr", "Offres Personio"],
+    ] as const) {
+      expect(
+        runs.listPresets(locale).find((p) => p.id === "personio-board"),
+      ).toMatchObject({
+        title,
+        base: { language: "en" },
+        ask: ["url", "language"],
+      });
+    }
+    expect(
+      runs.recognize("https://demo.jobs.personio.com/xml?language=nl"),
+    ).toEqual({
+      ok: true,
+      presetId: "personio-board",
+      prefill: { url: "https://demo.jobs.personio.com/", language: "nl" },
+      matched: true,
+    });
+    expect(facade().recognize("https://demo.jobs.personio.de/")).toEqual({
+      ok: true,
+      presetId: "custom-page",
+      prefill: { url: "https://demo.jobs.personio.de/" },
+      matched: false,
+    });
+  });
+
+  it("offers localized Workable jobs and falls back when the collector is disabled", () => {
+    const jobBoard = getCollector("job-board")!;
+    const runs = facade({
+      catalog: {
+        all: () => [jobBoard],
+        get: getCollector,
+        everything: () => [jobBoard],
+      },
+    });
+    for (const [locale, title] of [
+      ["en", "Workable jobs"],
+      ["nl", "Workable-vacatures"],
+      ["fr", "Offres Workable"],
+    ] as const) {
+      expect(
+        runs.listPresets(locale).find((p) => p.id === "workable-board"),
+      ).toMatchObject({ title, base: { board: "workable" }, ask: ["name"] });
+    }
+    expect(runs.recognize("https://apply.workable.com/careers/")).toEqual({
+      ok: true,
+      presetId: "workable-board",
+      matched: true,
+      prefill: { name: "careers" },
+    });
+    expect(
+      facade()
+        .listPresets("en")
+        .some((p) => p.id === "workable-board"),
+    ).toBe(false);
+    expect(facade().recognize("https://apply.workable.com/careers/")).toEqual({
+      ok: true,
+      presetId: "custom-page",
+      matched: false,
+      prefill: { url: "https://apply.workable.com/careers/" },
+    });
+  });
+
   it("offers localized Lever jobs, keeps EU prefill and falls back when disabled", () => {
     const jobBoard = getCollector("job-board")!;
     const runs = facade({

@@ -10,13 +10,17 @@ import {
   parseLeverBoard,
   LEVER_PAGE_SIZE,
 } from "@/lib/job-boards/lever";
+import {
+  workableBoardUrl,
+  parseWorkableBoard,
+} from "@/lib/job-boards/workable";
 import { jobBoardName, jobBoardRowSchema } from "@/lib/job-boards/job-board";
 
 import type { Collector } from "../collector";
 import { CollectorStop } from "../errors";
 
 const inputSchema = z.object({
-  board: z.enum(["greenhouse", "ashby", "lever", "lever-eu"]),
+  board: z.enum(["greenhouse", "ashby", "lever", "lever-eu", "workable"]),
   name: jobBoardName,
 });
 
@@ -45,6 +49,12 @@ const BOARDS = {
     parse: parseLeverBoard,
     pageSize: LEVER_PAGE_SIZE,
   },
+  workable: {
+    host: "apply.workable.com",
+    url: workableBoardUrl,
+    parse: parseWorkableBoard,
+    pageSize: null,
+  },
 } as const;
 
 function invalidResponse(): CollectorStop {
@@ -63,14 +73,14 @@ export const jobBoard: Collector<
   z.infer<typeof jobBoardRowSchema>
 > = {
   id: "job-board",
-  version: 4,
+  version: 5,
   author: "platform",
   kind: "api",
   title: { en: "Job board", nl: "Vacaturesite", fr: "Site d’emploi" },
   description: {
-    en: "Published jobs from a company's Greenhouse, Ashby or Lever board, with locations, departments and links.",
-    nl: "Gepubliceerde vacatures van een Greenhouse-, Ashby- of Lever-vacaturesite, met locaties, afdelingen en links.",
-    fr: "Les offres publiées sur le site Greenhouse, Ashby ou Lever d’une entreprise, avec lieux, services et liens.",
+    en: "Published jobs from a company's Greenhouse, Ashby, Lever or Workable board, with locations, departments and links.",
+    nl: "Gepubliceerde vacatures van een Greenhouse-, Ashby-, Lever- of Workable-vacaturesite, met locaties, afdelingen en links.",
+    fr: "Les offres publiées sur le site Greenhouse, Ashby, Lever ou Workable d’une entreprise, avec lieux, services et liens.",
   },
   inputSchema,
   itemSchema: jobBoardRowSchema,

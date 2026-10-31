@@ -1,0 +1,29 @@
+<workzag-jobs>
+  <position>
+    <id>1822268</id>
+    <office>München</office>
+    <recruitingCategory>Talentpool</recruitingCategory>
+    <name>Bewerberpool</name>
+    <employmentType>permanent</employmentType>
+    <seniority>entry-level</seniority>
+    <schedule>full-time</schedule>
+    <yearsOfExperience>lt-1</yearsOfExperience>
+    <occupation>other</occupation>
+    <occupationCategory>other</occupationCategory>
+    <createdAt>2017-03-16T16:25:09+00:00</createdAt>
+  </position>
+  <position>
+    <id>1822269</id>
+    <subcompany>Mutter AG</subcompany>
+    <office>Remote</office>
+    <recruitingCategory>Festangestellte</recruitingCategory>
+    <name>Initiative application (Full time)</name>
+    <employmentType>permanent</employmentType>
+    <seniority>entry-level</seniority>
+    <schedule>full-time</schedule>
+    <yearsOfExperience>lt-1</yearsOfExperience>
+    <occupation>other</occupation>
+    <occupationCategory>other</occupationCategory>
+    <createdAt>2018-07-31T09:25:04+00:00</createdAt>
+  </position>
+</workzag-jobs>

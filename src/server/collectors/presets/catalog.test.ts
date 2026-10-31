@@ -20,6 +20,8 @@ const ASK_SAMPLES: Record<string, Record<string, unknown>> = {
   "greenhouse-board": { name: "acme" },
   "ashby-board": { name: "Ashby" },
   "lever-board": { name: "leverdemo" },
+  "workable-board": { name: "careers" },
+  "personio-board": { url: "https://demo.jobs.personio.de/", language: "en" },
   feed: { url: "https://example.com/feed.xml" },
   "custom-page": {
     url: "https://example.com/jobs",

@@ -1,6 +1,6 @@
 # Lever Jobs Implementation Plan
 
-**Status:** implemented and independently reviewed; ready for local app testing.
+**Status:** merged in PR #544 (`c3f0dee7`) after all checks passed.
 
 **Goal:** Select Lever jobs or paste a hosted board link, collect published
 jobs with full descriptions, and inspect/download them in the existing app.
@@ -105,3 +105,8 @@ PR #543 (Ashby and job details) merged as `762b205e` after all CI/preview checks
 The Lever commit was rebased onto that main without conflicts; its feature
 patch remained byte-for-byte identical. The local checkout now exposes this
 slice for owner app testing. No Lever push or database write was performed.
+
+Delivery update: the owner's next instruction authorized publishing and merging
+Lever. PR #544 merged as `c3f0dee7` after all CI and preview checks passed.
+The earlier unpublished notes describe the local review stage before that
+instruction. The next Workable slice remains local for owner review.

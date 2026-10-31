@@ -44,7 +44,9 @@ export type ExtractTextSpec = {
   decodeEntities: boolean;
 };
 
-export type ExtractRequestSpec = ExtractSpec | ExtractTextSpec;
+export type ExtractXmlSpec = { kind: "xml"; baseUrl: string };
+
+export type ExtractRequestSpec = ExtractSpec | ExtractTextSpec | ExtractXmlSpec;
 
 export type ExtractResult = {
   rows: Record<string, string | null>[];

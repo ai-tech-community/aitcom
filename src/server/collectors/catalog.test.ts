@@ -78,6 +78,10 @@ describe("collector catalog", () => {
   });
 
   it("hides a switched-off collector", () => {
+    expect(getCollector("personio-jobs")?.id).toBe("personio-jobs");
+    expect(
+      getCollector("personio-jobs", new Set(["personio-jobs"])),
+    ).toBeUndefined();
     expect(getCollector("feed-items")?.id).toBe("feed-items");
     expect(getCollector("feed-items", new Set(["feed-items"]))).toBeUndefined();
     expect(getCollector("nope")).toBeUndefined();

@@ -1,8 +1,9 @@
 # Data collectors: visible delivery slices
 
-**Status:** Greenhouse merged in [PR #542](https://github.com/ai-tech-community/aitcom/pull/542).
-Ashby and full job details merged in [PR #543](https://github.com/ai-tech-community/aitcom/pull/543).
-Lever is reviewed locally and ready for the owner's app check.
+**Status:** Greenhouse ([PR #542](https://github.com/ai-tech-community/aitcom/pull/542)),
+Ashby/job details ([PR #543](https://github.com/ai-tech-community/aitcom/pull/543))
+and Lever ([PR #544](https://github.com/ai-tech-community/aitcom/pull/544)) are merged.
+Workable and Personio are reviewed locally and ready for the owner's app check.
 
 ## Delivery agreement
 
@@ -162,3 +163,39 @@ Owner review: refresh `/dashboard/collectors`, choose **Lever jobs** and enter
 `leverdemo`, or paste `https://jobs.eu.lever.co/leverdemo`. Inspect View details,
 application links, run log/history and CSV/JSON. Lever remains unpublished;
 next planned source after owner review is Workable (slice 4).
+
+## Lever merge and Workable handoff
+
+On 2026-10-31 the owner authorized the Lever PR/merge and the next slice.
+PR #544 merged as `c3f0dee7` after full CI tests, lint/type-check, formatting,
+build and Vercel preview all passed. No follow-up source correction was needed.
+
+Workable (slice 4) is implemented on `feat/collector-workable`, rebased onto
+that main with the reviewed feature patch unchanged. Its documented public
+account endpoint works through guarded redirects and supplies descriptions
+without per-job requests. The new preset, strict company-link recognition,
+existing details/history/exports and source calendar-date preservation are
+covered by 150 focused tests. Type-check, targeted lint/format and independent
+Standards/Spec reviews passed. Stub-storage live replays collected two Workable
+jobs and six Hugging Face jobs, all with descriptions; missing accounts report
+the expected failure. No local database writes or Workable push occurred.
+
+Owner check: refresh Data collectors, select **Workable jobs**, enter `careers`
+and start a fresh run. Also paste `https://apply.workable.com/huggingface/`.
+Inspect descriptions, application links, publication dates, log/history and
+CSV/JSON. The next planned source after owner review is Personio (slice 5).
+
+## Personio local delivery
+
+The owner's “ok next” instruction continued to Personio without publishing
+Workable. Branch `feat/collector-personio` includes both local slices. Personio
+adds a board-link/language form, strict .de/.com recognition, a bounded XML
+worker operation and the common job details/history/downloads. Creation times
+are not presented as publication dates. Descriptions absent in the chosen
+language remain empty with the existing explanation.
+
+229 focused tests, type-check, targeted lint/format and final Standards/Spec
+reviews passed. Guarded stub-storage replays returned four demo jobs for each
+domain and a valid empty feed. Select German on the demo board to get all four
+descriptions. No push or database write was performed. The next planned slice
+after owner review is Hacker News (slice 6).

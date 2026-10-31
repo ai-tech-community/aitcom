@@ -388,6 +388,38 @@ describe("collector context failure details", () => {
 });
 
 describe("collector context extractList", () => {
+  it("parses XML through the same bounded worker and retains malformed null", async () => {
+    const t = setup();
+    t.extract.mockResolvedValueOnce({
+      rows: [{ json: '{"root":{"id":"9007199254740993"}}' }],
+      nextUrl: null,
+      nextUrlTooLong: false,
+      truncated: false,
+    });
+    await expect(
+      t.ctx.parseXml({ xml: "<root/>", url: "https://e.com/xml" }),
+    ).resolves.toEqual({ root: { id: "9007199254740993" } });
+    expect(t.extract).toHaveBeenCalledWith("<root/>", {
+      kind: "xml",
+      baseUrl: "https://e.com/xml",
+    });
+    t.extract.mockResolvedValueOnce({
+      rows: [{ json: "null" }],
+      nextUrl: null,
+      nextUrlTooLong: false,
+      truncated: false,
+    });
+    await expect(
+      t.ctx.parseXml({ xml: "broken", url: "https://e.com/xml" }),
+    ).resolves.toBeNull();
+    t.controller.abort();
+    expect(
+      (await stopOf(t.ctx.parseXml({ xml: "", url: "https://e.com/xml" })))
+        .reason,
+    ).toBe("time_limit");
+    expect(t.extract).toHaveBeenCalledTimes(2);
+  });
+
   it("serves full text through the worker and retains truncation", async () => {
     const t = setup();
     t.extract.mockResolvedValueOnce({
