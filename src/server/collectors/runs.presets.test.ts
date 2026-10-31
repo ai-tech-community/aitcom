@@ -27,6 +27,43 @@ function facade(over: Partial<CollectorRunsDeps> = {}) {
 }
 
 describe("listPresets", () => {
+  it("offers localized Lever jobs, keeps EU prefill and falls back when disabled", () => {
+    const jobBoard = getCollector("job-board")!;
+    const runs = facade({
+      catalog: {
+        all: () => [jobBoard],
+        get: getCollector,
+        everything: () => [jobBoard],
+      },
+    });
+    for (const [locale, title] of [
+      ["en", "Lever jobs"],
+      ["nl", "Lever-vacatures"],
+      ["fr", "Offres Lever"],
+    ] as const) {
+      expect(
+        runs.listPresets(locale).find((p) => p.id === "lever-board"),
+      ).toMatchObject({ title, base: { board: "lever" }, ask: ["name"] });
+    }
+    expect(runs.recognize("https://jobs.eu.lever.co/acme")).toEqual({
+      ok: true,
+      presetId: "lever-board",
+      prefill: { name: "acme", board: "lever-eu" },
+      matched: true,
+    });
+    expect(
+      facade()
+        .listPresets("en")
+        .some((p) => p.id === "lever-board"),
+    ).toBe(false);
+    expect(facade().recognize("https://jobs.eu.lever.co/acme")).toEqual({
+      ok: true,
+      presetId: "custom-page",
+      prefill: { url: "https://jobs.eu.lever.co/acme" },
+      matched: false,
+    });
+  });
+
   it("offers and recognises hosted boards only while job-board is available", () => {
     const jobBoard = getCollector("job-board")!;
     const runs = facade({

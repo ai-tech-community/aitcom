@@ -225,6 +225,32 @@ beforeEach(() => {
 });
 
 describe("StartRunForm", () => {
+  it.each(["lever", "lever-eu"])(
+    "starts a recognized %s board and opens the result run",
+    (board) => {
+      jobBoardOverview();
+      renderForm(
+        "lever-board",
+        { name: "leverdemo", ...(board === "lever-eu" ? { board } : {}) },
+        true,
+      );
+      expect(
+        screen.getByRole("heading", { name: "Lever jobs" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText("Item selector")).toBeNull();
+      fireEvent.click(startButton());
+      expect(h.mutate).toHaveBeenCalledWith({
+        presetId: "lever-board",
+        input: { board, name: "leverdemo" },
+        acknowledged: false,
+      });
+      act(() => h.options.onSuccess?.({ ok: true, runId: "lever-result" }));
+      expect(h.push).toHaveBeenCalledWith(
+        "/dashboard/collectors/runs/lever-result",
+      );
+    },
+  );
+
   it("starts a recognised Ashby board without selectors and opens the result run", () => {
     jobBoardOverview();
     renderForm("ashby-board", { name: "Ashby" }, true);

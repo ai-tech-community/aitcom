@@ -1,5 +1,6 @@
 import { CUSTOM_PAGE_PRESET_ID } from "@/lib/collectors/presets";
 import { recognizeGreenhouseBoard } from "@/lib/job-boards/greenhouse";
+import { recognizeLeverBoard } from "@/lib/job-boards/lever";
 import { recognizeAshbyBoard } from "@/lib/job-boards/ashby";
 
 import { feedItems } from "../collectors/feed-items";
@@ -66,6 +67,39 @@ const ashby = definePreset(jobBoard, {
   },
 });
 
+const lever = definePreset(jobBoard, {
+  id: "lever-board",
+  group: "jobs",
+  title: { en: "Lever jobs", nl: "Lever-vacatures", fr: "Offres Lever" },
+  summary: {
+    en: "Published jobs on Lever, with full descriptions and application links.",
+    nl: "Gepubliceerde vacatures op Lever, met volledige omschrijvingen en sollicitatielinks.",
+    fr: "Les offres publiées sur Lever, avec descriptions complètes et liens de candidature.",
+  },
+  base: { board: "lever" },
+  ask: ["name"],
+  hints: {
+    name: {
+      ...jobBoard.fieldHints.name,
+      placeholder: "leverdemo",
+      help: {
+        en: "The company name in the address: leverdemo in https://jobs.lever.co/leverdemo. For an EU board, paste the full jobs.eu.lever.co link in the sidebar.",
+        nl: "De bedrijfsnaam in het adres: leverdemo in https://jobs.lever.co/leverdemo. Plak voor een EU-vacaturesite de volledige jobs.eu.lever.co-link in de zijbalk.",
+        fr: "Le nom de l’entreprise dans l’adresse : leverdemo dans https://jobs.lever.co/leverdemo. Pour un site européen, collez le lien jobs.eu.lever.co complet dans la barre latérale.",
+      },
+    },
+  },
+  recognize: (url) => {
+    const match = recognizeLeverBoard(url);
+    return match
+      ? {
+          name: match.name,
+          ...(match.board === "lever-eu" ? { board: match.board } : {}),
+        }
+      : null;
+  },
+});
+
 const feed = definePreset(feedItems, {
   id: "feed",
   group: "research",
@@ -108,6 +142,7 @@ const customPage = definePreset(pageList, {
 const PRESETS: readonly AnyPreset[] = Object.freeze([
   greenhouse,
   ashby,
+  lever,
   feed,
   customPage,
 ]);
