@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs";
-import { collectorsEnabled } from "@/server/collectors/flags";
 
 /**
  * The member dashboard frame, shared by its route groups: greeting (the
@@ -25,7 +24,7 @@ export async function MemberDashboardFrame({
       </h1>
 
       <div className="mt-6">
-        <DashboardTabs showCollectors={collectorsEnabled()} />
+        <DashboardTabs />
       </div>
 
       <div className="mt-8">{children}</div>

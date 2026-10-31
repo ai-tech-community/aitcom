@@ -1,20 +1,19 @@
 import type * as NextServer from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { cleanupExpiredRuns, runWorkerTick, collectorsEnabled, afterCallbacks } =
-  vi.hoisted(() => ({
+const { cleanupExpiredRuns, runWorkerTick, afterCallbacks } = vi.hoisted(
+  () => ({
     cleanupExpiredRuns: vi.fn(),
     runWorkerTick: vi.fn(),
-    collectorsEnabled: vi.fn(),
     afterCallbacks: [] as (() => Promise<void>)[],
-  }));
+  }),
+);
 
 vi.mock("@/server/collectors/retention", () => ({ cleanupExpiredRuns }));
 vi.mock("@/server/collectors/executor", () => ({ runWorkerTick }));
 vi.mock("@/server/collectors/live", () => ({
   liveExecutorDeps: () => ({ db: {}, now: () => 0 }),
 }));
-vi.mock("@/server/collectors/flags", () => ({ collectorsEnabled }));
 vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<typeof NextServer>()),
   after: (cb: () => Promise<void>) => {
@@ -35,7 +34,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   afterCallbacks.length = 0;
   vi.stubEnv("CRON_SECRET", "s3cret");
-  collectorsEnabled.mockReturnValue(true);
   cleanupExpiredRuns.mockResolvedValue(3);
   runWorkerTick.mockResolvedValue({ executed: 2 });
 });
@@ -58,15 +56,8 @@ describe("collector worker route", () => {
     expect((await POST(req("POST", "Bearer undefined"))).status).toBe(401);
   });
 
-  it("does nothing while the feature is off", async () => {
-    collectorsEnabled.mockReturnValue(false);
-    const res = await GET(req("GET", "Bearer s3cret"));
-    expect(await res.json()).toMatchObject({ skipped: "collectors off" });
-    expect(runWorkerTick).not.toHaveBeenCalled();
-    expect(cleanupExpiredRuns).not.toHaveBeenCalled();
-  });
-
-  it("GET runs a tick and reports it", async () => {
+  it("GET runs cleanup and a tick without a rollout flag", async () => {
+    vi.stubEnv("FEATURE_COLLECTORS", "off");
     const res = await GET(req("GET", "Bearer s3cret"));
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({

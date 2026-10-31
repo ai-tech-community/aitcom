@@ -200,7 +200,7 @@ pnpm dev
 
 The app will be available at [http://localhost:3000](http://localhost:3000). The Payload CMS admin panel is at [http://localhost:3000/admin](http://localhost:3000/admin).
 
-With `FEATURE_COLLECTORS=on`, starting a data-collector run in `pnpm dev`
+Data collectors are available to signed-in members. Starting a run in `pnpm dev`
 wakes the worker in the local process after the response. It drains queued
 work without needing `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` or a cron scheduler.
 Local runs share an in-memory one-request-per-second site limiter; configured

@@ -2,23 +2,16 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
-  enabled: true,
   redirect: vi.fn((): never => {
     throw new Error("NEXT_REDIRECT");
   }),
-  notFound: vi.fn((): never => {
-    throw new Error("NEXT_NOT_FOUND");
-  }),
+  session: vi.fn(),
 }));
 
-vi.mock("@/server/collectors/flags", () => ({
-  collectorsEnabled: () => h.enabled,
-}));
 vi.mock("@/server/dashboard/require-dashboard-session", () => ({
-  requireDashboardSession: async () => ({ user: { id: "u" } }),
+  requireDashboardSession: h.session,
 }));
 vi.mock("next-intl/server", () => ({ getLocale: async () => "nl" }));
-vi.mock("next/navigation", () => ({ notFound: h.notFound }));
 vi.mock("@/i18n/navigation", () => ({ permanentRedirect: h.redirect }));
 vi.mock("@/components/collectors/start-run-form", () => ({
   StartRunForm: (props: object) => (
@@ -39,7 +32,7 @@ const page = (
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.enabled = true;
+  h.session.mockResolvedValue({ user: { id: "u" } });
 });
 
 describe("start page", () => {
@@ -83,8 +76,8 @@ describe("start page", () => {
     },
   );
 
-  it("is not found while collectors are off", async () => {
-    h.enabled = false;
-    await expect(page("feed")).rejects.toThrow("NEXT_NOT_FOUND");
+  it("still requires a dashboard session", async () => {
+    h.session.mockRejectedValue(new Error("SIGN_IN_REQUIRED"));
+    await expect(page("feed")).rejects.toThrow("SIGN_IN_REQUIRED");
   });
 });

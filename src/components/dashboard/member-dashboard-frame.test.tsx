@@ -15,7 +15,6 @@ vi.mock("next-intl/server", async () => {
       }),
   };
 });
-vi.mock("@/server/collectors/flags", () => ({ collectorsEnabled: () => true }));
 vi.mock("@/i18n/navigation", () => ({
   usePathname: () => "/dashboard/collectors/runs",
   Link: ({

@@ -5,7 +5,7 @@ const h = vi.hoisted(() => ({
     agentId: string;
     scopes: string[];
   } | null,
-  enabled: true,
+
   runs: {
     listCollectors: vi.fn(),
     startRun: vi.fn(),
@@ -19,9 +19,6 @@ vi.mock("@/server/better-auth", () => ({
 }));
 vi.mock("@/server/collectors/live", () => ({
   liveCollectorRuns: () => h.runs,
-}));
-vi.mock("@/server/collectors/flags", () => ({
-  collectorsEnabled: () => h.enabled,
 }));
 vi.mock("@/server/agent/api-key", () => ({
   validateApiKey: async () => h.key,
@@ -51,7 +48,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "log").mockImplementation(() => undefined);
   h.key = { ownerId: "owner", agentId: "agent", scopes: ["collect"] };
-  h.enabled = true;
+
   h.runs.startRun.mockResolvedValue({ ok: true, runId: "r" });
   h.runs.getRun.mockResolvedValue({ id: "r", origin: "mcp" });
   h.runs.listItems.mockResolvedValue({
@@ -77,21 +74,15 @@ describe("agent collection boundary", () => {
       afterSeq: 3,
     });
   });
-  it.each(["missing scope", "unclaimed", "revoked", "feature off"])(
+  it.each(["missing scope", "unclaimed", "revoked"])(
     "denies every tool when %s",
     async (reason) => {
       if (reason === "missing scope") h.key!.scopes = ["read"];
       if (reason === "unclaimed") h.key!.ownerId = null;
       if (reason === "revoked") h.key = null;
-      if (reason === "feature off") h.enabled = false;
       for (const call of calls())
         await expect(call()).rejects.toMatchObject({
-          code:
-            reason === "revoked"
-              ? "UNAUTHORIZED"
-              : reason === "feature off"
-                ? "NOT_FOUND"
-                : "FORBIDDEN",
+          code: reason === "revoked" ? "UNAUTHORIZED" : "FORBIDDEN",
         });
       for (const fn of Object.values(h.runs)) expect(fn).not.toHaveBeenCalled();
     },

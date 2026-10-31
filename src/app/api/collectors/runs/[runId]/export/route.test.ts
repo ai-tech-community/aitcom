@@ -1,15 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
-  enabled: true,
   session: { user: { id: "user-1" } } as { user: { id: string } } | null,
   exportRun: vi.fn(),
   getRun: vi.fn(),
 }));
 
-vi.mock("@/server/collectors/flags", () => ({
-  collectorsEnabled: () => h.enabled,
-}));
 vi.mock("@/server/collectors/live", () => ({
   liveCollectorRuns: () => ({ exportRun: h.exportRun, getRun: h.getRun }),
 }));
@@ -31,7 +27,7 @@ async function* chunks(...parts: string[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.enabled = true;
+
   h.session = { user: { id: "user-1" } };
   h.getRun.mockResolvedValue({ id: "run-1", status: "succeeded" });
   h.exportRun.mockResolvedValue({
@@ -42,12 +38,6 @@ beforeEach(() => {
 });
 
 describe("collector run export", () => {
-  it("is not found while the feature is off", async () => {
-    h.enabled = false;
-    expect((await GET(req("csv"), params())).status).toBe(404);
-    expect(h.exportRun).not.toHaveBeenCalled();
-  });
-
   it("refuses a signed-out visitor", async () => {
     h.session = null;
     expect((await GET(req("csv"), params())).status).toBe(401);

@@ -48,7 +48,6 @@ export interface PresetCatalogPort {
 
 export interface CollectorRunsDeps {
   db: typeof appDb;
-  enabled(): boolean;
   catalog: CollectorCatalogPort;
   /** Presets; a preset whose collector the catalog hides is hidden too. */
   presets: PresetCatalogPort;
@@ -76,7 +75,7 @@ export type StartRunResult =
   | { ok: true; runId: string }
   | {
       ok: false;
-      reason: "disabled" | "unknown_collector" | "invalid_input" | "quota";
+      reason: "unknown_collector" | "invalid_input" | "quota";
       message: string;
       /**
        * invalid_input only: why each input was refused, as codes by full
@@ -404,13 +403,6 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
     },
 
     async startRun(args: StartRunArgs): Promise<StartRunResult> {
-      if (!deps.enabled()) {
-        return {
-          ok: false,
-          reason: "disabled",
-          message: "Data collectors are not available.",
-        };
-      }
       const resolved = resolveStart(args);
       if (!resolved) {
         return {

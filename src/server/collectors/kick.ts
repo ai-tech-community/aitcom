@@ -1,7 +1,6 @@
 import { after } from "next/server";
 
 import { env } from "@/env";
-import { collectorsEnabled } from "./flags";
 
 export type WorkerUrlEnv = {
   VERCEL_ENV?: string;
@@ -36,14 +35,13 @@ export function workerUrl(e: WorkerUrlEnv): string | null {
 export function kickCollectorWorker(): void {
   if (env.NODE_ENV === "development") {
     after(async () => {
-      if (!collectorsEnabled()) return;
       try {
         const { runWorkerTick } = await import("./executor");
         const { liveExecutorDeps } = await import("./live");
         const deps = liveExecutorDeps();
         // A tick stops starting runs after 20 seconds. Without a local cron,
-        // keep taking ticks until the backlog is empty or collection is off.
-        while (collectorsEnabled()) {
+        // keep taking ticks until the backlog is empty.
+        for (;;) {
           const { executed } = await runWorkerTick(deps);
           if (executed === 0) break;
         }

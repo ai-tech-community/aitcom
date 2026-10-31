@@ -65,7 +65,7 @@ describe("dataset retention", () => {
     const db = { select: () => builder };
     const runs = createCollectorRuns({
       db: db as never,
-      enabled: () => true,
+
       catalog: { all: () => [], get: () => undefined, everything: () => [] },
       presets: { all: () => [], get: () => undefined },
       kick: () => undefined,

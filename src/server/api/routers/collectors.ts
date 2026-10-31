@@ -16,20 +16,7 @@ import {
   requireOwner,
   requireScope,
 } from "@/server/api/trpc";
-import { collectorsEnabled } from "@/server/collectors/flags";
 import { liveCollectorRuns } from "@/server/collectors/live";
-
-/**
- * The web's adapter over the CollectorRuns facade (ADR-0040). It adds only
- * the feature gate and the first-use acknowledgement; every other rule
- * (ownership, quota, validation) lives in the facade, so MCP behaves the same.
- */
-function facade() {
-  if (!collectorsEnabled()) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "COLLECTORS_OFF" });
-  }
-  return liveCollectorRuns();
-}
 
 /** How many recent runs the landing shows. */
 const RECENT_RUNS = 5;
@@ -55,20 +42,21 @@ const domainInput = z
   .refine((value) => canonicalOptOutDomain(value) !== null, "DOMAIN_INVALID")
   .transform((value) => canonicalOptOutDomain(value)!);
 function requireStaff(user: unknown) {
-  if (!collectorsEnabled())
-    throw new TRPCError({ code: "NOT_FOUND", message: "COLLECTORS_OFF" });
   if (!isStaff(user)) throw new TRPCError({ code: "FORBIDDEN" });
 }
 
+/**
+ * The web's adapter over the CollectorRuns facade (ADR-0040). It adds only
+ * the first-use acknowledgement; ownership, quota and validation live in
+ * the facade, so MCP behaves the same.
+ */
 export const collectorsRouter = createTRPCRouter({
   agentAccess: protectedProcedure.query(({ ctx }) => {
-    facade();
     return collectorAgentAccess(ctx.db, ctx.session.user.id);
   }),
   setAgentAccess: protectedProcedure
     .input(z.object({ allowed: z.boolean(), acknowledged: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      facade();
       if (input.allowed && !input.acknowledged)
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -92,7 +80,7 @@ export const collectorsRouter = createTRPCRouter({
     .query(({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "collect");
       requireOwner(ctx.agent.ownerId);
-      return facade().listCollectors(input.locale);
+      return liveCollectorRuns().listCollectors(input.locale);
     }),
   agentStart: agentProcedure
     .input(
@@ -101,7 +89,7 @@ export const collectorsRouter = createTRPCRouter({
     .mutation(({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "collect");
       const userId = requireOwner(ctx.agent.ownerId);
-      return facade().startRun({
+      return liveCollectorRuns().startRun({
         userId,
         agentId: ctx.agent.agentId,
         origin: "mcp",
@@ -113,7 +101,9 @@ export const collectorsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "collect");
       const userId = requireOwner(ctx.agent.ownerId);
-      return (await facade().getRun(userId, input.runId)) ?? runNotFound();
+      return (
+        (await liveCollectorRuns().getRun(userId, input.runId)) ?? runNotFound()
+      );
     }),
   agentItems: agentProcedure
     .input(
@@ -127,7 +117,10 @@ export const collectorsRouter = createTRPCRouter({
       requireScope(ctx.agent.scopes, "collect");
       const userId = requireOwner(ctx.agent.ownerId);
       const { runId, ...page } = input;
-      return (await facade().listItems(userId, runId, page)) ?? runNotFound();
+      return (
+        (await liveCollectorRuns().listItems(userId, runId, page)) ??
+        runNotFound()
+      );
     }),
   optOuts: protectedProcedure.query(async ({ ctx }) => {
     requireStaff(ctx.session.user);
@@ -166,7 +159,7 @@ export const collectorsRouter = createTRPCRouter({
   overview: protectedProcedure
     .input(z.object({ locale: z.enum(routing.locales) }))
     .query(async ({ ctx, input }) => {
-      const runs = facade();
+      const runs = liveCollectorRuns();
       const userId = ctx.session.user.id;
       const [recent, usage] = await Promise.all([
         runs.listRuns(userId, { limit: RECENT_RUNS }),
@@ -187,7 +180,7 @@ export const collectorsRouter = createTRPCRouter({
   /** Which preset a pasted address opens. Never fetches the address. */
   recognize: protectedProcedure
     .input(z.object({ address: z.string().max(4_096) }))
-    .query(({ input }) => facade().recognize(input.address)),
+    .query(({ input }) => liveCollectorRuns().recognize(input.address)),
 
   start: protectedProcedure
     .input(
@@ -198,7 +191,7 @@ export const collectorsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const runs = facade();
+      const runs = liveCollectorRuns();
       const userId = ctx.session.user.id;
       if (!input.acknowledged && (await isFirstTime(runs, userId))) {
         throw new TRPCError({
@@ -218,7 +211,7 @@ export const collectorsRouter = createTRPCRouter({
     .input(z.object({ runId: z.string().min(1).max(255) }))
     .query(async ({ ctx, input }) => {
       return (
-        (await facade().getRun(ctx.session.user.id, input.runId)) ??
+        (await liveCollectorRuns().getRun(ctx.session.user.id, input.runId)) ??
         runNotFound()
       );
     }),
@@ -230,7 +223,9 @@ export const collectorsRouter = createTRPCRouter({
         limit: z.number().int().min(1).max(50).optional(),
       }),
     )
-    .query(({ ctx, input }) => facade().listRuns(ctx.session.user.id, input)),
+    .query(({ ctx, input }) =>
+      liveCollectorRuns().listRuns(ctx.session.user.id, input),
+    ),
 
   items: protectedProcedure
     .input(
@@ -243,8 +238,11 @@ export const collectorsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const { runId, ...page } = input;
       return (
-        (await facade().listItems(ctx.session.user.id, runId, page)) ??
-        runNotFound()
+        (await liveCollectorRuns().listItems(
+          ctx.session.user.id,
+          runId,
+          page,
+        )) ?? runNotFound()
       );
     }),
 });

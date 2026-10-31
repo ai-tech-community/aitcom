@@ -6,7 +6,7 @@ import { collectAll, fakeContext } from "../testing/fake-context";
 import { allPresets, getPreset } from "./catalog";
 const facade = createCollectorRuns({
   db: {} as never,
-  enabled: () => true,
+
   catalog: { all: allCollectors, get: getCollector, everything: allCollectors },
   presets: { all: allPresets, get: getPreset },
   now: () => new Date(),
