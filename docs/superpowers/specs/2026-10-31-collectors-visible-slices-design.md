@@ -1,6 +1,6 @@
 # Data collectors: visible delivery slices
 
-**Status:** slice 1 accepted locally; [PR #542](https://github.com/ai-tech-community/aitcom/pull/542) awaits CI and merge. Slice 2 (Ashby) reviewed locally; owner app check pending.
+**Status:** slice 1 merged in [PR #542](https://github.com/ai-tech-community/aitcom/pull/542) after all checks passed. Slice 2 (Ashby) reviewed locally; owner app check pending.
 
 ## Delivery agreement
 
@@ -102,6 +102,10 @@ name or paste its link from the workspace, start, inspect results and download.
   fixing local worker wake-up and local rate-limiter dependencies, and asked
   to create/merge the PR and continue with Ashby. Deployment review remains
   separate from the completed local review.
+- PR #542 merged on 2026-10-31 as `a0740dac` after CI formatting, lint/type-check,
+  full tests, production build and the Vercel preview all passed. The owner
+  granted a specific exception to the standing no-push rule for the reviewed
+  Greenhouse branch. Ashby remains local and unpublished.
 
 - Implemented on branch `feat/collector-greenhouse`; initial feature commit
   `6d97f264`. No migration is needed. No push or deployment performed.

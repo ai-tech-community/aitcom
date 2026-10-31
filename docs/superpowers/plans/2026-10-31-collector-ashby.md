@@ -61,9 +61,9 @@ Do not bypass or weaken that existing policy for this source.
 - [x] Review and commit the slice locally. Owner review route:
       `/dashboard/collectors/new/ashby-board`, board name `Ashby`.
 
-Work is prepared on a separate local branch while the Greenhouse PR is
-published and merged. The standing no-push rule remains in force unless the
-owner grants a specific exception.
+Work is prepared on a separate local branch based on merged Greenhouse
+PR #542 (`a0740dac`). The owner granted a specific push/merge exception for
+Greenhouse; the standing no-push rule still applies to this Ashby branch.
 
 Validation on 2026-10-31: all 168 tests in the eight added/touched test files
 passed; the workspace type-check and targeted ESLint/Prettier checks passed.
@@ -72,3 +72,5 @@ A guarded replay against the real Ashby public API returned 74 rows in about
 port was a stub and the database URL was deliberately unusable; no database
 writes or live persisted runs were performed.
 Independent Standards and Spec reviews reported no findings.
+The Ashby commits were rebased onto merged main; the feature diff remained
+byte-for-byte identical, so no code changes or further test runs were needed.
