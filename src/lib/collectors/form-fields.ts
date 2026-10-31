@@ -9,7 +9,13 @@ import type {
  * needs a new kind of field adds one kind here and one renderer
  * (field-renderers.tsx). Unknown kinds are refused, never drawn wrong.
  */
-export type FieldKind = "url" | "text" | "number" | "checkbox" | "rows";
+export type FieldKind =
+  | "url"
+  | "text"
+  | "number"
+  | "checkbox"
+  | "rows"
+  | "choice";
 
 type FieldBase = {
   name: string;
@@ -34,6 +40,7 @@ export type FormColumn = FieldBase & ScalarShape;
 /** How a field is drawn. */
 type FieldShape =
   | ScalarShape
+  | { kind: "choice"; options: string[] }
   | { kind: "checkbox" }
   | { kind: "rows"; min: number; max: number; columns: FormColumn[] };
 
@@ -145,7 +152,21 @@ function drawnAs(
   property: SchemaProperty,
   columnHints: FieldHintSummary[] | null,
 ): FieldShape | null {
-  if ("enum" in property || "const" in property) return null;
+  if ("const" in property || "enum" in property) {
+    const options: unknown =
+      "const" in property ? [property.const] : property.enum;
+    if (
+      property.type !== "string" ||
+      !Array.isArray(options) ||
+      options.length === 0 ||
+      !options.every(
+        (option): option is string =>
+          typeof option === "string" && option.length > 0,
+      )
+    )
+      return null;
+    return { kind: "choice", options };
+  }
   if (property.type === "boolean") return { kind: "checkbox" };
   if (property.type === "array") return rowsShape(property, columnHints);
   return scalarShape(property);
@@ -201,10 +222,15 @@ export function initialValue(field: FormField): FieldValue {
  * value is kept so the server can point at it.
  */
 function coerceScalar(
-  field: FieldBase & ScalarShape,
+  field: FieldBase & (ScalarShape | { kind: "choice" }),
   value: unknown,
 ): string | number | undefined {
-  const text = typeof value === "string" ? value.trim() : "";
+  const text =
+    typeof value === "string"
+      ? field.kind === "choice"
+        ? value
+        : value.trim()
+      : "";
   if (text === "") return field.required ? "" : undefined;
   return field.kind === "number" ? Number(text) : text;
 }

@@ -10,6 +10,8 @@ import {
 } from "./startup-roles";
 import { presentText } from "./startups";
 
+export { greenhouseBoardUrl } from "@/lib/job-boards/greenhouse";
+
 export type DetectedJobBoard = {
   board: Exclude<StartupRoleBoard, "html" | "unknown"> | "unknown";
   token: string | null;
@@ -161,10 +163,6 @@ export function detectJobBoardFromHtml(html: string): DetectedJobBoard {
   );
   if (workable) return { board: "workable", token: workable };
   return { board: "unknown", token: null };
-}
-
-export function greenhouseBoardUrl(token: string): string {
-  return `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs?content=true`;
 }
 
 /** Careers pages that link `?gh_jid=` without a Greenhouse host still use that company's board. */

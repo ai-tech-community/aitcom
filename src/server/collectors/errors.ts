@@ -9,6 +9,9 @@ import type { StopReason } from "./run-status";
 export type FailureCode =
   | "not_a_feed"
   | "feed_status"
+  | "board_not_found"
+  | "board_status"
+  | "board_response_invalid"
   | "https_only"
   | "invalid_address"
   | "redirect_loop"
@@ -33,6 +36,9 @@ export type FailureCode =
 export const FAILURE_CODES = [
   "not_a_feed",
   "feed_status",
+  "board_not_found",
+  "board_status",
+  "board_response_invalid",
   "https_only",
   "invalid_address",
   "redirect_loop",

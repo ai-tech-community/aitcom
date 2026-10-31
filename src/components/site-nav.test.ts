@@ -6,9 +6,9 @@ import nl from "../../messages/nl.json";
 import { JOIN_HREF, NAV_BAR, keyboardNavItems } from "./site-nav";
 
 describe("site nav", () => {
-  it("keeps the guest door on /join so next-intl can prefix the locale", () => {
-    // Locale-aware Link / router.push turn this into /en/join and /nl/join.
-    expect(JOIN_HREF).toBe("/join");
+  it("takes Join directly to signup so next-intl can prefix the locale", () => {
+    // The auth form also links to sign-in for people with an existing account.
+    expect(JOIN_HREF).toBe("/auth/signup");
     expect(JOIN_HREF.startsWith("/en")).toBe(false);
   });
 

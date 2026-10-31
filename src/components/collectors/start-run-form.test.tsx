@@ -11,8 +11,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { inputProblemsOf } from "@/lib/collectors/input-problems";
-import { getCollector } from "@/server/collectors/catalog";
+import { allCollectors, getCollector } from "@/server/collectors/catalog";
 import type { CollectorSummary, PresetSummary } from "@/server/collectors/runs";
+import { allPresets, getPreset } from "@/server/collectors/presets/catalog";
+import { createCollectorRuns } from "@/server/collectors/runs";
 
 import en from "../../../messages/en.json";
 
@@ -200,12 +202,70 @@ function renderForm(
 const startButton = () =>
   screen.getByRole("button", { name: en.collectors.start.submit });
 
+/** Real catalog and facade metadata; no database access or mutation. */
+function greenhouseOverview() {
+  const runs = createCollectorRuns({
+    db: {} as never,
+    enabled: () => true,
+    catalog: {
+      all: allCollectors,
+      get: getCollector,
+      everything: allCollectors,
+    },
+    presets: { all: allPresets, get: getPreset },
+    kick: vi.fn(),
+    now: () => new Date("2026-10-31T12:00:00Z"),
+  });
+  overview(false, runs.listCollectors("en"), runs.listPresets("en"));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   h.options = {};
 });
 
 describe("StartRunForm", () => {
+  it("starts a recognised Greenhouse board with its preset settings and navigates to results", () => {
+    greenhouseOverview();
+    renderForm("greenhouse-board", { name: "acme" }, true);
+    expect(
+      screen.getByRole("heading", { name: "Greenhouse jobs" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Board name" })).toHaveValue(
+      "acme",
+    );
+    expect(screen.getByText(/Recognised as/)).toHaveTextContent(
+      "Greenhouse jobs",
+    );
+    expect(screen.queryByLabelText("Item selector")).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledWith({
+      presetId: "greenhouse-board",
+      input: { board: "greenhouse", name: "acme" },
+      acknowledged: false,
+    });
+    act(() => h.options.onSuccess?.({ ok: true, runId: "greenhouse-result" }));
+    expect(h.push).toHaveBeenCalledWith(
+      "/dashboard/collectors/runs/greenhouse-result",
+    );
+  });
+
+  it("opens settings and focuses a refused job-board choice", async () => {
+    greenhouseOverview();
+    renderForm("greenhouse-board", { name: "acme" });
+    act(() =>
+      h.options.onSuccess?.({
+        ok: false,
+        reason: "invalid_input",
+        fieldErrors: { board: ["invalid_value"] },
+      }),
+    );
+    const board = await screen.findByRole("combobox", { name: "Job board" });
+    await waitFor(() => expect(board).toHaveFocus());
+    expect(board).toHaveAttribute("aria-invalid", "true");
+    expect(board).toHaveTextContent("greenhouse");
+  });
   it("draws the collector's field from its schema and sends the typed input", () => {
     overview(false);
     renderForm();

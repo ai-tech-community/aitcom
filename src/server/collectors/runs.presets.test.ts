@@ -27,6 +27,39 @@ function facade(over: Partial<CollectorRunsDeps> = {}) {
 }
 
 describe("listPresets", () => {
+  it("offers and recognises Greenhouse only while job-board is available", () => {
+    const jobBoard = getCollector("job-board")!;
+    const runs = facade({
+      catalog: {
+        all: () => [feedItems, pageList, jobBoard],
+        get: getCollector,
+        everything: () => [feedItems, pageList, jobBoard],
+      },
+    });
+    expect(
+      runs.listPresets("en").find((p) => p.id === "greenhouse-board"),
+    ).toMatchObject({
+      group: "jobs",
+      base: { board: "greenhouse" },
+      ask: ["name"],
+    });
+    expect(runs.recognize("https://boards.greenhouse.io/acme")).toEqual({
+      ok: true,
+      presetId: "greenhouse-board",
+      matched: true,
+      prefill: { name: "acme" },
+    });
+    const disabled = facade();
+    expect(
+      disabled.listPresets("en").some((p) => p.id === "greenhouse-board"),
+    ).toBe(false);
+    expect(disabled.recognize("https://boards.greenhouse.io/acme")).toEqual({
+      ok: true,
+      presetId: "custom-page",
+      matched: false,
+      prefill: { url: "https://boards.greenhouse.io/acme" },
+    });
+  });
   it("lists presets in the member's language with their collector's fields", () => {
     const [feed] = facade().listPresets("nl");
     expect(feed).toEqual({

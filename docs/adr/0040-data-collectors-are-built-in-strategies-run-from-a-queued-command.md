@@ -23,6 +23,26 @@ machine. Design: `docs/superpowers/specs/2026-10-03-data-collectors-design.md`.
    (`CollectorContext`) that owns every safety rule: SSRF guard, robots.txt,
    a shared per-site rate limit, budgets, blocklist and metering.
 
+**Local development (2026-10-31):** `next dev` has no cron scheduler. After a
+member starts a run, development mode runs the same worker executor in the
+local process after the response, taking additional ticks until the queue is
+empty or collection is disabled. It needs neither an app URL nor a cron
+secret and does not call a deployed worker if an app URL points there.
+Previously, a missing `NEXT_PUBLIC_APP_URL` silently skipped the wake-up and
+left runs queued indefinitely. Deployed apps retain the authenticated HTTP
+wake-up and cron; missing configuration, refused requests and network failures
+now produce server warnings rather than disappearing silently.
+
+Local development also uses the existing per-process site limiter even when
+Redis credentials are configured. It preserves one request per second per
+host across local runs. An unreachable Redis hostname in a local `.env` had
+prevented the robots.txt request and surfaced as `robots_unreachable`;
+development must not depend on or write to that deployed service. Deployed
+instances retain their shared Redis limiter and do not bypass it on failure.
+The real Greenhouse collector, guarded network transport, robots rules and
+local limiter were replayed without database storage on 2026-10-31: 19 job
+rows, one API page, and the log `Found 19 jobs.` in about 1.3 seconds.
+
 ## Why built-in first
 
 - **Safety without a sandbox.** Reviewed code that only fetches pages needs no

@@ -1,6 +1,7 @@
 import { after } from "next/server";
 
 import { env } from "@/env";
+import { collectorsEnabled } from "./flags";
 
 export type WorkerUrlEnv = {
   VERCEL_ENV?: string;
@@ -27,12 +28,32 @@ export function workerUrl(e: WorkerUrlEnv): string | null {
 }
 
 /**
- * Wake the worker right after a run is queued, after the response is sent.
- * Best effort: the worker answers 202 at once and works in its own after(),
- * so this short timeout never cuts a run. The per-minute cron is the
- * guarantee (same shape as server/agent/dispatch-immediate.ts).
+ * Wake the worker after the start response. Local development runs the same
+ * executor in-process: next dev has no cron scheduler, and a missing or remote
+ * app URL must not strand local runs. Deployed apps keep the authenticated
+ * HTTP wake-up plus the per-minute cron fallback.
  */
 export function kickCollectorWorker(): void {
+  if (env.NODE_ENV === "development") {
+    after(async () => {
+      if (!collectorsEnabled()) return;
+      try {
+        const { runWorkerTick } = await import("./executor");
+        const { liveExecutorDeps } = await import("./live");
+        const deps = liveExecutorDeps();
+        // A tick stops starting runs after 20 seconds. Without a local cron,
+        // keep taking ticks until the backlog is empty or collection is off.
+        while (collectorsEnabled()) {
+          const { executed } = await runWorkerTick(deps);
+          if (executed === 0) break;
+        }
+      } catch (err) {
+        console.error("[collectors] local worker tick failed", err);
+      }
+    });
+    return;
+  }
+
   const secret = process.env.CRON_SECRET;
   const url = workerUrl({
     VERCEL_ENV: process.env.VERCEL_ENV,
@@ -40,16 +61,28 @@ export function kickCollectorWorker(): void {
     VERCEL_URL: process.env.VERCEL_URL,
     NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
   });
-  if (!secret || !url) return;
+  if (!secret || !url) {
+    console.warn(
+      "[collectors] worker wake-up skipped: CRON_SECRET or worker URL is not configured",
+    );
+    return;
+  }
   after(async () => {
     try {
-      await fetch(url, {
+      const response = await fetch(url, {
         method: "POST",
         headers: { authorization: `Bearer ${secret}` },
         signal: AbortSignal.timeout(2_000),
       });
+      if (!response.ok) {
+        console.warn("[collectors] worker wake-up refused", {
+          status: response.status,
+        });
+      }
     } catch {
-      // The cron picks the run up within a minute.
+      console.warn(
+        "[collectors] worker wake-up failed; the cron will retry queued work",
+      );
     }
   });
 }

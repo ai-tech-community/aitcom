@@ -218,7 +218,9 @@ function PresetStart({
         : undefined;
     const target =
       area?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
-      area?.querySelector<HTMLElement>("input, textarea, select") ??
+      area?.querySelector<HTMLElement>(
+        'input, textarea, select, [role="combobox"]',
+      ) ??
       alertRef.current;
     target?.focus();
   }, [focusTarget]);
@@ -316,7 +318,7 @@ function PresetStart({
             <h2 className="text-2xl font-semibold tracking-tight">
               {preset.title}
             </h2>
-            <p className="text-muted-foreground max-w-prose text-[15px] leading-relaxed">
+            <p className="text-muted-foreground max-w-prose text-base leading-relaxed">
               {preset.summary}
             </p>
             {recognised ? (
@@ -326,7 +328,7 @@ function PresetStart({
                       name: preset.title,
                       detail,
                       address: (chunks) => (
-                        <span className="font-mono text-[13px]">{chunks}</span>
+                        <span className="font-mono text-sm">{chunks}</span>
                       ),
                     })
                   : t("start.recognised", { name: preset.title })}{" "}
@@ -352,7 +354,7 @@ function PresetStart({
                 />
                 <h3
                   id="collectors-first-use"
-                  className="text-[15px] font-semibold"
+                  className="text-base font-semibold"
                 >
                   {t("start.firstUseTitle")}
                 </h3>

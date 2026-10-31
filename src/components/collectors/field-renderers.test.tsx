@@ -51,6 +51,83 @@ describe("FIELD_RENDERERS.number", () => {
   });
 });
 
+describe("FIELD_RENDERERS.choice", () => {
+  it("lets a keyboard user select one of the schema's choices", async () => {
+    // Radix scrolls a selected option into view; jsdom has no layout.
+    const scroll = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollIntoView",
+    );
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: vi.fn(),
+    });
+    try {
+      const Render = FIELD_RENDERERS.choice;
+      const changed = vi.fn();
+      const field: FormField = {
+        name: "board",
+        label: "Job board",
+        help: null,
+        placeholder: null,
+        kind: "choice",
+        options: ["greenhouse", "lever"],
+        required: true,
+      };
+      render(
+        <NextIntlClientProvider locale="en" messages={en}>
+          <Render
+            field={field}
+            id="board"
+            value="greenhouse"
+            error={null}
+            onChange={changed}
+          />
+        </NextIntlClientProvider>,
+      );
+      fireEvent.keyDown(screen.getByRole("combobox", { name: "Job board" }), {
+        key: "ArrowDown",
+      });
+      fireEvent.click(await screen.findByRole("option", { name: "lever" }));
+      expect(changed).toHaveBeenCalledWith("lever");
+    } finally {
+      if (scroll)
+        Object.defineProperty(HTMLElement.prototype, "scrollIntoView", scroll);
+      else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+    }
+  });
+  it("labels the choice and connects its help and refusal to the trigger", () => {
+    const Render = FIELD_RENDERERS.choice;
+    const field: FormField = {
+      name: "board",
+      label: "Job board",
+      help: "Pick a board.",
+      placeholder: null,
+      kind: "choice",
+      options: ["greenhouse", "lever"],
+      required: true,
+    };
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <Render
+          field={field}
+          id="board"
+          value="greenhouse"
+          error="Check this field."
+          onChange={vi.fn()}
+        />
+      </NextIntlClientProvider>,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Job board" });
+    expect(trigger).toHaveTextContent("greenhouse");
+    expect(trigger).toHaveAttribute("aria-required", "true");
+    expect(trigger).toHaveAttribute("aria-invalid", "true");
+    expect(trigger).toHaveAccessibleDescription(
+      "Pick a board. Check this field.",
+    );
+  });
+});
+
 const columnsField: FormField = {
   name: "fields",
   label: "Columns",

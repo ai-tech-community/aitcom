@@ -71,6 +71,12 @@ const liveRobotsTransport: Transport = async (url, { accept, signal }) => {
 let limiter: SiteRateLimiter | null = null;
 function liveSiteRateLimiter(): SiteRateLimiter {
   if (limiter) return limiter;
+  if (env.NODE_ENV === "development") {
+    // Local runs share this process's one-second slots. Do not depend on or
+    // write to a deployed Redis service just because its credentials are set.
+    limiter = createSiteRateLimiter(memorySlotStore());
+    return limiter;
+  }
   if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
     limiter = createSiteRateLimiter(
       redisSlotStore(

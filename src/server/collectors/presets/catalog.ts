@@ -1,8 +1,31 @@
 import { CUSTOM_PAGE_PRESET_ID } from "@/lib/collectors/presets";
+import { recognizeGreenhouseBoard } from "@/lib/job-boards/greenhouse";
 
 import { feedItems } from "../collectors/feed-items";
+import { jobBoard } from "../collectors/job-board";
 import { pageList } from "../collectors/page-list";
 import { type AnyPreset, definePreset } from "./preset";
+
+const greenhouse = definePreset(jobBoard, {
+  id: "greenhouse-board",
+  group: "jobs",
+  title: {
+    en: "Greenhouse jobs",
+    nl: "Greenhouse-vacatures",
+    fr: "Offres Greenhouse",
+  },
+  summary: {
+    en: "A company's published jobs on Greenhouse, with locations, departments and links.",
+    nl: "De gepubliceerde vacatures van een bedrijf op Greenhouse, met locaties, afdelingen en links.",
+    fr: "Les offres publiées d’une entreprise sur Greenhouse, avec lieux, services et liens.",
+  },
+  base: { board: "greenhouse" },
+  ask: ["name"],
+  recognize: (url) => {
+    const name = recognizeGreenhouseBoard(url);
+    return name ? { name } : null;
+  },
+});
 
 const feed = definePreset(feedItems, {
   id: "feed",
@@ -43,7 +66,11 @@ const customPage = definePreset(pageList, {
  * collector catalog, ADR-0040). Order is rail order within a group and
  * recognition order. Adding a preset = one entry here.
  */
-const PRESETS: readonly AnyPreset[] = Object.freeze([feed, customPage]);
+const PRESETS: readonly AnyPreset[] = Object.freeze([
+  greenhouse,
+  feed,
+  customPage,
+]);
 
 export function allPresets(): readonly AnyPreset[] {
   return PRESETS;
