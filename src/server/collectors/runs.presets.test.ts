@@ -27,6 +27,43 @@ function facade(over: Partial<CollectorRunsDeps> = {}) {
 }
 
 describe("listPresets", () => {
+  it("offers localized Workable jobs and falls back when the collector is disabled", () => {
+    const jobBoard = getCollector("job-board")!;
+    const runs = facade({
+      catalog: {
+        all: () => [jobBoard],
+        get: getCollector,
+        everything: () => [jobBoard],
+      },
+    });
+    for (const [locale, title] of [
+      ["en", "Workable jobs"],
+      ["nl", "Workable-vacatures"],
+      ["fr", "Offres Workable"],
+    ] as const) {
+      expect(
+        runs.listPresets(locale).find((p) => p.id === "workable-board"),
+      ).toMatchObject({ title, base: { board: "workable" }, ask: ["name"] });
+    }
+    expect(runs.recognize("https://apply.workable.com/careers/")).toEqual({
+      ok: true,
+      presetId: "workable-board",
+      matched: true,
+      prefill: { name: "careers" },
+    });
+    expect(
+      facade()
+        .listPresets("en")
+        .some((p) => p.id === "workable-board"),
+    ).toBe(false);
+    expect(facade().recognize("https://apply.workable.com/careers/")).toEqual({
+      ok: true,
+      presetId: "custom-page",
+      matched: false,
+      prefill: { url: "https://apply.workable.com/careers/" },
+    });
+  });
+
   it("offers localized Lever jobs, keeps EU prefill and falls back when disabled", () => {
     const jobBoard = getCollector("job-board")!;
     const runs = facade({

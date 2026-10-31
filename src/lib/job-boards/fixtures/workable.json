@@ -1,0 +1,33 @@
+{
+  "name": "Workable",
+  "jobs": [
+    {
+      "title": "Product Manager",
+      "shortcode": "A3269A621A",
+      "url": "https://apply.workable.com/j/A3269A621A",
+      "application_url": "https://apply.workable.com/j/A3269A621A/apply",
+      "published_on": "2026-10-27",
+      "created_at": "2026-10-08",
+      "city": "Athens",
+      "state": "Attica",
+      "country": "Greece",
+      "department": "R&D",
+      "employment_type": "Full-time",
+      "telecommuting": false
+    },
+    {
+      "title": "Renewals Coordinator",
+      "shortcode": "94F9E30E22",
+      "url": "https://apply.workable.com/j/94F9E30E22",
+      "application_url": "https://apply.workable.com/j/94F9E30E22/apply",
+      "published_on": "2026-10-06",
+      "created_at": "2026-09-24",
+      "city": "Athens",
+      "state": "",
+      "country": "Greece",
+      "department": "Revenue",
+      "employment_type": "Full-time",
+      "telecommuting": false
+    }
+  ]
+}

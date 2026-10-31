@@ -225,6 +225,25 @@ beforeEach(() => {
 });
 
 describe("StartRunForm", () => {
+  it("starts a recognized Workable board without selectors and opens its result run", () => {
+    jobBoardOverview();
+    renderForm("workable-board", { name: "careers" }, true);
+    expect(
+      screen.getByRole("heading", { name: "Workable jobs" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Item selector")).toBeNull();
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledWith({
+      presetId: "workable-board",
+      input: { board: "workable", name: "careers" },
+      acknowledged: false,
+    });
+    act(() => h.options.onSuccess?.({ ok: true, runId: "workable-result" }));
+    expect(h.push).toHaveBeenCalledWith(
+      "/dashboard/collectors/runs/workable-result",
+    );
+  });
+
   it.each(["lever", "lever-eu"])(
     "starts a recognized %s board and opens the result run",
     (board) => {

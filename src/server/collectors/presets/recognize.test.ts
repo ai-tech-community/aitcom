@@ -26,6 +26,29 @@ const url = (href: string) => new URL(href);
 afterEach(() => vi.restoreAllMocks());
 
 describe("recognizePreset", () => {
+  it("recognizes Workable company boards but leaves anonymous job links custom", () => {
+    expect(
+      recognizePreset(
+        url("https://apply.workable.com/huggingface/"),
+        allPresets(),
+      ),
+    ).toEqual({
+      presetId: "workable-board",
+      input: { name: "huggingface" },
+      matched: true,
+    });
+    expect(
+      recognizePreset(
+        url("https://apply.workable.com/j/A3269A621A"),
+        allPresets(),
+      ),
+    ).toEqual({
+      presetId: "custom-page",
+      input: { url: "https://apply.workable.com/j/A3269A621A" },
+      matched: false,
+    });
+  });
+
   it.each([
     ["https://jobs.lever.co/acme", { name: "acme" }],
     ["https://jobs.eu.lever.co/acme", { name: "acme", board: "lever-eu" }],

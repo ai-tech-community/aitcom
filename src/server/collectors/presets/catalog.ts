@@ -1,5 +1,6 @@
 import { CUSTOM_PAGE_PRESET_ID } from "@/lib/collectors/presets";
 import { recognizeGreenhouseBoard } from "@/lib/job-boards/greenhouse";
+import { recognizeWorkableBoard } from "@/lib/job-boards/workable";
 import { recognizeLeverBoard } from "@/lib/job-boards/lever";
 import { recognizeAshbyBoard } from "@/lib/job-boards/ashby";
 
@@ -100,6 +101,38 @@ const lever = definePreset(jobBoard, {
   },
 });
 
+const workable = definePreset(jobBoard, {
+  id: "workable-board",
+  group: "jobs",
+  title: {
+    en: "Workable jobs",
+    nl: "Workable-vacatures",
+    fr: "Offres Workable",
+  },
+  summary: {
+    en: "Published jobs on Workable, with full descriptions and application links.",
+    nl: "Gepubliceerde vacatures op Workable, met volledige omschrijvingen en sollicitatielinks.",
+    fr: "Les offres publiées sur Workable, avec descriptions complètes et liens de candidature.",
+  },
+  base: { board: "workable" },
+  ask: ["name"],
+  hints: {
+    name: {
+      ...jobBoard.fieldHints.name,
+      placeholder: "careers",
+      help: {
+        en: "The company name in its board address: careers in https://apply.workable.com/careers/. You can also paste the company board link in the sidebar.",
+        nl: "De bedrijfsnaam in het adres: careers in https://apply.workable.com/careers/. Je kunt ook de link naar de vacaturesite in de zijbalk plakken.",
+        fr: "Le nom de l’entreprise dans l’adresse : careers dans https://apply.workable.com/careers/. Vous pouvez aussi coller le lien du site d’emploi dans la barre latérale.",
+      },
+    },
+  },
+  recognize: (url) => {
+    const name = recognizeWorkableBoard(url);
+    return name ? { name } : null;
+  },
+});
+
 const feed = definePreset(feedItems, {
   id: "feed",
   group: "research",
@@ -143,6 +176,7 @@ const PRESETS: readonly AnyPreset[] = Object.freeze([
   greenhouse,
   ashby,
   lever,
+  workable,
   feed,
   customPage,
 ]);

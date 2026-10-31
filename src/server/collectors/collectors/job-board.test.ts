@@ -8,6 +8,69 @@ const url = "https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true";
 const input = { board: "greenhouse" as const, name: "acme" };
 
 describe("job-board collector", () => {
+  it("collects Workable descriptions through the worker and preserves date precision", async () => {
+    const url = "https://www.workable.com/api/accounts/careers?details=true";
+    const { ctx, requests, logs } = fakeContext({
+      [url]: {
+        url: "https://apply.workable.com/api/v1/widget/accounts/careers?details=true",
+        body: JSON.stringify({
+          jobs: [
+            {
+              title: "Engineer",
+              url: "https://apply.workable.com/j/A3269A621A",
+              application_url: "https://apply.workable.com/j/A3269A621A/apply",
+              published_on: "2026-10-27",
+              description:
+                "<h2>About us</h2><p>Build <b>useful</b> things.</p><script>bad()</script>",
+              employment_type: "Full-time",
+              workplace_type: "hybrid",
+            },
+          ],
+        }),
+      },
+    });
+    const rows = await collectAll(
+      jobBoard.run({ board: "workable", name: "careers" }, ctx),
+    );
+    expect(rows[0]).toMatchObject({
+      description: "About us\n\nBuild useful things.",
+      postedAt: "2026-10-27",
+      applyUrl: "https://apply.workable.com/j/A3269A621A/apply",
+      employmentType: "Full-time",
+      workplaceType: "Hybrid",
+    });
+    expect(rows[0]).not.toHaveProperty("descriptionMarkup");
+    expect(jobBoard.itemSchema.safeParse(rows[0]).success).toBe(true);
+    expect(requests).toEqual([{ url, accept: "application/json" }]);
+    expect(logs).toEqual(["Found 1 job."]);
+  });
+
+  it("handles empty, missing and unreadable Workable boards", async () => {
+    for (const [status, body, detail] of [
+      [200, '{"jobs":[]}', null],
+      [
+        404,
+        "Not Found",
+        { code: "board_not_found", params: { host: "apply.workable.com" } },
+      ],
+      [403, "Forbidden", { code: "board_status", params: { status: 403 } }],
+      [200, "{}", { code: "board_response_invalid" }],
+      [200, "not JSON", { code: "board_response_invalid" }],
+    ] as const) {
+      const { ctx } = fakeContext({
+        "https://www.workable.com/api/accounts/careers?details=true": {
+          status,
+          body,
+        },
+      });
+      const run = collectAll(
+        jobBoard.run({ board: "workable", name: "careers" }, ctx),
+      );
+      if (detail) await expect(run).rejects.toMatchObject({ detail });
+      else expect(await run).toEqual([]);
+    }
+  });
+
   const leverUrl = (skip = 0, eu = false) =>
     `https://api.${eu ? "eu." : ""}lever.co/v0/postings/acme?mode=json&limit=100&skip=${skip}`;
   const leverJob = (id: number) => ({
@@ -306,7 +369,7 @@ describe("job-board collector", () => {
     expect(jobBoard.inputSchema.safeParse(input).success).toBe(true);
     expect(jobBoard.inputSchema.safeParse(ashbyInput).success).toBe(true);
     expect(
-      jobBoard.inputSchema.safeParse({ ...input, board: "workable" }).success,
+      jobBoard.inputSchema.safeParse({ ...input, board: "personio" }).success,
     ).toBe(false);
     expect(
       jobBoard.inputSchema.safeParse({ ...input, name: "../acme" }).success,

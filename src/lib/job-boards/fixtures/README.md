@@ -17,3 +17,10 @@ parser examples; their current availability can change.
 retrieved 2026-10-31. Only id, text, categories, createdAt, workplaceType,
 hostedUrl and applyUrl were retained. Descriptions use synthetic test examples
 to cover each section without storing the full public demo advert.
+
+`workable.json` contains the two public jobs returned by
+`GET https://www.workable.com/api/accounts/careers?details=true` on 2026-10-31.
+The documented URL redirected to the public widget account endpoint. Only
+title, shortcode, posting/application URLs, publication/creation dates, flat
+location fields, department, employment type and telecommuting were retained.
+Descriptions use synthetic test cases. These saved postings may close later.

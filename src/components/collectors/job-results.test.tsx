@@ -6,7 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
 import fr from "../../../messages/fr.json";
@@ -41,6 +41,25 @@ function open() {
 }
 
 describe("job results", () => {
+  it("keeps a source calendar date intact in a browser west of UTC", () => {
+    const browser = vi
+      .spyOn(Date.prototype, "toLocaleDateString")
+      .mockImplementation(function (this: Date, locale, options) {
+        return new Intl.DateTimeFormat(locale, {
+          timeZone: "America/Los_Angeles",
+          ...options,
+        }).format(this);
+      });
+    try {
+      show({ ...row, postedAt: "2026-10-27" });
+      expect(
+        within(screen.getByRole("table")).getByText("10/27/2026"),
+      ).toBeInTheDocument();
+    } finally {
+      browser.mockRestore();
+    }
+  });
+
   it("keeps descriptions out of the table and opens readable details with safe links", async () => {
     show();
     expect(screen.queryByText(/First paragraph/)).not.toBeInTheDocument();
