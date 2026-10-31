@@ -896,7 +896,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       const collector = getCollector("feed-items")!;
       const runs = m.runs.createCollectorRuns({
         db: m.db,
-        enabled: () => true,
+
         catalog: {
           all: () => [collector],
           get: (id) => (id === collector.id ? collector : undefined),
@@ -945,20 +945,6 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         reason: "quota",
         quotaReason: "active_limit",
       });
-    });
-
-    it("refuses everything while the feature is off", async () => {
-      const userId = await makeUser();
-      const { runs, kicks } = facade({ enabled: () => false });
-      expect(
-        await runs.startRun({
-          userId,
-          origin: "web",
-          collectorId: "feed-items",
-          input: feedInput,
-        }),
-      ).toMatchObject({ ok: false, reason: "disabled" });
-      expect(kicks).toHaveLength(0);
     });
 
     it("refuses an unknown collector and invalid input, storing nothing", async () => {

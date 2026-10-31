@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   environment: "test",
-  enabled: true,
+
   appUrl: undefined as string | undefined,
   callbacks: [] as (() => Promise<void>)[],
   tick: vi.fn(),
@@ -24,14 +24,13 @@ vi.mock("next/server", () => ({
 }));
 vi.mock("./executor", () => ({ runWorkerTick: h.tick }));
 vi.mock("./live", () => ({ liveExecutorDeps: () => h.deps }));
-vi.mock("./flags", () => ({ collectorsEnabled: () => h.enabled }));
 
 import { kickCollectorWorker, workerUrl } from "./kick";
 
 beforeEach(() => {
   vi.clearAllMocks();
   h.environment = "test";
-  h.enabled = true;
+
   h.appUrl = undefined;
   h.callbacks = [];
   h.tick.mockResolvedValue({ executed: 0 });
@@ -57,15 +56,8 @@ describe("local collector worker", () => {
     expect(h.tick).toHaveBeenCalledTimes(3);
   });
 
-  it("honours the feature flag before executing local queued work", async () => {
-    h.environment = "development";
-    h.enabled = false;
-    kickCollectorWorker();
-    expect(h.callbacks).toHaveLength(1);
-    await h.callbacks[0]!();
-    expect(h.tick).not.toHaveBeenCalled();
-  });
-  it("starts after the response without an app URL or cron secret", async () => {
+  it("starts after the response without a rollout flag, app URL or cron secret", async () => {
+    vi.stubEnv("FEATURE_COLLECTORS", "off");
     h.environment = "development";
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);

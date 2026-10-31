@@ -2,7 +2,6 @@ import { NextResponse, after } from "next/server";
 
 import { cleanupExpiredRuns } from "@/server/collectors/retention";
 import { runWorkerTick } from "@/server/collectors/executor";
-import { collectorsEnabled } from "@/server/collectors/flags";
 import { liveExecutorDeps } from "@/server/collectors/live";
 
 export const runtime = "nodejs";
@@ -28,9 +27,6 @@ export async function GET(request: Request) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!collectorsEnabled()) {
-    return NextResponse.json({ skipped: "collectors off" });
-  }
   try {
     const deps = liveExecutorDeps();
     const cleaned = await cleanupExpiredRuns(deps.db, new Date(deps.now()));
@@ -50,9 +46,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!collectorsEnabled()) {
-    return NextResponse.json({ skipped: "collectors off" });
   }
   after(async () => {
     try {

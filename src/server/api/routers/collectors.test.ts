@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
-  enabled: true,
   access: vi.fn(),
   setAccess: vi.fn(),
   facade: {
@@ -20,9 +19,6 @@ const h = vi.hoisted(() => ({
 vi.mock("@/server/collectors/agent-permission", () => ({
   collectorAgentAccess: h.access,
   setCollectorAgentAccess: h.setAccess,
-}));
-vi.mock("@/server/collectors/flags", () => ({
-  collectorsEnabled: () => h.enabled,
 }));
 vi.mock("@/server/collectors/live", () => ({
   liveCollectorRuns: () => h.facade,
@@ -53,7 +49,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   // The shared tRPC timing middleware logs every call; keep test output clean.
   vi.spyOn(console, "log").mockImplementation(() => undefined);
-  h.enabled = true;
+
   h.access.mockResolvedValue({ hasKey: true, allowed: false });
   h.setAccess.mockResolvedValue(true);
   h.facade.listCollectors.mockReturnValue([{ id: "feed-items" }]);
@@ -80,45 +76,6 @@ describe("collectors router", () => {
     await expect(
       caller(null).collectors.overview({ locale: "en" }),
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
-  });
-
-  it.each([
-    [
-      "overview",
-      (c: ReturnType<typeof caller>) => c.collectors.overview({ locale: "en" }),
-    ],
-    [
-      "start",
-      (c: ReturnType<typeof caller>) =>
-        c.collectors.start({
-          presetId: "feed",
-          input: {},
-          acknowledged: true,
-        }),
-    ],
-    [
-      "run",
-      (c: ReturnType<typeof caller>) => c.collectors.run({ runId: "run-1" }),
-    ],
-    ["runs", (c: ReturnType<typeof caller>) => c.collectors.runs({})],
-    [
-      "items",
-      (c: ReturnType<typeof caller>) => c.collectors.items({ runId: "run-1" }),
-    ],
-    [
-      "recognize",
-      (c: ReturnType<typeof caller>) =>
-        c.collectors.recognize({ address: "e.com" }),
-    ],
-  ])("%s is not found while the feature is off", async (_name, call) => {
-    h.enabled = false;
-    await expect(call(caller())).rejects.toMatchObject({
-      code: "NOT_FOUND",
-      message: "COLLECTORS_OFF",
-    });
-    for (const [method, fn] of Object.entries(h.facade)) {
-      expect(fn, method).not.toHaveBeenCalled();
-    }
   });
 
   it("overview combines collectors, presets, titles, the last five runs, usage and the first-use flag", async () => {
@@ -274,23 +231,6 @@ describe("staff opt-out permissions", () => {
       await expect(op()).rejects.toMatchObject({ code: "FORBIDDEN" });
     }
   });
-  it("enforces the feature flag for staff reads and mutations", async () => {
-    h.enabled = false;
-    for (const op of [
-      () => caller("staff", "admin").collectors.optOuts(),
-      () =>
-        caller("staff", "admin").collectors.addOptOut({
-          domain: "example.org",
-          reason: "Owner request",
-        }),
-      () =>
-        caller("staff", "admin").collectors.removeOptOut({
-          domain: "example.org",
-        }),
-    ]) {
-      await expect(op()).rejects.toMatchObject({ code: "NOT_FOUND" });
-    }
-  });
   it("canonicalizes writes and supports listing and removing using the guarded table", async () => {
     const builder = {
       from: vi.fn().mockReturnThis(),
@@ -356,7 +296,7 @@ describe("owner collection grants", () => {
     });
     expect(h.setAccess).toHaveBeenCalledWith({}, "owner", false);
   });
-  it("does not grant when no existing key exists, and obeys the feature flag", async () => {
+  it("does not grant when no existing key exists", async () => {
     h.setAccess.mockResolvedValue(false);
     await expect(
       caller().collectors.setAgentAccess({ allowed: true, acknowledged: true }),
@@ -364,16 +304,5 @@ describe("owner collection grants", () => {
       code: "NOT_FOUND",
       message: "AGENT_KEY_NOT_FOUND",
     });
-    h.enabled = false;
-    await expect(caller().collectors.agentAccess()).rejects.toMatchObject({
-      code: "NOT_FOUND",
-      message: "COLLECTORS_OFF",
-    });
-    await expect(
-      caller().collectors.setAgentAccess({
-        allowed: false,
-        acknowledged: false,
-      }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "COLLECTORS_OFF" });
   });
 });

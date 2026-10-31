@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 
 import { StartRunForm } from "@/components/collectors/start-run-form";
 import { permanentRedirect } from "@/i18n/navigation";
 import { presetIdForFormerId } from "@/lib/collectors/presets";
 import { readStartQuery, startHref } from "@/lib/collectors/start-address";
-import { collectorsEnabled } from "@/server/collectors/flags";
 import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -25,7 +23,6 @@ export default async function StartCollectorRunPage({
   params: Promise<{ presetId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (!collectorsEnabled()) notFound();
   await requireDashboardSession();
   const [{ presetId }, query] = await Promise.all([params, searchParams]);
   const { prefill, recognised } = readStartQuery(query);

@@ -67,7 +67,6 @@ function problemOf(result: Extract<StartResult, { ok: false }>): Problem {
         reason: result.quotaReason ?? "platform_busy",
         retryAt: result.retryAt ?? null,
       };
-    case "disabled":
     case "unknown_collector":
       return { kind: "unavailable" };
   }

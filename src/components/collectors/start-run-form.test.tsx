@@ -206,7 +206,7 @@ const startButton = () =>
 function jobBoardOverview() {
   const runs = createCollectorRuns({
     db: {} as never,
-    enabled: () => true,
+
     catalog: {
       all: allCollectors,
       get: getCollector,

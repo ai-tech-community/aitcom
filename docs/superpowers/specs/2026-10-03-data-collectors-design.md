@@ -139,7 +139,7 @@ src/server/collectors/
     blocklist.ts          opted-out domains
   identity.ts             user agent, robots.txt token, about path, opt-out
                           address: one source for the worker and the about page
-  flags.ts                FEATURE_COLLECTORS and COLLECTORS_DISABLED
+  flags.ts                COLLECTORS_DISABLED
   run-status.ts           transition table + guard
   executor.ts             RunExecutor (Context of the Strategy)
   runs.ts                 CollectorRuns facade
@@ -863,17 +863,15 @@ and `agentId` set:
 Run activity is visible only to the owner; no events are emitted to other
 agents.
 
-## Feature flag and kill switches
+## Availability and operational controls
 
-- `FEATURE_COLLECTORS=on` — one server flag, off by default, read only
-  through `collectorsEnabled()` in `src/server/collectors/flags.ts`. There is
-  no `NEXT_PUBLIC_` flag: the member dashboard layout reads the server flag
-  and passes it to the tab bar (`showCollectors`). When off: tab hidden, the
-  member pages call `notFound()`, every `collectors.*` procedure throws
-  `NOT_FOUND` with message `COLLECTORS_OFF`, the download route answers 404,
-  `startRun` is refused, the worker no-ops, and MCP tools return a clear "not
-  available" error. Deleted once the feature is final.
-- `COLLECTORS_DISABLED` — per-collector disable.
+Data collectors are a permanent authenticated dashboard feature following the
+completed rollout. The global `FEATURE_COLLECTORS` setting, rollout checks and
+conditional navigation were removed on 2026-10-31. Existing deployment values
+are ignored; they can be removed from hosting configuration without replacement.
+Session, owner, staff and agent scope checks, quotas and the cron secret remain.
+
+- `COLLECTORS_DISABLED` — per-collector disable, including hiding its presets.
 - `collector_blocked_domain` — per-site opt-out.
 
 **Gate before enabling (met, #419).** `FEATURE_COLLECTORS` was not to be
@@ -888,8 +886,7 @@ checked, so a DNS server can no longer switch to an internal address between
 the check and the connection. IP-literal hosts skip DNS and are refused unless
 public, and the transport never follows redirects itself. The URL pre-check in
 `validateWebhookUrl` stays as a friendly early refusal, not the guard. The
-member UI and the public about page have shipped (#421), so turning
-`FEATURE_COLLECTORS` on is now the owner's decision.
+member UI and the public about page shipped in #421. The rollout is now complete.
 
 `page-list` had a second condition: it ships only together with a parse
 sandbox. **That condition is met** in slice 3: `page-list` never parses HTML

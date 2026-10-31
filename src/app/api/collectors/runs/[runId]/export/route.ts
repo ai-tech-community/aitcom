@@ -5,7 +5,6 @@ import {
   EXPORT_FORMATS,
   type ExportFormatId,
 } from "@/server/collectors/export/formats";
-import { collectorsEnabled } from "@/server/collectors/flags";
 import { isRunActive } from "@/lib/collectors/run-presentation";
 import { liveCollectorRuns } from "@/server/collectors/live";
 
@@ -60,8 +59,6 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ runId: string }> },
 ) {
-  if (!collectorsEnabled())
-    return new NextResponse("Not found", { status: 404 });
   const session = await getSession();
   if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
 

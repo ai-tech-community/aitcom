@@ -4,7 +4,7 @@ import { recordFeedNews } from "@/server/news/record";
 import { allCollectors, getCollector } from "./catalog";
 import { buildLiveContext } from "./context/live";
 import type { ExecutorDeps } from "./executor";
-import { collectorsEnabled, disabledCollectorIds } from "./flags";
+import { disabledCollectorIds } from "./flags";
 import { kickCollectorWorker } from "./kick";
 import { allPresets, getPreset } from "./presets/catalog";
 import { createCollectorRuns } from "./runs";
@@ -13,7 +13,6 @@ import { createCollectorRuns } from "./runs";
 export function liveCollectorRuns() {
   return createCollectorRuns({
     db,
-    enabled: collectorsEnabled,
     catalog: {
       all: () => {
         const disabled = disabledCollectorIds();

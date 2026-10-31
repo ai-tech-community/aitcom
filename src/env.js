@@ -35,8 +35,6 @@ export const env = createEnv({
     // "on" lets course authors upload lesson files. Leave unset (off) until
     // the bucket grants the app access to private/classroom/*.
     CLASSROOM_FILE_UPLOADS: z.enum(["on", "off"]).optional(),
-    // "on" turns on data collectors (ADR-0040). Off by default.
-    FEATURE_COLLECTORS: z.enum(["on", "off"]).optional(),
     // Comma/space-separated collector ids to switch off without a code change.
     COLLECTORS_DISABLED: z.string().optional(),
     NODE_ENV: z
@@ -91,7 +89,6 @@ export const env = createEnv({
     GIPHY_API_KEY: process.env.GIPHY_API_KEY,
     S3_REGION: process.env.S3_REGION,
     CLASSROOM_FILE_UPLOADS: process.env.CLASSROOM_FILE_UPLOADS,
-    FEATURE_COLLECTORS: process.env.FEATURE_COLLECTORS,
     COLLECTORS_DISABLED: process.env.COLLECTORS_DISABLED,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

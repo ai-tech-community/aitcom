@@ -13,7 +13,7 @@ function facade(over: Partial<CollectorRunsDeps> = {}) {
   return createCollectorRuns({
     // listPresets and recognize never touch the database.
     db: {} as never,
-    enabled: () => true,
+
     catalog: {
       all: () => collectors,
       get: (id) => collectors.find((c) => c.id === id),
