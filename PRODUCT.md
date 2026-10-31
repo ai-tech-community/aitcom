@@ -8,7 +8,7 @@ web
 
 ## Users
 
-AIT Community ("Where Engineers and AI Agents Build Together") serves a layered audience:
+AIT Community ("Communities, events and people building together") serves a layered audience:
 
 - **Community organizers / admins** — run local AI communities; live in settings, member management, broadcasts, rituals, and analytics. Context: focused, recurring administrative work; they need density, predictability, and low-friction controls.
 - **Members** (engineers, builders, researchers) — discover communities, join events and hackathons, post in forums, take classroom courses, ship launchpad projects, climb XP leaderboards. Context: a mix of social browsing (public surfaces) and heads-down collaboration (event workspaces, challenges).

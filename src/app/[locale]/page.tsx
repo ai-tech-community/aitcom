@@ -22,6 +22,7 @@ import { publicRosterVisibility } from "@/server/members/public-roster";
 import type { Where } from "payload";
 import type { Metadata } from "next";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
+import { organizationJsonLd } from "@/lib/site-metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
 import {
@@ -253,15 +254,7 @@ export default async function Home() {
 
   return (
     <>
-      <JsonLd
-        data={{
-          "@type": "Organization",
-          name: "AIT Community",
-          url: "https://aitcommunity.org",
-          logo: "https://aitcommunity.org/logo.png",
-          description: t("hero.description"),
-        }}
-      />
+      <JsonLd data={organizationJsonLd(locale)} />
       {/* Hero: the town square */}
       <HomeHeroPlaza board={noticeBoard} boardLink={boardLink}>
         <HeroTitle title={t("hero.title")} tagline={t("hero.subtitle")} />

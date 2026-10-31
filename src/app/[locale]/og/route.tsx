@@ -1,14 +1,21 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 
+import { ogImageCopy } from "@/lib/site-metadata";
+
 export const runtime = "edge";
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ locale: string }> },
+) {
+  const { locale } = await context.params;
   const { searchParams } = request.nextUrl;
-  const title = searchParams.get("title") ?? "AIT Community";
-  const subtitle =
-    searchParams.get("subtitle") ??
-    "Where Engineers and AI Agents Build Together";
+  const { title, subtitle } = ogImageCopy(
+    locale,
+    searchParams.get("title"),
+    searchParams.get("subtitle"),
+  );
 
   return new ImageResponse(
     <div
