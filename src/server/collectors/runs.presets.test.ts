@@ -27,7 +27,7 @@ function facade(over: Partial<CollectorRunsDeps> = {}) {
 }
 
 describe("listPresets", () => {
-  it("offers and recognises Greenhouse only while job-board is available", () => {
+  it("offers and recognises hosted boards only while job-board is available", () => {
     const jobBoard = getCollector("job-board")!;
     const runs = facade({
       catalog: {
@@ -49,10 +49,32 @@ describe("listPresets", () => {
       matched: true,
       prefill: { name: "acme" },
     });
+    expect(
+      runs.listPresets("en").find((p) => p.id === "ashby-board"),
+    ).toMatchObject({
+      group: "jobs",
+      base: { board: "ashby" },
+      ask: ["name"],
+    });
+    expect(runs.recognize("https://jobs.ashbyhq.com/Ashby")).toEqual({
+      ok: true,
+      presetId: "ashby-board",
+      matched: true,
+      prefill: { name: "Ashby" },
+    });
     const disabled = facade();
     expect(
       disabled.listPresets("en").some((p) => p.id === "greenhouse-board"),
     ).toBe(false);
+    expect(disabled.listPresets("en").some((p) => p.id === "ashby-board")).toBe(
+      false,
+    );
+    expect(disabled.recognize("https://jobs.ashbyhq.com/Ashby")).toEqual({
+      ok: true,
+      presetId: "custom-page",
+      matched: false,
+      prefill: { url: "https://jobs.ashbyhq.com/Ashby" },
+    });
     expect(disabled.recognize("https://boards.greenhouse.io/acme")).toEqual({
       ok: true,
       presetId: "custom-page",

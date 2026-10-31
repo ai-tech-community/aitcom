@@ -10,6 +10,7 @@ import {
   extractListingsFromCareersHtml,
   greenhouseTokenFromGhJid,
   greenhouseBoardUrl,
+  ashbyBoardUrl,
   htmlToPlainText,
   isPublishableJobTitle,
   mergePostingIntoListing,
@@ -78,6 +79,9 @@ describe("ATS JSON parsers", () => {
   it("keeps the shared Greenhouse API URL available to the startup scan", () => {
     expect(greenhouseBoardUrl("acme")).toBe(
       "https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true",
+    );
+    expect(ashbyBoardUrl("Ashby")).toBe(
+      "https://api.ashbyhq.com/posting-api/job-board/Ashby",
     );
   });
   it("parses Greenhouse jobs without inventing titles", () => {

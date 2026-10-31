@@ -203,7 +203,7 @@ const startButton = () =>
   screen.getByRole("button", { name: en.collectors.start.submit });
 
 /** Real catalog and facade metadata; no database access or mutation. */
-function greenhouseOverview() {
+function jobBoardOverview() {
   const runs = createCollectorRuns({
     db: {} as never,
     enabled: () => true,
@@ -225,8 +225,30 @@ beforeEach(() => {
 });
 
 describe("StartRunForm", () => {
+  it("starts a recognised Ashby board without selectors and opens the result run", () => {
+    jobBoardOverview();
+    renderForm("ashby-board", { name: "Ashby" }, true);
+    expect(
+      screen.getByRole("heading", { name: "Ashby jobs" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Board name" })).toHaveValue(
+      "Ashby",
+    );
+    expect(screen.getByText(/Recognised as/)).toHaveTextContent("Ashby jobs");
+    expect(screen.queryByLabelText("Item selector")).toBeNull();
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledWith({
+      presetId: "ashby-board",
+      input: { board: "ashby", name: "Ashby" },
+      acknowledged: false,
+    });
+    act(() => h.options.onSuccess?.({ ok: true, runId: "ashby-result" }));
+    expect(h.push).toHaveBeenCalledWith(
+      "/dashboard/collectors/runs/ashby-result",
+    );
+  });
   it("starts a recognised Greenhouse board with its preset settings and navigates to results", () => {
-    greenhouseOverview();
+    jobBoardOverview();
     renderForm("greenhouse-board", { name: "acme" }, true);
     expect(
       screen.getByRole("heading", { name: "Greenhouse jobs" }),
@@ -252,7 +274,7 @@ describe("StartRunForm", () => {
   });
 
   it("opens settings and focuses a refused job-board choice", async () => {
-    greenhouseOverview();
+    jobBoardOverview();
     renderForm("greenhouse-board", { name: "acme" });
     act(() =>
       h.options.onSuccess?.({

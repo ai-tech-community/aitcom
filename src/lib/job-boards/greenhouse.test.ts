@@ -52,6 +52,29 @@ describe("Greenhouse board addresses", () => {
 });
 
 describe("parseGreenhouseBoard", () => {
+  it("keeps the shared optional-field and date normalisation compatible", () => {
+    expect(
+      parseGreenhouseBoard({
+        jobs: [
+          {
+            title: "Engineer",
+            absolute_url: "https://example.com/jobs/1",
+            location: { name: "  " },
+            departments: [{ name: "  " }],
+            first_published: "not a date",
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        title: "Engineer",
+        location: null,
+        department: null,
+        url: "https://example.com/jobs/1",
+        postedAt: null,
+      },
+    ]);
+  });
   it("reads a saved public Greenhouse response", () => {
     expect(parseGreenhouseBoard(fixture)).toEqual([
       {

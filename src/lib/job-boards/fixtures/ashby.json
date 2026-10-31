@@ -1,0 +1,23 @@
+{
+  "apiVersion": "1",
+  "jobs": [
+    {
+      "title": "Engineering Manager - EU",
+      "location": "Remote - European Union",
+      "department": "Engineering",
+      "publishedAt": "2024-03-04T14:29:08.532+00:00",
+      "jobUrl": "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2",
+      "applyUrl": "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2/application",
+      "isListed": true
+    },
+    {
+      "title": "Mid Market Account Executive - EMEA (French Speaking)",
+      "location": "France",
+      "department": "Sales",
+      "publishedAt": "2026-09-08T16:27:26.694+00:00",
+      "jobUrl": "https://jobs.ashbyhq.com/Ashby/86a60834-ba64-484d-9658-afa1bc97a957",
+      "applyUrl": "https://jobs.ashbyhq.com/Ashby/86a60834-ba64-484d-9658-afa1bc97a957/application",
+      "isListed": true
+    }
+  ]
+}

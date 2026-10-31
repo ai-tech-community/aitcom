@@ -11,6 +11,7 @@ import {
 import { presentText } from "./startups";
 
 export { greenhouseBoardUrl } from "@/lib/job-boards/greenhouse";
+export { ashbyBoardUrl } from "@/lib/job-boards/ashby";
 
 export type DetectedJobBoard = {
   board: Exclude<StartupRoleBoard, "html" | "unknown"> | "unknown";
@@ -177,10 +178,6 @@ export function greenhouseTokenFromGhJid(
       .toLowerCase() ?? "";
   const label = host.split(".")[0] ?? "";
   return /^[a-z0-9-]{2,}$/.test(label) ? label : null;
-}
-
-export function ashbyBoardUrl(token: string): string {
-  return `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(token)}`;
 }
 
 export function leverBoardUrl(token: string): string {

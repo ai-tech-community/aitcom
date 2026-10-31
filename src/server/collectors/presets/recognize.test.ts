@@ -26,6 +26,22 @@ const url = (href: string) => new URL(href);
 afterEach(() => vi.restoreAllMocks());
 
 describe("recognizePreset", () => {
+  it("recognises Ashby with the real preset catalog and leaves near misses custom", () => {
+    expect(
+      recognizePreset(url("https://jobs.ashbyhq.com/Ashby"), allPresets()),
+    ).toEqual({
+      presetId: "ashby-board",
+      input: { name: "Ashby" },
+      matched: true,
+    });
+    expect(
+      recognizePreset(url("https://ashbyhq.com/jobs"), allPresets()),
+    ).toEqual({
+      presetId: "custom-page",
+      input: { url: "https://ashbyhq.com/jobs" },
+      matched: false,
+    });
+  });
   it("takes the first preset, in catalog order, that recognises the address", () => {
     const presets = [
       preset("no", () => null),

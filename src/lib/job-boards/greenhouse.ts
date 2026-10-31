@@ -1,9 +1,13 @@
 import { z } from "zod";
 
-export const greenhouseBoardName = z
-  .string()
-  .trim()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/);
+import {
+  jobBoardName,
+  jobPublicationDate,
+  optionalJobText,
+  type JobBoardRow,
+} from "./job-board";
+
+export { jobBoardName as greenhouseBoardName } from "./job-board";
 
 /** Public Job Board API; content=true includes each role's departments. */
 export function greenhouseBoardUrl(token: string): string {
@@ -30,17 +34,9 @@ export function recognizeGreenhouseBoard(url: URL): string | null {
     }
   }
   if (!name) return null;
-  const parsed = greenhouseBoardName.safeParse(name);
+  const parsed = jobBoardName.safeParse(name);
   return parsed.success ? parsed.data : null;
 }
-
-export const jobBoardRowSchema = z.object({
-  title: z.string(),
-  location: z.string().nullable(),
-  department: z.string().nullable(),
-  url: z.url({ protocol: /^https?$/ }),
-  postedAt: z.string().nullable(),
-});
 
 const responseSchema = z.object({
   jobs: z.array(
@@ -54,35 +50,22 @@ const responseSchema = z.object({
   ),
 });
 
-function textOrNull(value: string | null | undefined): string | null {
-  const text = value?.trim() ?? "";
-  return text.length > 0 ? text : null;
-}
-
 /** A malformed response is different from a board with no open roles. */
-export function parseGreenhouseBoard(
-  payload: unknown,
-): z.infer<typeof jobBoardRowSchema>[] | null {
+export function parseGreenhouseBoard(payload: unknown): JobBoardRow[] | null {
   const parsed = responseSchema.safeParse(payload);
   if (!parsed.success) return null;
   return parsed.data.jobs.map((job) => {
-    // An update timestamp is not a posting date: use only first_published.
-    const published = job.first_published
-      ? Date.parse(job.first_published)
-      : NaN;
     return {
       title: job.title,
-      location: textOrNull(job.location?.name),
-      department: textOrNull(
+      location: optionalJobText(job.location?.name),
+      department: optionalJobText(
         job.departments
           ?.map((d) => d.name.trim())
           .filter(Boolean)
           .join(", "),
       ),
       url: job.absolute_url,
-      postedAt: Number.isFinite(published)
-        ? new Date(published).toISOString()
-        : null,
+      postedAt: jobPublicationDate(job.first_published),
     };
   });
 }

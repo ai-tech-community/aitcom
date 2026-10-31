@@ -1,5 +1,6 @@
 import { CUSTOM_PAGE_PRESET_ID } from "@/lib/collectors/presets";
 import { recognizeGreenhouseBoard } from "@/lib/job-boards/greenhouse";
+import { recognizeAshbyBoard } from "@/lib/job-boards/ashby";
 
 import { feedItems } from "../collectors/feed-items";
 import { jobBoard } from "../collectors/job-board";
@@ -21,8 +22,46 @@ const greenhouse = definePreset(jobBoard, {
   },
   base: { board: "greenhouse" },
   ask: ["name"],
+  hints: {
+    name: {
+      ...jobBoard.fieldHints.name,
+      help: {
+        en: "The company name in the board address: acme in https://boards.greenhouse.io/acme. You can also paste the full link in the sidebar.",
+        nl: "De bedrijfsnaam in het adres: acme in https://boards.greenhouse.io/acme. Je kunt ook de volledige link in de zijbalk plakken.",
+        fr: "Le nom de l’entreprise dans l’adresse : acme dans https://boards.greenhouse.io/acme. Vous pouvez aussi coller le lien complet dans la barre latérale.",
+      },
+    },
+  },
   recognize: (url) => {
     const name = recognizeGreenhouseBoard(url);
+    return name ? { name } : null;
+  },
+});
+
+const ashby = definePreset(jobBoard, {
+  id: "ashby-board",
+  group: "jobs",
+  title: { en: "Ashby jobs", nl: "Ashby-vacatures", fr: "Offres Ashby" },
+  summary: {
+    en: "A company's published jobs on Ashby, with locations, departments and links.",
+    nl: "De gepubliceerde vacatures van een bedrijf op Ashby, met locaties, afdelingen en links.",
+    fr: "Les offres publiées d’une entreprise sur Ashby, avec lieux, services et liens.",
+  },
+  base: { board: "ashby" },
+  ask: ["name"],
+  hints: {
+    name: {
+      ...jobBoard.fieldHints.name,
+      placeholder: "Ashby",
+      help: {
+        en: "The company name in the board address: Ashby in https://jobs.ashbyhq.com/Ashby. Keep the same capital letters, or paste the full link in the sidebar.",
+        nl: "De bedrijfsnaam in het adres: Ashby in https://jobs.ashbyhq.com/Ashby. Behoud de hoofdletters of plak de volledige link in de zijbalk.",
+        fr: "Le nom de l’entreprise dans l’adresse : Ashby dans https://jobs.ashbyhq.com/Ashby. Conservez les majuscules ou collez le lien complet dans la barre latérale.",
+      },
+    },
+  },
+  recognize: (url) => {
+    const name = recognizeAshbyBoard(url);
     return name ? { name } : null;
   },
 });
@@ -68,6 +107,7 @@ const customPage = definePreset(pageList, {
  */
 const PRESETS: readonly AnyPreset[] = Object.freeze([
   greenhouse,
+  ashby,
   feed,
   customPage,
 ]);

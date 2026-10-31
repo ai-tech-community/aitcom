@@ -1,6 +1,6 @@
 # Data collectors: visible delivery slices
 
-**Status:** slice 1 accepted in the local app on 2026-10-31; PR and deployment pending. Slice 2 (Ashby) approved next.
+**Status:** slice 1 accepted locally; [PR #542](https://github.com/ai-tech-community/aitcom/pull/542) awaits CI and merge. Slice 2 (Ashby) implemented locally; review pending.
 
 ## Delivery agreement
 
@@ -122,3 +122,14 @@ name or paste its link from the workspace, start, inspect results and download.
   location, department, URL and postedAt columns and download CSV/JSON. This
   manual persisted-run check remains for the owner's normal app review.
 - Next slice: Ashby jobs (slice 2).
+
+## Slice 2 local delivery
+
+The Ashby job-board adapter, preset, strict board/job link recognition and
+EN/NL/FR copy are implemented on `feat/collector-ashby`. The form and existing
+private run history/table/exports use the same job columns as Greenhouse.
+Unlisted Ashby postings are omitted. Eight focused test files (168 tests),
+type-check, lint and formatting passed; a guarded public API replay returned
+74 job rows without database storage. Review plan:
+`../plans/2026-10-31-collector-ashby.md`. Owner route after checkout:
+`/dashboard/collectors/new/ashby-board`, board name `Ashby`.
