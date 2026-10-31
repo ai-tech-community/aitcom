@@ -225,6 +225,49 @@ beforeEach(() => {
 });
 
 describe("StartRunForm", () => {
+  it.each([
+    [
+      "hacker-news-stories",
+      { list: "ask", limit: "2" },
+      { list: "ask", limit: 2 },
+    ],
+    [
+      "github-org-repositories",
+      { organization: "octokit", limit: "3" },
+      { organization: "octokit", limit: 3 },
+    ],
+    [
+      "event-page",
+      { url: "https://example.org/event" },
+      { url: "https://example.org/event" },
+    ],
+  ] as const)(
+    "starts %s through the visible form and opens its result",
+    (id, prefill, input) => {
+      jobBoardOverview();
+      renderForm(id, prefill, true);
+      fireEvent.click(startButton());
+      expect(h.mutate).toHaveBeenCalledWith({
+        presetId: id,
+        input,
+        acknowledged: false,
+      });
+      act(() => h.options.onSuccess?.({ ok: true, runId: "result" }));
+      expect(h.push).toHaveBeenCalledWith("/dashboard/collectors/runs/result");
+    },
+  );
+  it("starts the Python job template with saved selectors hidden in settings", () => {
+    jobBoardOverview();
+    renderForm("python-jobs");
+    expect(screen.getByLabelText("Item selector")).not.toBeVisible();
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledWith({
+      presetId: "python-jobs",
+      input: getPreset("python-jobs")!.base,
+      acknowledged: false,
+    });
+  });
+
   it("starts a recognized Personio board with the selected feed language and opens results", () => {
     jobBoardOverview();
     renderForm(

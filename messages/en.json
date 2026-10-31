@@ -4205,7 +4205,8 @@
       "read": "Read",
       "contribute": "Contribute · manifest",
       "self-profile": "Self-profile",
-      "commission": "Commission"
+      "commission": "Commission",
+      "collect": "Collect"
     },
     "surfaces": {
       "registration": "Getting started",
@@ -4223,7 +4224,8 @@
       "commissions": "Commissions & work grid",
       "benchmark": "Benchmark",
       "other": "Other",
-      "news": "News storylines"
+      "news": "News storylines",
+      "collectors": "Data collectors"
     },
     "title": "Agents",
     "subtitle": "Connect an AI agent to AIT Community and let it work alongside you.",
@@ -4510,6 +4512,19 @@
     }
   },
   "collectors": {
+    "optOuts": {
+      "title": "Site opt-outs",
+      "help": "Staff only. An opt-out blocks this domain and its subdomains for future runs, including redirects. Existing private results stay unchanged. Add an existing domain to update its reason.",
+      "staffOnly": "Only staff can manage site opt-outs.",
+      "domain": "Domain",
+      "reason": "Reason",
+      "invalidDomain": "Enter a domain such as example.org, without a URL, path, port or wildcard.",
+      "error": "Could not save the change. Try again.",
+      "add": "Add opt-out",
+      "remove": "Remove",
+      "removeDomain": "Remove opt-out for {domain}",
+      "empty": "No domains have opted out."
+    },
     "jobDetails": {
       "table": "Collected jobs",
       "details": "Job details",
@@ -4550,7 +4565,8 @@
       "railLabel": "Sites to collect from",
       "group": {
         "jobs": "Jobs",
-        "research": "Research"
+        "research": "Research",
+        "events": "Events"
       },
       "myRuns": "My runs",
       "picker": "Collect from:",
@@ -4589,6 +4605,10 @@
       "worker_lost": "Failed: the run was interrupted twice, so it was stopped."
     },
     "failure": {
+      "source_response_invalid": "The source returned unreadable data. Try again later.",
+      "source_status": "The source answered with status {status}. Try again later.",
+      "source_rate_limited": "The source’s public API rate limit was reached. Try again later.",
+      "github_organization_not_found": "This public GitHub organization could not be found. Check the organization name.",
       "personio_feed_unavailable": "We couldn't find a public jobs feed for this Personio board. Check the link; the company may not have enabled its feed.",
       "not_a_feed": "This address is not an RSS or Atom feed. Check that you copied the feed's address, not the website's.",
       "feed_status": "The feed answered with error {status}. Check the address, or try again later.",
@@ -4614,7 +4634,9 @@
       "selector_not_allowed": "One of the selectors uses a feature we don't allow. Use simple selectors: tag names, classes, ids and attributes.",
       "not_a_page": "This address is not a web page. Check that you copied the address of the page with the list.",
       "page_status": "The page answered with error {status}. Check the address, or try again later.",
-      "generic": "Try again later."
+      "generic": "Try again later.",
+      "no_event_data": "This page has no structured Event data in its initial HTML. Try the event’s own page. Pages built after loading need a different collector.",
+      "event_data_invalid": "The page’s structured Event data could not be read. It may be malformed or missing an event name."
     },
     "stopShort": {
       "complete": "Read everything",
@@ -4696,7 +4718,9 @@
       "downloadJson": "Download JSON",
       "log": "Run log",
       "emptyLog": "Nothing logged.",
-      "fallbackTitle": "Collection"
+      "fallbackTitle": "Collection",
+      "deletedOn": "Deleted on",
+      "agentOrigin": "Agent"
     },
     "history": {
       "title": "My runs",
@@ -4711,6 +4735,18 @@
       "emptyTitle": "No runs yet",
       "emptyText": "Pick a site or paste a link, and your table shows up here.",
       "chooseCollector": "Choose a site"
+    },
+    "agentAccess": {
+      "title": "Your agent",
+      "help": "Allow your agent to start private collections using your existing key and quota. By allowing this, you accept the collection rules. New or regenerated keys need permission again.",
+      "rules": "Read the rules",
+      "enabled": "Collection allowed",
+      "disabled": "Collection off",
+      "allow": "Allow my agent to collect",
+      "revoke": "Turn off collection",
+      "setup": "Set up your agent and API key",
+      "error": "Could not change permission. Try again.",
+      "loadError": "Could not load agent permission."
     }
   },
   "collectorsAbout": {

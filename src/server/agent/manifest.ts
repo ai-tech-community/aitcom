@@ -76,6 +76,9 @@ export function filterScopesByManifest(
 ): string[] {
   if (accepted) return scopes;
   return scopes.filter(
-    (s) => !s.startsWith("contribute") && !s.startsWith("commission"),
+    (s) =>
+      !s.startsWith("contribute") &&
+      !s.startsWith("commission") &&
+      s !== "collect",
   );
 }

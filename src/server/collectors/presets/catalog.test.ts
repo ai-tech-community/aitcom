@@ -22,6 +22,10 @@ const ASK_SAMPLES: Record<string, Record<string, unknown>> = {
   "lever-board": { name: "leverdemo" },
   "workable-board": { name: "careers" },
   "personio-board": { url: "https://demo.jobs.personio.de/", language: "en" },
+  "hacker-news-stories": { list: "ask", limit: 2 },
+  "github-org-repositories": { organization: "octokit", limit: 3 },
+  "event-page": { url: "https://example.org/events/community-day" },
+  "python-jobs": { maxPages: 1 },
   feed: { url: "https://example.com/feed.xml" },
   "custom-page": {
     url: "https://example.com/jobs",

@@ -54,6 +54,8 @@ export interface CollectorContext {
     page: { html: string; url: string },
     options?: { decodeEntities?: boolean },
   ): Promise<{ text: string | null; truncated: boolean }>;
+  /** Structured Event data read only in the deadline-bound worker. */
+  extractEvents(page: { html: string; url: string }): Promise<ExtractResult>;
   /** Validated XML document decoded in the bounded worker; null if malformed. */
   parseXml(page: { xml: string; url: string }): Promise<unknown>;
   /** A short line the member sees on the run page. */

@@ -1,3 +1,9 @@
+import { eventPage } from "../collectors/event-page";
+import { hackerNews, recognizeHackerNews } from "../collectors/hacker-news";
+import {
+  githubRepositories,
+  recognizeGithubOrganization,
+} from "../collectors/github-repositories";
 import { CUSTOM_PAGE_PRESET_ID } from "@/lib/collectors/presets";
 import { recognizeGreenhouseBoard } from "@/lib/job-boards/greenhouse";
 import { recognizeWorkableBoard } from "@/lib/job-boards/workable";
@@ -148,6 +154,28 @@ const personio = definePreset(personioJobs, {
   },
 });
 
+const hn = definePreset(hackerNews, {
+  id: "hacker-news-stories",
+  group: "research",
+  title: hackerNews.title,
+  summary: hackerNews.description,
+  base: {},
+  ask: ["list", "limit"],
+  recognize: recognizeHackerNews,
+});
+const github = definePreset(githubRepositories, {
+  id: "github-org-repositories",
+  group: "research",
+  title: githubRepositories.title,
+  summary: githubRepositories.description,
+  base: {},
+  ask: ["organization", "limit"],
+  recognize: (url) => {
+    const organization = recognizeGithubOrganization(url);
+    return organization ? { organization } : null;
+  },
+});
+
 const feed = definePreset(feedItems, {
   id: "feed",
   group: "research",
@@ -161,6 +189,66 @@ const feed = definePreset(feedItems, {
     nl: "De nieuwste items van een RSS- of Atom-feed: titel, link, datum, auteur en een korte samenvatting.",
     fr: "Les derniers éléments d’un flux RSS ou Atom : titre, lien, date, auteur et court résumé.",
   },
+  base: {},
+  ask: ["url"],
+});
+
+const pythonJobs = definePreset(pageList, {
+  id: "python-jobs",
+  group: "jobs",
+  title: {
+    en: "Python community jobs",
+    nl: "Python-communityvacatures",
+    fr: "Offres de la communauté Python",
+  },
+  summary: {
+    en: "The public python.org job list, with titles, locations, source dates and links. Saved selectors are ready to use; if the list is empty, the site may have changed.",
+    nl: "De openbare vacatures op python.org, met titels, locaties, brondatums en links. De selectors staan klaar; bij een lege lijst kan de site zijn gewijzigd.",
+    fr: "Les offres publiques de python.org, avec titres, lieux, dates source et liens. Les sélecteurs sont prêts ; une liste vide peut signaler une modification du site.",
+  },
+  base: {
+    url: "https://www.python.org/jobs/",
+    itemSelector: ".list-recent-jobs > li",
+    fields: [
+      { name: "title", selector: ".listing-company-name a" },
+      { name: "url", selector: ".listing-company-name a", attribute: "href" },
+      { name: "location", selector: ".listing-location" },
+      {
+        name: "postedAt",
+        selector: ".listing-posted time",
+        attribute: "datetime",
+      },
+    ],
+    maxPages: 1,
+  },
+  ask: ["maxPages"],
+  hints: {
+    maxPages: {
+      label: { en: "Pages to read", nl: "Aantal pagina’s", fr: "Pages à lire" },
+      help: {
+        en: "The current Python job list fits on one page. Saved page settings are available below.",
+        nl: "De huidige Python-vacaturelijst past op één pagina. De opgeslagen pagina-instellingen staan hieronder.",
+        fr: "La liste actuelle tient sur une page. Les réglages enregistrés sont disponibles ci-dessous.",
+      },
+    },
+  },
+  recognize: (url) =>
+    url.protocol === "https:" &&
+    url.hostname === "www.python.org" &&
+    !url.username &&
+    !url.password &&
+    !url.port &&
+    /^\/jobs\/?$/.test(url.pathname) &&
+    !url.search
+      ? {}
+      : null,
+});
+
+const events = definePreset(eventPage, {
+  id: "event-page",
+  group: "events",
+  title: eventPage.title,
+  summary: eventPage.description,
   base: {},
   ask: ["url"],
 });
@@ -193,7 +281,11 @@ const PRESETS: readonly AnyPreset[] = Object.freeze([
   lever,
   workable,
   personio,
+  hn,
+  github,
   feed,
+  pythonJobs,
+  events,
   customPage,
 ]);
 

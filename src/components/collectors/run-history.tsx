@@ -203,6 +203,11 @@ function HistoryRows({
               <RelativeTime date={run.createdAt} />
             </td>
             <td className="border-border border-b px-3 py-2.5">
+              {run.origin === "mcp" ? (
+                <span className="text-muted-foreground text-xs">
+                  {t("run.agentOrigin")}
+                </span>
+              ) : null}
               <RunStatusBadge status={run.status} stopReason={run.stopReason} />
             </td>
             <td className="border-border border-b px-3 py-2.5 font-mono text-xs">

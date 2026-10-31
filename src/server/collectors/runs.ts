@@ -270,7 +270,13 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
     const [row] = await db
       .select()
       .from(collectorRuns)
-      .where(and(eq(collectorRuns.id, runId), eq(collectorRuns.userId, userId)))
+      .where(
+        and(
+          eq(collectorRuns.id, runId),
+          eq(collectorRuns.userId, userId),
+          gt(collectorRuns.expiresAt, deps.now()),
+        ),
+      )
       .limit(1);
     return row ?? null;
   }
@@ -489,6 +495,7 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
         .where(
           and(
             eq(collectorRuns.userId, userId),
+            gt(collectorRuns.expiresAt, deps.now()),
             cursor
               ? or(
                   lt(collectorRuns.createdAt, cursor.createdAt),

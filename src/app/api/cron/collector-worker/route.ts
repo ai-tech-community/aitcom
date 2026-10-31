@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server";
 
+import { cleanupExpiredRuns } from "@/server/collectors/retention";
 import { runWorkerTick } from "@/server/collectors/executor";
 import { collectorsEnabled } from "@/server/collectors/flags";
 import { liveExecutorDeps } from "@/server/collectors/live";
@@ -31,9 +32,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ skipped: "collectors off" });
   }
   try {
-    const result = await runWorkerTick(liveExecutorDeps());
+    const deps = liveExecutorDeps();
+    const cleaned = await cleanupExpiredRuns(deps.db, new Date(deps.now()));
+    const result = await runWorkerTick(deps);
     return NextResponse.json({
       success: true,
+      cleaned,
       ...result,
       timestamp: new Date().toISOString(),
     });

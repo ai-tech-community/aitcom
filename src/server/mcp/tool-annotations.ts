@@ -11,8 +11,8 @@
 // unset, which would over-warn on every write. catalog.integration.test.ts
 // fails if a live tool has no profile.
 //
-// openWorldHint is false throughout: every tool acts only inside AIT, a
-// bounded workspace, never on the open internet.
+// Most tools act inside AIT. start-collector-run overrides openWorldHint
+// because it queues guarded requests to public internet sources.
 
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 

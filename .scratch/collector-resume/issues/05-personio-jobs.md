@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Greenhouse jobs.
 
-**Status:** reviewed-locally; owner app check pending
+**Status:** merged in [PR #546](https://github.com/ai-tech-community/aitcom/pull/546) (`14a5195d`)
 
 - [x] Personio jobs appears under Jobs with supported .de/.com board recognition.
 - [x] The public XML feed is read through the guarded context using bounded XML parsing.

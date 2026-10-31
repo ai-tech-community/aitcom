@@ -1,8 +1,21 @@
+import {
+  collectorAgentAccess,
+  setCollectorAgentAccess,
+} from "@/server/collectors/agent-permission";
+import { asc, eq } from "drizzle-orm";
+import { canonicalOptOutDomain } from "@/lib/collectors/opt-out-domain";
+import { collectorBlockedDomains } from "@/server/db/schema";
 import { routing } from "@/i18n/routing";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  agentProcedure,
+  requireOwner,
+  requireScope,
+} from "@/server/api/trpc";
 import { collectorsEnabled } from "@/server/collectors/flags";
 import { liveCollectorRuns } from "@/server/collectors/live";
 
@@ -33,7 +46,123 @@ async function isFirstTime(
   return latest.length === 0;
 }
 
+function isStaff(user: unknown): boolean {
+  return (user as { role?: string }).role === "admin";
+}
+const domainInput = z
+  .string()
+  .max(255)
+  .refine((value) => canonicalOptOutDomain(value) !== null, "DOMAIN_INVALID")
+  .transform((value) => canonicalOptOutDomain(value)!);
+function requireStaff(user: unknown) {
+  if (!collectorsEnabled())
+    throw new TRPCError({ code: "NOT_FOUND", message: "COLLECTORS_OFF" });
+  if (!isStaff(user)) throw new TRPCError({ code: "FORBIDDEN" });
+}
+
 export const collectorsRouter = createTRPCRouter({
+  agentAccess: protectedProcedure.query(({ ctx }) => {
+    facade();
+    return collectorAgentAccess(ctx.db, ctx.session.user.id);
+  }),
+  setAgentAccess: protectedProcedure
+    .input(z.object({ allowed: z.boolean(), acknowledged: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      facade();
+      if (input.allowed && !input.acknowledged)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "ACKNOWLEDGEMENT_REQUIRED",
+        });
+      if (
+        !(await setCollectorAgentAccess(
+          ctx.db,
+          ctx.session.user.id,
+          input.allowed,
+        ))
+      )
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "AGENT_KEY_NOT_FOUND",
+        });
+      return { ok: true };
+    }),
+  agentList: agentProcedure
+    .input(z.object({ locale: z.enum(routing.locales).default("en") }))
+    .query(({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "collect");
+      requireOwner(ctx.agent.ownerId);
+      return facade().listCollectors(input.locale);
+    }),
+  agentStart: agentProcedure
+    .input(
+      z.object({ collectorId: z.string().min(1).max(64), input: z.unknown() }),
+    )
+    .mutation(({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "collect");
+      const userId = requireOwner(ctx.agent.ownerId);
+      return facade().startRun({
+        userId,
+        agentId: ctx.agent.agentId,
+        origin: "mcp",
+        ...input,
+      });
+    }),
+  agentRun: agentProcedure
+    .input(z.object({ runId: z.string().min(1).max(255) }))
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "collect");
+      const userId = requireOwner(ctx.agent.ownerId);
+      return (await facade().getRun(userId, input.runId)) ?? runNotFound();
+    }),
+  agentItems: agentProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(255),
+        afterSeq: z.number().int().min(-1).optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "collect");
+      const userId = requireOwner(ctx.agent.ownerId);
+      const { runId, ...page } = input;
+      return (await facade().listItems(userId, runId, page)) ?? runNotFound();
+    }),
+  optOuts: protectedProcedure.query(async ({ ctx }) => {
+    requireStaff(ctx.session.user);
+    return ctx.db
+      .select()
+      .from(collectorBlockedDomains)
+      .orderBy(asc(collectorBlockedDomains.domain));
+  }),
+  addOptOut: protectedProcedure
+    .input(
+      z.object({
+        domain: domainInput,
+        reason: z.string().trim().min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireStaff(ctx.session.user);
+      await ctx.db
+        .insert(collectorBlockedDomains)
+        .values(input)
+        .onConflictDoUpdate({
+          target: collectorBlockedDomains.domain,
+          set: { reason: input.reason },
+        });
+      return { ok: true };
+    }),
+  removeOptOut: protectedProcedure
+    .input(z.object({ domain: domainInput }))
+    .mutation(async ({ ctx, input }) => {
+      requireStaff(ctx.session.user);
+      await ctx.db
+        .delete(collectorBlockedDomains)
+        .where(eq(collectorBlockedDomains.domain, input.domain));
+      return { ok: true };
+    }),
   overview: protectedProcedure
     .input(z.object({ locale: z.enum(routing.locales) }))
     .query(async ({ ctx, input }) => {
@@ -50,6 +179,7 @@ export const collectorsRouter = createTRPCRouter({
         titles: runs.listTitles(input.locale),
         recentRuns: recent.runs,
         usage,
+        canManageOptOuts: isStaff(ctx.session.user),
         needsAcknowledgement: recent.runs.length === 0,
       };
     }),

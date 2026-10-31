@@ -7,6 +7,12 @@ import type { StopReason } from "./run-status";
  * failure needs a new code and its EN/NL copy.
  */
 export type FailureCode =
+  | "source_response_invalid"
+  | "source_status"
+  | "source_rate_limited"
+  | "github_organization_not_found"
+  | "no_event_data"
+  | "event_data_invalid"
   | "not_a_feed"
   | "feed_status"
   | "personio_feed_unavailable"
@@ -35,6 +41,12 @@ export type FailureCode =
   | "generic";
 
 export const FAILURE_CODES = [
+  "source_response_invalid",
+  "source_status",
+  "source_rate_limited",
+  "github_organization_not_found",
+  "no_event_data",
+  "event_data_invalid",
   "not_a_feed",
   "feed_status",
   "personio_feed_unavailable",

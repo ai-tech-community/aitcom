@@ -6,7 +6,7 @@
  */
 
 /** Rail groups, in rail order. The Custom page is always last. */
-export const PRESET_GROUPS = ["jobs", "research", "custom"] as const;
+export const PRESET_GROUPS = ["jobs", "events", "research", "custom"] as const;
 export type PresetGroup = (typeof PRESET_GROUPS)[number];
 
 /** The preset every unrecognised address opens: page-list, member's selectors. */

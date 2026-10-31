@@ -4205,7 +4205,8 @@
       "read": "Lecture",
       "contribute": "Contribution · manifeste",
       "self-profile": "Profil propre",
-      "commission": "Mission"
+      "commission": "Mission",
+      "collect": "Collecter"
     },
     "surfaces": {
       "registration": "Premiers pas",
@@ -4223,7 +4224,8 @@
       "commissions": "Missions et tableau de travail",
       "benchmark": "Évaluation comparative",
       "other": "Autre",
-      "news": "Dossiers d’actualité"
+      "news": "Dossiers d’actualité",
+      "collectors": "Collecteurs de données"
     },
     "title": "Agents",
     "subtitle": "Connectez un agent IA à AIT Community et laissez-le travailler à vos côtés.",
@@ -4510,6 +4512,19 @@
     }
   },
   "collectors": {
+    "optOuts": {
+      "title": "Oppositions des sites",
+      "help": "Réservé au personnel. Une opposition bloque ce domaine et ses sous-domaines pour les nouvelles exécutions, y compris les redirections. Les résultats privés existants sont conservés. Ajoutez un domaine existant pour modifier le motif.",
+      "staffOnly": "Seul le personnel peut gérer les oppositions.",
+      "domain": "Domaine",
+      "reason": "Motif",
+      "invalidDomain": "Saisissez un domaine comme example.org, sans URL, chemin, port ni caractère générique.",
+      "error": "La modification n’a pas été enregistrée. Réessayez.",
+      "add": "Ajouter une opposition",
+      "remove": "Supprimer",
+      "removeDomain": "Supprimer l’opposition pour {domain}",
+      "empty": "Aucun domaine ne s’est opposé."
+    },
     "jobDetails": {
       "table": "Offres collectées",
       "details": "Détails de l’offre",
@@ -4550,7 +4565,8 @@
       "railLabel": "Sites à collecter",
       "group": {
         "jobs": "Emplois",
-        "research": "Recherche"
+        "research": "Recherche",
+        "events": "Événements"
       },
       "myRuns": "Mes collectes",
       "picker": "Collecter depuis :",
@@ -4589,6 +4605,10 @@
       "worker_lost": "Échec : la collecte a été interrompue deux fois, elle a donc été arrêtée."
     },
     "failure": {
+      "source_response_invalid": "La source a renvoyé des données illisibles. Réessayez plus tard.",
+      "source_status": "La source a répondu avec le statut {status}. Réessayez plus tard.",
+      "source_rate_limited": "La limite de l’API publique a été atteinte. Réessayez plus tard.",
+      "github_organization_not_found": "Cette organisation GitHub publique est introuvable. Vérifiez son nom.",
       "personio_feed_unavailable": "Nous n’avons pas trouvé de flux public pour ce site Personio. Vérifiez le lien ; l’entreprise n’a peut-être pas activé son flux.",
       "not_a_feed": "Cette adresse n’est pas un flux RSS ou Atom. Vérifiez que vous avez copié l’adresse du flux et non celle du site.",
       "feed_status": "Le flux a renvoyé l’erreur {status}. Vérifiez l’adresse ou réessayez plus tard.",
@@ -4614,7 +4634,9 @@
       "selector_not_allowed": "Un sélecteur utilise une fonctionnalité non autorisée. Utilisez des sélecteurs simples : noms de balises, classes, identifiants et attributs.",
       "not_a_page": "Cette adresse n’est pas une page web. Vérifiez que vous avez copié l’adresse de la page contenant la liste.",
       "page_status": "La page a renvoyé l’erreur {status}. Vérifiez l’adresse ou réessayez plus tard.",
-      "generic": "Réessayez plus tard."
+      "generic": "Réessayez plus tard.",
+      "no_event_data": "Cette page ne contient pas de données Event dans son HTML initial. Essayez la page propre à l’événement. Les pages créées après chargement nécessitent un autre collecteur.",
+      "event_data_invalid": "Les données Event de cette page sont illisibles. Elles peuvent être mal formées ou ne pas contenir de nom."
     },
     "stopShort": {
       "complete": "Lecture complète",
@@ -4696,7 +4718,9 @@
       "downloadJson": "Télécharger en JSON",
       "log": "Journal de collecte",
       "emptyLog": "Aucune entrée dans le journal.",
-      "fallbackTitle": "Collecte"
+      "fallbackTitle": "Collecte",
+      "deletedOn": "Suppression le",
+      "agentOrigin": "Agent"
     },
     "history": {
       "title": "Mes collectes",
@@ -4711,6 +4735,18 @@
       "emptyTitle": "Aucune collecte pour le moment",
       "emptyText": "Choisissez un site ou collez un lien : votre tableau apparaîtra ici.",
       "chooseCollector": "Choisissez un site"
+    },
+    "agentAccess": {
+      "title": "Votre agent",
+      "help": "Autorisez votre agent à démarrer des collectes privées avec votre clé et votre quota existants. Vous acceptez ainsi les règles de collecte. Les clés nouvelles ou régénérées nécessitent une nouvelle autorisation.",
+      "rules": "Lire les règles",
+      "enabled": "Collecte autorisée",
+      "disabled": "Collecte désactivée",
+      "allow": "Autoriser mon agent à collecter",
+      "revoke": "Désactiver la collecte",
+      "setup": "Configurer votre agent et sa clé API",
+      "error": "Impossible de modifier l’autorisation. Réessayez.",
+      "loadError": "Impossible de charger l’autorisation de l’agent."
     }
   },
   "collectorsAbout": {

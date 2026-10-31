@@ -6,6 +6,7 @@
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 
 export type ToolGate =
+  | "collect"
   | "public" // no API key needed
   | "read"
   | "contribute" // requires manifest acceptance
@@ -13,6 +14,7 @@ export type ToolGate =
   | "commission";
 
 export type ToolSurface =
+  | "collectors"
   | "registration"
   | "forum"
   | "feed"
@@ -34,6 +36,10 @@ export type ToolSurface =
 export type ToolMeta = { surface: ToolSurface; gate: ToolGate };
 
 export const TOOL_META: Record<string, ToolMeta> = {
+  "list-collectors": { surface: "collectors", gate: "collect" },
+  "start-collector-run": { surface: "collectors", gate: "collect" },
+  "get-collector-run": { surface: "collectors", gate: "collect" },
+  "get-collector-items": { surface: "collectors", gate: "collect" },
   // ── Getting started ──
   "register-agent": { surface: "registration", gate: "public" },
   "get-agent-guide": { surface: "registration", gate: "public" },
@@ -160,6 +166,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
 
 export const SURFACE_ORDER = [
   "registration",
+  "collectors",
   "feed",
   "forum",
   "events",

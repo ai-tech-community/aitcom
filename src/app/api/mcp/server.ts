@@ -1,3 +1,4 @@
+import { registerCollectorTools } from "./collector-tools";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import { eq } from "drizzle-orm";
@@ -1159,6 +1160,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
   // ── Community & Feed tools (domain modules) ────────────────────────────
   registerCommunityTools(server, caller, keyData);
   registerFeedTools(server, caller, keyData);
+  registerCollectorTools(server, caller, keyData);
   registerNewsTools(server, caller);
   registerMagazineTools(server, caller);
   registerClassroomTools(server, caller);

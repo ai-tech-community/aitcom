@@ -44,7 +44,7 @@ import {
 
 const preset = (
   id: string,
-  group: "jobs" | "research" | "custom",
+  group: "jobs" | "events" | "research" | "custom",
   title: string,
 ) => ({
   id,
@@ -248,4 +248,24 @@ describe("CollectorWorkspace", () => {
       ).toHaveAttribute("href", "/dashboard/collectors/runs");
     }
   });
+});
+
+it("offers structured Events and staff opt-outs in the rail", () => {
+  h.overview.mockReturnValue({
+    data: {
+      presets: [...presets, preset("event-page", "events", "Event page")],
+      usage: { runsToday: 0, runsPerDay: 20 },
+      canManageOptOuts: true,
+    },
+    isPending: false,
+    isError: false,
+  });
+  renderWorkspace();
+  expect(wide().getByRole("link", { name: "Event page" })).toHaveAttribute(
+    "href",
+    "/dashboard/collectors/new/event-page",
+  );
+  expect(
+    screen.getByRole("link", { name: "Site opt-outs" }),
+  ).toBeInTheDocument();
 });

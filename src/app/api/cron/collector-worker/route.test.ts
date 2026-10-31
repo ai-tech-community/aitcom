@@ -1,14 +1,19 @@
 import type * as NextServer from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { runWorkerTick, collectorsEnabled, afterCallbacks } = vi.hoisted(() => ({
-  runWorkerTick: vi.fn(),
-  collectorsEnabled: vi.fn(),
-  afterCallbacks: [] as (() => Promise<void>)[],
-}));
+const { cleanupExpiredRuns, runWorkerTick, collectorsEnabled, afterCallbacks } =
+  vi.hoisted(() => ({
+    cleanupExpiredRuns: vi.fn(),
+    runWorkerTick: vi.fn(),
+    collectorsEnabled: vi.fn(),
+    afterCallbacks: [] as (() => Promise<void>)[],
+  }));
 
+vi.mock("@/server/collectors/retention", () => ({ cleanupExpiredRuns }));
 vi.mock("@/server/collectors/executor", () => ({ runWorkerTick }));
-vi.mock("@/server/collectors/live", () => ({ liveExecutorDeps: () => ({}) }));
+vi.mock("@/server/collectors/live", () => ({
+  liveExecutorDeps: () => ({ db: {}, now: () => 0 }),
+}));
 vi.mock("@/server/collectors/flags", () => ({ collectorsEnabled }));
 vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<typeof NextServer>()),
@@ -31,6 +36,7 @@ beforeEach(() => {
   afterCallbacks.length = 0;
   vi.stubEnv("CRON_SECRET", "s3cret");
   collectorsEnabled.mockReturnValue(true);
+  cleanupExpiredRuns.mockResolvedValue(3);
   runWorkerTick.mockResolvedValue({ executed: 2 });
 });
 afterEach(() => {
@@ -42,6 +48,7 @@ describe("collector worker route", () => {
     expect((await GET(req("GET"))).status).toBe(401);
     expect((await GET(req("GET", "Bearer nope"))).status).toBe(401);
     expect(runWorkerTick).not.toHaveBeenCalled();
+    expect(cleanupExpiredRuns).not.toHaveBeenCalled();
   });
 
   it("refuses everyone when CRON_SECRET is not set", async () => {
@@ -56,12 +63,17 @@ describe("collector worker route", () => {
     const res = await GET(req("GET", "Bearer s3cret"));
     expect(await res.json()).toMatchObject({ skipped: "collectors off" });
     expect(runWorkerTick).not.toHaveBeenCalled();
+    expect(cleanupExpiredRuns).not.toHaveBeenCalled();
   });
 
   it("GET runs a tick and reports it", async () => {
     const res = await GET(req("GET", "Bearer s3cret"));
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ success: true, executed: 2 });
+    expect(await res.json()).toMatchObject({
+      success: true,
+      executed: 2,
+      cleaned: 3,
+    });
   });
 
   it("GET reports a failed tick as 500", async () => {
@@ -81,6 +93,7 @@ describe("collector worker route", () => {
     const res = await POST(req("POST", "Bearer s3cret"));
     expect(res.status).toBe(202);
     expect(runWorkerTick).not.toHaveBeenCalled();
+    expect(cleanupExpiredRuns).not.toHaveBeenCalled();
     await afterCallbacks[0]!();
     expect(runWorkerTick).toHaveBeenCalledTimes(1);
   });

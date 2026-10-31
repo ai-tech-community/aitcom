@@ -1,3 +1,4 @@
+import { extractEvents } from "../src/server/collectors/extract/extract-events";
 import { parentPort } from "node:worker_threads";
 import {
   extractList,
@@ -51,7 +52,9 @@ port.on("message", (message: unknown) => {
         "kind" in spec
           ? spec.kind === "xml"
             ? extractXml(html)
-            : extractText(html, spec)
+            : spec.kind === "events"
+              ? extractEvents(html, spec)
+              : extractText(html, spec)
           : extractList(html, spec),
     });
   } catch (error) {

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   enabled: true,
+  access: vi.fn(),
+  setAccess: vi.fn(),
   facade: {
     listCollectors: vi.fn(),
     listRuns: vi.fn(),
@@ -15,6 +17,10 @@ const h = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("@/server/collectors/agent-permission", () => ({
+  collectorAgentAccess: h.access,
+  setCollectorAgentAccess: h.setAccess,
+}));
 vi.mock("@/server/collectors/flags", () => ({
   collectorsEnabled: () => h.enabled,
 }));
@@ -29,10 +35,14 @@ vi.mock("@/server/payload", () => ({ getPayloadClient: vi.fn() }));
 
 import { createCaller } from "@/server/api/root";
 
-function caller(userId: string | null = "user-1") {
+function caller(
+  userId: string | null = "user-1",
+  role = "user",
+  db: unknown = {},
+) {
   return createCaller({
-    db: {},
-    session: userId ? ({ user: { id: userId } } as never) : null,
+    db,
+    session: userId ? ({ user: { id: userId, role } } as never) : null,
     headers: new Headers(),
   } as never);
 }
@@ -44,6 +54,8 @@ beforeEach(() => {
   // The shared tRPC timing middleware logs every call; keep test output clean.
   vi.spyOn(console, "log").mockImplementation(() => undefined);
   h.enabled = true;
+  h.access.mockResolvedValue({ hasKey: true, allowed: false });
+  h.setAccess.mockResolvedValue(true);
   h.facade.listCollectors.mockReturnValue([{ id: "feed-items" }]);
   h.facade.listRuns.mockResolvedValue({ runs: [run], nextCursor: null });
   h.facade.usage.mockResolvedValue({ runsToday: 1, runsPerDay: 20 });
@@ -125,6 +137,7 @@ describe("collectors router", () => {
       },
       recentRuns: [run],
       usage: { runsToday: 1, runsPerDay: 20 },
+      canManageOptOuts: false,
       needsAcknowledgement: false,
     });
   });
@@ -244,5 +257,123 @@ describe("collectors router", () => {
       afterSeq: 49,
       limit: 50,
     });
+  });
+});
+
+describe("staff opt-out permissions", () => {
+  it("denies every opt-out operation to ordinary members", async () => {
+    for (const op of [
+      () => caller().collectors.optOuts(),
+      () =>
+        caller().collectors.addOptOut({
+          domain: "example.org",
+          reason: "Owner request",
+        }),
+      () => caller().collectors.removeOptOut({ domain: "example.org" }),
+    ]) {
+      await expect(op()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
+  });
+  it("enforces the feature flag for staff reads and mutations", async () => {
+    h.enabled = false;
+    for (const op of [
+      () => caller("staff", "admin").collectors.optOuts(),
+      () =>
+        caller("staff", "admin").collectors.addOptOut({
+          domain: "example.org",
+          reason: "Owner request",
+        }),
+      () =>
+        caller("staff", "admin").collectors.removeOptOut({
+          domain: "example.org",
+        }),
+    ]) {
+      await expect(op()).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+  });
+  it("canonicalizes writes and supports listing and removing using the guarded table", async () => {
+    const builder = {
+      from: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([]),
+      values: vi.fn().mockReturnThis(),
+      onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+      where: vi.fn().mockResolvedValue(undefined),
+    };
+    const db = {
+      select: () => builder,
+      insert: () => builder,
+      delete: () => builder,
+    };
+    const c = caller("staff", "admin", db);
+    expect(
+      (await c.collectors.overview({ locale: "en" })).canManageOptOuts,
+    ).toBe(true);
+    await c.collectors.addOptOut({
+      domain: " Example.ORG. ",
+      reason: " Owner request ",
+    });
+    expect(builder.values).toHaveBeenCalledWith({
+      domain: "example.org",
+      reason: "Owner request",
+    });
+    expect(await c.collectors.optOuts()).toEqual([]);
+    await c.collectors.removeOptOut({ domain: "example.org" });
+    expect(builder.where).toHaveBeenCalledOnce();
+    await expect(
+      c.collectors.addOptOut({
+        domain: "https://example.org",
+        reason: "request",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("owner collection grants", () => {
+  it("uses only the signed-in owner and requires explicit rules acknowledgement", async () => {
+    expect(await caller("owner").collectors.agentAccess()).toEqual({
+      hasKey: true,
+      allowed: false,
+    });
+    expect(h.access).toHaveBeenCalledWith({}, "owner");
+    await expect(
+      caller("owner").collectors.setAgentAccess({
+        allowed: true,
+        acknowledged: false,
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "ACKNOWLEDGEMENT_REQUIRED",
+    });
+    expect(h.setAccess).not.toHaveBeenCalled();
+    await caller("owner").collectors.setAgentAccess({
+      allowed: true,
+      acknowledged: true,
+    });
+    expect(h.setAccess).toHaveBeenCalledWith({}, "owner", true);
+    await caller("owner").collectors.setAgentAccess({
+      allowed: false,
+      acknowledged: false,
+    });
+    expect(h.setAccess).toHaveBeenCalledWith({}, "owner", false);
+  });
+  it("does not grant when no existing key exists, and obeys the feature flag", async () => {
+    h.setAccess.mockResolvedValue(false);
+    await expect(
+      caller().collectors.setAgentAccess({ allowed: true, acknowledged: true }),
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "AGENT_KEY_NOT_FOUND",
+    });
+    h.enabled = false;
+    await expect(caller().collectors.agentAccess()).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "COLLECTORS_OFF",
+    });
+    await expect(
+      caller().collectors.setAgentAccess({
+        allowed: false,
+        acknowledged: false,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "COLLECTORS_OFF" });
   });
 });

@@ -8,6 +8,7 @@ import { getTranslations } from "next-intl/server";
 import type { CatalogGroup, ToolGate } from "@/server/mcp/catalog-meta";
 
 const gateStyles: Record<ToolGate, string> = {
+  collect: "text-muted-foreground border-border",
   public: "text-green-700 border-green-200 bg-green-50",
   read: "text-zinc-500 border-zinc-200",
   contribute: "text-primary border-primary/30 bg-primary/5",
