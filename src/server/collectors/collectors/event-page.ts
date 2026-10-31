@@ -102,7 +102,8 @@ export const eventPage: Collector<
         url: row.url!,
         venue: row.venue ?? null,
         city: row.city ?? null,
-        online: row.online === null ? null : row.online === "true",
+        online:
+          row.online === "true" ? true : row.online === "false" ? false : null,
         organizer: row.organizer ?? null,
       };
     if (result.truncated)

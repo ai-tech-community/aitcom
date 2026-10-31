@@ -9,6 +9,43 @@ import {
   type ExtractEventsSpec,
 } from "./protocol";
 
+// Explicit schema.org Event hierarchy, checked against https://schema.org/Event.
+// Never accept arbitrary names that merely end in Event or fetch remote contexts.
+const EVENT_TYPES = new Set([
+  "Event",
+  "BusinessEvent",
+  "ChildrensEvent",
+  "ComedyEvent",
+  "ConferenceEvent",
+  "CourseInstance",
+  "DanceEvent",
+  "DeliveryEvent",
+  "EducationEvent",
+  "EventSeries",
+  "ExhibitionEvent",
+  "Festival",
+  "FoodEvent",
+  "Hackathon",
+  "LiteraryEvent",
+  "MusicEvent",
+  "PerformingArtsEvent",
+  "PublicationEvent",
+  "SaleEvent",
+  "ScreeningEvent",
+  "SocialEvent",
+  "SportsEvent",
+  "TheaterEvent",
+  "VisualArtsEvent",
+  "BroadcastEvent",
+  "OnDemandEvent",
+]);
+function isEvent(node: ObjectValue): boolean {
+  return list(node["@type"]).some(
+    (value) =>
+      typeof value === "string" &&
+      EVENT_TYPES.has(value.replace(/^https?:\/\/schema\.org\//, "")),
+  );
+}
 const MAX_JSON_DEPTH = 64;
 const MAX_JSON_NODES = 100_000;
 type ObjectValue = Record<string, unknown>;
@@ -102,7 +139,7 @@ export function extractEvents(
   let truncated = false;
   let invalidEvents = 0;
   for (const node of nodes) {
-    if (!hasType(node, "Event")) continue;
+    if (!isEvent(node)) continue;
     const name = text(node.name);
     if (!name) {
       invalidEvents++;
@@ -110,10 +147,12 @@ export function extractEvents(
     }
     const locations = list(node.location).map(resolve);
     const physical = locations.find(
-      (v) => object(v) && !hasType(v, "VirtualLocation"),
+      (v) =>
+        (typeof v === "string" && v.trim()) ||
+        (object(v) && !hasType(v, "VirtualLocation")),
     );
     const place = object(physical) ? physical : null;
-    const address = place ? resolve(place.address) : null;
+    const address = place ? resolve(place.address ?? place) : null;
     const modes = list(node.eventAttendanceMode);
     const online =
       modes.some(

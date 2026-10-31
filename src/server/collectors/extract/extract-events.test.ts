@@ -7,6 +7,39 @@ const spec = {
 const html = (data: unknown) =>
   `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
 describe("structured Event extraction", () => {
+  it.each([
+    "BusinessEvent",
+    "https://schema.org/MusicEvent",
+    "SportsEvent",
+    "Hackathon",
+  ])("accepts documented Event subtype %s", (type) => {
+    expect(
+      extractEvents(
+        html({
+          "@type": type,
+          name: "Meetup",
+          location: { "@type": "PostalAddress", addressLocality: "Amsterdam" },
+        }),
+        spec,
+      ).rows[0],
+    ).toMatchObject({ name: "Meetup", city: "Amsterdam" });
+    expect(
+      extractEvents(
+        html({ "@type": "https://evil.test/MusicEvent", name: "Unknown" }),
+        spec,
+      ).rows,
+    ).toEqual([]);
+  });
+
+  it("preserves text-valued venues without inventing attendance information", () => {
+    expect(
+      extractEvents(
+        html({ "@type": "Event", name: "Meetup", location: "Town hall" }),
+        spec,
+      ).rows[0],
+    ).toMatchObject({ venue: "Town hall", online: null });
+  });
+
   it("reads nested graphs and ItemList entries and resolves local venue and organizer references", () => {
     const result = extractEvents(
       html({

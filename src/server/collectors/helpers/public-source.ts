@@ -44,5 +44,6 @@ export async function sourceJson(
 
 export function sourceText(value: string | null | undefined): string | null {
   const text = value?.trim();
-  return text ? text : null;
+  if (text === "") return null;
+  return text ?? null;
 }

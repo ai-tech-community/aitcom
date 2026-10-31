@@ -52,7 +52,7 @@ describe("dataset retention", () => {
         fn({ select: () => builder }),
     };
     expect(await claimNextRun(db as never, now)).toBeNull();
-    expect(query(builder.where.mock.calls[0]![0] as SQL).sql).toContain(
+    expect(query(builder.where.mock.calls[0]![0]).sql).toContain(
       '"expiresAt" >',
     );
   });
@@ -75,7 +75,7 @@ describe("dataset retention", () => {
     expect(await runs.listItems("owner", "expired")).toBeNull();
     expect(await runs.exportRun("owner", "expired", "csv")).toBeNull();
     for (const [sql] of builder.where.mock.calls) {
-      const built = query(sql as SQL);
+      const built = query(sql);
       expect(built.sql).toContain('"expiresAt" >');
       expect(built.params).toContain("owner");
       expect(built.params).toContain("expired");

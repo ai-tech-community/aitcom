@@ -26,7 +26,7 @@ describe("ready-made public sources", () => {
     ],
     ["https://www.python.org/jobs/", "python-jobs", {}],
   ])("opens %s with its saved input", (address, presetId, prefill) => {
-    expect(facade.recognize(address as string)).toEqual({
+    expect(facade.recognize(address)).toEqual({
       ok: true,
       matched: true,
       presetId,

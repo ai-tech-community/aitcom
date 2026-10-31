@@ -52,3 +52,18 @@ it("points an owner without a key at existing agent setup", () => {
   ).toHaveAttribute("href", "/dashboard/agent");
   expect(screen.queryByRole("button")).toBeNull();
 });
+
+it("shows loading and a retryable permission error", () => {
+  h.query.mockReturnValue({ isPending: true });
+  const { container, rerender } = view();
+  expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+  const refetch = vi.fn();
+  h.query.mockReturnValue({ isError: true, refetch });
+  rerender(
+    <NextIntlClientProvider locale="en" messages={en}>
+      <CollectorAgentAccess />
+    </NextIntlClientProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: en.common.retry }));
+  expect(refetch).toHaveBeenCalledOnce();
+});

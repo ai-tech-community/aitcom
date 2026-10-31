@@ -19,7 +19,7 @@ export async function collectorAgentAccess(db: typeof appDb, userId: string) {
   return {
     hasKey: rows.length > 0,
     allowed:
-      rows.length > 0 && rows.every((row) => row.scopes.includes("collect")),
+      rows.length > 0 && rows.some((row) => row.scopes.includes("collect")),
   };
 }
 export async function setCollectorAgentAccess(

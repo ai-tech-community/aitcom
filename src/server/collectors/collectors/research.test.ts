@@ -106,8 +106,8 @@ describe("Research collectors", () => {
   ])("explains a source refusal (%s)", async (status, body, headers, code) => {
     const { ctx } = fakeContext({
       [`${repos}1`]: {
-        status: status as number,
-        body: body as string,
+        status: status,
+        body: body,
         headers: headers as Record<string, string>,
       },
     });

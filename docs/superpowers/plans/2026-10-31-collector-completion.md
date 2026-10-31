@@ -86,3 +86,17 @@ Independent Standards and Spec reviews compare the completion commit against
 above, and the parent data-collectors design. All blocking findings must be fixed
 before publishing. Workable/Personio PR #546 is tracked separately and must be
 green/merged before rebasing this completion onto main and creating its PR.
+
+### Review resolutions
+
+- Standards: mixed active-key permissions now show access as allowed when any
+  key has it, so the owner can always revoke all grants. The permission panel
+  uses the shared compact loading/error/retry states. Both have regressions.
+- Spec: string-valued Event venues are preserved; a direct PostalAddress gives
+  its city. The worker also accepts an explicit schema.org Event subtype list,
+  checked against the official Event hierarchy, without accepting arbitrary
+  type suffixes or fetching contexts. Focused extraction regressions cover it.
+- The measured Python template was replayed through the actual bundled worker:
+  20 rows, correct python.org source links, one guarded page request.
+- Workable/Personio #546 passed all CI and preview checks and merged before
+  completion publication. Remaining changes preserve the unrelated Payload diff.

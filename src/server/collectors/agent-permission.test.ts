@@ -40,7 +40,7 @@ describe("owner-granted collect permission", () => {
     await setCollectorAgentAccess(revoke.db, "owner", false);
     expect(revoke.update.set).toHaveBeenCalledWith({ scopes: ["read"] });
     const sql = new PgDialect().sqlToQuery(
-      grant.update.where.mock.calls[0]![0] as SQL,
+      grant.update.where.mock.calls[0]![0],
     );
     expect(sql.params).toContain("owner");
     expect(sql.params).toContain("key");
@@ -58,14 +58,15 @@ describe("owner-granted collect permission", () => {
       innerJoin: vi.fn().mockReturnThis(),
       where: vi
         .fn<(where: SQL) => Promise<{ scopes: string[] }[]>>()
-        .mockResolvedValue([{ scopes: ["read", "collect"] }]),
+        .mockResolvedValue([
+          { scopes: ["read", "collect"] },
+          { scopes: ["read"] },
+        ]),
     };
     expect(
       await collectorAgentAccess({ select: () => builder } as never, "owner"),
     ).toEqual({ hasKey: true, allowed: true });
-    const sql = new PgDialect().sqlToQuery(
-      builder.where.mock.calls[0]![0] as SQL,
-    );
+    const sql = new PgDialect().sqlToQuery(builder.where.mock.calls[0]![0]);
     expect(sql.params.filter((v) => v === "owner")).toHaveLength(2);
     expect(sql.params).toContain("active");
   });

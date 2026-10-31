@@ -43,8 +43,8 @@ describe("Event page collector", () => {
     async (status, body, headers, code) => {
       const { ctx } = fakeContext({
         [url]: {
-          status: status as number,
-          body: body as string,
+          status: status,
+          body: body,
           headers: headers as Record<string, string>,
         },
       });
