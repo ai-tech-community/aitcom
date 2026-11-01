@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   link: vi.fn(),
   invalidate: vi.fn(),
   refetch: vi.fn(),
+  writeText: vi.fn(),
   loading: false,
   error: false,
 }));
@@ -105,9 +106,10 @@ beforeEach(() => {
     unsentEmails: [],
   });
   mocks.link.mockResolvedValue({ code: "safe-personal-code" });
+  mocks.writeText.mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
-    value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    value: { writeText: mocks.writeText },
   });
 });
 describe("Workspace referral composer", () => {
@@ -224,27 +226,23 @@ describe("Workspace referral composer", () => {
       screen.getByRole("button", { name: "Copy your invite link" }),
     );
     await waitFor(() =>
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect(mocks.writeText).toHaveBeenCalledWith(
         expect.stringContaining("/en/invite/safe-personal-code"),
       ),
     );
     expect(mocks.send).not.toHaveBeenCalled();
   });
   it("keeps a selectable link when clipboard access is unavailable", async () => {
-    vi.mocked(navigator.clipboard.writeText).mockRejectedValue(
-      new Error("denied"),
-    );
+    mocks.writeText.mockRejectedValue(new Error("denied"));
     mount();
     fireEvent.click(
       screen.getByRole("button", { name: "Copy your invite link" }),
     );
     await waitFor(() =>
       expect(
-        (
-          screen.getByRole("textbox", {
-            name: "Your personal invite link",
-          }) as HTMLInputElement
-        ).value,
+        screen.getByRole<HTMLInputElement>("textbox", {
+          name: "Your personal invite link",
+        }).value,
       ).toContain("/en/invite/safe-personal-code"),
     );
     expect(screen.getByRole("alert")).toHaveTextContent(

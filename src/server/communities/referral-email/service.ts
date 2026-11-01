@@ -10,7 +10,6 @@ import {
   isNotNull,
   isNull,
   lt,
-  lte,
   or,
   sql,
 } from "drizzle-orm";
@@ -224,7 +223,7 @@ export async function queueReferralBatch(
           ),
         )
         .limit(1);
-      if (!previous || previous.fingerprint !== fingerprint)
+      if (previous?.fingerprint !== fingerprint)
         throw new TRPCError({
           code: "CONFLICT",
           message: "Invitation request changed; start a new batch",
@@ -307,7 +306,8 @@ export async function queueReferralBatch(
           recipientHash: recipient.hash,
           recipientEmail: recipient.email,
           senderName:
-            context.sender.name?.trim() || referralSenderFallback[input.locale],
+            (context.sender.name?.trim() ?? "") ||
+            referralSenderFallback[input.locale],
           communityName: context.community.name,
           locale: input.locale,
           createdAt: now,
@@ -433,7 +433,10 @@ export async function referralBatchResult(
     .where(and(eq(invites.batchId, batchId), eq(invites.senderId, senderId)));
   const handled = new Set(
     rows
-      .filter((row) => row.sentAt || ["queued", "sending"].includes(row.status))
+      .filter(
+        (row) =>
+          row.sentAt !== null || ["queued", "sending"].includes(row.status),
+      )
       .map((row) => row.recipientHash),
   );
   const secret = referralSecret();

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { siteMetadataFor, siteSocialMetadata } from "@/lib/site-metadata";
 
 /** Invite-link preview. The path stays `/invite/<token>` under each locale. */
-export function invitePageMetadata(locale: string, token: string): Metadata {
+export function invitePageMetadata(locale: string, _token: string): Metadata {
   const copy = siteMetadataFor(locale);
   return {
     title: { absolute: copy.title },

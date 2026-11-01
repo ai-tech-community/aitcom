@@ -50,6 +50,7 @@ vi.mock("next/image", () => ({
     alt,
     ...props
   }: React.ComponentProps<"img"> & { priority?: boolean }) => (
+    // eslint-disable-next-line @next/next/no-img-element -- Lightweight next/image mock for DOM assertions.
     <img {...props} src={src} alt={alt} />
   ),
 }));

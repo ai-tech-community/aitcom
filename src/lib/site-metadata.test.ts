@@ -8,7 +8,6 @@ import { routing } from "@/i18n/routing";
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 
 import { invitePageMetadata } from "./invite-metadata";
-import { buildAlternates } from "./metadata";
 import {
   SITE_COPY,
   SITE_LOCALES,

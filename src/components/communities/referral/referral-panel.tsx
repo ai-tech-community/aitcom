@@ -134,7 +134,8 @@ export function ReferralPanel({ slug }: { slug: string }) {
     );
   const data = workspace.data;
   const count = new Set([...emails, ...parseReferralEmails(draft)]).size;
-  const senderName = data.senderName?.trim() || referralSenderFallback[locale];
+  const senderName =
+    (data.senderName?.trim() ?? "") || referralSenderFallback[locale];
   return (
     <div className="space-y-8">
       <header>

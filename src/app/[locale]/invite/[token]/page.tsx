@@ -69,7 +69,7 @@ export default async function RedeemInvitePage({
     if (!session?.user) redirect(signup);
     return <RedeemInviteClient token={token} attribution={attribution} />;
   }
-  const name = landing.inviterName?.trim() || t("member");
+  const name = (landing.inviterName?.trim() ?? "") || t("member");
   return (
     <main className="mx-auto max-w-6xl px-6 py-12 sm:px-8 sm:py-16">
       <div className="grid items-center gap-10 md:grid-cols-2 md:gap-12">
