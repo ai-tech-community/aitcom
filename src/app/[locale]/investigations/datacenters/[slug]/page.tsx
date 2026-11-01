@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
+import {
+  formatFacilityMw,
+  readFacilityCapacity,
+} from "@/lib/investigations/facility-capacity";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { getSession } from "@/server/better-auth/server";
 import { AddSupplierDialog } from "@/components/datacenters/add-supplier-dialog";
@@ -29,9 +33,10 @@ export async function generateMetadata({
     const data = await api.datacenters.getBySlug({ slug });
     const dc = data.datacenter;
     const where = [dc.city, dc.region, dc.country].filter(Boolean).join(", ");
+    const capacity = readFacilityCapacity(dc.capacityMw, dc.capacityMwPlanned);
     const title = `${dc.name} — ${data.operator?.canonicalName ?? "Unknown operator"}`;
     const desc =
-      `${data.operator?.canonicalName ?? ""} datacenter${where ? ` in ${where}` : ""}. ${dc.capacityMw ? `${dc.capacityMw} MW operational. ` : ""}${dc.capacityMwPlanned ? `${dc.capacityMwPlanned} MW planned.` : ""}`.trim();
+      `${data.operator?.canonicalName ?? ""} datacenter${where ? ` in ${where}` : ""}. ${capacity.currentMw != null ? `${formatFacilityMw(capacity.currentMw)} operational. ` : ""}${capacity.plannedMw != null ? `${formatFacilityMw(capacity.plannedMw)} planned.` : ""}`.trim();
     return {
       title,
       description: desc,
@@ -72,6 +77,7 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
   const lat = Number(dc.lat);
   const lng = Number(dc.lng);
   const where = [dc.city, dc.region, dc.country].filter(Boolean).join(", ");
+  const capacity = readFacilityCapacity(dc.capacityMw, dc.capacityMwPlanned);
 
   const session = await getSession();
   const currentUserId = session?.user?.id ?? null;
@@ -175,15 +181,11 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
         <Stat label="Status" value={dc.status} />
         <Stat
           label="Current capacity"
-          value={dc.capacityMw != null ? `${Number(dc.capacityMw)} MW` : "—"}
+          value={formatFacilityMw(capacity.currentMw)}
         />
         <Stat
           label="Planned capacity"
-          value={
-            dc.capacityMwPlanned != null
-              ? `${Number(dc.capacityMwPlanned)} MW`
-              : "—"
-          }
+          value={formatFacilityMw(capacity.plannedMw)}
         />
         <Stat label="Power source" value={dc.primaryPowerSource ?? "—"} />
         <Stat label="Cooling" value={dc.coolingType ?? "—"} />
