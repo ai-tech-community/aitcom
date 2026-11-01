@@ -57,11 +57,16 @@ export default async function RedeemInvitePage({
         </Button>
       </main>
     );
-  const callback = `/${locale}/invite/${encodeURIComponent(token)}${attribution}${attribution ? "&" : "?"}accept=1`;
-  const signup = `/auth/signup?${new URLSearchParams({ redirect: callback })}`;
-  const signin = `/auth/signin?${new URLSearchParams({ redirect: callback })}`;
+  const callbackQuery = new URLSearchParams(attribution);
+  callbackQuery.set("accept", "1");
+  const callback = `/${locale}/invite/${encodeURIComponent(token)}?${callbackQuery}`;
+  const startQuery = new URLSearchParams(attribution);
+  startQuery.set("code", token);
+  startQuery.set("locale", locale);
+  const signup = `/api/referral-invites/start?${startQuery}&mode=signup`;
+  const signin = `/api/referral-invites/start?${startQuery}&mode=signin`;
   if (query.accept === "1") {
-    if (!session?.user) redirect(`/${locale}${signup}`);
+    if (!session?.user) redirect(signup);
     return <RedeemInviteClient token={token} attribution={attribution} />;
   }
   const name = landing.inviterName?.trim() || t("member");
@@ -112,7 +117,8 @@ export default async function RedeemInvitePage({
                 className="text-foreground min-h-11 w-full sm:w-auto"
               >
                 <NextLink
-                  href={session?.user ? callback : `/${locale}${signup}`}
+                  prefetch={false}
+                  href={session?.user ? callback : signup}
                 >
                   {t("join", { community: landing.communityName })}
                   <ArrowRight className="size-4" />
@@ -121,12 +127,12 @@ export default async function RedeemInvitePage({
               {!session?.user && (
                 <p className="text-muted-foreground mt-4 text-sm">
                   {t("haveAccount")}{" "}
-                  <Link
+                  <a
                     href={signin}
                     className="text-foreground underline underline-offset-4"
                   >
                     {t("signin")}
-                  </Link>
+                  </a>
                 </p>
               )}
             </>

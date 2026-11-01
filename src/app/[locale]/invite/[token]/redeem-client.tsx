@@ -7,7 +7,6 @@ import { useRouter } from "@/i18n/navigation";
 import { z } from "zod";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2 } from "lucide-react";
 
 export function RedeemInviteClient({
   token,

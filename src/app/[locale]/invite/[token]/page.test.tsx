@@ -25,7 +25,12 @@ vi.mock("next-intl/server", () => ({
     }),
 }));
 vi.mock("next/link", () => ({
-  default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
+  default: ({
+    children,
+    href,
+    prefetch: _prefetch,
+    ...props
+  }: React.ComponentProps<"a"> & { prefetch?: boolean }) => (
     <a {...props} href={href}>
       {children}
     </a>
@@ -109,19 +114,18 @@ describe("personal guest invitation entry", () => {
         screen.getByRole("link", { name }).getAttribute("href")!,
         "https://www.aitcommunity.org",
       );
-      const target = new URL(url.searchParams.get("redirect")!, url.origin);
-      expect(target.pathname).toBe("/fr/invite/opaque-code");
-      expect(target.searchParams.get("delivery")).toBe(delivery);
-      expect(target.searchParams.get("ref")).toBe("opaque-code");
-      expect(target.searchParams.get("utm_campaign")).toBe("friend-invite");
-      expect(target.searchParams.get("accept")).toBe("1");
-      expect(target.searchParams.has("redirect")).toBe(false);
+      expect(url.pathname).toBe("/api/referral-invites/start");
+      expect(url.searchParams.get("code")).toBe("opaque-code");
+      expect(url.searchParams.get("locale")).toBe("fr");
+      expect(url.searchParams.get("delivery")).toBe(delivery);
+      expect(url.searchParams.get("ref")).toBe("opaque-code");
+      expect(url.searchParams.get("utm_campaign")).toBe("friend-invite");
+      expect(url.searchParams.get("mode")).toBe(
+        name === "Sign in" ? "signin" : "signup",
+      );
+      expect(url.searchParams.has("signupIntent")).toBe(false);
+      expect(url.searchParams.has("redirect")).toBe(false);
     }
-    expect(
-      screen
-        .getByRole("link", { name: "Join AIT Amsterdam" })
-        .getAttribute("href"),
-    ).toMatch(/^\/fr\/auth\/signup\?/);
   });
   it("redeems only after explicit acceptance and authenticated return", async () => {
     mocks.session.mockResolvedValue({ user: { id: "friend" } });

@@ -1,6 +1,10 @@
 import { routing } from "@/i18n/routing";
 import { recordReferralEmailJoin } from "@/server/communities/referral-email/service";
 import { scrubJoinedReferralEmails } from "@/server/communities/referral-email/privacy";
+import {
+  inviteSignupIntentFromHeaders,
+  recordHubSignupReferral,
+} from "@/server/communities/referral-email/signup-attribution";
 // src/server/api/routers/communities.ts
 import { z } from "zod";
 import { and, eq, isNull, sql, desc, count, inArray } from "drizzle-orm";
@@ -731,17 +735,29 @@ export const communitiesRouter = createTRPCRouter({
           ROLE_HIERARCHY[grantedRole] <=
             ROLE_HIERARCHY[existing.role as CommunityRole]
         ) {
-          if (input.deliveryId && userEmail)
-            await ctx.db.transaction((tx) =>
-              recordReferralEmailJoin(tx, {
-                deliveryId: input.deliveryId,
-                code: invite.code,
-                userId,
-                email: userEmail,
-                communityId: invite.communityId,
-                senderId: invite.createdBy,
-              }),
-            );
+          const signupIntent =
+            invite.community.slug === HUB_SLUG
+              ? inviteSignupIntentFromHeaders(ctx.headers)
+              : undefined;
+          if (signupIntent || (input.deliveryId && userEmail))
+            await ctx.db.transaction(async (tx) => {
+              if (input.deliveryId && userEmail)
+                await recordReferralEmailJoin(tx, {
+                  deliveryId: input.deliveryId,
+                  code: invite.code,
+                  userId,
+                  email: userEmail,
+                  communityId: invite.communityId,
+                  senderId: invite.createdBy,
+                });
+              if (signupIntent)
+                await recordHubSignupReferral(
+                  tx,
+                  invite,
+                  { id: userId, createdAt: ctx.session.user.createdAt },
+                  signupIntent,
+                );
+            });
           return {
             communitySlug: invite.community.slug,
             status: "active" as const,
