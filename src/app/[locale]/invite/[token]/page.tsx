@@ -1,5 +1,16 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import Image from "next/image";
+import NextLink from "next/link";
+import { getTranslations } from "next-intl/server";
+import { ArrowRight, Link2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
+import { Link } from "@/i18n/navigation";
+import { db } from "@/server/db";
+import { loadInviteLanding } from "@/server/communities/referral-email/landing";
+import { inviteAttributionSearch } from "@/lib/referral-invites";
 
 import { invitePageMetadata } from "@/lib/invite-metadata";
 import { getSession } from "@/server/better-auth/server";
@@ -17,18 +28,125 @@ export async function generateMetadata({
 
 export default async function RedeemInvitePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string; locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { token, locale } = await params;
-
-  // Redeeming an invite requires an account. Send guests to sign-in with the
-  // invite preserved so they land back here and the invite redeems — instead
-  // of a raw "Unauthorized" dead-end. Mirrors the agent-claim flow.
+  const query = await searchParams;
+  const attribution = inviteAttributionSearch(query);
+  const t = await getTranslations("referral.guest");
   const session = await getSession();
-  if (!session?.user) {
-    redirect(`/${locale}/auth/signin?redirect=/${locale}/invite/${token}`);
+  const landing = await loadInviteLanding(db, token, session?.user?.id);
+  if (landing.kind !== "valid")
+    return (
+      <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-6 px-6 py-16 text-center">
+        <Link2 className="text-muted-foreground size-8" aria-hidden="true" />
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {t(landing.kind === "expired" ? "expiredTitle" : "invalidTitle")}
+        </h1>
+        <p className="text-muted-foreground leading-relaxed">
+          {t("unavailableBody")}
+        </p>
+        <Button asChild>
+          <Link href="/communities">
+            {t("explore")}
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+      </main>
+    );
+  const callback = `/${locale}/invite/${encodeURIComponent(token)}${attribution}${attribution ? "&" : "?"}accept=1`;
+  const signup = `/auth/signup?${new URLSearchParams({ redirect: callback })}`;
+  const signin = `/auth/signin?${new URLSearchParams({ redirect: callback })}`;
+  if (query.accept === "1") {
+    if (!session?.user) redirect(`/${locale}${signup}`);
+    return <RedeemInviteClient token={token} attribution={attribution} />;
   }
-
-  return <RedeemInviteClient token={token} />;
+  const name = landing.inviterName?.trim() || t("member");
+  return (
+    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-8 sm:py-16">
+      <div className="grid items-center gap-10 md:grid-cols-2 md:gap-12">
+        <section>
+          <div className="mb-7 flex items-center gap-3">
+            <Avatar size="lg">
+              <AvatarFallback>{getInitials(name)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-sm font-medium">{name}</p>
+              <p className="text-muted-foreground text-xs">
+                {t(landing.inviterName ? "personal" : "welcome")}
+              </p>
+            </div>
+          </div>
+          <h1 className="text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl">
+            {t(landing.inviterName ? "title" : "communityTitle", {
+              name,
+              community: landing.communityName,
+            })}
+          </h1>
+          <p className="text-muted-foreground mt-6 max-w-prose text-base leading-relaxed">
+            {t("body")}
+          </p>
+          <div className="my-7 border-b pb-6">
+            <h2 className="text-base font-semibold">{landing.communityName}</h2>
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              {t("communityBody")}
+            </p>
+          </div>
+          {landing.alreadyMember ? (
+            <>
+              <p className="mb-4 text-sm">{t("alreadyMember")}</p>
+              <Button asChild className="text-foreground min-h-11">
+                <Link href={`/communities/${landing.communitySlug}`}>
+                  {t("open", { community: landing.communityName })}
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                asChild
+                className="text-foreground min-h-11 w-full sm:w-auto"
+              >
+                <NextLink
+                  href={session?.user ? callback : `/${locale}${signup}`}
+                >
+                  {t("join", { community: landing.communityName })}
+                  <ArrowRight className="size-4" />
+                </NextLink>
+              </Button>
+              {!session?.user && (
+                <p className="text-muted-foreground mt-4 text-sm">
+                  {t("haveAccount")}{" "}
+                  <Link
+                    href={signin}
+                    className="text-foreground underline underline-offset-4"
+                  >
+                    {t("signin")}
+                  </Link>
+                </p>
+              )}
+            </>
+          )}
+          <p className="text-muted-foreground mt-7 text-xs">{t("preserved")}</p>
+        </section>
+        <div>
+          <Image
+            src="/images/isometric-illustrated-town-square.png"
+            width={1024}
+            height={1024}
+            priority
+            alt=""
+            className="h-auto w-full"
+          />
+          <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+            {t("tagline")}
+          </p>
+        </div>
+      </div>
+    </main>
+  );
 }

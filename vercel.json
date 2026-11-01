@@ -124,6 +124,10 @@
     {
       "path": "/api/cron/video-uploads-cleanup",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/referral-invites",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

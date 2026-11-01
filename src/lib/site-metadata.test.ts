@@ -143,11 +143,9 @@ describe("invite metadata", () => {
         images: [siteOgImage(locale)],
       });
       expect(meta.twitter).toEqual(social.twitter);
-      expect(meta.alternates).toEqual(
-        buildAlternates(`/invite/${token}`, locale),
-      );
+      expect(meta.robots).toEqual({ index: false, follow: false });
       expect(meta.alternates?.canonical).toBe(
-        `${CANONICAL_PRODUCTION_ORIGIN}/${locale}/invite/${token}`,
+        `${CANONICAL_PRODUCTION_ORIGIN}/en/join`,
       );
     },
   );

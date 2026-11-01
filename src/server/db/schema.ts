@@ -4242,6 +4242,101 @@ export const communityInvites = appSchema.table(
   ],
 );
 
+/** Durable outbox and privacy ledger for friend invitations. */
+export const referralInviteBatches = appSchema.table(
+  "referral_invite_batch",
+  (d) => ({
+    id: d.uuid().primaryKey(),
+    senderId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    requestId: d.uuid().notNull(),
+    fingerprint: d.text().notNull(),
+    skipped: d.integer().notNull().default(0),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("referral_batch_request_uidx").on(t.senderId, t.requestId),
+  ],
+);
+
+export const referralInviteBudgets = appSchema.table(
+  "referral_invite_budget",
+  (d) => ({
+    senderId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    day: d.date().notNull(),
+    used: d.integer().notNull().default(0),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.senderId, t.day] }),
+    check("referral_budget_bounds", sql`${t.used} between 0 and 50`),
+  ],
+);
+
+export const referralEmailSuppressions = appSchema.table(
+  "referral_email_suppression",
+  (d) => ({
+    recipientHash: d.text().primaryKey(),
+    reason: d.text().notNull(),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+);
+
+export const referralEmailInvites = appSchema.table(
+  "referral_email_invite",
+  (d) => ({
+    id: d.uuid().primaryKey(),
+    batchId: d
+      .uuid()
+      .notNull()
+      .references(() => referralInviteBatches.id, { onDelete: "cascade" }),
+    senderId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id, { onDelete: "cascade" }),
+    inviteCode: d.text().notNull(),
+    recipientHash: d.text().notNull(),
+    recipientEmail: d.varchar({ length: 255 }),
+    senderName: d.text().notNull(),
+    communityName: d.text().notNull(),
+    locale: d.varchar({ length: 2 }).notNull(),
+    status: d
+      .text()
+      .$type<"queued" | "sending" | "sent" | "failed" | "suppressed">()
+      .notNull()
+      .default("queued"),
+    phase: d.text().$type<"invite" | "reminder">().notNull().default("invite"),
+    attempts: d.integer().notNull().default(0),
+    firstAttemptAt: d.timestamp({ withTimezone: true }),
+    nextAttemptAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    leaseUntil: d.timestamp({ withTimezone: true }),
+    sentAt: d.timestamp({ withTimezone: true }),
+    remindedAt: d.timestamp({ withTimezone: true }),
+    joinedAt: d.timestamp({ withTimezone: true }),
+    joinedUserId: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    index("referral_email_due_idx").on(t.status, t.nextAttemptAt),
+    index("referral_email_sender_idx").on(t.senderId, t.communityId),
+    index("referral_email_recipient_idx").on(t.recipientHash, t.createdAt),
+    uniqueIndex("referral_email_batch_recipient_uidx").on(
+      t.batchId,
+      t.recipientHash,
+    ),
+  ],
+);
+
 export const communityRelations = relations(communities, ({ many, one }) => ({
   memberships: many(communityMemberships),
   invites: many(communityInvites),

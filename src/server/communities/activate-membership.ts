@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { logActivity } from "@/server/agent/activity";
+import { scrubJoinedReferralEmails } from "./referral-email/privacy";
 import type { db as _db } from "@/server/db";
 import { communityMemberships } from "@/server/db/schema";
 import type { MembershipStatus } from "./invite-policy";
@@ -103,6 +104,7 @@ export async function activateMembership(
     await db.transaction(async (tx) => {
       if (!(await writeActiveRow(tx, input))) throw new MembershipChanged();
       await input.alongside?.(tx);
+      await scrubJoinedReferralEmails(tx, input.userId, input.communityId);
     });
   } catch (error) {
     if (error instanceof MembershipChanged) return false;

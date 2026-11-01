@@ -7,7 +7,8 @@ import { getApexToWwwRedirectUrl } from "./server/better-auth/base-url";
 
 const intlMiddleware = createMiddleware(routing);
 
-const protectedPaths = ["/dashboard", "/invite"];
+// Invite pages explain the invitation to guests; only redemption requires auth.
+const protectedPaths = ["/dashboard"];
 
 export default function middleware(request: NextRequest) {
   const apexToWww = getApexToWwwRedirectUrl(request.url);

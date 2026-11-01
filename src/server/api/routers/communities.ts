@@ -1,4 +1,6 @@
 import { routing } from "@/i18n/routing";
+import { recordReferralEmailJoin } from "@/server/communities/referral-email/service";
+import { scrubJoinedReferralEmails } from "@/server/communities/referral-email/privacy";
 // src/server/api/routers/communities.ts
 import { z } from "zod";
 import { and, eq, isNull, sql, desc, count, inArray } from "drizzle-orm";
@@ -675,7 +677,9 @@ export const communitiesRouter = createTRPCRouter({
 
   /** Resolve an invite token: a code (grant) first, else a community slug. */
   redeemInvite: protectedProcedure
-    .input(z.object({ token: z.string().min(1) }))
+    .input(
+      z.object({ token: z.string().min(1), deliveryId: z.uuid().optional() }),
+    )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       const userEmail = ctx.session.user.email ?? null;
@@ -727,6 +731,17 @@ export const communitiesRouter = createTRPCRouter({
           ROLE_HIERARCHY[grantedRole] <=
             ROLE_HIERARCHY[existing.role as CommunityRole]
         ) {
+          if (input.deliveryId && userEmail)
+            await ctx.db.transaction((tx) =>
+              recordReferralEmailJoin(tx, {
+                deliveryId: input.deliveryId,
+                code: invite.code,
+                userId,
+                email: userEmail,
+                communityId: invite.communityId,
+                senderId: invite.createdBy,
+              }),
+            );
           return {
             communitySlug: invite.community.slug,
             status: "active" as const,
@@ -756,6 +771,16 @@ export const communitiesRouter = createTRPCRouter({
                 message: "Invite has reached max uses",
               });
             }
+            if (input.deliveryId && userEmail)
+              await recordReferralEmailJoin(tx, {
+                deliveryId: input.deliveryId,
+                code: invite.code,
+                userId,
+                email: userEmail,
+                communityId: invite.communityId,
+                senderId: invite.createdBy,
+                newlyJoined: existing?.status !== "active",
+              });
           },
         });
         if (!activated) throw membershipChanged();
@@ -798,6 +823,17 @@ export const communitiesRouter = createTRPCRouter({
         });
       }
       if (existing?.status === "active") {
+        await scrubJoinedReferralEmails(ctx.db, userId, community.id);
+        return { communitySlug: community.slug, status: "active" as const };
+      }
+      if (join.status === "active") {
+        const activated = await activateMembership(ctx.db, {
+          communityId: community.id,
+          userId,
+          existing: existing ?? null,
+          metadata: { via: "slug_link" },
+        });
+        if (!activated) throw membershipChanged();
         return { communitySlug: community.slug, status: "active" as const };
       }
       if (existing) {
@@ -817,10 +853,7 @@ export const communitiesRouter = createTRPCRouter({
       await logActivity(ctx.db, {
         actorId: userId,
         actorType: "member",
-        action:
-          join.status === "active"
-            ? "community.joined"
-            : "community.join_requested",
+        action: "community.join_requested",
         targetType: "community",
         targetId: community.id,
         communityId: community.id,
@@ -1026,17 +1059,22 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const [updated] = await ctx.db
-        .update(communityMemberships)
-        .set({ status: "active" })
-        .where(
-          and(
-            eq(communityMemberships.communityId, ctx.community.id),
-            eq(communityMemberships.userId, input.userId),
-            eq(communityMemberships.status, "pending_approval"),
-          ),
-        )
-        .returning();
+      const updated = await ctx.db.transaction(async (tx) => {
+        const [member] = await tx
+          .update(communityMemberships)
+          .set({ status: "active" })
+          .where(
+            and(
+              eq(communityMemberships.communityId, ctx.community.id),
+              eq(communityMemberships.userId, input.userId),
+              eq(communityMemberships.status, "pending_approval"),
+            ),
+          )
+          .returning();
+        if (member)
+          await scrubJoinedReferralEmails(tx, input.userId, ctx.community.id);
+        return member;
+      });
 
       if (!updated) {
         throw new TRPCError({
