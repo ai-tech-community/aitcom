@@ -106,6 +106,13 @@
         "files": ["src/lib/investigations/startup-job-boards.test.ts"],
         "createdAt": "2026-10-31T05:54:46.815Z",
         "reason": "Existing parser fixtures intentionally contain source HTML with icons lacking src; these strings test job extraction and are never rendered in the app."
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist sans",
+        "files": ["src/server/communities/referral-email/mail.ts"],
+        "createdAt": "2026-11-01T07:27:57.033Z",
+        "reason": "Agent: DESIGN.md mandates Geist Sans for AIT; email uses Arial/sans-serif fallbacks without remote fonts."
       }
     ]
   }

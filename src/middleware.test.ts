@@ -34,6 +34,17 @@ describe("guest Join entry", () => {
 });
 
 describe("French route middleware", () => {
+  it.each(["en", "nl", "fr"])(
+    "allows a guest to read the %s invitation before signing in",
+    (locale) => {
+      const response = middleware(
+        new NextRequest(
+          `https://www.aitcommunity.org/${locale}/invite/personal-code?delivery=opaque&ref=personal-code`,
+        ),
+      );
+      expect(response.headers.get("location")).toBeNull();
+    },
+  );
   it("protects a French dashboard and keeps the sign-in redirect in French", () => {
     const response = middleware(
       new NextRequest("https://www.aitcommunity.org/fr/dashboard"),

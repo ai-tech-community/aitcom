@@ -1,3 +1,4 @@
+import * as migration_20261101a_referral_email_invites from "./20261101a_referral_email_invites";
 import * as migration_20261023a_six_public_events from "./20261023a_six_public_events";
 import * as migration_20261026a_event_registration_source from "./20261026a_event_registration_source";
 import * as migration_20261029f_magazine_theme from "./20261029f_magazine_theme";
@@ -1146,5 +1147,10 @@ export const migrations = [
     up: migration_20261030a_magazine_reading_time.up,
     down: migration_20261030a_magazine_reading_time.down,
     name: "20261030a_magazine_reading_time",
+  },
+  {
+    up: migration_20261101a_referral_email_invites.up,
+    down: migration_20261101a_referral_email_invites.down,
+    name: "20261101a_referral_email_invites",
   },
 ];

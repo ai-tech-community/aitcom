@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 
 import { HUB_DESCRIPTION, HUB_NAME, HUB_SLUG } from "@/server/communities/hub";
+import { scrubJoinedReferralEmails } from "@/server/communities/referral-email/privacy";
 import type { db as _db } from "@/server/db";
 import { communities, communityMemberships, user } from "@/server/db/schema";
 
@@ -99,6 +100,7 @@ export async function enrollInHub(db: DB, userId: string): Promise<boolean> {
       status: "active",
     })
     .onConflictDoNothing();
+  await scrubJoinedReferralEmails(db, userId, hub.id);
   return true;
 }
 

@@ -11,7 +11,9 @@ import {
   type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
 import { FeedPage } from "@/components/communities/feed/feed-page";
-import { Activity } from "lucide-react";
+import { Activity, UserPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 
 export function CommunityOverviewPageClient({
   params,
@@ -42,6 +44,16 @@ export function CommunityOverviewPageClient({
 
   return (
     <>
+      {isMember && (
+        <div className="mb-4 flex justify-end">
+          <Button asChild variant="outline">
+            <Link href={`/communities/${slug}/referrals`}>
+              <UserPlus className="size-4" aria-hidden="true" />
+              {t("referrals")}
+            </Link>
+          </Button>
+        </div>
+      )}
       {/* Liveness preview — visible to non-members above the feed.
           Member count + join CTA already live in the header. */}
       {community &&

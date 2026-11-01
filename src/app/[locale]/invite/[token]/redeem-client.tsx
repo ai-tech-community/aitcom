@@ -4,9 +4,17 @@ import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useRouter } from "@/i18n/navigation";
-import { Loader2 } from "lucide-react";
+import { z } from "zod";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export function RedeemInviteClient({ token }: { token: string }) {
+export function RedeemInviteClient({
+  token,
+  attribution = "",
+}: {
+  token: string;
+  attribution?: string;
+}) {
   const router = useRouter();
   const hasFired = useRef(false);
   const t = useTranslations("communities.invite");
@@ -14,7 +22,7 @@ export function RedeemInviteClient({ token }: { token: string }) {
   const mutation = api.communities.redeemInvite.useMutation({
     onSuccess: (data) => {
       if (data.status === "active") {
-        router.replace(`/communities/${data.communitySlug}`);
+        router.replace(`/communities/${data.communitySlug}${attribution}`);
       }
       // pending_approval falls through to the pending message below
     },
@@ -23,7 +31,12 @@ export function RedeemInviteClient({ token }: { token: string }) {
   useEffect(() => {
     if (hasFired.current) return;
     hasFired.current = true;
-    mutation.mutate({ token });
+    const delivery = new URLSearchParams(attribution).get("delivery");
+    mutation.mutate({
+      token,
+      deliveryId:
+        delivery && z.uuid().safeParse(delivery).success ? delivery : undefined,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -48,25 +61,26 @@ export function RedeemInviteClient({ token }: { token: string }) {
 
   if (mutation.error) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="text-center">
-          <p className="text-destructive text-lg font-medium">
-            {mutation.error.message}
-          </p>
-          <button
-            onClick={() => router.replace("/communities")}
-            className="text-muted-foreground mt-4 underline"
-          >
-            {t("browse")}
-          </button>
-        </div>
-      </div>
+      <ErrorState
+        title={t("errorTitle")}
+        description={t("errorBody")}
+        onRetry={() => {
+          const delivery = new URLSearchParams(attribution).get("delivery");
+          mutation.mutate({
+            token,
+            deliveryId:
+              delivery && z.uuid().safeParse(delivery).success
+                ? delivery
+                : undefined,
+          });
+        }}
+      />
     );
   }
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin" />
+      <Skeleton className="h-24 w-full max-w-md" />
     </div>
   );
 }
