@@ -35,6 +35,7 @@ import {
   REFRESH_2026_07_CAPEX,
 } from "./seed-data/refresh-2026-07";
 import { REFRESH_2026_10_PERMITS } from "./seed-data/refresh-2026-10";
+import { REFRESH_2026_11_PERMITS } from "./seed-data/refresh-2026-11";
 
 // The 2026-07 refresh batch is appended to each base list. All the inserts below
 // are onConflictDoNothing or slug-guarded, so re-running stays idempotent.
@@ -53,6 +54,7 @@ const PERMITS = [
   ...BASE_PERMITS,
   ...REFRESH_2026_07_PERMITS,
   ...REFRESH_2026_10_PERMITS,
+  ...REFRESH_2026_11_PERMITS,
 ];
 const CAPEX_UPDATES = [...BASE_CAPEX_UPDATES, ...REFRESH_2026_07_CAPEX];
 
