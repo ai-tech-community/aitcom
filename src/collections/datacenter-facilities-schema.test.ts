@@ -13,6 +13,8 @@ type Field = {
   type?: string;
   required?: boolean;
   unique?: boolean;
+  min?: number;
+  defaultValue?: boolean;
   options?: Array<{ label: string; value: string }>;
   fields?: Field[];
 };
@@ -35,6 +37,8 @@ describe("datacenter facilities collection", () => {
       "lat",
       "lng",
       "capacityMw",
+      "capacityMwPlanned",
+      "aiDedicated",
       "status",
       "sourceUrl",
       "checkedAt",
@@ -44,6 +48,12 @@ describe("datacenter facilities collection", () => {
     expect(pick("sourceUrl").required).toBe(true);
     expect(pick("checkedAt").required).toBe(true);
     expect(pick("capacityMw").required).toBeUndefined();
+    expect(pick("capacityMwPlanned").type).toBe("number");
+    expect(pick("capacityMwPlanned").required).toBeUndefined();
+    expect(pick("capacityMwPlanned").min).toBe(0);
+    expect(pick("aiDedicated").type).toBe("checkbox");
+    expect(pick("aiDedicated").required).toBeUndefined();
+    expect(pick("aiDedicated").defaultValue).toBe(false);
     expect(pick("slug").unique).toBe(true);
     expect(pick("status").options?.map((option) => option.value)).toEqual([
       ...DATACENTER_STATUS,

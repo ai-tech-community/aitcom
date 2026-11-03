@@ -36,6 +36,8 @@ export type StoredFacility = {
   lat: number;
   lng: number;
   capacityMw: number | null;
+  capacityMwPlanned: number | null;
+  aiDedicated: boolean;
   status: DatacenterStatus;
   sourceUrl: string;
   checkedAt: Date;
@@ -55,6 +57,8 @@ export type FacilitySave = {
   lat: number;
   lng: number;
   capacityMw: number | null;
+  capacityMwPlanned: number | null;
+  aiDedicated: boolean;
   status: DatacenterStatus;
   sourceUrl: string;
   checkedAt: Date;
@@ -212,6 +216,8 @@ type Draft = {
   lat: number;
   lng: number;
   capacityMw: number | null | undefined;
+  capacityMwPlanned: number | null | undefined;
+  aiDedicated: boolean | undefined;
   status: DatacenterStatus;
   sourceUrl: string;
   checkedAt: Date;
@@ -268,6 +274,11 @@ export async function publishFacilityWithRepo(
       draft.capacityMw === undefined
         ? (existing?.capacityMw ?? null)
         : draft.capacityMw,
+    capacityMwPlanned:
+      draft.capacityMwPlanned === undefined
+        ? (existing?.capacityMwPlanned ?? null)
+        : draft.capacityMwPlanned,
+    aiDedicated: draft.aiDedicated ?? existing?.aiDedicated ?? false,
     status: draft.status,
     sourceUrl: draft.sourceUrl,
     checkedAt: draft.checkedAt,
@@ -348,6 +359,15 @@ function parseCoord(value: unknown, min: number, max: number): number | null {
 
 const invalid = Symbol("invalid");
 const absent = Symbol("absent");
+
+function parseAiDedicated(
+  value: unknown,
+  present: boolean,
+): boolean | undefined | typeof invalid {
+  if (!present) return undefined;
+  if (typeof value === "boolean") return value;
+  return invalid;
+}
 
 function parseMw(
   value: unknown,
@@ -464,6 +484,23 @@ function parseFacilityDraft(
   if (capacityMw === invalid) {
     return { ok: false, error: "capacity_mw must be a number or null." };
   }
+  const capacityMwPlanned = parseMw(
+    pick(body, ["capacityMwPlanned", "capacity_mw_planned"]),
+    has(body, ["capacityMwPlanned", "capacity_mw_planned"]),
+  );
+  if (capacityMwPlanned === invalid) {
+    return {
+      ok: false,
+      error: "capacity_mw_planned must be a nonnegative number or null.",
+    };
+  }
+  const aiDedicated = parseAiDedicated(
+    pick(body, ["aiDedicated", "ai_dedicated"]),
+    has(body, ["aiDedicated", "ai_dedicated"]),
+  );
+  if (aiDedicated === invalid) {
+    return { ok: false, error: "ai_dedicated must be a boolean." };
+  }
   const status = parseStatus(pick(body, ["status"]));
   if (!status) {
     return {
@@ -512,6 +549,8 @@ function parseFacilityDraft(
       lat,
       lng,
       capacityMw,
+      capacityMwPlanned,
+      aiDedicated,
       status,
       sourceUrl,
       checkedAt,
