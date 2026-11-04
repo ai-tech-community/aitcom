@@ -10,6 +10,32 @@ vi.mock("next-intl/middleware", () => ({
 
 import middleware from "./middleware";
 
+describe("startup investigation URLs", () => {
+  it("rewrites a same-entity profile to the 301 route", () => {
+    const response = middleware(
+      new NextRequest(
+        "https://www.aitcommunity.org/en/investigations/startups/acme",
+      ),
+    );
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://www.aitcommunity.org/api/startup-profile-redirect/en/acme",
+    );
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("renders Navier AI and the AI tools company without a redirect", () => {
+    for (const slug of ["navier-ai", "ai-tools-list"]) {
+      const response = middleware(
+        new NextRequest(
+          `https://www.aitcommunity.org/nl/investigations/startups/${slug}`,
+        ),
+      );
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+      expect(response.headers.get("location")).toBeNull();
+    }
+  });
+});
+
 describe("guest Join entry", () => {
   it.each([
     ["en", "better-auth.session_token"],

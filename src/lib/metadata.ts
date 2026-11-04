@@ -39,6 +39,16 @@ export async function localeAlternates(path: string) {
   return buildAlternates(path, await getLocale());
 }
 
+/** hreflang set for a URL that must not publish a canonical. */
+export function languageAlternates(path: string) {
+  const { languages } = buildAlternates(path, routing.defaultLocale);
+  return { languages };
+}
+
+export async function localeLanguageAlternates(path: string) {
+  return languageAlternates(path);
+}
+
 export function buildOgMeta(
   title: string,
   description: string,

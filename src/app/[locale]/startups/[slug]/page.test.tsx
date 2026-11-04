@@ -89,4 +89,31 @@ describe("startup profile robots", () => {
     const meta = await generateMetadata({ params: params() });
     expect(meta.robots).toEqual({ index: true, follow: true });
   });
+
+  it("canonicalizes the profile to /startups/<slug>", async () => {
+    state.card = card();
+    const meta = await generateMetadata({ params: params() });
+    expect(meta.alternates?.canonical).toBe(
+      "https://www.aitcommunity.org/en/startups/amy",
+    );
+  });
+
+  it("gives Navier AI no canonical", async () => {
+    state.card = card({
+      slug: "navier-ai",
+      name: "Navier AI",
+      description: null,
+      openRoleCount: 2,
+    });
+    const meta = await generateMetadata({
+      params: Promise.resolve({ slug: "navier-ai" }),
+    });
+    expect(meta.alternates?.canonical).toBeUndefined();
+    expect(meta.alternates?.languages).toMatchObject({
+      en: "https://www.aitcommunity.org/en/startups/navier-ai",
+      nl: "https://www.aitcommunity.org/nl/startups/navier-ai",
+      fr: "https://www.aitcommunity.org/fr/startups/navier-ai",
+    });
+    expect(meta.robots).toEqual({ index: true, follow: true });
+  });
 });

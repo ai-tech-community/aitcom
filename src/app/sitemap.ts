@@ -7,6 +7,10 @@ import {
   mergeFacilitySitemap,
 } from "@/lib/investigations/datacenter-facilities";
 import {
+  filterStartupSitemapPaths,
+  startupHoldoutInvestigationPaths,
+} from "@/lib/investigations/startup-url-policy";
+import {
   startupDirectorySitemapPaths,
   startupProfileSitemapPaths,
 } from "@/lib/investigations/startups";
@@ -240,11 +244,12 @@ async function defaultStartupPagePaths(): Promise<string[]> {
     const listed = await listedPublicStartupCount();
     const slugs = await listApprovedPublicStartupSlugs();
     const roleSlugs = await listOpenStartupRoleSlugs();
-    return [
+    return filterStartupSitemapPaths([
       ...startupDirectorySitemapPaths(listed),
       ...startupProfileSitemapPaths(slugs),
+      ...startupHoldoutInvestigationPaths(slugs),
       ...startupRoleSitemapPaths(roleSlugs),
-    ];
+    ]);
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
     return [];
@@ -306,7 +311,7 @@ export async function buildSitemapEntries(
   }
   let startupPagePaths: string[] = [];
   try {
-    startupPagePaths = await getStartupPagePaths();
+    startupPagePaths = filterStartupSitemapPaths(await getStartupPagePaths());
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
     startupPagePaths = [];
