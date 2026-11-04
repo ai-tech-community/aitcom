@@ -11,7 +11,7 @@ import nl from "../../../messages/nl.json";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en/startups",
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
 }));
 
 // Client components get the real English translator, so ICU plurals,
@@ -40,6 +40,12 @@ vi.mock("@/trpc/react", () => ({
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       updateStartup: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      claimStartup: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      submitStartup: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       getMyCv: {
@@ -1535,6 +1541,35 @@ describe("Startups i18n", () => {
 });
 
 describe("Startups profile page", () => {
+  it("links claim to the add-startup form and shows Verified only after approval", () => {
+    const plain = render(
+      <StartupsProfilePage
+        locale="en"
+        t={profileT("en")}
+        card={FIXTURE_CARD}
+      />,
+    );
+    expect(
+      plain.container.querySelector("[data-startup-claim]"),
+    ).toHaveAttribute("href", "/startups/claim?slug=fixture-co");
+    expect(
+      plain.container.querySelector("[data-startup-claim]")?.textContent,
+    ).toBe("Claim / edit this startup");
+    expect(plain.container.querySelector("[data-startup-verified]")).toBeNull();
+    plain.unmount();
+
+    const verified = render(
+      <StartupsProfilePage
+        locale="en"
+        t={profileT("en")}
+        card={{ ...FIXTURE_CARD, verified: true }}
+      />,
+    );
+    expect(
+      verified.container.querySelector("[data-startup-verified]")?.textContent,
+    ).toBe("Verified");
+  });
+
   it("shows Uses AI on the profile only when the row records it", () => {
     const shown = render(
       <StartupsProfilePage

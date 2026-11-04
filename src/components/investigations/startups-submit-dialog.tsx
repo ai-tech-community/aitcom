@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,12 +31,15 @@ import {
   STARTUP_EXIT_STATUS_IDS,
   STARTUP_EXIT_STATUS_LABELS,
   STARTUPS_CATEGORY_ERROR,
+  STARTUPS_CLAIM_PENDING_ERROR,
+  STARTUPS_CLAIM_TAKEN_ERROR,
   STARTUPS_DUPLICATE_ERROR,
   STARTUPS_EXIT_ERROR,
   STARTUPS_HOMEPAGE_ERROR,
   STARTUPS_JOBS_URL_ERROR,
   STARTUPS_SOURCES_ERROR,
   type StartupCategoryId,
+  type StartupClaimStatus,
   type StartupExitStatus,
   type StartupLocale,
   type StartupPublicCard,
@@ -81,12 +85,25 @@ export function StartupsSubmitDialog({
   onOpenChange,
   locale,
   editing,
+  intent,
+  isModerator = false,
+  signedIn = true,
+  signInHref,
+  claimStatus = null,
+  claimNotice = null,
   copy,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locale: StartupLocale;
   editing: StartupPublicCard | null;
+  /** Claim reuses this form. Omit it on the directory add/edit dialog. */
+  intent?: "claim" | "create";
+  isModerator?: boolean;
+  signedIn?: boolean;
+  signInHref?: string;
+  claimStatus?: StartupClaimStatus | null;
+  claimNotice?: "pending" | "waiting" | "taken" | null;
   copy: {
     title: string;
     editTitle: string;
@@ -120,6 +137,15 @@ export function StartupsSubmitDialog({
     cancel: string;
     success: string;
     updateSuccess: string;
+    claimSubmit?: string;
+    claimSuccess?: string;
+    submitPendingSuccess?: string;
+    approveClaim?: string;
+    claimApproved?: string;
+    claimPending?: string;
+    claimWaiting?: string;
+    claimTaken?: string;
+    signInToContinue?: string;
   };
 }) {
   const [name, setName] = useState("");
@@ -188,7 +214,34 @@ export function StartupsSubmitDialog({
 
   const update = api.startups.updateStartup.useMutation({
     onSuccess: async () => {
-      toast.success(copy.updateSuccess);
+      const approved = intent === "claim" && claimStatus === "pending";
+      toast.success(
+        approved
+          ? (copy.claimApproved ?? copy.updateSuccess)
+          : copy.updateSuccess,
+      );
+      await utils.startups.listApproved.invalidate();
+      router.refresh();
+      reset();
+      onOpenChange(false);
+    },
+    onError: handleError,
+  });
+
+  const claim = api.startups.claimStartup.useMutation({
+    onSuccess: async () => {
+      toast.success(copy.claimSuccess ?? copy.success);
+      await utils.startups.listApproved.invalidate();
+      router.refresh();
+      reset();
+      onOpenChange(false);
+    },
+    onError: handleError,
+  });
+
+  const submit = api.startups.submitStartup.useMutation({
+    onSuccess: async () => {
+      toast.success(copy.submitPendingSuccess ?? copy.success);
       await utils.startups.listApproved.invalidate();
       router.refresh();
       reset();
@@ -204,7 +257,9 @@ export function StartupsSubmitDialog({
       error.message === STARTUPS_SOURCES_ERROR ||
       error.message === STARTUPS_CATEGORY_ERROR ||
       error.message === STARTUPS_EXIT_ERROR ||
-      error.message === STARTUPS_JOBS_URL_ERROR
+      error.message === STARTUPS_JOBS_URL_ERROR ||
+      error.message === STARTUPS_CLAIM_TAKEN_ERROR ||
+      error.message === STARTUPS_CLAIM_PENDING_ERROR
     ) {
       setFormError(error.message);
       return;
@@ -243,7 +298,11 @@ export function StartupsSubmitDialog({
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setFormError(null);
+    if (!signedIn) return;
     if (!category) return;
+    const locked =
+      (claimNotice === "taken" || claimNotice === "waiting") && !isModerator;
+    if (locked) return;
     const payload = {
       name,
       homepage,
@@ -266,14 +325,51 @@ export function StartupsSubmitDialog({
       jobsUrl: jobsUrl.trim() || null,
       usesAi: usesAi === "yes" ? true : usesAi === "no" ? false : null,
     };
+    if (intent === "claim" && editing) {
+      if (isModerator) {
+        update.mutate({
+          id: editing.id,
+          ...payload,
+          approveClaim: claimStatus === "pending",
+        });
+      } else {
+        claim.mutate({ id: editing.id, ...payload });
+      }
+      return;
+    }
     if (editing) {
       update.mutate({ id: editing.id, ...payload });
       return;
     }
-    create.mutate(payload);
+    if (isModerator) {
+      create.mutate(payload);
+      return;
+    }
+    submit.mutate(payload);
   }
 
-  const pending = create.isPending || update.isPending;
+  const pending =
+    create.isPending || update.isPending || claim.isPending || submit.isPending;
+  const claimLocked =
+    (claimNotice === "taken" || claimNotice === "waiting") && !isModerator;
+  const submitLabel =
+    intent === "claim" && editing
+      ? isModerator
+        ? claimStatus === "pending"
+          ? (copy.approveClaim ?? copy.save)
+          : copy.save
+        : (copy.claimSubmit ?? copy.submit)
+      : editing
+        ? copy.save
+        : copy.submit;
+  const notice =
+    claimNotice === "pending"
+      ? copy.claimPending
+      : claimNotice === "waiting"
+        ? copy.claimWaiting
+        : claimNotice === "taken"
+          ? copy.claimTaken
+          : null;
 
   return (
     <Dialog
@@ -496,6 +592,14 @@ export function StartupsSubmitDialog({
               </SelectContent>
             </Select>
           </div>
+          {notice ? (
+            <Badge
+              variant={claimNotice === "taken" ? "outline" : "warning"}
+              data-startup-claim-notice={claimNotice ?? ""}
+            >
+              {notice}
+            </Badge>
+          ) : null}
           {formError ? (
             <p className="text-destructive text-sm">{formError}</p>
           ) : null}
@@ -507,9 +611,18 @@ export function StartupsSubmitDialog({
             >
               {copy.cancel}
             </Button>
-            <Button type="submit" disabled={pending || !category}>
-              {editing ? copy.save : copy.submit}
-            </Button>
+            {!signedIn && signInHref ? (
+              <Button asChild>
+                <a href={signInHref}>{copy.signInToContinue}</a>
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={pending || !category || claimLocked}
+              >
+                {submitLabel}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

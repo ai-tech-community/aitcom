@@ -7,6 +7,7 @@ import { StartupUsesAiBadge } from "@/components/investigations/startup-uses-ai-
 import { StartupLogo } from "@/components/investigations/startups-logo";
 import {
   STARTUP_CATEGORY_LABELS,
+  buildStartupClaimPath,
   buildStartupJobsPath,
   formatStartupExitBadge,
   sanitizeStartupDescription,
@@ -22,6 +23,8 @@ export type StartupsProfileHeaderCopy = {
   usesAi: string;
   lookingForCofounder: string;
   hiring: string;
+  claimEdit: string;
+  verified: string;
 };
 
 /** Identity block: mark, name, sourced blurb, status, and the two exits. */
@@ -54,6 +57,11 @@ export function StartupsProfileHeader({
           {card.hiring === true ? (
             <Badge variant="outline" data-startup-hiring="">
               {copy.hiring}
+            </Badge>
+          ) : null}
+          {card.verified ? (
+            <Badge variant="success" data-startup-verified="">
+              {copy.verified}
             </Badge>
           ) : null}
           {exitBadge ? (
@@ -94,6 +102,11 @@ export function StartupsProfileHeader({
               </Link>
             </Button>
           ) : null}
+          <Button asChild variant="outline">
+            <Link href={buildStartupClaimPath(card.slug)} data-startup-claim="">
+              {copy.claimEdit}
+            </Link>
+          </Button>
         </div>
       </div>
     </header>

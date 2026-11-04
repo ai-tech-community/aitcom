@@ -5110,9 +5110,23 @@ export const startups = appSchema.table(
       .varchar({ length: 16 })
       .notNull()
       .default("staff")
-      .$type<"staff">(),
+      .$type<"staff" | "member">(),
     listedOn: d.date().notNull(),
     submittedByUserId: d.varchar({ length: 255 }).references(() => user.id),
+    /**
+     * Claim of this listed profile. Null until someone submits the add-startup
+     * form against it. `approved` is the only state that shows Verified, and
+     * only a staff save sets it. This migration does not fill the column.
+     */
+    claimStatus: d
+      .varchar({ length: 16 })
+      .$type<"pending" | "approved" | "rejected">(),
+    claimedByUserId: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    claimedAt: d.timestamp({ withTimezone: true }),
+    /** Proposed edit from the claim form. Not public until staff apply it. */
+    claimDraft: d.json().$type<Record<string, unknown>>(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -5126,6 +5140,7 @@ export const startups = appSchema.table(
     index("startup_category_idx").on(t.category),
     index("startup_listed_on_idx").on(t.listedOn),
     index("startup_uses_ai_idx").on(t.usesAi),
+    index("startup_claim_status_idx").on(t.claimStatus),
   ],
 );
 
@@ -5206,6 +5221,11 @@ export const startupsRelations = relations(startups, ({ one, many }) => ({
     fields: [startups.submittedByUserId],
     references: [user.id],
     relationName: "startup_submitter",
+  }),
+  claimedBy: one(user, {
+    fields: [startups.claimedByUserId],
+    references: [user.id],
+    relationName: "startup_claimant",
   }),
   roles: many(startupRoles),
 }));

@@ -35,6 +35,8 @@ export type StartupsProfileKey =
   | "usesAi"
   | "lookingForCofounder"
   | "hiringFlag"
+  | "claimEdit"
+  | "verified"
   | "profileBack"
   | "sectionFounders"
   | "sectionHiring"
@@ -139,6 +141,8 @@ export function StartupsProfilePage({
             usesAi: t("usesAi"),
             lookingForCofounder: t("lookingForCofounder"),
             hiring: t("hiringFlag"),
+            claimEdit: t("claimEdit"),
+            verified: t("verified"),
           }}
         />
       </div>

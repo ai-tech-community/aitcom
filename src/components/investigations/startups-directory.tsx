@@ -386,6 +386,7 @@ export function StartupsDirectory({
             edit: t("edit"),
             caption: t("tabDirectory"),
             usesAi: t("usesAi"),
+            pendingReview: t("pendingReview"),
           }}
           onEdit={(next) => {
             setEditing(next);
@@ -413,6 +414,8 @@ export function StartupsDirectory({
           }}
           locale={locale}
           editing={editing}
+          isModerator
+          signedIn
           copy={{
             title: t("submitTitle"),
             editTitle: t("editTitle"),
