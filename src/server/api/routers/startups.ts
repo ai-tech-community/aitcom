@@ -125,6 +125,13 @@ function flattenPulseStartupRow(raw: unknown): unknown {
         : typeof row.uses_ai === "boolean" || row.uses_ai === null
           ? row.uses_ai
           : undefined,
+    lookingForCofounder:
+      typeof row.lookingForCofounder === "boolean"
+        ? row.lookingForCofounder
+        : typeof row.looking_for_cofounder === "boolean"
+          ? row.looking_for_cofounder
+          : undefined,
+    hiring: typeof row.hiring === "boolean" ? row.hiring : undefined,
     exitStatus:
       row.exitStatus ??
       pulseExitAlias(typeof row.status === "string" ? row.status : null),
@@ -164,6 +171,9 @@ const createStartupFields = z.object({
   slug: optionalBlank,
   usesAi: z.boolean().nullable().optional(),
   uses_ai: z.boolean().nullable().optional(),
+  lookingForCofounder: z.boolean().optional(),
+  looking_for_cofounder: z.boolean().optional(),
+  hiring: z.boolean().optional(),
 });
 
 const createStartupInput = z.preprocess(
@@ -328,6 +338,10 @@ export const startupsRouter = createTRPCRouter({
         .values({
           ...fields,
           usesAi: input.usesAi ?? null,
+          ...(input.lookingForCofounder !== undefined
+            ? { lookingForCofounder: input.lookingForCofounder }
+            : {}),
+          ...(input.hiring !== undefined ? { hiring: input.hiring } : {}),
           country,
           slug,
           status: "approved",
@@ -413,6 +427,10 @@ export const startupsRouter = createTRPCRouter({
             .values({
               ...fields,
               usesAi: row.usesAi ?? null,
+              ...(row.lookingForCofounder !== undefined
+                ? { lookingForCofounder: row.lookingForCofounder }
+                : {}),
+              ...(row.hiring !== undefined ? { hiring: row.hiring } : {}),
               country,
               slug,
               status: "approved",
@@ -478,6 +496,10 @@ export const startupsRouter = createTRPCRouter({
         .set({
           ...fields,
           ...(input.usesAi !== undefined ? { usesAi: input.usesAi } : {}),
+          ...(input.lookingForCofounder !== undefined
+            ? { lookingForCofounder: input.lookingForCofounder }
+            : {}),
+          ...(input.hiring !== undefined ? { hiring: input.hiring } : {}),
           country,
           slug,
           updatedAt: new Date(),

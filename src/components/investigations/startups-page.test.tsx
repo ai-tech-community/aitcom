@@ -1557,6 +1557,57 @@ describe("Startups profile page", () => {
     expect(hidden.container.querySelector("[data-startup-uses-ai]")).toBeNull();
   });
 
+  it("shows cofounder and hiring flags on the profile only when they are set", () => {
+    const hidden = render(
+      <StartupsProfilePage
+        locale="en"
+        t={profileT("en")}
+        card={{
+          ...FIXTURE_CARD,
+          lookingForCofounder: false,
+          hiring: false,
+        }}
+      />,
+    );
+    expect(
+      hidden.container.querySelector("[data-startup-looking-for-cofounder]"),
+    ).toBeNull();
+    expect(hidden.container.querySelector("[data-startup-hiring]")).toBeNull();
+    hidden.unmount();
+
+    const unset = render(
+      <StartupsProfilePage
+        locale="en"
+        t={profileT("en")}
+        card={FIXTURE_CARD}
+      />,
+    );
+    expect(
+      unset.container.querySelector("[data-startup-looking-for-cofounder]"),
+    ).toBeNull();
+    expect(unset.container.querySelector("[data-startup-hiring]")).toBeNull();
+    unset.unmount();
+
+    const shown = render(
+      <StartupsProfilePage
+        locale="en"
+        t={profileT("en")}
+        card={{
+          ...FIXTURE_CARD,
+          lookingForCofounder: true,
+          hiring: true,
+        }}
+      />,
+    );
+    expect(
+      shown.container.querySelector("[data-startup-looking-for-cofounder]")
+        ?.textContent,
+    ).toBe("Looking for a cofounder");
+    expect(
+      shown.container.querySelector("[data-startup-hiring]")?.textContent,
+    ).toBe("Hiring");
+  });
+
   it("lists stored news only when a startup has matches", () => {
     const { container } = render(
       <StartupsProfilePage

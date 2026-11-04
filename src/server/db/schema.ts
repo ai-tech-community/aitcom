@@ -5082,6 +5082,16 @@ export const startups = appSchema.table(
      */
     usesAi: d.boolean(),
     /**
+     * Looking for a cofounder. False until a listing sets it.
+     * The profile shows the flag only when this is true.
+     */
+    lookingForCofounder: d.boolean().notNull().default(false),
+    /**
+     * Hiring, as a listing flag. Distinct from the scanned open-role count.
+     * False until a listing sets it. The profile shows it only when true.
+     */
+    hiring: d.boolean().notNull().default(false),
+    /**
      * Successful scans in a row that published no roles. The jobs cron
      * backs off from the third. Reset when a scan publishes a role.
      */

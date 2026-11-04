@@ -1923,6 +1923,8 @@
     "filterAiYes": "Uses AI",
     "filterAiNo": "Does not use AI",
     "usesAi": "Uses AI",
+    "lookingForCofounder": "Looking for a cofounder",
+    "hiringFlag": "Hiring",
     "sortNewest": "Newest first",
     "sortName": "Name A–Z",
     "sortCategory": "Category",

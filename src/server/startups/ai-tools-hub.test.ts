@@ -163,5 +163,7 @@ describe("listAiToolsHubStartups", () => {
     expect(state.calls).toBe(2);
     expect(cards.map((card) => card.slug)).toEqual(["alpha"]);
     expect(cards[0]?.usesAi).toBeNull();
+    expect(cards[0]?.lookingForCofounder).toBe(false);
+    expect(cards[0]?.hiring).toBe(false);
   });
 });

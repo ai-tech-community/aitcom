@@ -10,6 +10,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import type { SelectedFields } from "drizzle-orm/pg-core";
 
 import {
   AI_TOOLS_LIST_CATEGORIES,
@@ -66,51 +67,87 @@ function errorText(error: unknown): string {
   return `${message}\n${errorText(record.cause)}`;
 }
 
-/** Preview builds skip migrations, so `uses_ai` may not exist yet. */
+/** Preview builds skip migrations, so newer startup columns may not exist yet. */
 function isMissingUsesAiColumn(error: unknown): boolean {
   return errorText(error).includes("uses_ai");
 }
 
+function isMissingProfileFlagColumn(error: unknown): boolean {
+  const text = errorText(error);
+  if (!/does not exist/i.test(text)) return false;
+  return text.includes("looking_for_cofounder") || text.includes('"hiring"');
+}
+
+const startupColumnsWithoutProfileFlags = (() => {
+  const { lookingForCofounder, hiring, ...columns } = getTableColumns(startups);
+  void lookingForCofounder;
+  void hiring;
+  return columns;
+})();
+
 const startupColumnsWithoutUsesAi = (() => {
-  const { usesAi, ...columns } = getTableColumns(startups);
+  const { usesAi, ...columns } = startupColumnsWithoutProfileFlags;
   void usesAi;
   return columns;
 })();
 
+type StartupRow = typeof startups.$inferSelect;
+
+function withHiddenProfileFlags<T extends object>(
+  row: T,
+): T & { lookingForCofounder: false; hiring: false } {
+  return { ...row, lookingForCofounder: false, hiring: false };
+}
+
+/**
+ * Read startup rows, and retry without columns a preview database has not
+ * migrated yet. Missing profile flags read as false. Missing `uses_ai`
+ * still reads as null.
+ */
+async function selectStartupRows(
+  run: (columns?: SelectedFields) => Promise<StartupRow[]>,
+): Promise<StartupRow[]> {
+  try {
+    return await run();
+  } catch (error) {
+    if (isMissingProfileFlagColumn(error)) {
+      try {
+        const rows = await run(startupColumnsWithoutProfileFlags);
+        return rows.map((row) => withHiddenProfileFlags(row));
+      } catch (retryError) {
+        if (!isMissingUsesAiColumn(retryError)) throw retryError;
+        error = retryError;
+      }
+    }
+    if (!isMissingUsesAiColumn(error)) throw error;
+    const rows = await run(startupColumnsWithoutUsesAi);
+    return rows.map((row) => ({
+      ...withHiddenProfileFlags(row),
+      usesAi: null,
+    }));
+  }
+}
+
 async function listApprovedStartupRows() {
   const where = eq(startups.status, "approved");
   const order = [desc(startups.listedOn), desc(startups.createdAt)] as const;
-  try {
-    return await db
-      .select()
-      .from(startups)
-      .where(where)
-      .orderBy(...order);
-  } catch (error) {
-    if (!isMissingUsesAiColumn(error)) throw error;
-    const rows = await db
-      .select(startupColumnsWithoutUsesAi)
-      .from(startups)
-      .where(where)
-      .orderBy(...order);
-    return rows.map((row) => ({ ...row, usesAi: null }));
-  }
+  return selectStartupRows((columns) => {
+    const query = columns
+      ? db.select(columns).from(startups).where(where)
+      : db.select().from(startups).where(where);
+    return query.orderBy(...order) as Promise<StartupRow[]>;
+  });
 }
 
 async function findStartupRowBySlug(slug: string) {
   const where = eq(startups.slug, slug);
-  try {
-    const [row] = await db.select().from(startups).where(where).limit(1);
-    return row ?? null;
-  } catch (error) {
-    if (!isMissingUsesAiColumn(error)) throw error;
-    const [row] = await db
-      .select(startupColumnsWithoutUsesAi)
-      .from(startups)
-      .where(where)
-      .limit(1);
-    return row ? { ...row, usesAi: null } : null;
-  }
+  const rows = await selectStartupRows((columns) => {
+    const query = columns
+      ? db.select(columns).from(startups).where(where)
+      : db.select().from(startups).where(where);
+    return query.limit(1) as Promise<StartupRow[]>;
+  });
+  return rows[0] ?? null;
 }
 
 function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
@@ -137,6 +174,8 @@ function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
     slug: parseStartupSlug(row.slug) ?? startupSlugFromName(row.name),
     openRoleCount: asFiniteCount(row.openRoleCount),
     usesAi: row.usesAi ?? null,
+    lookingForCofounder: row.lookingForCofounder === true,
+    hiring: row.hiring === true,
   };
 }
 
@@ -267,17 +306,12 @@ export async function listAiToolsHubStartups(): Promise<StartupPublicCard[]> {
     inArray(startups.category, [...AI_TOOLS_LIST_CATEGORIES]),
   );
   try {
-    let rows;
-    try {
-      rows = await db.select().from(startups).where(where);
-    } catch (error) {
-      if (!isMissingUsesAiColumn(error)) throw error;
-      const legacy = await db
-        .select(startupColumnsWithoutUsesAi)
-        .from(startups)
-        .where(where);
-      rows = legacy.map((row) => ({ ...row, usesAi: null }));
-    }
+    const rows = await selectStartupRows((columns) => {
+      const query = columns
+        ? db.select(columns).from(startups).where(where)
+        : db.select().from(startups).where(where);
+      return query as Promise<StartupRow[]>;
+    });
     return rows
       .map((row) => toPublicCard(row))
       .filter((card) => isAiToolsHubStartup(card))

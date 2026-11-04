@@ -1,3 +1,4 @@
+import * as migration_20261104a_startup_profile_flags from "./20261104a_startup_profile_flags";
 import * as migration_20261103a_datacenter_facility_planned_capacity from "./20261103a_datacenter_facility_planned_capacity";
 import * as migration_20261101a_referral_email_invites from "./20261101a_referral_email_invites";
 import * as migration_20261023a_six_public_events from "./20261023a_six_public_events";
@@ -1158,5 +1159,10 @@ export const migrations = [
     up: migration_20261103a_datacenter_facility_planned_capacity.up,
     down: migration_20261103a_datacenter_facility_planned_capacity.down,
     name: "20261103a_datacenter_facility_planned_capacity",
+  },
+  {
+    up: migration_20261104a_startup_profile_flags.up,
+    down: migration_20261104a_startup_profile_flags.down,
+    name: "20261104a_startup_profile_flags",
   },
 ];
