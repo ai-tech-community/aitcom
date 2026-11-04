@@ -1,19 +1,24 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { routing } from "@/i18n/routing";
 
-import { PERMANENT_REDIRECT_STATUS, siteRedirects } from "./site-redirects.js";
+import {
+  PERMANENT_REDIRECT_STATUS,
+  siteRedirects,
+  trailingSlashRedirect,
+} from "./site-redirects.js";
 
-const { getRedirectStatus } = createRequire(import.meta.url)(
+const { getRedirectStatus, modifyRouteRegex } = createRequire(import.meta.url)(
   "next/dist/lib/redirect-status.js",
 ) as {
   getRedirectStatus: (route: {
     permanent?: boolean;
     statusCode?: number;
   }) => number;
+  modifyRouteRegex: (regex: string, restrictedPaths?: string[]) => string;
 };
 
 type Redirect = (typeof siteRedirects)[number];
@@ -28,6 +33,8 @@ function matchSource(
       if (segment === "") return "";
       const star = /^:([A-Za-z0-9_]+)\*$/.exec(segment);
       if (star) return `(?<${star[1]}>.*)`;
+      const plus = /^:([A-Za-z0-9_]+)\+$/.exec(segment);
+      if (plus) return `(?<${plus[1]}>.+)`;
       const custom = /^:([A-Za-z0-9_]+)\(([^)]+)\)$/.exec(segment);
       if (custom) return `(?<${custom[1]}>${custom[2]})`;
       const named = /^:([A-Za-z0-9_]+)$/.exec(segment);
@@ -35,7 +42,8 @@ function matchSource(
       return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     })
     .join("/");
-  const match = new RegExp(`^${pattern}$`).exec(pathname);
+  // Next's modifyRouteRegex makes the trailing slash optional on user rules.
+  const match = new RegExp(modifyRouteRegex(`^${pattern}$`)).exec(pathname);
   return match?.groups ?? null;
 }
 
@@ -43,27 +51,40 @@ function fillDestination(
   destination: string,
   groups: Record<string, string>,
 ): string {
-  return destination.replace(/:([A-Za-z0-9_]+)\*?/g, (_, name: string) => {
-    const value = groups[name];
-    if (value == null) throw new Error(`missing :${name} in ${destination}`);
-    return value;
-  });
+  return destination.replace(
+    /:([A-Za-z0-9_]+)(?:\*|\+)?/g,
+    (_, name: string) => {
+      const value = groups[name];
+      if (value == null) throw new Error(`missing :${name} in ${destination}`);
+      return value;
+    },
+  );
 }
 
+type ListedRedirect = Redirect | typeof trailingSlashRedirect;
+
 /** First matching rule, the same order next.config.js returns them. */
-function resolveRedirect(pathname: string): {
+function resolveRedirect(
+  pathname: string,
+  rules: readonly ListedRedirect[] = siteRedirects,
+): {
   destination: string;
   status: number;
 } | null {
-  for (const rule of siteRedirects) {
+  for (const rule of rules) {
     const groups = matchSource(rule.source, pathname);
     if (!groups) continue;
     return {
       destination: fillDestination(rule.destination, groups),
-      status: rule.permanent ? PERMANENT_REDIRECT_STATUS : 307,
+      status: getRedirectStatus(rule),
     };
   }
   return null;
+}
+
+/** Site rules, then the slash strip that next.config.js appends. */
+function resolveConfiguredRedirect(pathname: string) {
+  return resolveRedirect(pathname, [...siteRedirects, trailingSlashRedirect]);
 }
 
 const localeGroup = routing.locales.join("|");
@@ -72,11 +93,59 @@ describe("retired section redirects", () => {
   it("uses HTTP 308 for every permanent rule", () => {
     expect(getRedirectStatus({ permanent: true })).toBe(308);
     expect(PERMANENT_REDIRECT_STATUS).toBe(308);
-    for (const rule of siteRedirects) {
+    const permanentRules = siteRedirects.filter((rule) => "permanent" in rule);
+    expect(permanentRules.length).toBeGreaterThan(0);
+    for (const rule of permanentRules) {
       expect(rule.permanent).toBe(true);
       expect(getRedirectStatus(rule)).toBe(308);
       expect(resolveRedirect(samplePath(rule))?.status).toBe(308);
     }
+    expect(getRedirectStatus(trailingSlashRedirect)).toBe(308);
+  });
+
+  it("301s /tools and /tools/ to the AI tools directory in every locale", () => {
+    const toolsRules = siteRedirects.filter((rule) => "statusCode" in rule);
+    expect(toolsRules).toEqual([
+      {
+        source: `/:locale(${localeGroup})/tools`,
+        destination: "/:locale/startups/ai-tools-list",
+        statusCode: 301,
+      },
+    ]);
+    for (const rule of toolsRules) {
+      expect(getRedirectStatus(rule)).toBe(301);
+    }
+    expect(
+      existsSync(
+        join(process.cwd(), "src/app/[locale]/startups/ai-tools-list/page.tsx"),
+      ),
+    ).toBe(true);
+
+    for (const locale of routing.locales) {
+      for (const pathname of [`/${locale}/tools`, `/${locale}/tools/`]) {
+        expect(resolveRedirect(pathname)).toEqual({
+          destination: `/${locale}/startups/ai-tools-list`,
+          status: 301,
+        });
+        expect(resolveConfiguredRedirect(pathname)).toEqual({
+          destination: `/${locale}/startups/ai-tools-list`,
+          status: 301,
+        });
+      }
+      expect(resolveConfiguredRedirect(`/${locale}/tools/extra`)).toBeNull();
+      expect(resolveConfiguredRedirect(`/${locale}/tools/extra/`)).toEqual({
+        destination: `/${locale}/tools/extra`,
+        status: 308,
+      });
+      expect(resolveRedirect(`/${locale}/startups/ai-tools-list`)).toBeNull();
+    }
+
+    expect(resolveRedirect("/tools")).toBeNull();
+    expect(resolveRedirect("/tools/")).toBeNull();
+    expect(resolveConfiguredRedirect("/en/agents/")).toEqual({
+      destination: "/en/agents",
+      status: 308,
+    });
   });
 
   it("covers every configured locale and collapses subpaths", () => {
@@ -164,7 +233,15 @@ describe("retired section redirects", () => {
       join(process.cwd(), "next.config.js"),
       "utf8",
     );
+    expect(nextConfig).toContain("skipTrailingSlashRedirect: true");
     expect(nextConfig).toContain("...siteRedirects");
+    const redirectsBlock = nextConfig.slice(
+      nextConfig.indexOf("async redirects"),
+    );
+    const siteRedirectsAt = redirectsBlock.indexOf("...siteRedirects");
+    const slashStripAt = redirectsBlock.indexOf("trailingSlashRedirect");
+    expect(siteRedirectsAt).toBeGreaterThan(-1);
+    expect(slashStripAt).toBeGreaterThan(siteRedirectsAt);
     expect(nextConfig).toContain('value: "aitcommunity.org"');
     expect(nextConfig).toContain("https://www.aitcommunity.org/:path*");
     expect(nextConfig).not.toContain("/investigations/startups/:path*");
