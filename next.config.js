@@ -5,13 +5,20 @@
 import "./src/env.js";
 import createNextIntlPlugin from "next-intl/plugin";
 import { withPayload } from "@payloadcms/next/withPayload";
-import { siteRedirects } from "./src/lib/site-redirects.js";
+import {
+  siteRedirects,
+  trailingSlashRedirect,
+} from "./src/lib/site-redirects.js";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 /** @type {import("next").NextConfig} */
 const config = {
   poweredByHeader: false,
+  // Next otherwise prepends a 308 from `/:path+/` to `/:path+`. That would
+  // run before the `/tools` 301, so `/en/tools/` would never reach it.
+  // `trailingSlashRedirect` is the same strip, ordered after `siteRedirects`.
+  skipTrailingSlashRedirect: true,
   // Next's default lint dirs plus `workers` (the sandboxed extraction
   // worker). `scripts` stays out: it is not in tsconfig, so typed lint rules
   // cannot parse it.
@@ -50,6 +57,7 @@ const config = {
         permanent: false,
       },
       ...siteRedirects,
+      trailingSlashRedirect,
     ];
   },
   async headers() {
