@@ -20,6 +20,8 @@ export type StartupsProfileHeaderCopy = {
   openHomepage: string;
   rolesCta: string;
   usesAi: string;
+  lookingForCofounder: string;
+  hiring: string;
 };
 
 /** Identity block: mark, name, sourced blurb, status, and the two exits. */
@@ -44,6 +46,16 @@ export function StartupsProfileHeader({
             {STARTUP_CATEGORY_LABELS[card.category][locale]}
           </Badge>
           <StartupUsesAiBadge usesAi={card.usesAi} label={copy.usesAi} />
+          {card.lookingForCofounder === true ? (
+            <Badge variant="outline" data-startup-looking-for-cofounder="">
+              {copy.lookingForCofounder}
+            </Badge>
+          ) : null}
+          {card.hiring === true ? (
+            <Badge variant="outline" data-startup-hiring="">
+              {copy.hiring}
+            </Badge>
+          ) : null}
           {exitBadge ? (
             <Badge variant="outline" data-startup-exit={card.exitStatus ?? ""}>
               {exitBadge}

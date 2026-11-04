@@ -137,6 +137,14 @@ export type StartupPublicCard = {
    * untagged — a missing flag is not a guess.
    */
   usesAi?: boolean | null;
+  /**
+   * Looking for a cofounder. Shown only when true. False and missing stay hidden.
+   */
+  lookingForCofounder?: boolean;
+  /**
+   * Hiring flag. Distinct from open-role count. Shown only when true.
+   */
+  hiring?: boolean;
 };
 
 export function startupHasOpenJobs(
