@@ -48,6 +48,7 @@ export type StartupsDirectoryTableCopy = {
   edit: string;
   caption: string;
   usesAi: string;
+  pendingReview: string;
 };
 
 /**
@@ -135,13 +136,17 @@ function CompanyRow({
         <div className="flex items-start gap-3">
           <StartupLogo card={card} size="sm" />
           <div className="flex min-w-0 flex-col gap-1">
-            <Link
-              href={buildStartupProfilePath(card.slug)}
-              data-startup-profile=""
-              className="w-fit font-medium underline-offset-4 hover:underline"
-            >
-              {card.name}
-            </Link>
+            {card.listingStatus === "pending" ? (
+              <span className="font-medium">{card.name}</span>
+            ) : (
+              <Link
+                href={buildStartupProfilePath(card.slug)}
+                data-startup-profile=""
+                className="w-fit font-medium underline-offset-4 hover:underline"
+              >
+                {card.name}
+              </Link>
+            )}
             {description ? (
               <span
                 data-startup-description=""
@@ -175,6 +180,11 @@ function CompanyRow({
       </TableCell>
       <TableCell className={cn(cell, "min-w-32 whitespace-normal")}>
         <div className="flex flex-wrap items-center gap-1.5">
+          {card.listingStatus === "pending" ? (
+            <Badge variant="warning" data-startup-pending="">
+              {copy.pendingReview}
+            </Badge>
+          ) : null}
           {exitBadge ? (
             <Badge variant="outline" data-startup-exit={card.exitStatus ?? ""}>
               {exitBadge}

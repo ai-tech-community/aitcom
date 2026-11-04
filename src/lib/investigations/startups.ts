@@ -11,6 +11,12 @@ import type { StartupCountryCode } from "./startups-countries";
 
 export const STARTUPS_PATH = "/startups";
 
+/** Existing add-startup form, opened to claim one listed profile. */
+export const STARTUPS_CLAIM_PATH = "/startups/claim";
+
+/** Existing add-startup form, opened to submit a company. */
+export const STARTUPS_SUBMIT_PATH = "/startups/submit";
+
 export const STARTUPS_INSIGHTS_PATH = "/startups/insights";
 
 /**
@@ -28,7 +34,12 @@ export const STARTUPS_JOBS_PATH = "/jobs";
 export const STARTUPS_LEGACY_PATH = "/investigations/startups";
 
 /** Static segments — never a company profile slug. */
-export const STARTUPS_RESERVED_SLUGS = new Set(["insights", "jobs"]);
+export const STARTUPS_RESERVED_SLUGS = new Set([
+  "insights",
+  "jobs",
+  "claim",
+  "submit",
+]);
 
 export const STARTUPS_SLUG_MAX = 80;
 
@@ -65,6 +76,12 @@ export const STARTUPS_CATEGORY_ERROR =
 export const STARTUPS_DUPLICATE_ERROR =
   "That homepage is already submitted or listed.";
 
+export const STARTUPS_CLAIM_TAKEN_ERROR =
+  "This startup has already been claimed.";
+
+export const STARTUPS_CLAIM_PENDING_ERROR =
+  "A claim is already waiting for staff.";
+
 export const STARTUPS_BATCH_MAX = 30;
 
 export const STARTUPS_PAGE_SIZE = 24;
@@ -87,7 +104,30 @@ export type StartupCategoryId =
 
 export type StartupStatus = "pending" | "approved" | "rejected";
 
-export type StartupSourceKind = "staff";
+export type StartupSourceKind = "staff" | "member";
+
+export type StartupClaimStatus = "pending" | "approved" | "rejected";
+
+/** Snapshot stored from the add-startup form. Not shown until staff apply it. */
+export type StartupClaimDraft = {
+  name: string;
+  homepage: string;
+  category: StartupCategoryId;
+  sources: string[];
+  region: string | null;
+  lat: number | null;
+  lng: number | null;
+  stage: string | null;
+  logoUrl: string | null;
+  description: string | null;
+  founders: StartupFounder[];
+  investors: StartupInvestor[];
+  exitStatus: StartupExitStatus | null;
+  acquirer: string | null;
+  exitOn: string | null;
+  jobsUrl: string | null;
+  usesAi: boolean | null;
+};
 
 export type StartupExitStatus = "acquired" | "ipo" | "shutdown";
 
@@ -145,6 +185,13 @@ export type StartupPublicCard = {
    * Hiring flag. Distinct from open-role count. Shown only when true.
    */
   hiring?: boolean;
+  /**
+   * True only after a claim was approved by staff. Omitted and false stay
+   * unverified — a listed company is not a claimed one.
+   */
+  verified?: boolean;
+  /** Operator directory only. Member submissions stay off the public list. */
+  listingStatus?: "pending";
 };
 
 export function startupHasOpenJobs(
@@ -295,6 +342,12 @@ const CATEGORY_ALIASES: Record<string, StartupCategoryId> = {
 export function presentText(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : null;
+}
+
+export function buildStartupClaimPath(slug: string): string {
+  const parsed = parseStartupSlug(slug);
+  if (!parsed) return STARTUPS_CLAIM_PATH;
+  return `${STARTUPS_CLAIM_PATH}?slug=${encodeURIComponent(parsed)}`;
 }
 
 export function buildStartupProfilePath(slug: string): string {
@@ -702,6 +755,139 @@ export function displayStartupInvestors(
   investors: readonly StartupFounderInput[] | null | undefined,
 ): StartupInvestor[] {
   return sanitizeStartupInvestors(investors);
+}
+
+export function parseStartupClaimStatus(
+  value: unknown,
+): StartupClaimStatus | null {
+  switch (value) {
+    case "pending":
+    case "approved":
+    case "rejected":
+      return value;
+    default:
+      return null;
+  }
+}
+
+/** Verified means a claim was approved. Listing approval is a different flag. */
+export function startupClaimVerified(
+  status: StartupClaimStatus | null | undefined,
+): boolean {
+  switch (status) {
+    case "approved":
+      return true;
+    case "pending":
+    case "rejected":
+    case null:
+    case undefined:
+      return false;
+    default: {
+      const neverStatus: never = status;
+      return neverStatus;
+    }
+  }
+}
+
+function claimNamedInputs(value: unknown): StartupFounderInput[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    return [item as StartupFounderInput];
+  });
+}
+
+/** Read a stored claim snapshot. Incomplete JSON is dropped, not filled in. */
+export function parseStartupClaimDraft(
+  value: unknown,
+): StartupClaimDraft | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const name = typeof row.name === "string" ? row.name.trim() : "";
+  const homepage =
+    typeof row.homepage === "string"
+      ? normalizeStartupHomepage(row.homepage)
+      : null;
+  const category =
+    typeof row.category === "string"
+      ? parseStartupCategory(row.category)
+      : null;
+  const sources = sanitizeStartupSources(
+    Array.isArray(row.sources)
+      ? row.sources.filter((item): item is string => typeof item === "string")
+      : [],
+  );
+  if (!name || !homepage || !category || sources.length < 1) return null;
+  const exitStatus = parseStartupExitStatus(
+    typeof row.exitStatus === "string" ? row.exitStatus : null,
+  );
+  return {
+    name,
+    homepage,
+    category,
+    sources,
+    region:
+      typeof row.region === "string" && row.region.trim()
+        ? row.region.trim()
+        : null,
+    lat:
+      typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : null,
+    lng:
+      typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : null,
+    stage:
+      typeof row.stage === "string" && row.stage.trim()
+        ? row.stage.trim()
+        : null,
+    logoUrl:
+      typeof row.logoUrl === "string"
+        ? normalizeStartupHomepage(row.logoUrl)
+        : null,
+    description: sanitizeStartupDescription(
+      typeof row.description === "string" ? row.description : null,
+    ),
+    founders: sanitizeStartupFounders(claimNamedInputs(row.founders)),
+    investors: sanitizeStartupInvestors(claimNamedInputs(row.investors)),
+    exitStatus,
+    acquirer:
+      exitStatus && typeof row.acquirer === "string" && row.acquirer.trim()
+        ? row.acquirer.trim()
+        : null,
+    exitOn: exitStatus
+      ? parseStartupExitOn(typeof row.exitOn === "string" ? row.exitOn : null)
+      : null,
+    jobsUrl:
+      typeof row.jobsUrl === "string"
+        ? normalizeStartupHomepage(row.jobsUrl)
+        : null,
+    usesAi: row.usesAi === true ? true : row.usesAi === false ? false : null,
+  };
+}
+
+/** Staff review starts from the submitted snapshot, not a guessed profile. */
+export function startupCardWithClaimDraft(
+  card: StartupPublicCard,
+  draft: StartupClaimDraft,
+): StartupPublicCard {
+  return {
+    ...card,
+    name: draft.name,
+    homepage: draft.homepage,
+    category: draft.category,
+    sources: draft.sources,
+    region: draft.region,
+    lat: draft.lat,
+    lng: draft.lng,
+    stage: draft.stage,
+    logoUrl: draft.logoUrl,
+    description: draft.description,
+    founders: draft.founders,
+    investors: draft.investors,
+    exitStatus: draft.exitStatus,
+    acquirer: draft.acquirer,
+    exitOn: draft.exitOn,
+    jobsUrl: draft.jobsUrl,
+    usesAi: draft.usesAi,
+  };
 }
 
 export function startupFounderInitials(name: string): string {

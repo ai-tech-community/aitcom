@@ -79,7 +79,7 @@ describe("startups router locks", () => {
     expect(src).toContain("founders");
     expect(src).toContain("exitStatus");
     // Country is stored on every write path, never re-guessed on read.
-    expect(src.match(/startupCountryForWrite\(/g)).toHaveLength(3);
+    expect(src.match(/startupCountryForWrite\(/g)).toHaveLength(4);
     expect(src).toContain("jobsUrl");
     expect(src).toContain("logo_url");
     expect(src).toContain("jobs_url");
@@ -203,6 +203,35 @@ describe("startups router locks", () => {
     );
     expect(single).toContain("CONFLICT");
     expect(single).not.toContain("onConflictDoNothing");
+  });
+
+  it("keeps a claim off the public columns until staff approve it", () => {
+    const claim = src.slice(src.indexOf("claimStartup:"));
+    const setAt = claim.indexOf(".set({");
+    const setBlock = claim.slice(setAt, claim.indexOf(".where(", setAt));
+    expect(setBlock).toContain("claimDraft: draft");
+    expect(setBlock).toContain("claimedByUserId: userId");
+    expect(setBlock).not.toContain("...fields");
+    expect(setBlock).not.toContain("homepage");
+    expect(setBlock).not.toContain("name:");
+    expect(claim).toContain("STARTUPS_CLAIM_TAKEN_ERROR");
+    expect(claim).toContain("STARTUPS_CLAIM_PENDING_ERROR");
+
+    const submit = src.slice(
+      src.indexOf("submitStartup:"),
+      src.indexOf("claimStartup:"),
+    );
+    expect(submit).toContain('status: "pending"');
+    expect(submit).toContain('source: "member"');
+    expect(submit).not.toContain("requireHubOperator");
+
+    const update = src.slice(
+      src.indexOf("updateStartup:"),
+      src.indexOf("submitStartup:"),
+    );
+    expect(update).toContain("approveClaim");
+    expect(update).toContain('claimStatus: "approved"');
+    expect(update).toContain("claimDraft: null");
   });
 
   it("adds a sourced-only description column without inventing blurbs", () => {
