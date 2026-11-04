@@ -2,23 +2,24 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 
+import en from "../../messages/en.json";
+
 import { JOIN_PAGE_TITLE, joinPageMetadata } from "./join-page-metadata";
 
 const TITLE = "Claim Your AI Startup & Find Your Cofounder | AIT Community";
 
-it("sets the join document title and keeps the existing description", () => {
+it("sets the join document title and the specified description", () => {
   expect(JOIN_PAGE_TITLE).toBe(TITLE);
+  expect(en.hubJoin.metaDescription.length).toBeLessThanOrEqual(155);
   const meta = joinPageMetadata({
-    description: "Make an account and join the community that fits.",
+    description: en.hubJoin.metaDescription,
     kicker: "Join",
   });
   expect(meta.title).toEqual({ absolute: TITLE });
-  expect(meta.description).toBe(
-    "Make an account and join the community that fits.",
-  );
+  expect(meta.description).toBe(en.hubJoin.metaDescription);
   expect(meta.openGraph).toMatchObject({
     title: TITLE,
-    description: "Make an account and join the community that fits.",
+    description: en.hubJoin.metaDescription,
   });
   expect(meta.twitter).toMatchObject({ title: TITLE });
 

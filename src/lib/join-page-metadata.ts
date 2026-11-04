@@ -7,8 +7,8 @@ export const JOIN_PAGE_TITLE =
   "Claim Your AI Startup & Find Your Cofounder | AIT Community";
 
 /**
- * Join-page document and social title. Description stays the existing
- * catalogue copy; this does not invent a new meta description.
+ * Join-page document and social title. The description is the join
+ * catalogue's meta description.
  */
 export function joinPageMetadata(copy: {
   description: string;
