@@ -23,12 +23,17 @@ import {
   displayStartupFounders,
   displayStartupInvestors,
   displayStartupSources,
+  parseStartupClaimDraft,
+  parseStartupClaimStatus,
   parseStartupExitOn,
   parseStartupExitStatus,
   parseStartupSlug,
   presentText,
   normalizeStartupHomepage,
+  startupClaimVerified,
   startupSlugFromName,
+  type StartupClaimDraft,
+  type StartupClaimStatus,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
 import { isStartupCountryCode } from "@/lib/investigations/startups-countries";
@@ -66,51 +71,163 @@ function errorText(error: unknown): string {
   return `${message}\n${errorText(record.cause)}`;
 }
 
-/** Preview builds skip migrations, so `uses_ai` may not exist yet. */
+/** Preview builds skip migrations, so newer startup columns may not exist yet. */
 function isMissingUsesAiColumn(error: unknown): boolean {
   return errorText(error).includes("uses_ai");
 }
 
-const startupColumnsWithoutUsesAi = (() => {
-  const { usesAi, ...columns } = getTableColumns(startups);
+function isMissingProfileFlagColumn(error: unknown): boolean {
+  const text = errorText(error);
+  if (!/does not exist/i.test(text)) return false;
+  return text.includes("looking_for_cofounder") || text.includes('"hiring"');
+}
+
+function isMissingClaimColumn(error: unknown): boolean {
+  const text = errorText(error);
+  return (
+    text.includes("claim_status") ||
+    text.includes("claimed_by_user_id") ||
+    text.includes("claimed_at") ||
+    text.includes("claim_draft")
+  );
+}
+
+type StartupRow = typeof startups.$inferSelect;
+
+type StartupColumnOmit = {
+  claim: boolean;
+  profileFlags: boolean;
+  usesAi: boolean;
+};
+
+const allStartupColumns = getTableColumns(startups);
+
+function withoutClaim<
+  T extends {
+    claimStatus: unknown;
+    claimedByUserId: unknown;
+    claimedAt: unknown;
+    claimDraft: unknown;
+  },
+>(columns: T) {
+  const { claimStatus, claimedByUserId, claimedAt, claimDraft, ...rest } =
+    columns;
+  void claimStatus;
+  void claimedByUserId;
+  void claimedAt;
+  void claimDraft;
+  return rest;
+}
+
+function withoutProfileFlags<
+  T extends { lookingForCofounder: unknown; hiring: unknown },
+>(columns: T) {
+  const { lookingForCofounder, hiring, ...rest } = columns;
+  void lookingForCofounder;
+  void hiring;
+  return rest;
+}
+
+function withoutUsesAi<T extends { usesAi: unknown }>(columns: T) {
+  const { usesAi, ...rest } = columns;
   void usesAi;
-  return columns;
-})();
+  return rest;
+}
+
+function columnsFor(omit: StartupColumnOmit) {
+  const claim = omit.claim
+    ? withoutClaim(allStartupColumns)
+    : allStartupColumns;
+  const flags = omit.profileFlags ? withoutProfileFlags(claim) : claim;
+  return omit.usesAi ? withoutUsesAi(flags) : flags;
+}
+
+function withOmittedColumns(
+  row: Partial<StartupRow>,
+  omit: StartupColumnOmit,
+): StartupRow {
+  return {
+    ...(row as StartupRow),
+    ...(omit.usesAi ? { usesAi: null } : {}),
+    ...(omit.profileFlags ? { lookingForCofounder: false, hiring: false } : {}),
+    ...(omit.claim
+      ? {
+          claimStatus: null,
+          claimedByUserId: null,
+          claimedAt: null,
+          claimDraft: null,
+        }
+      : {}),
+  };
+}
+
+/**
+ * Full row read. Preview databases that have not applied the claim migration,
+ * the profile-flag migration, or the older uses_ai migration still return
+ * cards. Missing claim fields stay null, so a row is unclaimed and never
+ * verified. Missing profile flags read as false. Missing uses_ai reads as null.
+ */
+async function readStartupRows(
+  where: SQL,
+  options?: { orderBy?: readonly SQL[]; limit?: number },
+): Promise<StartupRow[]> {
+  const orderBy = options?.orderBy ?? [];
+  const limit = options?.limit;
+  const omit: StartupColumnOmit = {
+    claim: false,
+    profileFlags: false,
+    usesAi: false,
+  };
+
+  const run = async (): Promise<StartupRow[]> => {
+    const partial = omit.claim || omit.profileFlags || omit.usesAi;
+    if (!partial) {
+      const filtered = db.select().from(startups).where(where);
+      const ordered =
+        orderBy.length > 0 ? filtered.orderBy(...orderBy) : filtered;
+      return limit ? ordered.limit(limit) : ordered;
+    }
+    const filtered = db.select(columnsFor(omit)).from(startups).where(where);
+    const ordered =
+      orderBy.length > 0 ? filtered.orderBy(...orderBy) : filtered;
+    const rows = limit ? await ordered.limit(limit) : await ordered;
+    return rows.map((row) => withOmittedColumns(row, omit));
+  };
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      return await run();
+    } catch (error) {
+      lastError = error;
+      let progressed = false;
+      if (!omit.claim && isMissingClaimColumn(error)) {
+        omit.claim = true;
+        progressed = true;
+      }
+      if (!omit.profileFlags && isMissingProfileFlagColumn(error)) {
+        omit.profileFlags = true;
+        progressed = true;
+      }
+      if (!omit.usesAi && isMissingUsesAiColumn(error)) {
+        omit.usesAi = true;
+        progressed = true;
+      }
+      if (!progressed) throw error;
+    }
+  }
+  throw lastError;
+}
 
 async function listApprovedStartupRows() {
-  const where = eq(startups.status, "approved");
-  const order = [desc(startups.listedOn), desc(startups.createdAt)] as const;
-  try {
-    return await db
-      .select()
-      .from(startups)
-      .where(where)
-      .orderBy(...order);
-  } catch (error) {
-    if (!isMissingUsesAiColumn(error)) throw error;
-    const rows = await db
-      .select(startupColumnsWithoutUsesAi)
-      .from(startups)
-      .where(where)
-      .orderBy(...order);
-    return rows.map((row) => ({ ...row, usesAi: null }));
-  }
+  return readStartupRows(eq(startups.status, "approved"), {
+    orderBy: [desc(startups.listedOn), desc(startups.createdAt)],
+  });
 }
 
 async function findStartupRowBySlug(slug: string) {
-  const where = eq(startups.slug, slug);
-  try {
-    const [row] = await db.select().from(startups).where(where).limit(1);
-    return row ?? null;
-  } catch (error) {
-    if (!isMissingUsesAiColumn(error)) throw error;
-    const [row] = await db
-      .select(startupColumnsWithoutUsesAi)
-      .from(startups)
-      .where(where)
-      .limit(1);
-    return row ? { ...row, usesAi: null } : null;
-  }
+  const [row] = await readStartupRows(eq(startups.slug, slug), { limit: 1 });
+  return row ?? null;
 }
 
 function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
@@ -137,6 +254,9 @@ function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
     slug: parseStartupSlug(row.slug) ?? startupSlugFromName(row.name),
     openRoleCount: asFiniteCount(row.openRoleCount),
     usesAi: row.usesAi ?? null,
+    lookingForCofounder: row.lookingForCofounder === true,
+    hiring: row.hiring === true,
+    verified: startupClaimVerified(parseStartupClaimStatus(row.claimStatus)),
   };
 }
 
@@ -191,6 +311,42 @@ export async function findStartupById(id: string) {
     .where(eq(startups.id, id))
     .limit(1);
   return row ?? null;
+}
+
+/** Operator and claimant review. Draft stays off the public card. */
+export async function findStartupClaimReview(slug: string): Promise<{
+  claimStatus: StartupClaimStatus | null;
+  claimedByUserId: string | null;
+  draft: StartupClaimDraft | null;
+} | null> {
+  try {
+    const parsed = parseStartupSlug(slug);
+    if (!parsed) return null;
+    const row = await findStartupRowBySlug(parsed);
+    if (row?.status !== "approved") return null;
+    return {
+      claimStatus: parseStartupClaimStatus(row.claimStatus),
+      claimedByUserId: row.claimedByUserId ?? null,
+      draft: parseStartupClaimDraft(row.claimDraft),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Member submissions waiting for staff. Not part of the public directory. */
+export async function listPendingStartups(): Promise<StartupPublicCard[]> {
+  try {
+    const rows = await readStartupRows(eq(startups.status, "pending"), {
+      orderBy: [desc(startups.createdAt)],
+    });
+    return rows.map((row) => ({
+      ...toPublicCard(row),
+      listingStatus: "pending" as const,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function findStartupBySlug(slug: string) {
@@ -262,22 +418,13 @@ export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
  * Sorted by name. Soft-empty when the query fails. No writes.
  */
 export async function listAiToolsHubStartups(): Promise<StartupPublicCard[]> {
-  const where = and(
-    eq(startups.status, "approved"),
-    inArray(startups.category, [...AI_TOOLS_LIST_CATEGORIES]),
-  );
+  const where =
+    and(
+      eq(startups.status, "approved"),
+      inArray(startups.category, [...AI_TOOLS_LIST_CATEGORIES]),
+    ) ?? eq(startups.status, "approved");
   try {
-    let rows;
-    try {
-      rows = await db.select().from(startups).where(where);
-    } catch (error) {
-      if (!isMissingUsesAiColumn(error)) throw error;
-      const legacy = await db
-        .select(startupColumnsWithoutUsesAi)
-        .from(startups)
-        .where(where);
-      rows = legacy.map((row) => ({ ...row, usesAi: null }));
-    }
+    const rows = await readStartupRows(where);
     return rows
       .map((row) => toPublicCard(row))
       .filter((card) => isAiToolsHubStartup(card))

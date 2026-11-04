@@ -111,7 +111,26 @@ export const DatacenterFacilities: CollectionConfig = {
       min: 0,
       admin: {
         position: "sidebar",
-        description: "Megawatts. Leave empty when unknown.",
+        description: "Operating megawatts. Leave empty when unknown.",
+      },
+    },
+    {
+      name: "capacityMwPlanned",
+      type: "number",
+      min: 0,
+      admin: {
+        position: "sidebar",
+        description:
+          "Planned megawatts. Stored separately from operating capacity. Leave empty when unknown.",
+      },
+    },
+    {
+      name: "aiDedicated",
+      type: "checkbox",
+      defaultValue: false,
+      admin: {
+        position: "sidebar",
+        description: "Facility is dedicated to AI workloads.",
       },
     },
     {

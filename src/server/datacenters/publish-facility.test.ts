@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { transaction, publish, revalidate } = vi.hoisted(() => ({
@@ -34,6 +36,18 @@ describe("facility editor transaction", () => {
     ).resolves.toMatchObject({ ok: true });
     expect(select).toHaveBeenCalledOnce();
     expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("writes planned megawatts and the AI flag on their own columns", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/server/datacenters/publish-facility.ts"),
+      "utf8",
+    );
+    expect(source).toContain("capacityMwPlanned: input.capacityMwPlanned");
+    expect(source).toContain("aiDedicated: input.aiDedicated");
+    expect(source).toContain("capacityMwPlanned: facility.capacityMwPlanned");
+    expect(source).toContain("aiDedicated: facility.aiDedicated");
+    expect(source).not.toMatch(/capacityMw:\s*input\.capacityMwPlanned/);
   });
 
   it("refuses to publish when there is no active Payload save transaction", async () => {

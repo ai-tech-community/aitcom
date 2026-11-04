@@ -52,10 +52,17 @@ import {
   startupDirectoryHasFilters,
   startupUsesAi,
   STARTUPS_PUBLIC_INDEX_MIN,
+  STARTUPS_CLAIM_PATH,
+  STARTUPS_SUBMIT_PATH,
   allocateStartupSlug,
+  buildStartupClaimPath,
   buildStartupJobsPath,
   buildStartupProfilePath,
   buildStartupRolePath,
+  isReservedStartupSlug,
+  parseStartupClaimDraft,
+  startupCardWithClaimDraft,
+  startupClaimVerified,
   parseStartupSlug,
   startupSlugFromName,
   verifiedStartupPin,
@@ -1019,6 +1026,40 @@ describe("directory query", () => {
   });
 });
 
+describe("startup claim verification", () => {
+  it("is verified only after staff approve a claim", () => {
+    expect(startupClaimVerified("approved")).toBe(true);
+    expect(startupClaimVerified("pending")).toBe(false);
+    expect(startupClaimVerified("rejected")).toBe(false);
+    expect(startupClaimVerified(null)).toBe(false);
+    expect(startupClaimVerified(undefined)).toBe(false);
+  });
+
+  it("keeps a claim draft as submitted and drops an incomplete one", () => {
+    const draft = parseStartupClaimDraft({
+      name: "Fixture Co",
+      homepage: "https://fixture.example",
+      category: "other",
+      sources: ["https://fixture.example/about"],
+      region: "Toronto, Canada",
+      description: "Sourced line",
+      founders: [],
+      investors: [],
+      usesAi: true,
+    });
+    expect(draft?.name).toBe("Fixture Co");
+    expect(draft?.usesAi).toBe(true);
+    expect(parseStartupClaimDraft({ name: "Only a name" })).toBeNull();
+    const card = sampleCard();
+    expect(startupCardWithClaimDraft(card, draft!).description).toBe(
+      "Sourced line",
+    );
+    expect(startupCardWithClaimDraft(card, draft!).homepage).toBe(
+      "https://fixture.example",
+    );
+  });
+});
+
 describe("startup slugs and profile contract", () => {
   it("slugifies names and suffixes collisions with -2", () => {
     expect(startupSlugFromName("Cursor (Anysphere)")).toBe("cursor-anysphere");
@@ -1037,6 +1078,15 @@ describe("startup slugs and profile contract", () => {
     ).toBe("fixture-co-3");
     expect(allocateStartupSlug("Insights", [])).toBe("insights-2");
     expect(allocateStartupSlug("Jobs", [])).toBe("jobs-2");
+    expect(allocateStartupSlug("Claim", [])).toBe("claim-2");
+    expect(allocateStartupSlug("Submit", [])).toBe("submit-2");
+    expect(isReservedStartupSlug("claim")).toBe(true);
+    expect(isReservedStartupSlug("submit")).toBe(true);
+    expect(STARTUPS_CLAIM_PATH).toBe("/startups/claim");
+    expect(STARTUPS_SUBMIT_PATH).toBe("/startups/submit");
+    expect(buildStartupClaimPath("cursor-anysphere")).toBe(
+      "/startups/claim?slug=cursor-anysphere",
+    );
     expect(allocateStartupSlug("Fixture Co", ["taken"], "custom-slug")).toBe(
       "custom-slug",
     );

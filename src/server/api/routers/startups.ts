@@ -6,6 +6,8 @@ import { z } from "zod";
 import {
   STARTUPS_BATCH_MAX,
   STARTUPS_CATEGORY_ERROR,
+  STARTUPS_CLAIM_PENDING_ERROR,
+  STARTUPS_CLAIM_TAKEN_ERROR,
   STARTUPS_DUPLICATE_ERROR,
   STARTUPS_EXIT_ERROR,
   STARTUPS_HOMEPAGE_ERROR,
@@ -125,6 +127,13 @@ function flattenPulseStartupRow(raw: unknown): unknown {
         : typeof row.uses_ai === "boolean" || row.uses_ai === null
           ? row.uses_ai
           : undefined,
+    lookingForCofounder:
+      typeof row.lookingForCofounder === "boolean"
+        ? row.lookingForCofounder
+        : typeof row.looking_for_cofounder === "boolean"
+          ? row.looking_for_cofounder
+          : undefined,
+    hiring: typeof row.hiring === "boolean" ? row.hiring : undefined,
     exitStatus:
       row.exitStatus ??
       pulseExitAlias(typeof row.status === "string" ? row.status : null),
@@ -164,6 +173,9 @@ const createStartupFields = z.object({
   slug: optionalBlank,
   usesAi: z.boolean().nullable().optional(),
   uses_ai: z.boolean().nullable().optional(),
+  lookingForCofounder: z.boolean().optional(),
+  looking_for_cofounder: z.boolean().optional(),
+  hiring: z.boolean().optional(),
 });
 
 const createStartupInput = z.preprocess(
@@ -175,6 +187,7 @@ const updateStartupInput = z.preprocess(
   flattenPulseStartupRow,
   createStartupFields.extend({
     id: z.string().trim().min(1),
+    approveClaim: z.boolean().optional(),
   }),
 );
 
@@ -328,6 +341,10 @@ export const startupsRouter = createTRPCRouter({
         .values({
           ...fields,
           usesAi: input.usesAi ?? null,
+          ...(input.lookingForCofounder !== undefined
+            ? { lookingForCofounder: input.lookingForCofounder }
+            : {}),
+          ...(input.hiring !== undefined ? { hiring: input.hiring } : {}),
           country,
           slug,
           status: "approved",
@@ -413,6 +430,10 @@ export const startupsRouter = createTRPCRouter({
             .values({
               ...fields,
               usesAi: row.usesAi ?? null,
+              ...(row.lookingForCofounder !== undefined
+                ? { lookingForCofounder: row.lookingForCofounder }
+                : {}),
+              ...(row.hiring !== undefined ? { hiring: row.hiring } : {}),
               country,
               slug,
               status: "approved",
@@ -473,18 +494,134 @@ export const startupsRouter = createTRPCRouter({
         existing,
       );
 
+      const approveClaim = input.approveClaim === true;
+      if (approveClaim && existing.claimStatus !== "pending") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: STARTUPS_CLAIM_PENDING_ERROR,
+        });
+      }
+
       await ctx.db
         .update(startups)
         .set({
           ...fields,
           ...(input.usesAi !== undefined ? { usesAi: input.usesAi } : {}),
+          ...(input.lookingForCofounder !== undefined
+            ? { lookingForCofounder: input.lookingForCofounder }
+            : {}),
+          ...(input.hiring !== undefined ? { hiring: input.hiring } : {}),
           country,
           slug,
+          ...(existing.status === "pending"
+            ? { status: "approved" as const }
+            : {}),
+          ...(approveClaim
+            ? {
+                claimStatus: "approved" as const,
+                claimDraft: null,
+                claimedAt: existing.claimedAt ?? new Date(),
+              }
+            : {}),
           updatedAt: new Date(),
         })
         .where(eq(startups.id, input.id));
 
-      return { id: input.id, status: existing.status };
+      return {
+        id: input.id,
+        status: existing.status === "pending" ? "approved" : existing.status,
+        claimStatus: approveClaim
+          ? ("approved" as const)
+          : existing.claimStatus,
+      };
+    }),
+
+  /**
+   * Member path of the add-startup form. Same fields as createStartup.
+   * The row stays pending until a Hub operator saves it.
+   */
+  submitStartup: protectedProcedure
+    .input(createStartupInput)
+    .mutation(async ({ ctx, input }) => {
+      const fields = parsedWriteFields(input);
+      const slug = await resolveWriteSlug(fields.name, input.slug);
+      const existing = await findStartupByHomepage(fields.homepage);
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: STARTUPS_DUPLICATE_ERROR,
+        });
+      }
+      const country = await startupCountryForWrite(
+        fields.region,
+        createStartupCountryResolver(),
+      );
+      const [created] = await ctx.db
+        .insert(startups)
+        .values({
+          ...fields,
+          usesAi: input.usesAi ?? null,
+          country,
+          slug,
+          status: "pending",
+          source: "member",
+          listedOn: todayIsoDate(),
+          submittedByUserId: ctx.session.user.id,
+        })
+        .returning({ id: startups.id });
+      return { id: created!.id, status: "pending" as const };
+    }),
+
+  /**
+   * Claim or propose an edit with the same fields as the add-startup form.
+   * Public columns stay as they are until staff approve.
+   */
+  claimStartup: protectedProcedure
+    .input(updateStartupInput)
+    .mutation(async ({ ctx, input }) => {
+      const existing = await findStartupById(input.id);
+      if (existing?.status !== "approved") {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      const userId = ctx.session.user.id;
+      const ownedByOther =
+        existing.claimedByUserId != null && existing.claimedByUserId !== userId;
+      if (existing.claimStatus === "approved" && ownedByOther) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: STARTUPS_CLAIM_TAKEN_ERROR,
+        });
+      }
+      if (existing.claimStatus === "pending" && ownedByOther) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: STARTUPS_CLAIM_PENDING_ERROR,
+        });
+      }
+      const fields = parsedWriteFields(input);
+      const keepApproved =
+        existing.claimStatus === "approved" &&
+        existing.claimedByUserId === userId;
+      const draft = {
+        ...fields,
+        usesAi: input.usesAi ?? null,
+      };
+      await ctx.db
+        .update(startups)
+        .set({
+          claimStatus: keepApproved ? "approved" : "pending",
+          claimedByUserId: userId,
+          claimedAt: existing.claimedAt ?? new Date(),
+          claimDraft: draft,
+          updatedAt: new Date(),
+        })
+        .where(eq(startups.id, input.id));
+      return {
+        id: input.id,
+        claimStatus: keepApproved
+          ? ("approved" as const)
+          : ("pending" as const),
+      };
     }),
 
   getMyCv: protectedProcedure.query(async ({ ctx }) => {

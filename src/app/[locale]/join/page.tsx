@@ -2,17 +2,19 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { HubJoin } from "@/components/join/hub-join";
+import { joinPageMetadata } from "@/lib/join-page-metadata";
 import { getJoinSignupHref } from "@/lib/join-path";
-import { localeAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates } from "@/lib/metadata";
 import { shouldPromoteJoin } from "@/server/better-auth/hub-session";
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("hubJoin");
   return {
-    title: t("title"),
-    description: t("metaDescription"),
-    ...buildOgMeta(t("title"), t("metaDescription"), t("kicker")),
+    ...joinPageMetadata({
+      description: t("metaDescription"),
+      kicker: t("kicker"),
+    }),
     alternates: await localeAlternates("/join"),
   };
 }

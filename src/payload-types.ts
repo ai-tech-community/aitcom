@@ -1918,6 +1918,8 @@ export interface DatacenterFacility {
   lat: number;
   lng: number;
   capacityMw?: number | null;
+  capacityMwPlanned?: number | null;
+  aiDedicated?: boolean | null;
   status: 'announced' | 'under-construction' | 'operational' | 'expanding' | 'decommissioned' | 'cancelled';
   sourceUrl: string;
   checkedAt: string;
@@ -3122,6 +3124,8 @@ export interface DatacenterFacilitiesSelect<T extends boolean = true> {
   lat?: T;
   lng?: T;
   capacityMw?: T;
+  capacityMwPlanned?: T;
+  aiDedicated?: T;
   status?: T;
   sourceUrl?: T;
   checkedAt?: T;

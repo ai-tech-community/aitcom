@@ -69,10 +69,24 @@ describe("hub join door", () => {
       screen.getByRole("heading", { level: 1, name: en.hubJoin.title }),
     ).toBeInTheDocument();
     expect(screen.getByText(en.hubJoin.lead)).toBeInTheDocument();
-    expect(screen.getByText(/Hub sign-up only/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/does not register you for World Summit/i),
+      screen.getByText(en.hubJoin.audienceJobSeekersBody),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(en.hubJoin.audienceBuildersBody),
+    ).toBeInTheDocument();
+    expect(screen.getByText(en.hubJoin.audienceHostsBody)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: en.hubJoin.faqLabel }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(en.hubJoin.faqAddQuestion)).toBeInTheDocument();
+    expect(screen.getByText(en.hubJoin.faqAddAnswer)).toBeInTheDocument();
+    expect(
+      screen.getByText(en.hubJoin.faqCofounderQuestion),
+    ).toBeInTheDocument();
+    expect(screen.getByText(en.hubJoin.faqCofounderAnswer)).toBeInTheDocument();
+    expect(screen.getByText(en.hubJoin.faqFreeQuestion)).toBeInTheDocument();
+    expect(screen.getByText(en.hubJoin.faqFreeAnswer)).toBeInTheDocument();
 
     const cta = screen.getByRole("link", { name: en.hubJoin.cta });
     expect(cta).toHaveAttribute("href", "/auth/signup?code=abc");
@@ -147,9 +161,16 @@ describe("hub join i18n", () => {
     expect(nlKeys).toEqual(enKeys);
 
     for (const messages of [en.hubJoin, nl.hubJoin]) {
-      expect(messages.title.trim().length).toBeGreaterThan(0);
-      expect(messages.lead.trim().length).toBeGreaterThan(0);
-      expect(messages.metaDescription.length).toBeLessThanOrEqual(160);
+      expect(messages.title).toBe(
+        "Claim your startup, get seen, and find your cofounder",
+      );
+      expect(messages.lead).toBe(
+        "Your startup may already have a page on AIT. Claim it, keep it up to date, and get feedback on Launchpad.",
+      );
+      expect(messages.metaDescription).toBe(
+        "Join AIT free: claim your AI startup page, get seen by people building in AI, and post on Launchpad.",
+      );
+      expect(messages.metaDescription.length).toBeLessThanOrEqual(155);
       expect(messages.metaDescription).not.toMatch(DENIALS);
       expect(messages.cta.trim().length).toBeGreaterThan(0);
       const blob = Object.values(messages).join("\n").replace(DENIALS, "");

@@ -2,6 +2,7 @@ import createMiddleware from "next-intl/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
 import { localeFromPathname, stripLocalePrefix } from "./i18n/locale-path";
+import { investigationStartupRewriteTarget } from "./lib/investigations/startup-url-policy";
 import { getAuthAliasRedirect, getJoinDoorRedirect } from "./lib/join-path";
 import { getApexToWwwRedirectUrl } from "./server/better-auth/base-url";
 
@@ -27,6 +28,15 @@ export default function middleware(request: NextRequest) {
       new URL(`/${locale}/communities/ait/forum${rest}`, request.url),
       301,
     );
+  }
+
+  // Same-entity startup profiles 301 in the node route. A slug whose
+  // /startups page is a different entity renders instead.
+  const startupRewrite = investigationStartupRewriteTarget(pathname);
+  if (startupRewrite) {
+    const url = request.nextUrl.clone();
+    url.pathname = startupRewrite;
+    return NextResponse.rewrite(url);
   }
 
   const pathWithoutLocale = stripLocalePrefix(pathname);

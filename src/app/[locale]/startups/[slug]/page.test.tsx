@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { StartupPublicCard } from "@/lib/investigations/startups";
 
 const state = vi.hoisted(() => ({
-  locale: "en" as "en" | "nl",
+  locale: "en" as "en" | "nl" | "fr",
   card: null as StartupPublicCard | null,
 }));
 
@@ -89,4 +89,38 @@ describe("startup profile robots", () => {
     const meta = await generateMetadata({ params: params() });
     expect(meta.robots).toEqual({ index: true, follow: true });
   });
+
+  it("canonicalizes the profile to /startups/<slug>", async () => {
+    state.card = card();
+    const meta = await generateMetadata({ params: params() });
+    expect(meta.alternates?.canonical).toBe(
+      "https://www.aitcommunity.org/en/startups/amy",
+    );
+  });
+
+  it.each(["en", "nl", "fr"] as const)(
+    "canonicalizes Navier AI to itself in %s",
+    async (locale) => {
+      state.locale = locale;
+      state.card = card({
+        slug: "navier-ai",
+        name: "Navier AI",
+        description: null,
+        openRoleCount: 2,
+      });
+      const meta = await generateMetadata({
+        params: Promise.resolve({ slug: "navier-ai" }),
+      });
+      expect(meta.alternates?.canonical).toBe(
+        `https://www.aitcommunity.org/${locale}/startups/navier-ai`,
+      );
+      expect(meta.alternates?.languages).toMatchObject({
+        en: "https://www.aitcommunity.org/en/startups/navier-ai",
+        nl: "https://www.aitcommunity.org/nl/startups/navier-ai",
+        fr: "https://www.aitcommunity.org/fr/startups/navier-ai",
+        "x-default": "https://www.aitcommunity.org/en/startups/navier-ai",
+      });
+      expect(meta.robots).toEqual({ index: true, follow: true });
+    },
+  );
 });

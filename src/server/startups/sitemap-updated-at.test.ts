@@ -70,5 +70,13 @@ describe("listSitemapContentUpdatedAt", () => {
     expect(first.get("/startups/amy")).not.toEqual(
       new Date("2026-10-12T10:00:00.000Z"),
     );
+    expect(first.has("/investigations/startups/amy")).toBe(false);
+  });
+
+  it("stamps Navier AI's profile and not its investigations URL", async () => {
+    state.startups = [{ slug: "navier-ai", updatedAt: STARTUP_AT }];
+    const map = await listSitemapContentUpdatedAt();
+    expect(map.get("/startups/navier-ai")).toEqual(STARTUP_AT);
+    expect(map.has("/investigations/startups/navier-ai")).toBe(false);
   });
 });

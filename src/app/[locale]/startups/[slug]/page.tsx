@@ -11,7 +11,7 @@ import {
   startupProfileMetaDescription,
   type StartupLocale,
 } from "@/lib/investigations/startups";
-import { localeAlternates, buildOgMeta } from "@/lib/metadata";
+import { buildOgMeta, localeAlternates } from "@/lib/metadata";
 import {
   shouldPromoteJoin,
   toHubAuthUser,
@@ -42,6 +42,8 @@ export async function generateMetadata({
   const locale = await getLocale();
   const copyLocale: StartupLocale = resolveLocale(locale);
   const description = startupProfileMetaDescription(card, copyLocale);
+  const profilePath = buildStartupProfilePath(card.slug);
+  const alternates = await localeAlternates(profilePath);
   return {
     title: card.name,
     ...(description ? { description } : {}),
@@ -49,7 +51,7 @@ export async function generateMetadata({
     ...(description
       ? buildOgMeta(card.name, description, "Investigation")
       : {}),
-    alternates: await localeAlternates(buildStartupProfilePath(card.slug)),
+    alternates,
   };
 }
 

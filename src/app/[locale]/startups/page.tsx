@@ -28,7 +28,10 @@ import {
   toHubAuthUser,
 } from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
-import { listApprovedPublicStartups } from "@/server/startups/queries";
+import {
+  listApprovedPublicStartups,
+  listPendingStartups,
+} from "@/server/startups/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -140,12 +143,15 @@ export default async function StartupsInvestigationPage({
   const isModerator = session?.user
     ? await userIsHubOperator(session.user.id)
     : false;
+  const directory = isModerator
+    ? [...(await listPendingStartups()), ...companies]
+    : companies;
 
   return (
     <StartupsPage
       locale={locale}
       t={t}
-      companies={companies}
+      companies={directory}
       isModerator={isModerator}
       query={query}
       promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}

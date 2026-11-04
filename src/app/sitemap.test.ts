@@ -379,6 +379,35 @@ describe("buildSitemapEntries", () => {
       "https://www.aitcommunity.org/en/investigations/awesome-ai-oss",
     );
     expect(urls).toContain("https://www.aitcommunity.org/en/startups/acme");
+    const profiles = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [
+        "/startups/acme",
+        "/startups/navier-ai",
+        "/investigations/startups/navier-ai",
+        "/investigations/startups/acme",
+        "/investigations/startups/ai-tools-list",
+        "/investigations/startups/jobs/role-1",
+      ],
+    );
+    const profileUrls = urlsOf(profiles);
+    expect(profileUrls).not.toContain(
+      "https://www.aitcommunity.org/en/investigations/startups/navier-ai",
+    );
+    expect(profileUrls).toContain(
+      "https://www.aitcommunity.org/en/startups/navier-ai",
+    );
+    expect(profileUrls).not.toContain(
+      "https://www.aitcommunity.org/en/investigations/startups/acme",
+    );
+    expect(profileUrls).not.toContain(
+      "https://www.aitcommunity.org/en/investigations/startups/ai-tools-list",
+    );
+    expect(profileUrls).not.toContain(
+      "https://www.aitcommunity.org/en/investigations/startups/jobs/role-1",
+    );
     expect(
       entries.find(
         (item) => item.url === "https://www.aitcommunity.org/en/startups",

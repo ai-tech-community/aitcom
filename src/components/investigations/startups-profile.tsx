@@ -33,6 +33,10 @@ export type StartupsProfileKey =
   | "openHomepage"
   | "rolesCta"
   | "usesAi"
+  | "lookingForCofounder"
+  | "hiringFlag"
+  | "claimEdit"
+  | "verified"
   | "profileBack"
   | "sectionFounders"
   | "sectionHiring"
@@ -135,6 +139,10 @@ export function StartupsProfilePage({
             openHomepage: t("openHomepage"),
             rolesCta: t("rolesCta", { count: card.openRoleCount }),
             usesAi: t("usesAi"),
+            lookingForCofounder: t("lookingForCofounder"),
+            hiring: t("hiringFlag"),
+            claimEdit: t("claimEdit"),
+            verified: t("verified"),
           }}
         />
       </div>
