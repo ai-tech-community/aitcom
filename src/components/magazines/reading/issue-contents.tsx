@@ -1,9 +1,11 @@
 import { useTranslations } from "next-intl";
 
+import { Link } from "@/i18n/navigation";
 import type { EditorItemView } from "@/lib/magazines/item-views";
 import { SectionLabel } from "@/components/ui/section-label";
 
 import { itemTitle } from "../items/registry";
+import type { ArticleHref } from "../items/types";
 import { EDITOR_NOTE_ANCHOR, itemAnchorId } from "./anchors";
 import { EditorialImage } from "./editorial-image";
 
@@ -19,20 +21,20 @@ function itemThumbnail(view: EditorItemView): string | null {
 }
 
 function ContentsEntry({
-  anchor,
+  href,
   number,
   thumbnail,
   children,
 }: {
-  anchor: string;
+  href: string;
   number: string;
   thumbnail: string | null;
   children: React.ReactNode;
 }) {
   return (
     <li className="border-border border-b last:border-b-0">
-      <a
-        href={`#${anchor}`}
+      <Link
+        href={href}
         className="hover:text-foreground flex items-center gap-3 py-2.5 text-sm leading-snug underline-offset-4 hover:underline"
       >
         {thumbnail ? (
@@ -54,7 +56,7 @@ function ContentsEntry({
           </span>
         )}
         <span className="min-w-0 break-words">{children}</span>
-      </a>
+      </Link>
     </li>
   );
 }
@@ -67,10 +69,12 @@ export function IssueContents({
   items,
   hasEditorNote,
   readingMinutes,
+  articleHref,
 }: {
   items: EditorItemView[];
   hasEditorNote: boolean;
   readingMinutes: number;
+  articleHref: ArticleHref;
 }) {
   const t = useTranslations("magazines");
   return (
@@ -79,7 +83,7 @@ export function IssueContents({
       <ol>
         {hasEditorNote && (
           <ContentsEntry
-            anchor={EDITOR_NOTE_ANCHOR}
+            href={`#${EDITOR_NOTE_ANCHOR}`}
             number={ordinal(0)}
             thumbnail={null}
           >
@@ -89,7 +93,11 @@ export function IssueContents({
         {items.map((view, index) => (
           <ContentsEntry
             key={view.itemId}
-            anchor={itemAnchorId(view.itemId)}
+            href={
+              !("unavailable" in view) && view.kind === "article"
+                ? articleHref(view.article.slug)
+                : `#${itemAnchorId(view.itemId)}`
+            }
             number={ordinal(index + 1)}
             thumbnail={itemThumbnail(view)}
           >

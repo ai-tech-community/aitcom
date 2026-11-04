@@ -304,38 +304,45 @@ describe("IssueReader", () => {
     ).toBeTruthy();
   });
 
-  it("contents list links to every item anchor in order", () => {
-    const data = issuePage();
-    const { container } = renderWithIntl(
-      <IssueReader
-        url="https://example.test/en/magazines/agents-weekly/issue-4"
-        data={data}
-        locale="en"
-      />,
-    );
+  it.each(["full", "teaser", "editor"] as const)(
+    "contents open articles directly for %s readers and keep inline entries in the issue",
+    (access) => {
+      const data = issuePage({ access });
+      const { container } = renderWithIntl(
+        <IssueReader
+          url="https://example.test/en/magazines/agents-weekly/issue-4"
+          data={data}
+          locale="en"
+        />,
+      );
 
-    const contents = screen.getByRole("navigation", { name: "Contents" });
-    const links = within(within(contents).getByRole("list")).getAllByRole(
-      "link",
-    );
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "#from-the-editor",
-      ...data.items.map((item) => `#${itemAnchorId(item.itemId)}`),
-    ]);
-    expect(links.map((link) => link.textContent)).toEqual([
-      expect.stringContaining("From the editor"),
-      expect.stringContaining("Article 1"),
-      expect.stringContaining("Editorial 2"),
-      expect.stringContaining("Article 3"),
-    ]);
-    // Every link lands on an element of the page.
-    for (const link of links) {
-      const id = link.getAttribute("href")!.slice(1);
-      expect(container.querySelector(`#${CSS.escape(id)}`)).not.toBeNull();
-    }
-    expect(within(contents).getByText(/8 min read/)).toBeInTheDocument();
-    expect(within(contents).getByText(/3 items/)).toBeInTheDocument();
-  });
+      const contents = screen.getByRole("navigation", { name: "Contents" });
+      const links = within(within(contents).getByRole("list")).getAllByRole(
+        "link",
+      );
+      expect(links.map((link) => link.getAttribute("href"))).toEqual([
+        "#from-the-editor",
+        "/magazines/agents-weekly/issue-4/article-1",
+        `#${itemAnchorId("editorial-2")}`,
+        "/magazines/agents-weekly/issue-4/article-3",
+      ]);
+      expect(links.map((link) => link.textContent)).toEqual([
+        expect.stringContaining("From the editor"),
+        expect.stringContaining("Article 1"),
+        expect.stringContaining("Editorial 2"),
+        expect.stringContaining("Article 3"),
+      ]);
+      // Inline entries still land on an element of the page.
+      for (const link of links.filter((link) =>
+        link.getAttribute("href")!.startsWith("#"),
+      )) {
+        const id = link.getAttribute("href")!.slice(1);
+        expect(container.querySelector(`#${CSS.escape(id)}`)).not.toBeNull();
+      }
+      expect(within(contents).getByText(/8 min read/)).toBeInTheDocument();
+      expect(within(contents).getByText(/3 items/)).toBeInTheDocument();
+    },
+  );
 
   it("leaves 'From the editor' out when the issue has no note", () => {
     renderWithIntl(
@@ -513,10 +520,11 @@ describe("IssueReader", () => {
       within(screen.getByRole("note")).getByText("No longer available"),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("navigation", { name: "Contents" })).getByText(
-        "No longer available",
+      within(screen.getByRole("navigation", { name: "Contents" })).getByRole(
+        "link",
+        { name: /No longer available/ },
       ),
-    ).toBeInTheDocument();
+    ).toHaveAttribute("href", `#${itemAnchorId("gone-9")}`);
   });
 
   it("readers get neither the draft notice nor the Edit link", () => {

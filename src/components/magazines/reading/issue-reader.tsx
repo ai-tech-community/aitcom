@@ -140,6 +140,7 @@ export function IssueReader({
               items={items}
               hasEditorNote={showNote}
               readingMinutes={data.readingMinutes}
+              articleHref={href}
             />
           </section>
           <div className="magazine-stories">
