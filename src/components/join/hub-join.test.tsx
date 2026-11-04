@@ -168,7 +168,7 @@ describe("hub join i18n", () => {
         "Your startup may already have a page on AIT. Claim it, keep it up to date, and get feedback on Launchpad.",
       );
       expect(messages.metaDescription).toBe(
-        "Join AIT free: claim your AI startup page, get seen by people building in AI, and post on Launchpad. Cofounder flag and NL job alerts coming soon.",
+        "Join AIT free: claim your AI startup page, get seen by people building in AI, and post on Launchpad.",
       );
       expect(messages.metaDescription.length).toBeLessThanOrEqual(155);
       expect(messages.metaDescription).not.toMatch(DENIALS);
