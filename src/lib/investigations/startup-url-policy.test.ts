@@ -11,9 +11,7 @@ import {
   filterStartupSitemapPaths,
   investigationStartupRewriteTarget,
   investigationStartupShouldRewrite,
-  isStartupCanonicalHoldout,
   isStartupSlugShape,
-  startupHoldoutInvestigationPaths,
   startupLegacyKind,
   startupsPathRendersProfile,
 } from "./startup-url-policy";
@@ -26,6 +24,16 @@ describe("startup legacy URL policy", () => {
     expect(startupLegacyKind("acme", "other-co")).toBe("canonical");
   });
 
+  it("301s Navier AI when both URLs are that company", () => {
+    expect(startupLegacyKind("navier-ai", "navier-ai")).toBe("redirect");
+    expect(investigationStartupShouldRewrite("navier-ai")).toBe(true);
+    expect(startupLegacyKind("navier-ai", null)).toBe("missing");
+    expect(startupLegacyKind("navier-ai", "other-co")).toBe("canonical");
+    expect(buildInvestigationStartupPath("navier-ai")).toBe(
+      "/investigations/startups/navier-ai",
+    );
+  });
+
   it("canonicalizes a slug whose /startups page is a different entity", () => {
     expect(startupsPathRendersProfile("ai-tools-list")).toBe(false);
     expect(startupLegacyKind("ai-tools-list", "ai-tools-list")).toBe(
@@ -35,22 +43,13 @@ describe("startup legacy URL policy", () => {
     expect(AI_TOOLS_LIST_PATH).toBe("/startups/ai-tools-list");
   });
 
-  it("leaves Navier AI with no canonical and no redirect", () => {
-    expect(isStartupCanonicalHoldout("navier-ai")).toBe(true);
-    expect(startupLegacyKind("navier-ai", "navier-ai")).toBe("holdout");
-    expect(investigationStartupShouldRewrite("navier-ai")).toBe(false);
-    expect(startupLegacyKind("navier-ai", null)).toBe("missing");
-    expect(buildInvestigationStartupPath("navier-ai")).toBe(
-      "/investigations/startups/navier-ai",
-    );
-  });
-
   it("keeps reserved startup paths off the company profile", () => {
     for (const slug of STARTUPS_RESERVED_SLUGS) {
       expect(startupsPathRendersProfile(slug)).toBe(false);
       expect(investigationStartupShouldRewrite(slug)).toBe(false);
     }
     expect(startupsPathRendersProfile("acme")).toBe(true);
+    expect(startupsPathRendersProfile("navier-ai")).toBe(true);
   });
 
   it("accepts the same lowercase slugs as parseStartupSlug", () => {
@@ -61,18 +60,20 @@ describe("startup legacy URL policy", () => {
     expect(isStartupSlugShape(parseStartupSlug("Acme")!)).toBe(true);
   });
 
-  it("rewrites a same-entity profile and leaves the holdout and the hub", () => {
+  it("rewrites a same-entity profile, including Navier AI, and leaves the hub", () => {
     expect(
       investigationStartupRewriteTarget("/en/investigations/startups/acme"),
     ).toBe("/api/startup-profile-redirect/en/acme");
     expect(
       investigationStartupRewriteTarget("/fr/investigations/startups/Acme/"),
     ).toBe("/api/startup-profile-redirect/fr/acme");
-    expect(
-      investigationStartupRewriteTarget(
-        "/en/investigations/startups/navier-ai",
-      ),
-    ).toBeNull();
+    for (const locale of ["en", "nl", "fr"]) {
+      expect(
+        investigationStartupRewriteTarget(
+          `/${locale}/investigations/startups/navier-ai`,
+        ),
+      ).toBe(`/api/startup-profile-redirect/${locale}/navier-ai`);
+    }
     expect(
       investigationStartupRewriteTarget(
         "/nl/investigations/startups/ai-tools-list",
@@ -82,12 +83,12 @@ describe("startup legacy URL policy", () => {
       investigationStartupRewriteTarget("/en/investigations/startups"),
     ).toBeNull();
     expect(investigationStartupRewriteTarget("/en/startups/acme")).toBeNull();
+    expect(
+      investigationStartupRewriteTarget("/en/startups/navier-ai"),
+    ).toBeNull();
   });
 
-  it("lists only the Navier AI investigations URL in the sitemap", () => {
-    expect(
-      startupHoldoutInvestigationPaths(["navier-ai", "acme", "navier-ai"]),
-    ).toEqual(["/investigations/startups/navier-ai"]);
+  it("omits investigation profile URLs, including Navier AI, from the sitemap", () => {
     expect(
       filterStartupSitemapPaths([
         "/startups/acme",
@@ -100,10 +101,6 @@ describe("startup legacy URL policy", () => {
         "/investigations/startups/jobs",
         "/investigations/startups/jobs/role-1",
       ]),
-    ).toEqual([
-      "/startups/acme",
-      "/startups/navier-ai",
-      "/investigations/startups/navier-ai",
-    ]);
+    ).toEqual(["/startups/acme", "/startups/navier-ai"]);
   });
 });

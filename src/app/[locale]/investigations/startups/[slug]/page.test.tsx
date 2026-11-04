@@ -93,27 +93,28 @@ describe("investigations startup URL", () => {
     ).resolves.toBeTruthy();
   });
 
-  it("gives Navier AI no canonical in every locale", async () => {
-    state.card = card({
-      slug: "navier-ai",
-      name: "Navier AI",
-      description: null,
-      openRoleCount: 2,
-    });
-    for (const locale of ["en", "nl", "fr"] as const) {
+  it.each(["en", "nl", "fr"] as const)(
+    "does not render Navier AI in %s",
+    async (locale) => {
       state.locale = locale;
+      state.card = card({
+        slug: "navier-ai",
+        name: "Navier AI",
+        description: null,
+        openRoleCount: 2,
+      });
       const meta = await generateMetadata({
         params: Promise.resolve({ slug: "navier-ai" }),
       });
+      expect(meta.title).toBe("profileNotFound");
       expect(meta.alternates?.canonical).toBeUndefined();
-      expect(meta.alternates?.languages).toMatchObject({
-        en: "https://www.aitcommunity.org/en/investigations/startups/navier-ai",
-        nl: "https://www.aitcommunity.org/nl/investigations/startups/navier-ai",
-        fr: "https://www.aitcommunity.org/fr/investigations/startups/navier-ai",
-      });
-      expect(meta.robots).toEqual({ index: true, follow: true });
-    }
-  });
+      await expect(
+        InvestigationStartupRoute({
+          params: Promise.resolve({ slug: "navier-ai" }),
+        }),
+      ).rejects.toThrow("NEXT_NOT_FOUND");
+    },
+  );
 
   it("does not render a same-entity profile", async () => {
     state.card = card({ slug: "acme", name: "Acme" });

@@ -47,11 +47,21 @@ describe("same-entity startup redirect", () => {
     expect(state.calls).toBe(1);
   });
 
-  it("does not look up Navier AI or the AI tools hub", async () => {
-    state.slug = "navier-ai";
-    const navier = await visit("en", "navier-ai");
+  it.each(["en", "nl", "fr"] as const)(
+    "301s Navier AI to /%s/startups/navier-ai",
+    async (locale) => {
+      state.slug = "navier-ai";
+      const response = await visit(locale, "navier-ai");
+      expect(response.status).toBe(301);
+      expect(response.headers.get("location")).toBe(
+        `https://www.aitcommunity.org/${locale}/startups/navier-ai`,
+      );
+      expect(state.calls).toBe(1);
+    },
+  );
+
+  it("does not look up the AI tools hub", async () => {
     const hub = await visit("fr", "ai-tools-list");
-    expect(navier.status).toBe(404);
     expect(hub.status).toBe(404);
     expect(state.calls).toBe(0);
   });

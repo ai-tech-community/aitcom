@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
 
-import { startupHoldoutInvestigationPath } from "@/lib/investigations/startup-url-policy";
 import {
   buildStartupProfilePath,
   buildStartupRolePath,
@@ -39,8 +38,6 @@ export async function listSitemapContentUpdatedAt(): Promise<
       const updatedAt = sitemapRowUpdatedAt(row.updatedAt);
       if (!slug || !updatedAt) continue;
       map.set(buildStartupProfilePath(slug), updatedAt);
-      const holdout = startupHoldoutInvestigationPath(slug);
-      if (holdout) map.set(holdout, updatedAt);
     }
   } catch (error) {
     console.error("[sitemap] startup lastmod lookup failed", error);

@@ -23,16 +23,29 @@ describe("startup investigation URLs", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it("renders Navier AI and the AI tools company without a redirect", () => {
-    for (const slug of ["navier-ai", "ai-tools-list"]) {
+  it.each(["en", "nl", "fr"])(
+    "rewrites Navier AI in %s to the 301 route",
+    (locale) => {
       const response = middleware(
         new NextRequest(
-          `https://www.aitcommunity.org/nl/investigations/startups/${slug}`,
+          `https://www.aitcommunity.org/${locale}/investigations/startups/navier-ai`,
         ),
       );
-      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+      expect(response.headers.get("x-middleware-rewrite")).toBe(
+        `https://www.aitcommunity.org/api/startup-profile-redirect/${locale}/navier-ai`,
+      );
       expect(response.headers.get("location")).toBeNull();
-    }
+    },
+  );
+
+  it("renders the AI tools company without a redirect", () => {
+    const response = middleware(
+      new NextRequest(
+        "https://www.aitcommunity.org/nl/investigations/startups/ai-tools-list",
+      ),
+    );
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("location")).toBeNull();
   });
 });
 

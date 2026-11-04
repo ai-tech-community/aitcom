@@ -6,7 +6,6 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { StartupsProfilePage } from "@/components/investigations/startups-profile";
 import { startupProfileRobots } from "@/lib/investigations/startup-profile-index";
 import {
-  buildInvestigationStartupPath,
   startupLegacyKind,
   type StartupLegacyKind,
 } from "@/lib/investigations/startup-url-policy";
@@ -17,11 +16,7 @@ import {
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
-import {
-  buildOgMeta,
-  localeAlternates,
-  localeLanguageAlternates,
-} from "@/lib/metadata";
+import { buildOgMeta, localeAlternates } from "@/lib/metadata";
 import {
   shouldPromoteJoin,
   toHubAuthUser,
@@ -42,7 +37,6 @@ interface PageProps {
 type LoadedLegacy =
   | { kind: "missing" }
   | { kind: "redirect" }
-  | { kind: "holdout"; card: StartupPublicCard }
   | { kind: "canonical"; card: StartupPublicCard };
 
 async function loadLegacy(slug: string): Promise<LoadedLegacy> {
@@ -54,7 +48,6 @@ async function loadLegacy(slug: string): Promise<LoadedLegacy> {
     case "missing":
     case "redirect":
       return { kind };
-    case "holdout":
     case "canonical":
       if (!card) return { kind: "missing" };
       return { kind, card };
@@ -76,18 +69,14 @@ export async function generateMetadata({
       const t = await getTranslations("investigationsStartups");
       return { title: t("profileNotFound") };
     }
-    case "holdout":
     case "canonical": {
       const card = loaded.card;
       const locale = await getLocale();
       const copyLocale: StartupLocale = resolveLocale(locale);
       const description = startupProfileMetaDescription(card, copyLocale);
-      const alternates =
-        loaded.kind === "holdout"
-          ? await localeLanguageAlternates(
-              buildInvestigationStartupPath(card.slug),
-            )
-          : await localeAlternates(buildStartupProfilePath(card.slug));
+      const alternates = await localeAlternates(
+        buildStartupProfilePath(card.slug),
+      );
       return {
         title: card.name,
         ...(description ? { description } : {}),
@@ -113,7 +102,6 @@ export default async function InvestigationStartupRoute({ params }: PageProps) {
     case "redirect":
       // Same-entity profiles 301 in middleware before this renders.
       return notFound();
-    case "holdout":
     case "canonical":
       break;
     default: {

@@ -379,7 +379,7 @@ describe("buildSitemapEntries", () => {
       "https://www.aitcommunity.org/en/investigations/awesome-ai-oss",
     );
     expect(urls).toContain("https://www.aitcommunity.org/en/startups/acme");
-    const held = await buildSitemapEntries(
+    const profiles = await buildSitemapEntries(
       undefined,
       async () => new Map(),
       async () => [],
@@ -392,20 +392,20 @@ describe("buildSitemapEntries", () => {
         "/investigations/startups/jobs/role-1",
       ],
     );
-    const heldUrls = urlsOf(held);
-    expect(heldUrls).toContain(
+    const profileUrls = urlsOf(profiles);
+    expect(profileUrls).not.toContain(
       "https://www.aitcommunity.org/en/investigations/startups/navier-ai",
     );
-    expect(heldUrls).toContain(
+    expect(profileUrls).toContain(
       "https://www.aitcommunity.org/en/startups/navier-ai",
     );
-    expect(heldUrls).not.toContain(
+    expect(profileUrls).not.toContain(
       "https://www.aitcommunity.org/en/investigations/startups/acme",
     );
-    expect(heldUrls).not.toContain(
+    expect(profileUrls).not.toContain(
       "https://www.aitcommunity.org/en/investigations/startups/ai-tools-list",
     );
-    expect(heldUrls).not.toContain(
+    expect(profileUrls).not.toContain(
       "https://www.aitcommunity.org/en/investigations/startups/jobs/role-1",
     );
     expect(
