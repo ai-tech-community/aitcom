@@ -30,8 +30,8 @@ export default function middleware(request: NextRequest) {
     );
   }
 
-  // Same-entity startup profiles 301 in the node route. Navier AI and a
-  // slug whose /startups page is a different entity render instead.
+  // Same-entity startup profiles 301 in the node route. A slug whose
+  // /startups page is a different entity renders instead.
   const startupRewrite = investigationStartupRewriteTarget(pathname);
   if (startupRewrite) {
     const url = request.nextUrl.clone();

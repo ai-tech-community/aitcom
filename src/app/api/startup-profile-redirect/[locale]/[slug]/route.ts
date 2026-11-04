@@ -26,8 +26,8 @@ function notFound(): NextResponse {
 
 /**
  * HTTP 301 from `/investigations/startups/<slug>` to `/startups/<slug>`
- * when both URLs are that company. Navier AI and any slug whose startups
- * page is a different entity never reach this route.
+ * when both URLs are that company. A slug whose startups page is a
+ * different entity never reaches this route.
  */
 export async function GET(
   request: Request,

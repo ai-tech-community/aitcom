@@ -7,12 +7,7 @@ import { routing } from "@/i18n/routing";
  * sends a 301 only when that URL is the same company. When `/startups/<slug>`
  * is a different page, the investigations URL stays up and its canonical
  * points at `/startups/<slug>`.
- *
- * Navier AI is the holdout. Search Console is still comparing its two URLs,
- * so neither URL redirects and neither URL publishes a canonical.
  */
-
-export const STARTUP_CANONICAL_HOLDOUT_SLUG = "navier-ai";
 
 /** Same limit as `parseStartupSlug`. Kept here so middleware stays off the db graph. */
 const STARTUP_SLUG_MAX = 80;
@@ -32,11 +27,7 @@ const STARTUPS_PATH_NOT_PROFILE = new Set([
   "ai-tools-list",
 ]);
 
-export type StartupLegacyKind =
-  | "redirect"
-  | "canonical"
-  | "holdout"
-  | "missing";
+export type StartupLegacyKind = "redirect" | "canonical" | "missing";
 
 export function isStartupSlugShape(slug: string): boolean {
   return (
@@ -44,10 +35,6 @@ export function isStartupSlugShape(slug: string): boolean {
     slug.length <= STARTUP_SLUG_MAX &&
     STARTUP_SLUG_SHAPE.test(slug)
   );
-}
-
-export function isStartupCanonicalHoldout(slug: string): boolean {
-  return slug === STARTUP_CANONICAL_HOLDOUT_SLUG;
 }
 
 /** True when `/startups/<slug>` renders that company's profile. */
@@ -68,9 +55,6 @@ export function startupLegacyKind(
   startupSlug: string | null,
 ): StartupLegacyKind {
   if (!isStartupSlugShape(slug)) return "missing";
-  if (isStartupCanonicalHoldout(slug)) {
-    return startupSlug === slug ? "holdout" : "missing";
-  }
   if (startupSlug == null) return "missing";
   if (!startupsPathRendersProfile(slug) || startupSlug !== slug) {
     return "canonical";
@@ -78,10 +62,9 @@ export function startupLegacyKind(
   return "redirect";
 }
 
-/** Middleware rewrites these to the 301 route. Holdouts and other pages render. */
+/** Middleware rewrites these to the 301 route. Other pages render. */
 export function investigationStartupShouldRewrite(slug: string): boolean {
   if (!isStartupSlugShape(slug)) return false;
-  if (isStartupCanonicalHoldout(slug)) return false;
   if (!startupsPathRendersProfile(slug)) return false;
   return true;
 }
@@ -112,30 +95,8 @@ export function investigationStartupRewriteTarget(
   return `/api/startup-profile-redirect/${locale}/${slug}`;
 }
 
-/** Sitemap path for a holdout profile, or null when that slug is not one. */
-export function startupHoldoutInvestigationPath(slug: string): string | null {
-  if (!isStartupSlugShape(slug) || !isStartupCanonicalHoldout(slug))
-    return null;
-  return buildInvestigationStartupPath(slug);
-}
-
-export function startupHoldoutInvestigationPaths(
-  slugs: readonly string[],
-): string[] {
-  const paths: string[] = [];
-  const seen = new Set<string>();
-  for (const raw of slugs) {
-    const path = startupHoldoutInvestigationPath(raw.trim().toLowerCase());
-    if (!path || seen.has(path)) continue;
-    seen.add(path);
-    paths.push(path);
-  }
-  return paths;
-}
-
 /**
- * Drop investigations URLs that 301 or canonical elsewhere. The Navier AI
- * holdout stays, because that URL has neither signal.
+ * Drop investigations URLs that 301 or canonical elsewhere.
  */
 export function filterStartupSitemapPaths(paths: readonly string[]): string[] {
   return paths.filter((path) => {
@@ -147,8 +108,6 @@ export function filterStartupSitemapPaths(paths: readonly string[]): string[] {
     ) {
       return false;
     }
-    const match = /^\/investigations\/startups\/([^/]+)$/.exec(path);
-    if (!match) return true;
-    return isStartupCanonicalHoldout(match[1] ?? "");
+    return !/^\/investigations\/startups\/([^/]+)$/.test(path);
   });
 }

@@ -6,10 +6,7 @@ import {
   INVESTIGATIONS_PATH,
   mergeFacilitySitemap,
 } from "@/lib/investigations/datacenter-facilities";
-import {
-  filterStartupSitemapPaths,
-  startupHoldoutInvestigationPaths,
-} from "@/lib/investigations/startup-url-policy";
+import { filterStartupSitemapPaths } from "@/lib/investigations/startup-url-policy";
 import {
   startupDirectorySitemapPaths,
   startupProfileSitemapPaths,
@@ -247,7 +244,6 @@ async function defaultStartupPagePaths(): Promise<string[]> {
     return filterStartupSitemapPaths([
       ...startupDirectorySitemapPaths(listed),
       ...startupProfileSitemapPaths(slugs),
-      ...startupHoldoutInvestigationPaths(slugs),
       ...startupRoleSitemapPaths(roleSlugs),
     ]);
   } catch (error) {

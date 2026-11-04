@@ -225,8 +225,10 @@ describe("retired section redirects", () => {
       destination: "/nl/jobs/role-1",
       status: 301,
     });
+    // Company profiles, including Navier AI, 301 in the node route.
     expect(resolveRedirect("/nl/investigations/startups/acme")).toBeNull();
     expect(resolveRedirect("/en/investigations/startups/navier-ai")).toBeNull();
+    expect(resolveRedirect("/fr/investigations/startups/navier-ai")).toBeNull();
     expect(
       resolveRedirect("/en/investigations/startups/ai-tools-list"),
     ).toBeNull();
