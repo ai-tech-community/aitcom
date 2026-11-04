@@ -372,6 +372,7 @@ describe("event meta description", () => {
       Berlin: "Berlijn",
       Paris: "Parijs",
       London: "Londen",
+      Prague: "Praag",
     };
     const seen = new Set<string>();
 
@@ -423,6 +424,7 @@ describe("event meta description", () => {
         "New York",
         "Paris",
         "Potsdam",
+        "Prague",
         "San Francisco",
         "San Jose",
         "Strasbourg",

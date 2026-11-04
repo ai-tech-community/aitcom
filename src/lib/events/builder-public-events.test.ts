@@ -46,6 +46,10 @@ const FIVE_LATE_MIGRATION = join(
   dir,
   "../../migrations/20261026b_five_public_events.ts",
 );
+const FIVE_2027_MIGRATION = join(
+  dir,
+  "../../migrations/20261104c_five_public_events.ts",
+);
 const MIGRATION_INDEX = join(dir, "../../migrations/index.ts");
 const EVENTS_PAGE = join(dir, "../../app/[locale]/events/page.tsx");
 
@@ -121,7 +125,12 @@ describe("builder public events", () => {
       "adopt-ai-2026",
       "ai-coding-summit-berlin-2026",
       "the-ai-summit-new-york-2026",
+      "ai-engineer-europe-2027",
+      "nvidia-gtc-san-jose-2027",
       "chatbot-summit-berlin-2027",
+      "machine-learning-prague-2027",
+      "the-ai-summit-london-2027",
+      "data-ai-summit-2027",
     ]);
     const dates = BUILDER_PUBLIC_EVENTS.map((event) => event.date);
     expect([...dates].sort()).toEqual(dates);
@@ -570,6 +579,28 @@ describe("builder public events", () => {
         isAi: true,
       }),
       expect.objectContaining({
+        title: "AI Engineer Europe 2027",
+        type: "conference",
+        date: "2027-02-17",
+        endDate: "2027-02-19",
+        city: "London",
+        location: "ExCeL, London",
+        url: "https://www.ai.engineer/",
+        checkedAt: "2026-11-04T10:22:06+01:00",
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "NVIDIA GTC 2027",
+        type: "conference",
+        date: "2027-03-15",
+        endDate: "2027-03-18",
+        city: "San Jose",
+        location: "San Jose",
+        url: "https://www.nvidia.com/gtc/",
+        checkedAt: "2026-11-04T10:22:06+01:00",
+        isAi: true,
+      }),
+      expect.objectContaining({
         title: "Chatbot Summit Berlin",
         type: "conference",
         date: "2027-04-07",
@@ -579,6 +610,42 @@ describe("builder public events", () => {
         city: "Berlin",
         location: "The Ritz-Carlton, Potsdamer Platz 3, Berlin",
         url: "https://www.chatbotsummit.com/event-details/chatbot-summit-berlin-april-7-8-2027",
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "Machine Learning Prague 2027",
+        type: "conference",
+        format: "hybrid",
+        date: "2027-05-03",
+        endDate: "2027-05-05",
+        city: "Prague",
+        location: "O2 Universum, Českomoravská 2345/17a, Prague",
+        url: "https://www.mlprague.com/",
+        checkedAt: "2026-11-04T10:22:06+01:00",
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "The AI Summit London",
+        type: "conference",
+        date: "2027-06-09",
+        endDate: "2027-06-10",
+        city: "London",
+        location: "Tobacco Dock, Tobacco Quay, Wapping Lane, London",
+        url: "https://london.theaisummit.com/",
+        checkedAt: "2026-11-04T10:22:06+01:00",
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "Data + AI Summit 2027",
+        type: "conference",
+        format: "hybrid",
+        date: "2027-06-21",
+        endDate: "2027-06-24",
+        city: "San Francisco",
+        location:
+          "Moscone North, West and South, 747 Howard Street, San Francisco",
+        url: "https://www.databricks.com/dataaisummit",
+        checkedAt: "2026-11-04T10:22:06+01:00",
         isAi: true,
       }),
     ]);
@@ -816,7 +883,12 @@ describe("builder public events", () => {
       "data-outpost-2026": "2026-11-05",
       "adopt-ai-2026": "2026-12-04",
       "ai-coding-summit-berlin-2026": "2026-12-04",
+      "ai-engineer-europe-2027": "2027-02-19",
+      "nvidia-gtc-san-jose-2027": "2027-03-18",
       "chatbot-summit-berlin-2027": "2027-04-08",
+      "machine-learning-prague-2027": "2027-05-05",
+      "the-ai-summit-london-2027": "2027-06-10",
+      "data-ai-summit-2027": "2027-06-24",
     });
   });
 
@@ -1482,6 +1554,123 @@ describe("builder public events", () => {
       "utf8",
     );
     expect(docs).toContain("20261026b_five_public_events");
+    for (const slug of slugs) {
+      expect(docs).toContain(slug);
+    }
+  });
+
+  it("registers a follow-up migration that upserts only the five 2027 events", () => {
+    const slugs = [
+      "ai-engineer-europe-2027",
+      "nvidia-gtc-san-jose-2027",
+      "machine-learning-prague-2027",
+      "the-ai-summit-london-2027",
+      "data-ai-summit-2027",
+    ] as const;
+    const metas: Record<(typeof slugs)[number], string> = {
+      "ai-engineer-europe-2027":
+        "AI Engineer Europe 2027. 17–19 Feb 2027. ExCeL, London.",
+      "nvidia-gtc-san-jose-2027": "NVIDIA GTC 2027. 15–18 Mar 2027. San Jose.",
+      "machine-learning-prague-2027":
+        "Machine Learning Prague 2027. 03–05 May 2027. O2 Universum, Českomoravská 2345/17a, Prague.",
+      "the-ai-summit-london-2027":
+        "The AI Summit London. 09–10 Jun 2027. Tobacco Dock, Tobacco Quay, Wapping Lane, London.",
+      "data-ai-summit-2027":
+        "Data + AI Summit 2027. 21–24 Jun 2027. Moscone North, West and South, 747 Howard Street, San Francisco.",
+    };
+    const metasNl: Record<(typeof slugs)[number], string> = {
+      "ai-engineer-europe-2027":
+        "AI Engineer Europe 2027. 17–19 feb 2027. ExCeL, Londen.",
+      "nvidia-gtc-san-jose-2027": "NVIDIA GTC 2027. 15–18 mrt 2027. San Jose.",
+      "machine-learning-prague-2027":
+        "Machine Learning Prague 2027. 03–05 mei 2027. O2 Universum, Českomoravská 2345/17a, Praag.",
+      "the-ai-summit-london-2027":
+        "The AI Summit London. 09–10 jun 2027. Tobacco Dock, Tobacco Quay, Wapping Lane, Londen.",
+      "data-ai-summit-2027":
+        "Data + AI Summit 2027. 21–24 jun 2027. Moscone North, West and South, 747 Howard Street, San Francisco.",
+    };
+
+    for (const slug of slugs) {
+      const event = BUILDER_PUBLIC_EVENTS.find((row) => row.slug === slug);
+      expect(event?.checkedAt).toBe("2026-11-04T10:22:06+01:00");
+      expect(event?.endDate).toBeTruthy();
+      expect(event).not.toHaveProperty("priceCents");
+      const description = `${event!.summary.en} Official page: ${event!.url}`;
+      const meta = eventMetaDescription(
+        {
+          title: event!.title,
+          date: event!.date,
+          endDate: event!.endDate,
+          city: event!.city,
+          location: event!.location,
+          format: event!.format ?? "in-person",
+          description,
+        },
+        "en",
+      );
+      expect(meta).toBe(metas[slug]);
+      expect(meta.length).toBeLessThanOrEqual(160);
+      const descriptionNl = `${event!.summary.nl} Officiële pagina: ${event!.url}`;
+      const metaNl = eventMetaDescription(
+        {
+          title: event!.title,
+          date: event!.date,
+          endDate: event!.endDate,
+          city: event!.city,
+          location: event!.location,
+          format: event!.format ?? "in-person",
+          description: descriptionNl,
+        },
+        "nl",
+      );
+      expect(metaNl).toBe(metasNl[slug]);
+      expect(metaNl.length).toBeLessThanOrEqual(160);
+    }
+
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "nvidia-gtc-san-jose-2027",
+      )?.location,
+    ).toBe("San Jose");
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "machine-learning-prague-2027",
+      )?.summary.en,
+    ).toContain("virtual conference €210 + VAT");
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "machine-learning-prague-2027",
+      )?.summary.en,
+    ).not.toMatch(/attendees|800\+/i);
+
+    const migration = readFileSync(FIVE_2027_MIGRATION, "utf8");
+    const index = readFileSync(MIGRATION_INDEX, "utf8");
+    const prior = index.indexOf('name: "20261104b_startup_claim"');
+    const followUp = index.indexOf('name: "20261104c_five_public_events"');
+    expect(prior).toBeGreaterThan(-1);
+    expect(followUp).toBeGreaterThan(prior);
+    expect(migration).toContain("upsertBuilderEvent");
+    expect(migration).toContain("BUILDER_PUBLIC_EVENTS");
+    expect(migration).toContain("BUILDER_PUBLIC_EVENTS_CHECKED_AT");
+    expect(migration).toContain("last_verified_at");
+    expect(migration).toContain("EVENT_COORDINATE_BACKFILL");
+    expect(migration).toContain(
+      'AND ("latitude" IS NULL OR "longitude" IS NULL)',
+    );
+    expect(migration).toContain("discovery_source");
+    expect(migration).not.toMatch(/\b(ALTER|CREATE|DROP)\b/);
+    for (const slug of slugs) {
+      expect(migration).toContain(slug);
+    }
+    expect(migration).toContain("virtual conference €210 + VAT");
+    expect(migration).not.toMatch(/max_attendees|image_id|rsvp/i);
+
+    const docs = readFileSync(
+      join(dir, "../../../docs/ops/curated-public-events.md"),
+      "utf8",
+    );
+    expect(docs).toContain("20261104c_five_public_events");
+    expect(docs).toContain("May 10–May 12 with no year");
     for (const slug of slugs) {
       expect(docs).toContain(slug);
     }

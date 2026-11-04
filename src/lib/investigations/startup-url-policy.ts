@@ -21,12 +21,14 @@ const STARTUP_SLUG_SHAPE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /**
  * Slugs whose `/startups/<slug>` route is not that company's profile.
- * `insights` and `jobs` are reserved. `ai-tools-list` is the AI tools
+ * `insights`, `jobs`, `claim`, and `submit` are reserved. `ai-tools-list` is the AI tools
  * directory, which shares its slug with the AIAI.Tools row.
  */
 const STARTUPS_PATH_NOT_PROFILE = new Set([
   "insights",
   "jobs",
+  "claim",
+  "submit",
   "ai-tools-list",
 ]);
 

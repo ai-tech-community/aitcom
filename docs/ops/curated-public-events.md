@@ -141,6 +141,27 @@ update production `chatbot-summit-2026`. The summary says from €495
 and does not name ticket tiers. The same migration writes a Nominatim
 point for each venue only when latitude or longitude is still null.
 `is_ai` is true on these five rows.
+`20261104c_five_public_events` upserts only
+`ai-engineer-europe-2027`, `nvidia-gtc-san-jose-2027`,
+`machine-learning-prague-2027`, `the-ai-summit-london-2027`, and
+`data-ai-summit-2027` from that same seed. Each row keeps the official
+page on `source_url` and `2026-11-04T10:22:06+01:00` (10:22:06
+Europe/Amsterdam) on `last_verified_at`. It does not update the 2026
+rows `ai-engineer-europe-2026`, `nvidia-gtc-berlin-2026`,
+`the-ai-summit-london-2026`, or `data-ai-summit-2026`.
+`nvidia-gtc-san-jose-2027` stores the city San Jose and no venue: the
+GTC page names none. `the-ai-summit-london-2027` stores Tobacco Dock,
+Tobacco Quay, Wapping Lane, because that page names the hall.
+`data-ai-summit-2027` stores Moscone North, West and South, 747 Howard
+Street, and is hybrid (San Francisco + virtual).
+`machine-learning-prague-2027` is hybrid (in person and online) at
+O2 Universum and keeps the lowest listed ticket, virtual conference
+€210 + VAT, in the summary only. `ai-engineer-europe-2027` is in person
+at ExCeL. ODSC AI East is not seeded: https://odsc.ai/east/ shows
+May 10–May 12 with no year, and its speaker lists are still labeled
+2026, so the dates are not a confirmed 2027 span. The same migration
+writes a Nominatim point for each place only when latitude or longitude
+is still null. `is_ai` is true on these five rows.
 `techex-amsterdam-hackathon-2026` keeps the start date 16 Oct 2026 and stores
 no end date: the official page's JSON-LD ends 19 Oct and its copy says 20 Oct.
 Held rows (The New Agentic Economy

@@ -16,6 +16,12 @@ import type { EventFormat, EventType } from "@/lib/event-metadata";
 
 export const BUILDER_PUBLIC_EVENTS_SEEDED_AT = "2026-09-25T12:00:00.000Z";
 
+/**
+ * 10:22:06 on 4 Nov 2026, Europe/Amsterdam. The five 2027 rows record this
+ * on `last_verified_at`. Older rows keep the original seed time.
+ */
+export const BUILDER_PUBLIC_EVENTS_CHECKED_AT = "2026-11-04T10:22:06+01:00";
+
 export type BuilderPublicEvent = {
   slug: string;
   title: string;
@@ -34,6 +40,11 @@ export type BuilderPublicEvent = {
   location: string;
   timezone: string;
   url: string;
+  /**
+   * When the official page was read, ISO-8601 with a Europe/Amsterdam
+   * offset. Written to `last_verified_at`. Omitted on older rows.
+   */
+  checkedAt?: string;
   /**
    * Card line: what, when, and where. The public meta description is built
    * separately as "<name>. <date range>. <venue, city>."
@@ -828,6 +839,42 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     },
   },
   {
+    slug: "ai-engineer-europe-2027",
+    title: "AI Engineer Europe 2027",
+    type: "conference",
+    date: "2027-02-17",
+    endDate: "2027-02-19",
+    city: "London",
+    country: "United Kingdom",
+    location: "ExCeL, London",
+    timezone: "Europe/London",
+    url: "https://www.ai.engineer/",
+    checkedAt: BUILDER_PUBLIC_EVENTS_CHECKED_AT,
+    isAi: true,
+    summary: {
+      en: "AI engineering conference at ExCeL, London, 17–19 Feb 2027.",
+      nl: "AI-engineeringconferentie in ExCeL, Londen, 17–19 feb 2027.",
+    },
+  },
+  {
+    slug: "nvidia-gtc-san-jose-2027",
+    title: "NVIDIA GTC 2027",
+    type: "conference",
+    date: "2027-03-15",
+    endDate: "2027-03-18",
+    city: "San Jose",
+    country: "United States",
+    location: "San Jose",
+    timezone: "America/Los_Angeles",
+    url: "https://www.nvidia.com/gtc/",
+    checkedAt: BUILDER_PUBLIC_EVENTS_CHECKED_AT,
+    isAi: true,
+    summary: {
+      en: "GTC AI conference in San Jose, 15–18 Mar 2027.",
+      nl: "GTC AI-conferentie in San Jose, 15–18 mrt 2027.",
+    },
+  },
+  {
     slug: "chatbot-summit-berlin-2027",
     title: "Chatbot Summit Berlin",
     type: "conference",
@@ -844,6 +891,62 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     summary: {
       en: "Summit at The Ritz-Carlton, Potsdamer Platz 3, Berlin, 7–8 Apr 2027, 14:00–18:00; from €495.",
       nl: "Summit in The Ritz-Carlton, Potsdamer Platz 3, Berlijn, 7–8 apr 2027, 14:00–18:00; vanaf €495.",
+    },
+  },
+  {
+    slug: "machine-learning-prague-2027",
+    title: "Machine Learning Prague 2027",
+    type: "conference",
+    format: "hybrid",
+    date: "2027-05-03",
+    endDate: "2027-05-05",
+    city: "Prague",
+    country: "Czech Republic",
+    location: "O2 Universum, Českomoravská 2345/17a, Prague",
+    timezone: "Europe/Prague",
+    url: "https://www.mlprague.com/",
+    checkedAt: BUILDER_PUBLIC_EVENTS_CHECKED_AT,
+    isAi: true,
+    summary: {
+      en: "Machine learning conference at O2 Universum, Prague, 3–5 May 2027; virtual conference €210 + VAT.",
+      nl: "Machinelearningconferentie in O2 Universum, Praag, 3–5 mei 2027; virtuele conferentie €210 + btw.",
+    },
+  },
+  {
+    slug: "the-ai-summit-london-2027",
+    title: "The AI Summit London",
+    type: "conference",
+    date: "2027-06-09",
+    endDate: "2027-06-10",
+    city: "London",
+    country: "United Kingdom",
+    location: "Tobacco Dock, Tobacco Quay, Wapping Lane, London",
+    timezone: "Europe/London",
+    url: "https://london.theaisummit.com/",
+    checkedAt: BUILDER_PUBLIC_EVENTS_CHECKED_AT,
+    isAi: true,
+    summary: {
+      en: "AI summit at Tobacco Dock, London, 9–10 Jun 2027.",
+      nl: "AI-summit in Tobacco Dock, Londen, 9–10 jun 2027.",
+    },
+  },
+  {
+    slug: "data-ai-summit-2027",
+    title: "Data + AI Summit 2027",
+    type: "conference",
+    format: "hybrid",
+    date: "2027-06-21",
+    endDate: "2027-06-24",
+    city: "San Francisco",
+    country: "United States",
+    location: "Moscone North, West and South, 747 Howard Street, San Francisco",
+    timezone: "America/Los_Angeles",
+    url: "https://www.databricks.com/dataaisummit",
+    checkedAt: BUILDER_PUBLIC_EVENTS_CHECKED_AT,
+    isAi: true,
+    summary: {
+      en: "Data and AI conference at Moscone Center, San Francisco, 21–24 Jun 2027.",
+      nl: "Data- en AI-conferentie in het Moscone Center, San Francisco, 21–24 jun 2027.",
     },
   },
 ] as const;

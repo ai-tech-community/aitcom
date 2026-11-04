@@ -1,3 +1,4 @@
+import * as migration_20261104c_five_public_events from "./20261104c_five_public_events";
 import * as migration_20261104b_startup_claim from "./20261104b_startup_claim";
 import * as migration_20261104a_startup_profile_flags from "./20261104a_startup_profile_flags";
 import * as migration_20261103a_datacenter_facility_planned_capacity from "./20261103a_datacenter_facility_planned_capacity";
@@ -1170,5 +1171,10 @@ export const migrations = [
     up: migration_20261104b_startup_claim.up,
     down: migration_20261104b_startup_claim.down,
     name: "20261104b_startup_claim",
+  },
+  {
+    up: migration_20261104c_five_public_events.up,
+    down: migration_20261104c_five_public_events.down,
+    name: "20261104c_five_public_events",
   },
 ];
