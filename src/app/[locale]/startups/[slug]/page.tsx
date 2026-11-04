@@ -5,13 +5,18 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { StartupsProfilePage } from "@/components/investigations/startups-profile";
 import { startupProfileRobots } from "@/lib/investigations/startup-profile-index";
+import { isStartupCanonicalHoldout } from "@/lib/investigations/startup-url-policy";
 import {
   buildStartupProfilePath,
   parseStartupSlug,
   startupProfileMetaDescription,
   type StartupLocale,
 } from "@/lib/investigations/startups";
-import { localeAlternates, buildOgMeta } from "@/lib/metadata";
+import {
+  buildOgMeta,
+  localeAlternates,
+  localeLanguageAlternates,
+} from "@/lib/metadata";
 import {
   shouldPromoteJoin,
   toHubAuthUser,
@@ -42,6 +47,11 @@ export async function generateMetadata({
   const locale = await getLocale();
   const copyLocale: StartupLocale = resolveLocale(locale);
   const description = startupProfileMetaDescription(card, copyLocale);
+  const profilePath = buildStartupProfilePath(card.slug);
+  // Navier AI publishes no canonical while Search Console compares its two URLs.
+  const alternates = isStartupCanonicalHoldout(card.slug)
+    ? await localeLanguageAlternates(profilePath)
+    : await localeAlternates(profilePath);
   return {
     title: card.name,
     ...(description ? { description } : {}),
@@ -49,7 +59,7 @@ export async function generateMetadata({
     ...(description
       ? buildOgMeta(card.name, description, "Investigation")
       : {}),
-    alternates: await localeAlternates(buildStartupProfilePath(card.slug)),
+    alternates,
   };
 }
 

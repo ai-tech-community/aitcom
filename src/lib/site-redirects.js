@@ -12,7 +12,12 @@
  * this list. Without that, Next's built-in slash strip (308) runs first
  * and `/en/tools/` never reaches the 301.
  *
- * The investigations/startups rules stay ahead of any broader pattern so
+ * Startup URLs that are the same page (the directory, Insights, and Jobs)
+ * use HTTP 301. Company profiles are not listed here. A profile that is
+ * the same company 301s from the node route. A slug whose `/startups`
+ * page is a different entity is rendered with a canonical instead.
+ *
+ * The jobs rules stay ahead of the directory rule so
  * `/en/investigations/startups/jobs` still lands on `/en/jobs`.
  *
  * `/[locale]/startups/ai-tools-list` is one page for every configured
@@ -22,12 +27,12 @@ export const siteRedirects = [
   {
     source: "/:locale(en|nl|fr)/investigations/startups/jobs",
     destination: "/:locale/jobs",
-    permanent: true,
+    statusCode: 301,
   },
   {
     source: "/:locale(en|nl|fr)/investigations/startups/jobs/:path*",
     destination: "/:locale/jobs/:path*",
-    permanent: true,
+    statusCode: 301,
   },
   {
     source: "/:locale(en|nl|fr)/startups/jobs",
@@ -47,12 +52,12 @@ export const siteRedirects = [
   {
     source: "/:locale(en|nl|fr)/investigations/startups",
     destination: "/:locale/startups",
-    permanent: true,
+    statusCode: 301,
   },
   {
-    source: "/:locale(en|nl|fr)/investigations/startups/:path*",
-    destination: "/:locale/startups/:path*",
-    permanent: true,
+    source: "/:locale(en|nl|fr)/investigations/startups/insights",
+    destination: "/:locale/startups/insights",
+    statusCode: 301,
   },
   {
     source: "/:locale(en|nl|fr)/benchmark",

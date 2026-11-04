@@ -90,21 +90,28 @@ function resolveConfiguredRedirect(pathname: string) {
 const localeGroup = routing.locales.join("|");
 
 describe("retired section redirects", () => {
-  it("uses HTTP 308 for every permanent rule", () => {
+  it("uses HTTP 308 for permanent rules and 301 where a rule sets statusCode", () => {
     expect(getRedirectStatus({ permanent: true })).toBe(308);
     expect(PERMANENT_REDIRECT_STATUS).toBe(308);
-    const permanentRules = siteRedirects.filter((rule) => "permanent" in rule);
-    expect(permanentRules.length).toBeGreaterThan(0);
-    for (const rule of permanentRules) {
-      expect(rule.permanent).toBe(true);
-      expect(getRedirectStatus(rule)).toBe(308);
-      expect(resolveRedirect(samplePath(rule))?.status).toBe(308);
+    expect(getRedirectStatus({ statusCode: 301 })).toBe(301);
+    for (const rule of siteRedirects) {
+      const status = getRedirectStatus(rule);
+      if ("statusCode" in rule && rule.statusCode === 301) {
+        expect("permanent" in rule).toBe(false);
+        expect(status).toBe(301);
+      } else {
+        expect(rule.permanent).toBe(true);
+        expect(status).toBe(308);
+      }
+      expect(resolveRedirect(samplePath(rule))?.status).toBe(status);
     }
     expect(getRedirectStatus(trailingSlashRedirect)).toBe(308);
   });
 
   it("301s /tools and /tools/ to the AI tools directory in every locale", () => {
-    const toolsRules = siteRedirects.filter((rule) => "statusCode" in rule);
+    const toolsRules = siteRedirects.filter((rule) =>
+      rule.source.endsWith("/tools"),
+    );
     expect(toolsRules).toEqual([
       {
         source: `/:locale(${localeGroup})/tools`,
@@ -197,27 +204,32 @@ describe("retired section redirects", () => {
     expect(resolveRedirect("/en/events/impact-night")).toBeNull();
   });
 
-  it("keeps the investigations/startups redirects, including jobs", () => {
+  it("301s the startup directory, Insights, and Jobs when they are the same page", () => {
     expect(resolveRedirect("/en/investigations/startups")).toEqual({
       destination: "/en/startups",
-      status: 308,
-    });
-    expect(resolveRedirect("/nl/investigations/startups/acme")).toEqual({
-      destination: "/nl/startups/acme",
-      status: 308,
+      status: 301,
     });
     expect(resolveRedirect("/en/investigations/startups/insights")).toEqual({
       destination: "/en/startups/insights",
-      status: 308,
+      status: 301,
+    });
+    expect(resolveRedirect("/fr/investigations/startups/insights")).toEqual({
+      destination: "/fr/startups/insights",
+      status: 301,
     });
     expect(resolveRedirect("/en/investigations/startups/jobs")).toEqual({
       destination: "/en/jobs",
-      status: 308,
+      status: 301,
     });
     expect(resolveRedirect("/nl/investigations/startups/jobs/role-1")).toEqual({
       destination: "/nl/jobs/role-1",
-      status: 308,
+      status: 301,
     });
+    expect(resolveRedirect("/nl/investigations/startups/acme")).toBeNull();
+    expect(resolveRedirect("/en/investigations/startups/navier-ai")).toBeNull();
+    expect(
+      resolveRedirect("/en/investigations/startups/ai-tools-list"),
+    ).toBeNull();
     expect(resolveRedirect("/en/startups/jobs")).toEqual({
       destination: "/en/jobs",
       status: 308,
