@@ -67,6 +67,8 @@ function memoryRepo(seed: StoredFacility[] = []) {
         lat: input.lat,
         lng: input.lng,
         capacityMw: input.capacityMw,
+        capacityMwPlanned: input.capacityMwPlanned,
+        aiDedicated: input.aiDedicated,
         status: input.status,
         sourceUrl: input.sourceUrl,
         checkedAt: input.checkedAt,
@@ -165,6 +167,8 @@ describe("facility writes", () => {
         lat: 39,
         lng: -77,
         capacityMw: 10,
+        capacityMwPlanned: null,
+        aiDedicated: false,
         status: "operational",
         sourceUrl: SOURCE,
         checkedAt: new Date(CHECKED),
@@ -189,6 +193,113 @@ describe("facility writes", () => {
     });
     expect(rows[0]?.operatorKey).toBe("aws");
     expect(rows[0]?.capacityMw).toBe(12);
+  });
+
+  it("stores planned megawatts and the AI flag apart from operating capacity", async () => {
+    const { repo, rows } = memoryRepo();
+    const saved = await publishFacilityWithRepo(
+      facility({
+        capacity_mw: 250,
+        capacity_mw_planned: 1000,
+        ai_dedicated: true,
+      }),
+      repo,
+      NOW,
+    );
+    expect(saved.ok).toBe(true);
+    expect(rows[0]).toMatchObject({
+      capacityMw: 250,
+      capacityMwPlanned: 1000,
+      aiDedicated: true,
+    });
+    const fromEditor = await publishFacilityWithRepo(
+      facility({
+        name: "Colossus",
+        capacityMw: 250,
+        capacityMwPlanned: 1000,
+        aiDedicated: false,
+      }),
+      repo,
+      NOW,
+    );
+    expect(fromEditor.ok).toBe(true);
+    expect(rows[1]).toMatchObject({
+      capacityMw: 250,
+      capacityMwPlanned: 1000,
+      aiDedicated: false,
+    });
+  });
+
+  it("defaults a new facility to no planned megawatts and aiDedicated false", async () => {
+    const { repo, rows } = memoryRepo();
+    const saved = await publishFacilityWithRepo(facility(), repo, NOW);
+    expect(saved.ok).toBe(true);
+    expect(rows[0]).toMatchObject({
+      capacityMw: 300,
+      capacityMwPlanned: null,
+      aiDedicated: false,
+    });
+  });
+
+  it("rejects a negative planned capacity and leaves operating capacity unchanged", async () => {
+    const { repo, rows } = memoryRepo();
+    const rejected = await publishFacilityWithRepo(
+      facility({ capacity_mw: 250, capacity_mw_planned: -1 }),
+      repo,
+      NOW,
+    );
+    expect(rejected).toEqual({
+      ok: false,
+      error: "capacity_mw_planned must be a nonnegative number or null.",
+    });
+    expect(rows).toHaveLength(0);
+    const cleared = await publishFacilityWithRepo(
+      facility({ capacity_mw_planned: 900, capacity_mw: null }),
+      repo,
+      NOW,
+    );
+    expect(cleared.ok).toBe(true);
+    expect(rows[0]).toMatchObject({
+      capacityMw: null,
+      capacityMwPlanned: 900,
+      aiDedicated: false,
+    });
+  });
+
+  it("keeps stored planned capacity and the AI flag when a later save omits them", async () => {
+    const { repo, rows } = memoryRepo([
+      {
+        id: "existing",
+        slug: "fairwater",
+        name: "Fairwater",
+        operatorKey: "microsoft",
+        operatorName: "Microsoft",
+        country: "US",
+        city: "Mount Pleasant",
+        lat: 42.7,
+        lng: -87.9,
+        capacityMw: 250,
+        capacityMwPlanned: 1000,
+        aiDedicated: true,
+        status: "operational",
+        sourceUrl: SOURCE,
+        checkedAt: new Date(CHECKED),
+        updatedAt: NOW,
+        sources: [{ url: SOURCE }],
+        permits: [],
+      },
+    ]);
+    const saved = await publishFacilityWithRepo(
+      facility({ capacity_mw: 260 }),
+      repo,
+      NOW,
+    );
+    expect(saved.ok).toBe(true);
+    expect(rows[0]).toMatchObject({
+      capacityMw: 260,
+      capacityMwPlanned: 1000,
+      aiDedicated: true,
+    });
   });
 });
 

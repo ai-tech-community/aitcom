@@ -19,8 +19,10 @@ export const maxDuration = 60;
  *
  * Match an existing facility with `slug`, or with the same name and operator.
  * The public slug is kept. `source_url` must be https. `checked_at` is required.
- * A new facility returns 201; an update returns 200. `url` is the stable
- * English investigations URL.
+ * `capacity_mw` is operating megawatts. `capacity_mw_planned` is optional planned
+ * megawatts and is never written into `capacity_mw`. `ai_dedicated` is optional
+ * and defaults to false. A new facility returns 201; an update returns 200.
+ * `url` is the stable English investigations URL.
  */
 export async function POST(request: Request) {
   if (!newsBotAuthorized(request)) {

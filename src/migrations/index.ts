@@ -1,3 +1,4 @@
+import * as migration_20261103a_datacenter_facility_planned_capacity from "./20261103a_datacenter_facility_planned_capacity";
 import * as migration_20261101a_referral_email_invites from "./20261101a_referral_email_invites";
 import * as migration_20261023a_six_public_events from "./20261023a_six_public_events";
 import * as migration_20261026a_event_registration_source from "./20261026a_event_registration_source";
@@ -1152,5 +1153,10 @@ export const migrations = [
     up: migration_20261101a_referral_email_invites.up,
     down: migration_20261101a_referral_email_invites.down,
     name: "20261101a_referral_email_invites",
+  },
+  {
+    up: migration_20261103a_datacenter_facility_planned_capacity.up,
+    down: migration_20261103a_datacenter_facility_planned_capacity.down,
+    name: "20261103a_datacenter_facility_planned_capacity",
   },
 ];
