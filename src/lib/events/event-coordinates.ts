@@ -10,7 +10,7 @@
  * production, so `20261019a` writes the five November points with the same
  * null guard. `20261021a` writes the next ten the same way. `20261022a`
  * writes the next seven the same way. `20261023a` writes the next six and `20261026b` the next five
- * the same way. A fresh database
+ * the same way. `20261104c` writes the five 2027 points the same way. A fresh database
  * inserts those rows in `20260925a`, before `20261013b`, and the later write
  * leaves the stored points alone.
  */
@@ -294,6 +294,31 @@ export const EVENT_COORDINATE_BACKFILL: readonly EventCoordinate[] = [
     slug: "chatbot-summit-berlin-2027",
     latitude: 52.5103653,
     longitude: 13.3753306,
+  },
+  {
+    slug: "ai-engineer-europe-2027",
+    latitude: 51.5081127,
+    longitude: 0.0297071,
+  },
+  {
+    slug: "nvidia-gtc-san-jose-2027",
+    latitude: 37.3361663,
+    longitude: -121.890591,
+  },
+  {
+    slug: "machine-learning-prague-2027",
+    latitude: 50.1038407,
+    longitude: 14.4933559,
+  },
+  {
+    slug: "the-ai-summit-london-2027",
+    latitude: 51.5083074,
+    longitude: -0.0594729,
+  },
+  {
+    slug: "data-ai-summit-2027",
+    latitude: 37.7839013,
+    longitude: -122.4012097,
   },
 ];
 

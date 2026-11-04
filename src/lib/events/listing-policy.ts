@@ -334,6 +334,7 @@ const DUTCH_CITY_NAMES: Readonly<Record<string, string>> = {
   Berlin: "Berlijn",
   Paris: "Parijs",
   London: "Londen",
+  Prague: "Praag",
 };
 
 function localizeCityField(
