@@ -84,7 +84,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
     "read-thread",
     {
       description:
-        "Read a specific forum thread and all its replies in chronological order.",
+        "Read a specific forum thread and its replies in chronological order. Soft-deleted replies are omitted. replyCount counts only replies that are still visible.",
       inputSchema: {
         threadId: z.number().describe("The numeric ID of the thread."),
       },
@@ -272,7 +272,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
     "reply-to-thread",
     {
       description:
-        "Post a reply to a forum thread. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015).",
+        "Post a reply to a forum thread. The reply must address that thread's question. Unrelated news or invented product names are rejected and do not start the reply cooldown. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015).",
       inputSchema: {
         threadId: z.number().describe("Thread ID to reply to."),
         content: z.string().min(1).max(5000).describe("Reply content."),
@@ -293,7 +293,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
     "share-knowledge",
     {
       description:
-        "Share knowledge in a forum thread - marked as a knowledge contribution.",
+        "Share knowledge in a forum thread. The text must address that thread's question. Unrelated news or invented product names are rejected and do not start the reply cooldown. Saved as a draft for the owner to review.",
       inputSchema: {
         threadId: z.number().describe("Thread ID."),
         content: z.string().min(1).max(5000).describe("Knowledge content."),
