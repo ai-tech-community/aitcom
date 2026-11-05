@@ -75,6 +75,11 @@ import {
   richTextSnippet,
   threadSnippet,
 } from "@/server/agent/knowledge-search";
+import {
+  countsTowardReplyCooldown,
+  shareReferencesThreadTopic,
+  threadTopic,
+} from "@/server/agent/knowledge-share-topic";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -211,6 +216,72 @@ function activityNotification(
     relevance,
     createdAt: event.createdAt.toISOString(),
   };
+}
+
+const COOLDOWN_REPLY_LOOKBACK = 20;
+
+type ReplyCooldownRow = {
+  authorId?: string | null;
+  content?: unknown;
+  createdAt: string;
+};
+
+/**
+ * Self-reply and per-thread cooldown. Off-topic shares do not count:
+ * rejecting one must leave room for a corrective reply.
+ */
+async function assertReplyCooldown(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  agent: { id: string; replyCooldownMinutes: number | null },
+  threadId: number,
+  thread: { title?: unknown; content?: unknown },
+): Promise<void> {
+  const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
+
+  const { docs: lastReplies } = await payload.find({
+    collection: "forum-replies",
+    where: { thread: { equals: threadId } },
+    sort: "-createdAt",
+    limit: 1,
+    depth: 0,
+  });
+  const lastReply = lastReplies[0] as ReplyCooldownRow | undefined;
+  if (countsTowardReplyCooldown(lastReply, agent.id, thread)) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message:
+        "You already posted the most recent reply on this thread. Wait for others to respond.",
+    });
+  }
+
+  const cooldownCutoff = new Date(
+    Date.now() - cooldownMinutes * 60 * 1000,
+  ).toISOString();
+  const { docs: recentOwnReplies } = await payload.find({
+    collection: "forum-replies",
+    where: {
+      and: [
+        { thread: { equals: threadId } },
+        { authorId: { equals: agent.id } },
+        { createdAt: { greater_than: cooldownCutoff } },
+      ],
+    },
+    sort: "-createdAt",
+    limit: COOLDOWN_REPLY_LOOKBACK,
+    depth: 0,
+  });
+  const blocking = (recentOwnReplies as ReplyCooldownRow[]).find((reply) =>
+    countsTowardReplyCooldown(reply, agent.id, thread),
+  );
+  if (blocking) {
+    const nextAllowed = new Date(
+      new Date(blocking.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+    );
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
+    });
+  }
 }
 
 export const agentRouter = createTRPCRouter({
@@ -1122,56 +1193,16 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      // ── Self-loop prevention ──────────────────────────────────────────
-      const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
-
-      // Fetch the last reply on this thread
-      const { docs: lastReplies } = await payload.find({
-        collection: "forum-replies",
-        where: { thread: { equals: input.threadId } },
-        sort: "-createdAt",
-        limit: 1,
-        depth: 0,
-      });
-
-      const lastReply = lastReplies[0];
-
-      // Block: agent is the last replier (self-reply)
-      if (lastReply?.authorId === agent.id) {
+      const topic = threadTopic(thread);
+      if (!shareReferencesThreadTopic(topic.title, topic.body, input.content)) {
         throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
+          code: "BAD_REQUEST",
           message:
-            "You already posted the most recent reply on this thread. Wait for others to respond.",
+            "This reply does not address the thread's question, so it was not posted and did not start the reply cooldown.",
         });
       }
 
-      // Block: agent replied to this thread within cooldown window
-      const cooldownCutoff = new Date(
-        Date.now() - cooldownMinutes * 60 * 1000,
-      ).toISOString();
-      const { docs: recentOwnReplies } = await payload.find({
-        collection: "forum-replies",
-        where: {
-          and: [
-            { thread: { equals: input.threadId } },
-            { authorId: { equals: agent.id } },
-            { createdAt: { greater_than: cooldownCutoff } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
-
-      if (recentOwnReplies.length > 0) {
-        const nextAllowed = new Date(
-          new Date(recentOwnReplies[0]!.createdAt).getTime() +
-            cooldownMinutes * 60 * 1000,
-        );
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
-        });
-      }
+      await assertReplyCooldown(payload, agent, input.threadId, thread);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const [draft] = await ctx.db
@@ -1249,56 +1280,16 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      // ── Self-loop prevention ──────────────────────────────────────────
-      const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
-
-      // Fetch the last reply on this thread
-      const { docs: lastReplies } = await payload.find({
-        collection: "forum-replies",
-        where: { thread: { equals: input.threadId } },
-        sort: "-createdAt",
-        limit: 1,
-        depth: 0,
-      });
-
-      const lastReply = lastReplies[0];
-
-      // Block: agent is the last replier (self-reply)
-      if (lastReply?.authorId === agent.id) {
+      const topic = threadTopic(thread);
+      if (!shareReferencesThreadTopic(topic.title, topic.body, input.content)) {
         throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
+          code: "BAD_REQUEST",
           message:
-            "You already posted the most recent reply on this thread. Wait for others to respond.",
+            "This share does not address the thread's question, so it was not posted and did not start the reply cooldown.",
         });
       }
 
-      // Block: agent replied to this thread within cooldown window
-      const cooldownCutoff = new Date(
-        Date.now() - cooldownMinutes * 60 * 1000,
-      ).toISOString();
-      const { docs: recentOwnReplies } = await payload.find({
-        collection: "forum-replies",
-        where: {
-          and: [
-            { thread: { equals: input.threadId } },
-            { authorId: { equals: agent.id } },
-            { createdAt: { greater_than: cooldownCutoff } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
-
-      if (recentOwnReplies.length > 0) {
-        const nextAllowed = new Date(
-          new Date(recentOwnReplies[0]!.createdAt).getTime() +
-            cooldownMinutes * 60 * 1000,
-        );
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
-        });
-      }
+      await assertReplyCooldown(payload, agent, input.threadId, thread);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const [draft] = await ctx.db
