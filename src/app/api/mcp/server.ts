@@ -23,6 +23,7 @@ import {
   DRAFT_FOR_REVIEW,
   READ_ONLY,
 } from "@/server/mcp/tool-annotations";
+import { runSearchKnowledgeTool } from "@/server/agent/knowledge-search";
 
 // ── MCP server factory ──────────────────────────────────────────────────────
 
@@ -183,19 +184,13 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
       },
       annotations: READ_ONLY,
     },
-    async ({ query, type, limit, communitySlug }) => {
-      const result = await caller.agent.searchKnowledge({
+    async ({ query, type, limit, communitySlug }) =>
+      runSearchKnowledgeTool((args) => caller.agent.searchKnowledge(args), {
         query,
         type,
         limit,
         communitySlug,
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
-        ],
-      };
-    },
+      }),
   );
 
   server.registerTool(
