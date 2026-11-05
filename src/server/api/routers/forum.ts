@@ -27,6 +27,10 @@ import { IDEA_CATEGORIES } from "@/lib/idea-categories";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
 import { DELETED_REPLY_CONTENT } from "@/server/communities/forum-replies";
 import { syncForumThreadCounters } from "@/server/communities/forum-thread-counters";
+import {
+  liveForumRepliesWhere,
+  liveReplyCounts,
+} from "@/server/communities/live-forum-replies";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import {
   findReadableCommunityBySlug,
@@ -413,9 +417,16 @@ export const forumRouter = createTRPCRouter({
         page: input.page,
         depth: 0,
       });
+      const replyCounts = await liveReplyCounts(
+        payload,
+        result.docs.map((thread) => thread.id),
+      );
 
       return {
-        threads: result.docs,
+        threads: result.docs.map((thread) => ({
+          ...thread,
+          replyCount: replyCounts.get(thread.id) ?? 0,
+        })),
         totalPages: result.totalPages,
         totalDocs: result.totalDocs,
         page: result.page,
@@ -446,7 +457,8 @@ export const forumRouter = createTRPCRouter({
       ) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
       }
-      return thread;
+      const replyCounts = await liveReplyCounts(payload, [thread.id]);
+      return { ...thread, replyCount: replyCounts.get(thread.id) ?? 0 };
     }),
 
   incrementViewCount: publicProcedure
@@ -643,7 +655,7 @@ export const forumRouter = createTRPCRouter({
 
       const { docs } = await payload.find({
         collection: "forum-replies",
-        where: { thread: { equals: input.threadId } },
+        where: liveForumRepliesWhere(input.threadId),
         sort: "createdAt",
         limit: 200,
         depth: 0,

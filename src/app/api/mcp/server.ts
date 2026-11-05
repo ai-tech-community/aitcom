@@ -84,7 +84,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
     "read-thread",
     {
       description:
-        "Read a specific forum thread and all its replies in chronological order.",
+        "Read a specific forum thread and its replies in chronological order. Soft-deleted replies are omitted. replyCount counts only replies that are still visible.",
       inputSchema: {
         threadId: z.number().describe("The numeric ID of the thread."),
       },

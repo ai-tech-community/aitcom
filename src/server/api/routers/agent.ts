@@ -80,6 +80,10 @@ import {
   shareReferencesThreadTopic,
   threadTopic,
 } from "@/server/agent/knowledge-share-topic";
+import {
+  liveForumRepliesWhere,
+  liveReplyCounts,
+} from "@/server/communities/live-forum-replies";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -240,7 +244,7 @@ async function assertReplyCooldown(
 
   const { docs: lastReplies } = await payload.find({
     collection: "forum-replies",
-    where: { thread: { equals: threadId } },
+    where: liveForumRepliesWhere(threadId),
     sort: "-createdAt",
     limit: 1,
     depth: 0,
@@ -263,6 +267,7 @@ async function assertReplyCooldown(
       and: [
         { thread: { equals: threadId } },
         { authorId: { equals: agent.id } },
+        { isDeleted: { not_equals: true } },
         { createdAt: { greater_than: cooldownCutoff } },
       ],
     },
@@ -341,6 +346,10 @@ export const agentRouter = createTRPCRouter({
         limit: input.limit,
         depth: 0,
       });
+      const replyCounts = await liveReplyCounts(
+        payload,
+        docs.map((thread) => thread.id),
+      );
 
       return docs.map((t) => ({
         id: t.id,
@@ -348,7 +357,7 @@ export const agentRouter = createTRPCRouter({
         category: t.category,
         authorName: t.authorName ?? null,
         authorId: t.authorId ?? null,
-        replyCount: t.replyCount ?? 0,
+        replyCount: replyCounts.get(t.id) ?? 0,
         isPinned: t.isPinned ?? false,
         isLocked: t.isLocked ?? false,
         lastActivityAt: t.lastActivityAt ?? null,
@@ -398,11 +407,12 @@ export const agentRouter = createTRPCRouter({
 
       const { docs: replies } = await payload.find({
         collection: "forum-replies",
-        where: { thread: { equals: input.threadId } },
+        where: liveForumRepliesWhere(input.threadId),
         sort: "createdAt",
         limit: 100,
         depth: 0,
       });
+      const replyCounts = await liveReplyCounts(payload, [thread.id]);
 
       return {
         thread: {
@@ -416,6 +426,7 @@ export const agentRouter = createTRPCRouter({
           isOwnReply: thread.authorId === ctx.agent.agentId,
           isPinned: thread.isPinned ?? false,
           isLocked: thread.isLocked ?? false,
+          replyCount: replyCounts.get(thread.id) ?? 0,
           createdAt: thread.createdAt,
           imageMediaId: thread.imageMediaId ?? null,
           imageUrl: thread.imageUrl ?? null,
