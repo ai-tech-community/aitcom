@@ -36,6 +36,10 @@ import {
   REFRESH_2026_10_DATACENTERS,
   REFRESH_2026_10_BRANDS,
 } from "./seed-data/refresh-2026-10";
+import {
+  REFRESH_2026_11_DATACENTERS,
+  REFRESH_2026_11_BRANDS,
+} from "./seed-data/refresh-2026-11";
 
 function dedupeBrands(...lists: SeedBrand[][]): SeedBrand[] {
   const seen = new Map<string, SeedBrand>();
@@ -74,6 +78,7 @@ const ALL_BRANDS = dedupeBrands(
   AI_NATIVE_BRANDS,
   REFRESH_2026_07_BRANDS,
   REFRESH_2026_10_BRANDS,
+  REFRESH_2026_11_BRANDS,
 );
 
 // The refresh batch goes last so that if it ever restates a site already held in
@@ -87,6 +92,7 @@ const ALL_DATACENTERS = dedupeDatacenters(
   AI_NATIVE,
   REFRESH_2026_07_DATACENTERS,
   REFRESH_2026_10_DATACENTERS,
+  REFRESH_2026_11_DATACENTERS,
 );
 
 async function main() {
