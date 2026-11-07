@@ -103,6 +103,7 @@ export async function sendRegistrationConfirmation(
   userName: string,
   event: EventEmailData,
   calendarInvite?: EmailCalendarInvite,
+  idempotencyKey?: string,
 ) {
   const resend = getResend();
   if (!resend) return;
@@ -121,14 +122,16 @@ export async function sendRegistrationConfirmation(
     },
   );
 
-  await resend.emails.send({
-    from: FROM_EMAIL,
-    to,
-    attachments: calendarAttachments(calendarInvite),
-    subject: rendered?.subject ?? `Registration confirmed: ${event.eventTitle}`,
-    html:
-      rendered?.html ??
-      `
+  const result = await resend.emails.send(
+    {
+      from: FROM_EMAIL,
+      to,
+      attachments: calendarAttachments(calendarInvite),
+      subject:
+        rendered?.subject ?? `Registration confirmed: ${event.eventTitle}`,
+      html:
+        rendered?.html ??
+        `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
         <h2 style="font-size: 18px;">You're registered!</h2>
         <p>Hi ${escapeHtml(userName)},</p>
@@ -147,7 +150,11 @@ export async function sendRegistrationConfirmation(
         </p>
       </div>
     `,
-  });
+    },
+    idempotencyKey ? { idempotencyKey } : undefined,
+  );
+  if (idempotencyKey && result?.error)
+    throw new Error("Registration email could not be delivered.");
 }
 
 /**
@@ -195,6 +202,7 @@ export async function sendWaitlistPromotion(
   userName: string,
   event: EventEmailData,
   calendarInvite?: EmailCalendarInvite,
+  payment?: { checkoutUrl?: string },
 ) {
   const resend = getResend();
   if (!resend) return;
@@ -202,19 +210,21 @@ export async function sendWaitlistPromotion(
   await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    attachments: calendarAttachments(calendarInvite),
-    subject: `You got a spot! ${event.eventTitle}`,
+    attachments: payment ? undefined : calendarAttachments(calendarInvite),
+    subject: payment
+      ? `A ticket is available: ${event.eventTitle}`
+      : `You got a spot! ${event.eventTitle}`,
     html: `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
         <h2 style="font-size: 18px;">A spot opened up!</h2>
         <p>Hi ${escapeHtml(userName)},</p>
-        <p>Good news - a spot opened up for <strong>${escapeHtml(event.eventTitle)}</strong> and you've been moved from the waitlist to registered!</p>
+        <p>${payment ? `A place is available for <strong>${escapeHtml(event.eventTitle)}</strong>. Complete your ticket purchase to confirm your place. A checkout reservation lasts 30 minutes.` : `Good news - a spot opened up for <strong>${escapeHtml(event.eventTitle)}</strong> and you've been moved from the waitlist to registered!`}</p>
         <table style="margin: 16px 0; font-size: 14px;">
           ${eventDetailsRows(event)}
         </table>
         <p style="margin-top: 24px;">
-          <a href="https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}" style="color: #000; font-weight: bold;">
-            View event details →
+          <a href="${escapeHtml(payment?.checkoutUrl ?? `https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}`)}" style="color: #000; font-weight: bold;">
+            ${payment ? "Complete ticket purchase" : "View event details"} →
           </a>
         </p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />

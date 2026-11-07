@@ -56,6 +56,7 @@ import { awesomeAiOssRouter } from "@/server/api/routers/awesome-ai-oss";
 import { startupsRouter } from "@/server/api/routers/startups";
 import { newsRouter } from "@/server/api/routers/news";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
+import { communityPaymentsRouter } from "./routers/community-payments";
 
 /**
  * This is the primary router for your server.
@@ -63,6 +64,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  communityPayments: communityPaymentsRouter,
   post: postRouter,
   events: eventsRouter,
   audiences: audiencesRouter,

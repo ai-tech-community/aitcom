@@ -67,6 +67,8 @@ import {
 } from "@/server/communities/member-stack-queries";
 import { HUB_SLUG } from "@/server/api/trpc";
 import { listMyCommunities } from "@/server/communities/my-communities";
+import { membershipPaymentAllowed } from "@/server/payments/access";
+import { stopCommunityMembershipBilling } from "@/server/payments/management";
 import { countPendingJoinRequests } from "@/server/communities/pending-join-requests";
 import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
 import { activateMembership } from "@/server/communities/activate-membership";
@@ -928,6 +930,11 @@ export const communitiesRouter = createTRPCRouter({
         }
       }
 
+      await stopCommunityMembershipBilling(
+        ctx.db,
+        community.id,
+        ctx.session.user.id,
+      );
       await ctx.db
         .delete(communityMemberships)
         .where(eq(communityMemberships.id, membership.id));
@@ -1075,10 +1082,15 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      const paid = await membershipPaymentAllowed(
+        ctx.db,
+        ctx.community.id,
+        input.userId,
+      );
       const updated = await ctx.db.transaction(async (tx) => {
         const [member] = await tx
           .update(communityMemberships)
-          .set({ status: "active" })
+          .set({ status: paid ? "active" : "invited" })
           .where(
             and(
               eq(communityMemberships.communityId, ctx.community.id),
@@ -1087,7 +1099,7 @@ export const communitiesRouter = createTRPCRouter({
             ),
           )
           .returning();
-        if (member)
+        if (member && paid)
           await scrubJoinedReferralEmails(tx, input.userId, ctx.community.id);
         return member;
       });
@@ -1111,14 +1123,15 @@ export const communitiesRouter = createTRPCRouter({
       // Emit a community.joined event attributed to the approved member so that
       // the Insights `newJoins` / `healthPulse` metric counts approval-path joins
       // consistently with the open-join path.
-      await logActivity(ctx.db, {
-        actorId: input.userId,
-        actorType: "member",
-        action: "community.joined",
-        targetType: "community",
-        targetId: ctx.community.id,
-        communityId: ctx.community.id,
-      });
+      if (paid)
+        await logActivity(ctx.db, {
+          actorId: input.userId,
+          actorType: "member",
+          action: "community.joined",
+          targetType: "community",
+          targetId: ctx.community.id,
+          communityId: ctx.community.id,
+        });
 
       return { success: true };
     }),
@@ -1298,6 +1311,11 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      await stopCommunityMembershipBilling(
+        ctx.db,
+        ctx.community.id,
+        input.userId,
+      );
       await ctx.db
         .update(communityMemberships)
         .set({ status: "banned" })
@@ -1339,6 +1357,11 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      await stopCommunityMembershipBilling(
+        ctx.db,
+        ctx.community.id,
+        input.userId,
+      );
       await ctx.db
         .delete(communityMemberships)
         .where(eq(communityMemberships.id, target.id));

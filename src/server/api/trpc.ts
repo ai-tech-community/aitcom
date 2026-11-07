@@ -23,6 +23,7 @@ import type { CommunityRole } from "@/server/communities/role-utils";
 import { checkRateLimit } from "@/server/agent/rate-limit";
 import { HUB_SLUG } from "@/server/communities/hub";
 import { magazineErrorItemIndex } from "@/server/magazines/errors";
+import { membershipPaymentAllowed } from "@/server/payments/access";
 
 export { HUB_SLUG };
 
@@ -226,6 +227,7 @@ export async function requireHubOperator(ctx: {
       eq(communityMemberships.userId, ctx.session.user.id),
     ),
   });
+
   const role = membership?.status === "active" ? membership.role : null;
   if (role !== "owner" && role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN" });
@@ -288,7 +290,13 @@ const communityAuth = t.middleware(async ({ ctx, next, getRawInput }) => {
       session: { ...ctx.session, user: ctx.session.user },
       community,
       membership: membership ?? null,
-      communityRole: (membership?.status === "active"
+      communityRole: (membership?.status === "active" &&
+      (membership.role !== "member" ||
+        (await membershipPaymentAllowed(
+          ctx.db,
+          community.id,
+          ctx.session.user.id,
+        )))
         ? membership.role
         : null) as CommunityRole | null,
     },

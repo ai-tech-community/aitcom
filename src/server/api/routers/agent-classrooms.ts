@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { membershipPaymentAllowed } from "@/server/payments/access";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Where } from "payload";
 import { z } from "zod";
@@ -235,6 +236,11 @@ async function ownerRole(
     ),
     columns: { role: true },
   });
+  if (
+    membership?.role === "member" &&
+    !(await membershipPaymentAllowed(db, communityId, ownerId))
+  )
+    return null;
   return (membership?.role as CommunityRole | undefined) ?? null;
 }
 

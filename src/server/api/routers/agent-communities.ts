@@ -55,6 +55,8 @@ import {
   type SettingsFieldWarning,
 } from "@/server/communities/settings-field-warnings";
 import { getPayloadClient } from "@/server/payload";
+import { membershipPaymentAllowed } from "@/server/payments/access";
+import { stopCommunityMembershipBilling } from "@/server/payments/management";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,13 +80,19 @@ async function resolveOwnerMembership(
   communityId: string,
   ownerId: string,
 ) {
-  return db.query.communityMemberships.findFirst({
+  const membership = await db.query.communityMemberships.findFirst({
     where: and(
       eq(communityMemberships.communityId, communityId),
       eq(communityMemberships.userId, ownerId),
       eq(communityMemberships.status, "active"),
     ),
   });
+  if (
+    membership?.role === "member" &&
+    !(await membershipPaymentAllowed(db, communityId, ownerId))
+  )
+    return undefined;
+  return membership;
 }
 
 /**
@@ -457,6 +465,7 @@ export const agentCommunityRouter = {
         }
       }
 
+      await stopCommunityMembershipBilling(ctx.db, community.id, ownerId);
       await ctx.db
         .delete(communityMemberships)
         .where(eq(communityMemberships.id, membership.id));

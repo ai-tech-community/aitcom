@@ -580,7 +580,7 @@ export const spacesRouter = createTRPCRouter({
         )
         .limit(1);
       let conversationId: string | null = null;
-      if (mine?.status === "active") {
+      if (mine?.status === "active" && ctx.communityRole) {
         conversationId = await getOrCreateRoomConversation(ctx.db, room.id);
       }
 

@@ -36,6 +36,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "autonomy", href: `${basePath}/autonomy` },
     { key: "acquire", href: `${basePath}/acquire` },
     { key: "integrations", href: `${basePath}/integrations`, ownerOnly: true },
+    { key: "payments", href: `${basePath}/payments`, ownerOnly: true },
     { key: "ownership", href: `${basePath}/ownership`, ownerOnly: true },
   ];
 
@@ -75,6 +76,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "autonomy"
                   | "acquire"
                   | "integrations"
+                  | "payments"
                   | "ownership",
               )}
             </Link>
@@ -112,6 +114,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "autonomy"
                   | "acquire"
                   | "integrations"
+                  | "payments"
                   | "ownership",
               )}
             </Link>

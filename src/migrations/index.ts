@@ -1,3 +1,4 @@
+import * as migration_20261107a_community_payments from "./20261107a_community_payments";
 import * as migration_20261104c_five_public_events from "./20261104c_five_public_events";
 import * as migration_20261104b_startup_claim from "./20261104b_startup_claim";
 import * as migration_20261104a_startup_profile_flags from "./20261104a_startup_profile_flags";
@@ -1176,5 +1177,10 @@ export const migrations = [
     up: migration_20261104c_five_public_events.up,
     down: migration_20261104c_five_public_events.down,
     name: "20261104c_five_public_events",
+  },
+  {
+    up: migration_20261107a_community_payments.up,
+    down: migration_20261107a_community_payments.down,
+    name: "20261107a_community_payments",
   },
 ];
