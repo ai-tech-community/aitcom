@@ -82,12 +82,25 @@ const geocodeAfterChange: CollectionAfterChangeHook = async ({
     await req.payload.update({
       collection: "events",
       id: d.id as number,
+      // A draft is visible inside this transaction; never publish it as a
+      // side effect of persisting its coordinates.
+      draft: d._status === "draft",
       data: {
         latitude: result.latitude,
         longitude: result.longitude,
         geocodedAt: new Date().toISOString(),
       },
-      context: { skipGeocode: true },
+      // The outer save holds this row until its afterChange hooks finish.
+      // Reuse its transaction or this update waits on the save awaiting it.
+      // Isolate context so only the nested coordinate update skips hooks.
+      req: {
+        ...req,
+        context: {
+          ...req.context,
+          skipGeocode: true,
+          skipAttendeeCalendar: true,
+        },
+      },
     });
   } catch (error) {
     req.payload.logger.error({ err: error }, "Failed to persist geocode");
@@ -125,7 +138,12 @@ const captureLiveEventBeforeChange: CollectionBeforeChangeHook = async ({
   originalDoc,
   req,
 }) => {
-  if (operation !== "update" || !originalDoc) return data;
+  if (
+    operation !== "update" ||
+    !originalDoc ||
+    req.context.skipAttendeeCalendar
+  )
+    return data;
   const live = await readLiveEvent(req, (originalDoc as Event).id);
   const store = ((req.context[LIVE_BEFORE_KEY] as
     | Record<string, Event | null>
@@ -148,7 +166,7 @@ const attendeeCalendarAfterChange: CollectionAfterChangeHook = async ({
   operation,
   req,
 }) => {
-  if (operation !== "update") return;
+  if (operation !== "update" || req.context.skipAttendeeCalendar) return;
   const store = req.context[LIVE_BEFORE_KEY] as
     | Record<string, Event | null>
     | undefined;

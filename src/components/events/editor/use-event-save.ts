@@ -34,11 +34,16 @@ export function useEventSave({
   const t = useTranslations("events");
   const utils = api.useUtils();
 
-  const done = (message: string) => {
+  const done = async (message: string) => {
     toast.success(message);
     void utils.events.getCommunityEvents.invalidate();
     void utils.events.getMyEventSubmissions.invalidate();
     void utils.events.getPendingCommunityEvents.invalidate();
+    // The form initializes once from this query. Refetch while it is still
+    // mounted so reopening it cannot restore a cached, pre-save cover id.
+    if (eventId) {
+      await utils.events.getEventForEdit.invalidate({ eventId, communitySlug });
+    }
     onSaved();
   };
 

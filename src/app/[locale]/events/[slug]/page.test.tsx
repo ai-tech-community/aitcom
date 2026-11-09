@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as PublicEventAccess from "@/server/events/public-event-access";
 
 /**
  * Invite-only communities stay off the public event page for signed-out
@@ -9,6 +10,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   userId: null as string | null,
   member: false,
+  role: "member",
+  coverImage: null as { id: number; url: string } | null,
   community: {
     id: "runners",
     slug: "sunday-runners-demo",
@@ -73,6 +76,7 @@ vi.mock("@/server/payload", () => ({
           type: "meetup",
           description: null,
           summary: null,
+          coverImage: state.coverImage,
         },
       ],
     }),
@@ -87,10 +91,21 @@ vi.mock("@/server/db", () => ({
       },
       communityMemberships: {
         findFirst: async () =>
-          state.member ? { communityId: state.community?.id } : null,
+          state.member
+            ? {
+                communityId: state.community?.id,
+                role: state.role,
+                status: "active",
+              }
+            : null,
       },
     },
   },
+}));
+
+vi.mock("@/server/events/public-event-access", async (importOriginal) => ({
+  ...(await importOriginal<typeof PublicEventAccess>()),
+  loadHiddenEventCommunityIds: async () => [],
 }));
 
 import EventDetailPage, { generateMetadata } from "./page";
@@ -101,12 +116,53 @@ const params = () =>
 beforeEach(() => {
   state.userId = null;
   state.member = false;
+  state.role = "member";
+  state.coverImage = null;
   state.community = {
     id: "runners",
     slug: "sunday-runners-demo",
     isListedInDirectory: true,
     joinPolicy: "invite_only",
   };
+});
+
+function elements(node: ReactNode): ReactElement<Record<string, unknown>>[] {
+  if (Array.isArray(node)) return node.flatMap(elements);
+  if (!isValidElement<Record<string, unknown>>(node)) return [];
+  return [node, ...elements(node.props.children as ReactNode)];
+}
+
+describe("event detail actions and cover", () => {
+  it("shows the saved cover and a direct editor link to a community admin", async () => {
+    state.userId = "admin-1";
+    state.member = true;
+    state.role = "admin";
+    state.coverImage = { id: 42, url: "/media/event-cover.png" };
+    const tree = elements(await EventDetailPage({ params: params() }));
+    expect(
+      tree.some((node) => node.props.heroImageUrl === "/media/event-cover.png"),
+    ).toBe(true);
+    expect(
+      tree.some(
+        (node) =>
+          node.props.href ===
+          "/communities/sunday-runners-demo/events/sunday-10k-social-run-demo-1792244773622/edit",
+      ),
+    ).toBe(true);
+  });
+
+  it("hides the editor link from a regular member", async () => {
+    state.userId = "member-1";
+    state.member = true;
+    const tree = elements(await EventDetailPage({ params: params() }));
+    expect(
+      tree.some(
+        (node) =>
+          typeof node.props.href === "string" &&
+          node.props.href.endsWith("/edit"),
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("invite-only community event page", () => {
