@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import type { Where } from "payload";
 import Image from "next/image";
+import { Pencil } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
@@ -41,6 +42,7 @@ import {
 import { EventTimeDisplay } from "@/components/event-time-display";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
 import { getInitials } from "@/lib/avatar";
 import { PUBLICLY_LISTED_EVENT_STATUSES } from "@/lib/events/event-status";
@@ -61,6 +63,7 @@ import { CancelledEventBadge } from "@/components/events/cancelled-event-badge";
 import { communityEventVisibilityWhere } from "@/lib/events/public-event-access";
 import { db } from "@/server/db";
 import { getSession } from "@/server/better-auth/server";
+import { resolveEventEditHref } from "@/server/events/event-editor-access";
 import {
   loadHiddenEventCommunityIds,
   viewerMaySeeEvent,
@@ -341,6 +344,15 @@ export default async function EventDetailPage({
 
   const now = new Date();
   const session = await getSession();
+  const editHref = await resolveEventEditHref(db, session?.user?.id, event);
+  const editAction = editHref ? (
+    <Button asChild variant="outline" size="sm">
+      <Link href={editHref}>
+        <Pencil aria-hidden="true" />
+        {tEvents("editEvent")}
+      </Link>
+    </Button>
+  ) : null;
   const relatedVisibility = communityEventVisibilityWhere(
     await loadHiddenEventCommunityIds(db, session?.user?.id ?? null),
   );
@@ -661,6 +673,7 @@ export default async function EventDetailPage({
               />
             </div>
 
+            {editAction}
             {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
 
             {isExternal && sourceUrl && (
@@ -767,8 +780,9 @@ export default async function EventDetailPage({
         }
       />
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center gap-2">
         <EventShareRow slug={event.slug} title={pageTitle} />
+        {editAction}
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">

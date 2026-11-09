@@ -1,7 +1,7 @@
 // The event editor page: which sections each viewer gets, what saving
 // sends (asserted on the mutation call, not the result), and that an
 // unfinished question stops the save.
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fireEvent,
   render,
@@ -13,7 +13,7 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "../../../../messages/en.json";
 
 interface MutationOptions {
-  onSuccess?: () => void;
+  onSuccess?: () => void | Promise<void>;
 }
 
 const m = vi.hoisted(() => ({
@@ -22,6 +22,7 @@ const m = vi.hoisted(() => ({
   update: vi.fn(),
   resubmit: vi.fn(),
   push: vi.fn(),
+  invalidateEdit: vi.fn(async () => undefined),
   editData: null as unknown,
   options: {} as Record<string, MutationOptions>,
 }));
@@ -72,6 +73,7 @@ vi.mock("@/trpc/react", () => ({
         getCommunityEvents: { invalidate: vi.fn() },
         getMyEventSubmissions: { invalidate: vi.fn() },
         getPendingCommunityEvents: { invalidate: vi.fn() },
+        getEventForEdit: { invalidate: m.invalidateEdit },
       },
     }),
   },
@@ -128,6 +130,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.editData = null;
   m.options = {};
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("EventEditor — sections", () => {
@@ -271,9 +277,9 @@ describe("EventEditor — saving", () => {
     });
   });
 
-  it("goes back to the community's events after saving", () => {
+  it("goes back to the community's events after saving", async () => {
     renderEditor();
-    m.options.create?.onSuccess?.();
+    await m.options.create?.onSuccess?.();
     expect(m.push).toHaveBeenCalledWith("/communities/builders/events");
   });
 });
@@ -340,6 +346,46 @@ describe("EventEditor — editing", () => {
       audience: ["builders"],
       registrationQuestions: EDIT_DATA.registrationQuestions,
     });
+  });
+
+  it("saves the uploaded cover's media id when editing an event", async () => {
+    m.editData = EDIT_DATA;
+    const upload = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 42, url: "/media/event-cover.png" }),
+    });
+    vi.stubGlobal("fetch", upload);
+    const { container } = renderEditor({ mode: "edit", eventId: 7 });
+    await screen.findByDisplayValue("Builders night");
+
+    fireEvent.change(container.querySelector('input[type="file"]')!, {
+      target: {
+        files: [new File(["cover"], "cover.png", { type: "image/png" })],
+      },
+    });
+    const preview = await screen.findByAltText(en.events.coverPreviewAlt);
+    expect(preview).toHaveAttribute("src", "/media/event-cover.png");
+    expect(upload).toHaveBeenCalledWith("/api/upload", {
+      method: "POST",
+      body: expect.any(FormData),
+    });
+
+    save(en.events.editor.saveChanges);
+    expect(m.update).toHaveBeenCalledWith(
+      expect.objectContaining({ eventId: 7, coverImage: 42 }),
+    );
+  });
+
+  it("refreshes the editor's cached cover before leaving a successful save", async () => {
+    m.editData = EDIT_DATA;
+    renderEditor({ mode: "edit", eventId: 7 });
+    await screen.findByDisplayValue("Builders night");
+    await m.options.update?.onSuccess?.();
+    expect(m.invalidateEdit).toHaveBeenCalledWith({
+      eventId: 7,
+      communitySlug: "builders",
+    });
+    expect(m.push).toHaveBeenCalledWith("/communities/builders/events");
   });
 
   it("resubmits a rejected submission", async () => {
