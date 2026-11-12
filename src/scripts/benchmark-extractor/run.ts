@@ -1,12 +1,15 @@
 // src/scripts/benchmark-extractor/run.ts
 import { EXTRACTOR_VERSION } from "@/server/benchmark/extractor-prompt";
+import {
+  completeJson,
+  extractorModel,
+  inferenceApiKey,
+} from "@/server/inference/openai-compatible";
 
 const API_BASE = process.env.AIT_API_BASE ?? "http://localhost:3000";
 const API_KEY = process.env.AIT_EXTRACTOR_API_KEY;
-const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL = process.env.EXTRACTOR_MODEL ?? "moonshotai/kimi-k2.5";
 
-if (!API_KEY || !OPENROUTER_KEY) {
+if (!API_KEY || !inferenceApiKey()) {
   console.error("Set AIT_EXTRACTOR_API_KEY and OPENROUTER_API_KEY.");
   process.exit(1);
 }
@@ -25,31 +28,13 @@ async function trpc<T>(path: string, body: unknown): Promise<T> {
   return data[0].result.data.json as T;
 }
 
-async function callExtractor(prompt: string): Promise<string> {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${OPENROUTER_KEY}`,
-      "HTTP-Referer": "https://aitcommunity.org",
-      "X-Title": "AIT Benchmark Extractor",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      temperature: 0,
-    }),
+async function callExtractor(prompt: string): Promise<{ mentions: unknown }> {
+  return completeJson<{ mentions: unknown }>({
+    model: extractorModel(),
+    temperature: 0,
+    title: "AIT Benchmark Extractor",
+    messages: [{ role: "user", content: prompt }],
   });
-  if (!res.ok) {
-    throw new Error(`OpenRouter ${res.status}: ${await res.text()}`);
-  }
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const text = data.choices?.[0]?.message?.content;
-  if (!text) throw new Error(`Empty response: ${JSON.stringify(data)}`);
-  return text;
 }
 
 async function processRun(runId: string) {
@@ -58,8 +43,7 @@ async function processRun(runId: string) {
     { runId },
   );
 
-  const text = await callExtractor(fetched.renderedPrompt);
-  const json = JSON.parse(text);
+  const json = await callExtractor(fetched.renderedPrompt);
 
   await trpc("benchmark.submitExtraction", {
     runId,

@@ -1,4 +1,9 @@
 // src/server/benchmark/suggest-prompts.ts
+import {
+  completeJson,
+  extractorModel,
+  inferenceApiKey,
+} from "@/server/inference/openai-compatible";
 export interface SuggestionInput {
   brand: {
     canonicalName: string;
@@ -63,9 +68,8 @@ export function parseSuggestionResponse(
 export async function suggestPromptsForBrand(
   input: SuggestionInput,
 ): Promise<Suggestion[]> {
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
-  if (!openrouterKey) throw new Error("OPENROUTER_API_KEY missing");
-  const model = process.env.EXTRACTOR_MODEL ?? "moonshotai/kimi-k2.5";
+  if (!inferenceApiKey()) throw new Error("OPENROUTER_API_KEY missing");
+  const model = extractorModel();
 
   const categoryList = input.categories
     .map((c) => `- ${c.slug}: ${c.name}`)
@@ -101,31 +105,18 @@ OUTPUT SCHEMA (return ONLY JSON):
 
 Return ONLY the JSON object. No prose, no markdown fences.`;
 
-  const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${openrouterKey}`,
-      "HTTP-Referer": "https://aitcommunity.org",
-      "X-Title": "AIT Benchmark Prompt Suggester",
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-    }),
+  const parsed = await completeJson<unknown>({
+    model,
+    temperature: 0.7,
+    title: "AIT Benchmark Prompt Suggester",
+    messages: [{ role: "user", content: prompt }],
   });
-  if (!resp.ok) {
-    throw new Error(`OpenRouter ${resp.status}: ${await resp.text()}`);
-  }
-  const body = (await resp.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const text = body.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Empty OpenRouter response");
 
   const knownCategorySlugs = new Set(input.categories.map((c) => c.slug));
   const knownIntentSlugs = new Set(input.intents.map((i) => i.slug));
-  return parseSuggestionResponse(text, knownCategorySlugs, knownIntentSlugs);
+  return parseSuggestionResponse(
+    JSON.stringify(parsed),
+    knownCategorySlugs,
+    knownIntentSlugs,
+  );
 }

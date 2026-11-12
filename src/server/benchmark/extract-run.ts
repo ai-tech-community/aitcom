@@ -16,6 +16,11 @@ import {
   brands,
 } from "@/server/db/schema";
 import { slugifyBrandName } from "@/server/benchmark/slugify";
+import {
+  completeJson,
+  extractorModel,
+  inferenceApiKey,
+} from "@/server/inference/openai-compatible";
 import { normalizeCitations } from "./extract-citations-ingest";
 import { normalizeWebsite } from "./normalize-website";
 
@@ -43,10 +48,10 @@ type ExtractorOutput = {
   }>;
 };
 
-const EXTRACTOR_VERSION = "v2-openrouter-citations";
+const EXTRACTOR_VERSION = "v3-qwen3-8b-citations";
 
 export async function extractRunInline(db: DB, runId: string): Promise<void> {
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const openrouterKey = inferenceApiKey();
   if (!openrouterKey) {
     console.error(
       `[extract-run] OPENROUTER_API_KEY missing — marking run ${runId} failed.`,
@@ -57,7 +62,7 @@ export async function extractRunInline(db: DB, runId: string): Promise<void> {
       .where(eq(benchmarkRuns.id, runId));
     return;
   }
-  const model = process.env.EXTRACTOR_MODEL ?? "moonshotai/kimi-k2.5";
+  const model = extractorModel();
 
   const [run] = await db
     .select({
@@ -177,32 +182,12 @@ RULES:
 - suggestedWebsite: populate only when confident (well-known brand). If unsure, return null — never invent domains. Use the main homepage, not a subpage.
 - Output ONLY the JSON object. No prose, no markdown fencing.`;
 
-    const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${openrouterKey}`,
-        "HTTP-Referer": "https://aitcommunity.org",
-        "X-Title": "AIT Benchmark Extractor",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: rendered }],
-        response_format: { type: "json_object" },
-        temperature: 0,
-      }),
+    const parsed = await completeJson<ExtractorOutput>({
+      model,
+      temperature: 0,
+      title: "AIT Benchmark Extractor",
+      messages: [{ role: "user", content: rendered }],
     });
-    if (!resp.ok) {
-      throw new Error(`OpenRouter ${resp.status}: ${await resp.text()}`);
-    }
-    const body = (await resp.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const text = body.choices?.[0]?.message?.content;
-    if (!text)
-      throw new Error(`Empty OpenRouter response: ${JSON.stringify(body)}`);
-
-    const parsed = JSON.parse(text) as ExtractorOutput;
 
     const bySlug = new Map<string, string>();
     const byName = new Map<string, string>();

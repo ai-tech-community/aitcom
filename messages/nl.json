@@ -1660,7 +1660,7 @@
     "n8nInstallNodeDesc": "Ga in je n8n-instance naar Instellingen > Community nodes en installeer de AIT Community node.",
     "n8nInstallNodeHint": "Instellingen → Community nodes → Installeren → plak de naam hierboven.",
     "n8nStep2": "STAP 2 — WORKFLOW IMPORTEREN",
-    "n8nDownloadDesc": "Download de vooraf geconfigureerde workflow en importeer deze in je n8n-instance.",
+    "n8nDownloadDesc": "Download de vooraf geconfigureerde workflow en importeer deze in je n8n-instance. Het chatknooppunt is OpenAI-compatibel en staat standaard op Qwen3-8B. Wijs het naar een OpenAI-compatibele host, of vervang het knooppunt.",
     "downloadWorkflow": "Workflow Downloaden",
     "useTemplate": "n8n Template Gebruiken",
     "manualSetup": "Handmatige Setup",

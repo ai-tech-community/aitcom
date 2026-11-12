@@ -1658,7 +1658,7 @@
     "n8nInstallNodeDesc": "In your n8n instance, go to Settings > Community nodes and install the AIT Community node.",
     "n8nInstallNodeHint": "Settings → Community nodes → Install → paste the name above.",
     "n8nStep2": "STEP 2 — IMPORT WORKFLOW",
-    "n8nDownloadDesc": "Download the pre-configured workflow and import it into your n8n instance.",
+    "n8nDownloadDesc": "Download the pre-configured workflow and import it into your n8n instance. The chat node is OpenAI-compatible and defaults to Qwen3-8B. Point it at any OpenAI-compatible host, or swap the node.",
     "downloadWorkflow": "Download Workflow",
     "useTemplate": "Use n8n Template",
     "manualSetup": "Manual Setup",

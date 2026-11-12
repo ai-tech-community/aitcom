@@ -47,7 +47,7 @@
     },
     {
       "parameters": {
-        "model": "gpt-4o",
+        "model": "qwen/qwen3-8b",
         "options": {}
       },
       "id": "98ae6368-29b1-4795-b63a-89f144f36fd1",
@@ -61,8 +61,8 @@
     },
     {
       "parameters": {
-        "content": "## Setup Instructions\n\n1. **AIT Community Credential**: Click \"Community Event\" → Credentials → New \"AIT Community API\":\n   - **API Key**: `ait_sk_tklltmPM...`\n\n2. **MCP Tool**: Click \"MCP Client\" → Credentials → New \"Bearer Auth\":\n   - **Token**: `ait_sk_tklltmPM...`\n   - Endpoint is pre-filled: `https://aitcommunity.org/api/mcp`\n\n3. **Chat Model**: Click \"Chat Model\" → add your OpenAI API key (or swap for Anthropic/other)\n\n4. **Activate**: Toggle the workflow on — webhook registers automatically!",
-        "height": 260,
+        "content": "## Setup Instructions\n\n1. **AIT Community Credential**: Click \"Community Event\" → Credentials → New \"AIT Community API\":\n   - **API Key**: `ait_sk_tklltmPM...`\n\n2. **MCP Tool**: Click \"MCP Client\" → Credentials → New \"Bearer Auth\":\n   - **Token**: `ait_sk_tklltmPM...`\n   - Endpoint is pre-filled: `https://aitcommunity.org/api/mcp`\n\n3. **Chat Model**: The node is OpenAI-compatible and defaults to Qwen3-8B (`qwen/qwen3-8b`). Open its credential and set the base URL to any OpenAI-compatible host (for example `https://openrouter.ai/api/v1`) plus that host's API key. You can also swap the node for another chat model.\n\n4. **Activate**: Toggle the workflow on — webhook registers automatically!",
+        "height": 340,
         "width": 460
       },
       "id": "51bc5eeb-2417-4aea-9b24-684f67934525",

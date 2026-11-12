@@ -1,4 +1,9 @@
 // src/server/benchmark/strategy.ts
+import {
+  completeJson,
+  extractorModel,
+  inferenceApiKey,
+} from "@/server/inference/openai-compatible";
 
 export type Priority = "low" | "medium" | "high";
 
@@ -339,9 +344,8 @@ export function normalizeStrategyRecommendations(
 export async function generateStrategy(
   input: StrategyInput,
 ): Promise<Recommendation[]> {
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
-  if (!openrouterKey) throw new Error("OPENROUTER_API_KEY missing");
-  const model = process.env.EXTRACTOR_MODEL ?? "moonshotai/kimi-k2.5";
+  if (!inferenceApiKey()) throw new Error("OPENROUTER_API_KEY missing");
+  const model = extractorModel();
   const insights = buildStrategyInsights(input);
 
   const prompt = `You are a marketing strategist analyzing AI-search visibility for the brand "${input.brandName}".
@@ -408,28 +412,14 @@ OUTPUT SCHEMA (return ONLY JSON):
 
 Return ONLY the JSON object. No prose, no markdown fences.`;
 
-  const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${openrouterKey}`,
-      "HTTP-Referer": "https://aitcommunity.org",
-      "X-Title": "AIT Benchmark Strategy Advisor",
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      temperature: 0.4,
-    }),
+  const parsed = await completeJson<unknown>({
+    model,
+    temperature: 0.4,
+    title: "AIT Benchmark Strategy Advisor",
+    messages: [{ role: "user", content: prompt }],
   });
-  if (!resp.ok) {
-    throw new Error(`OpenRouter ${resp.status}: ${await resp.text()}`);
-  }
-  const body = (await resp.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const text = body.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Empty OpenRouter response");
-  return normalizeStrategyRecommendations(parseStrategyResponse(text), input);
+  return normalizeStrategyRecommendations(
+    parseStrategyResponse(JSON.stringify(parsed)),
+    input,
+  );
 }

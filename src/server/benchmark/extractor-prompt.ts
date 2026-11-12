@@ -1,5 +1,5 @@
 // src/server/benchmark/extractor-prompt.ts
-export const EXTRACTOR_VERSION = "v1";
+export const EXTRACTOR_VERSION = "v3-qwen3-8b";
 
 export function buildExtractorPrompt(args: {
   promptText: string;
