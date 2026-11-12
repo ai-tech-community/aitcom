@@ -379,8 +379,6 @@ export default async function EventsPage({
         />
       </div>
 
-      <EventHubLinks />
-
       <EventsListingToolbar
         upcomingHref={buildTabHref(false)}
         pastHref={buildTabHref(true)}
@@ -545,6 +543,8 @@ export default async function EventsPage({
           buildHref={buildPageHref}
         />
       )}
+
+      <EventHubLinks />
     </div>
   );
 }

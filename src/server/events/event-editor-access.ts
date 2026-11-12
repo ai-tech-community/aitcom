@@ -34,6 +34,38 @@ export interface EditorAccess {
   event?: { id: number; title: string };
 }
 
+/** Link from an already-loaded event, using the editor's existing permissions. */
+export async function resolveEventEditHref(
+  db: typeof Db,
+  viewerId: string | null | undefined,
+  event: { communityId?: string | null; slug: string },
+): Promise<string | null> {
+  if (!viewerId || !event.communityId) return null;
+  const membership = await db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, event.communityId),
+      eq(communityMemberships.userId, viewerId),
+    ),
+    columns: { role: true, status: true },
+  });
+  if (
+    membership?.status !== "active" ||
+    (membership.role !== "owner" && membership.role !== "admin")
+  )
+    return null;
+
+  const community = await db.query.communities.findFirst({
+    where: and(
+      eq(communities.id, event.communityId),
+      isNull(communities.deletedAt),
+    ),
+    columns: { slug: true },
+  });
+  return community
+    ? `/communities/${community.slug}/events/${event.slug}/edit`
+    : null;
+}
+
 /**
  * Resolve the event editor page for a viewer, or null (the page answers
  * 404). Creating needs an active membership; editing follows

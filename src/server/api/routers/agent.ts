@@ -67,6 +67,23 @@ import { agentClassroomRouter } from "./agent-classrooms";
 import { agentOwnDraftsRouter } from "./agent-own-drafts";
 import { publicRosterVisibility } from "@/server/members/public-roster";
 import { agentDraftResponse } from "@/server/agent/draft-result";
+import {
+  forumThreadSearchStatement,
+  KNOWLEDGE_SEARCH_ERROR,
+  publicKnowledgeSearchMessage,
+  readForumThreadRows,
+  richTextSnippet,
+  threadSnippet,
+} from "@/server/agent/knowledge-search";
+import {
+  countsTowardReplyCooldown,
+  shareReferencesThreadTopic,
+  threadTopic,
+} from "@/server/agent/knowledge-share-topic";
+import {
+  liveForumRepliesWhere,
+  liveReplyCounts,
+} from "@/server/communities/live-forum-replies";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -91,31 +108,6 @@ async function searchableArticleWhere(
       communityId: { equals: communityId },
     }),
   );
-}
-
-/**
- * Extract a plain-text snippet from a Payload rich-text (Lexical) field.
- * Falls back to the raw value if the structure is unexpected.
- */
-function richTextSnippet(field: unknown, maxLen = 200): string {
-  if (!field || typeof field !== "object") return "";
-  const root = (field as Record<string, unknown>).root as
-    | { children?: { text?: string; children?: unknown[] }[] }
-    | undefined;
-  if (!root?.children) return "";
-
-  const texts: string[] = [];
-  function walk(nodes: unknown[]) {
-    for (const node of nodes) {
-      if (typeof node !== "object" || node === null) continue;
-      const n = node as Record<string, unknown>;
-      if (typeof n.text === "string") texts.push(n.text);
-      if (Array.isArray(n.children)) walk(n.children);
-    }
-  }
-  walk(root.children as unknown[]);
-  const joined = texts.join(" ").trim();
-  return joined.length > maxLen ? joined.slice(0, maxLen) + "..." : joined;
 }
 
 function getMetadataString(
@@ -230,6 +222,73 @@ function activityNotification(
   };
 }
 
+const COOLDOWN_REPLY_LOOKBACK = 20;
+
+type ReplyCooldownRow = {
+  authorId?: string | null;
+  content?: unknown;
+  createdAt: string;
+};
+
+/**
+ * Self-reply and per-thread cooldown. Off-topic shares do not count:
+ * rejecting one must leave room for a corrective reply.
+ */
+async function assertReplyCooldown(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  agent: { id: string; replyCooldownMinutes: number | null },
+  threadId: number,
+  thread: { title?: unknown; content?: unknown },
+): Promise<void> {
+  const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
+
+  const { docs: lastReplies } = await payload.find({
+    collection: "forum-replies",
+    where: liveForumRepliesWhere(threadId),
+    sort: "-createdAt",
+    limit: 1,
+    depth: 0,
+  });
+  const lastReply = lastReplies[0] as ReplyCooldownRow | undefined;
+  if (countsTowardReplyCooldown(lastReply, agent.id, thread)) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message:
+        "You already posted the most recent reply on this thread. Wait for others to respond.",
+    });
+  }
+
+  const cooldownCutoff = new Date(
+    Date.now() - cooldownMinutes * 60 * 1000,
+  ).toISOString();
+  const { docs: recentOwnReplies } = await payload.find({
+    collection: "forum-replies",
+    where: {
+      and: [
+        { thread: { equals: threadId } },
+        { authorId: { equals: agent.id } },
+        { isDeleted: { not_equals: true } },
+        { createdAt: { greater_than: cooldownCutoff } },
+      ],
+    },
+    sort: "-createdAt",
+    limit: COOLDOWN_REPLY_LOOKBACK,
+    depth: 0,
+  });
+  const blocking = (recentOwnReplies as ReplyCooldownRow[]).find((reply) =>
+    countsTowardReplyCooldown(reply, agent.id, thread),
+  );
+  if (blocking) {
+    const nextAllowed = new Date(
+      new Date(blocking.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+    );
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
+    });
+  }
+}
+
 export const agentRouter = createTRPCRouter({
   // ═══════════════════════════════════════════════════════════════════════════
   // READ TOOLS (scope: "read")
@@ -287,6 +346,10 @@ export const agentRouter = createTRPCRouter({
         limit: input.limit,
         depth: 0,
       });
+      const replyCounts = await liveReplyCounts(
+        payload,
+        docs.map((thread) => thread.id),
+      );
 
       return docs.map((t) => ({
         id: t.id,
@@ -294,7 +357,7 @@ export const agentRouter = createTRPCRouter({
         category: t.category,
         authorName: t.authorName ?? null,
         authorId: t.authorId ?? null,
-        replyCount: t.replyCount ?? 0,
+        replyCount: replyCounts.get(t.id) ?? 0,
         isPinned: t.isPinned ?? false,
         isLocked: t.isLocked ?? false,
         lastActivityAt: t.lastActivityAt ?? null,
@@ -344,11 +407,12 @@ export const agentRouter = createTRPCRouter({
 
       const { docs: replies } = await payload.find({
         collection: "forum-replies",
-        where: { thread: { equals: input.threadId } },
+        where: liveForumRepliesWhere(input.threadId),
         sort: "createdAt",
         limit: 100,
         depth: 0,
       });
+      const replyCounts = await liveReplyCounts(payload, [thread.id]);
 
       return {
         thread: {
@@ -362,6 +426,7 @@ export const agentRouter = createTRPCRouter({
           isOwnReply: thread.authorId === ctx.agent.agentId,
           isPinned: thread.isPinned ?? false,
           isLocked: thread.isLocked ?? false,
+          replyCount: replyCounts.get(thread.id) ?? 0,
           createdAt: thread.createdAt,
           imageMediaId: thread.imageMediaId ?? null,
           imageUrl: thread.imageUrl ?? null,
@@ -559,150 +624,156 @@ export const agentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
 
-      const payload = await getPayloadClient();
+      try {
+        const payload = await getPayloadClient();
 
-      // An agent reads as its owner; an unclaimed agent sees public content.
-      const viewerId = ctx.agent.ownerId;
+        // An agent reads as its owner; an unclaimed agent sees public content.
+        const viewerId = ctx.agent.ownerId;
 
-      // Resolve community if scoped
-      let communityId: string | undefined;
-      let community: { id: string; slug: string } | undefined;
-      // Unscoped searches skip communities the viewer may not read.
-      const readable = input.communitySlug
-        ? null
-        : communityContentReadableWhere(
-            await hiddenContentCommunityIds(ctx.db, viewerId),
+        // Resolve community if scoped
+        let communityId: string | undefined;
+        let community: { id: string; slug: string } | undefined;
+        // Unscoped searches skip communities the viewer may not read.
+        const hiddenCommunityIds = input.communitySlug
+          ? []
+          : await hiddenContentCommunityIds(ctx.db, viewerId);
+        const readable = input.communitySlug
+          ? null
+          : communityContentReadableWhere(hiddenCommunityIds);
+        if (input.communitySlug) {
+          const found = await findReadableCommunityBySlug(
+            ctx.db,
+            input.communitySlug,
+            viewerId,
           );
-      if (input.communitySlug) {
-        const found = await findReadableCommunityBySlug(
-          ctx.db,
-          input.communitySlug,
-          viewerId,
+          if (!found) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Community not found",
+            });
+          }
+          community = found;
+          communityId = found.id;
+        }
+
+        const results: {
+          type: string;
+          id: number;
+          title: string;
+          snippet: string;
+          createdAt: string;
+        }[] = [];
+
+        const perType =
+          input.type === "all" ? Math.ceil(input.limit / 3) : input.limit;
+
+        // Search threads. content is jsonb, so this is SQL rather than
+        // Payload `contains` (that emits `content ILIKE`, which Postgres rejects).
+        if (input.type === "all" || input.type === "threads") {
+          const docs = readForumThreadRows(
+            await ctx.db.execute(
+              forumThreadSearchStatement({
+                query: input.query,
+                community,
+                hiddenCommunityIds,
+                limit: perType,
+              }),
+            ),
+          );
+          for (const d of docs) {
+            results.push({
+              type: "thread",
+              id: d.id,
+              title: d.title,
+              snippet: threadSnippet(d.content, d.title),
+              createdAt: d.createdAt,
+            });
+          }
+        }
+
+        // Search articles. Agent search reads magazines in the anonymous scope,
+        // whoever asks (spec Decision 8). Blog articles belong to no
+        // community, so a community search finds only that community's
+        // magazine articles in its public issues.
+        const articleAccess =
+          input.type === "all" || input.type === "articles"
+            ? await searchableArticleWhere(ctx.db, payload, communityId)
+            : null;
+        if (articleAccess) {
+          const { docs } = await payload.find({
+            collection: "articles",
+            where: {
+              and: [articleAccess, { title: { contains: input.query } }],
+            },
+            limit: perType,
+            sort: "-createdAt",
+            locale: "en",
+            draft: false,
+            depth: 0,
+          });
+          for (const d of docs) {
+            results.push({
+              type: "article",
+              id: d.id,
+              title: d.title,
+              snippet: richTextSnippet(d.content, 200),
+              createdAt: d.createdAt,
+            });
+          }
+        }
+
+        // Search ideas
+        if (input.type === "all" || input.type === "ideas") {
+          const ideaWhere: Where = {
+            or: [
+              { title: { contains: input.query } },
+              { description: { contains: input.query } },
+            ],
+          };
+          const ideaConditions: Where[] = [ideaWhere];
+          if (communityId) {
+            ideaConditions.push({ communityId: { equals: communityId } });
+          }
+          if (readable) ideaConditions.push(readable);
+          const { docs } = await payload.find({
+            collection: "community-ideas",
+            where: { and: ideaConditions },
+            limit: perType,
+            sort: "-createdAt",
+            depth: 0,
+          });
+          for (const d of docs) {
+            results.push({
+              type: "idea",
+              id: d.id,
+              title: d.title,
+              snippet: (d.description ?? "").slice(0, 200),
+              createdAt: d.createdAt,
+            });
+          }
+        }
+
+        // Sort combined results by createdAt desc and trim to limit
+        results.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
-        if (!found) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Community not found",
-          });
+
+        return results.slice(0, input.limit);
+      } catch (error) {
+        if (
+          error instanceof TRPCError &&
+          publicKnowledgeSearchMessage(error) === error.message
+        ) {
+          throw error;
         }
-        community = found;
-        communityId = found.id;
-      }
-
-      const results: {
-        type: string;
-        id: number;
-        title: string;
-        snippet: string;
-        createdAt: string;
-      }[] = [];
-
-      const perType =
-        input.type === "all" ? Math.ceil(input.limit / 3) : input.limit;
-
-      // Search threads
-      if (input.type === "all" || input.type === "threads") {
-        const threadWhere: Where = {
-          or: [
-            { title: { contains: input.query } },
-            { content: { contains: input.query } },
-          ],
-        };
-        const threadConditions: Where[] = [threadWhere];
-        if (community) {
-          threadConditions.push(forumThreadCommunityWhere(community));
-        }
-        if (readable) threadConditions.push(readable);
-        const { docs } = await payload.find({
-          collection: "forum-threads",
-          where: { and: threadConditions },
-          limit: perType,
-          sort: "-createdAt",
-          depth: 0,
+        console.error("[searchKnowledge]", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: KNOWLEDGE_SEARCH_ERROR,
+          cause: error,
         });
-        for (const d of docs) {
-          results.push({
-            type: "thread",
-            id: d.id,
-            title: d.title,
-            snippet:
-              typeof d.content === "string"
-                ? (d.content as string).slice(0, 200)
-                : d.title,
-            createdAt: d.createdAt,
-          });
-        }
       }
-
-      // Search articles. Agent search reads magazines in the anonymous scope,
-      // whoever asks (spec Decision 8). Blog articles belong to no
-      // community, so a community search finds only that community's
-      // magazine articles in its public issues.
-      const articleAccess =
-        input.type === "all" || input.type === "articles"
-          ? await searchableArticleWhere(ctx.db, payload, communityId)
-          : null;
-      if (articleAccess) {
-        const { docs } = await payload.find({
-          collection: "articles",
-          where: {
-            and: [articleAccess, { title: { contains: input.query } }],
-          },
-          limit: perType,
-          sort: "-createdAt",
-          locale: "en",
-          draft: false,
-          depth: 0,
-        });
-        for (const d of docs) {
-          results.push({
-            type: "article",
-            id: d.id,
-            title: d.title,
-            snippet: richTextSnippet(d.content, 200),
-            createdAt: d.createdAt,
-          });
-        }
-      }
-
-      // Search ideas
-      if (input.type === "all" || input.type === "ideas") {
-        const ideaWhere: Where = {
-          or: [
-            { title: { contains: input.query } },
-            { description: { contains: input.query } },
-          ],
-        };
-        const ideaConditions: Where[] = [ideaWhere];
-        if (communityId) {
-          ideaConditions.push({ communityId: { equals: communityId } });
-        }
-        if (readable) ideaConditions.push(readable);
-        const { docs } = await payload.find({
-          collection: "community-ideas",
-          where: { and: ideaConditions },
-          limit: perType,
-          sort: "-createdAt",
-          depth: 0,
-        });
-        for (const d of docs) {
-          results.push({
-            type: "idea",
-            id: d.id,
-            title: d.title,
-            snippet: (d.description ?? "").slice(0, 200),
-            createdAt: d.createdAt,
-          });
-        }
-      }
-
-      // Sort combined results by createdAt desc and trim to limit
-      results.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-
-      return results.slice(0, input.limit);
     }),
 
   myProfile: agentProcedure.query(async ({ ctx }) => {
@@ -1133,56 +1204,16 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      // ── Self-loop prevention ──────────────────────────────────────────
-      const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
-
-      // Fetch the last reply on this thread
-      const { docs: lastReplies } = await payload.find({
-        collection: "forum-replies",
-        where: { thread: { equals: input.threadId } },
-        sort: "-createdAt",
-        limit: 1,
-        depth: 0,
-      });
-
-      const lastReply = lastReplies[0];
-
-      // Block: agent is the last replier (self-reply)
-      if (lastReply?.authorId === agent.id) {
+      const topic = threadTopic(thread);
+      if (!shareReferencesThreadTopic(topic.title, topic.body, input.content)) {
         throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
+          code: "BAD_REQUEST",
           message:
-            "You already posted the most recent reply on this thread. Wait for others to respond.",
+            "This reply does not address the thread's question, so it was not posted and did not start the reply cooldown.",
         });
       }
 
-      // Block: agent replied to this thread within cooldown window
-      const cooldownCutoff = new Date(
-        Date.now() - cooldownMinutes * 60 * 1000,
-      ).toISOString();
-      const { docs: recentOwnReplies } = await payload.find({
-        collection: "forum-replies",
-        where: {
-          and: [
-            { thread: { equals: input.threadId } },
-            { authorId: { equals: agent.id } },
-            { createdAt: { greater_than: cooldownCutoff } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
-
-      if (recentOwnReplies.length > 0) {
-        const nextAllowed = new Date(
-          new Date(recentOwnReplies[0]!.createdAt).getTime() +
-            cooldownMinutes * 60 * 1000,
-        );
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
-        });
-      }
+      await assertReplyCooldown(payload, agent, input.threadId, thread);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const [draft] = await ctx.db
@@ -1260,56 +1291,16 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      // ── Self-loop prevention ──────────────────────────────────────────
-      const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
-
-      // Fetch the last reply on this thread
-      const { docs: lastReplies } = await payload.find({
-        collection: "forum-replies",
-        where: { thread: { equals: input.threadId } },
-        sort: "-createdAt",
-        limit: 1,
-        depth: 0,
-      });
-
-      const lastReply = lastReplies[0];
-
-      // Block: agent is the last replier (self-reply)
-      if (lastReply?.authorId === agent.id) {
+      const topic = threadTopic(thread);
+      if (!shareReferencesThreadTopic(topic.title, topic.body, input.content)) {
         throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
+          code: "BAD_REQUEST",
           message:
-            "You already posted the most recent reply on this thread. Wait for others to respond.",
+            "This share does not address the thread's question, so it was not posted and did not start the reply cooldown.",
         });
       }
 
-      // Block: agent replied to this thread within cooldown window
-      const cooldownCutoff = new Date(
-        Date.now() - cooldownMinutes * 60 * 1000,
-      ).toISOString();
-      const { docs: recentOwnReplies } = await payload.find({
-        collection: "forum-replies",
-        where: {
-          and: [
-            { thread: { equals: input.threadId } },
-            { authorId: { equals: agent.id } },
-            { createdAt: { greater_than: cooldownCutoff } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
-
-      if (recentOwnReplies.length > 0) {
-        const nextAllowed = new Date(
-          new Date(recentOwnReplies[0]!.createdAt).getTime() +
-            cooldownMinutes * 60 * 1000,
-        );
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
-        });
-      }
+      await assertReplyCooldown(payload, agent, input.threadId, thread);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const [draft] = await ctx.db
