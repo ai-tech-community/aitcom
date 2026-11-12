@@ -6,6 +6,7 @@ import type {
   SubscriptionStatus,
 } from "@/lib/payments";
 import type { RegistrationSource } from "@/lib/events/registration-source";
+import type { MatchingProfile } from "@/lib/communities/matching";
 import { relations, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { UiProducerTrust, UiResource } from "@/lib/chat/types";
@@ -1829,6 +1830,10 @@ export const introductions = appSchema.table(
       .$type<string[]>()
       .notNull()
       .default([]),
+    connectionTypeId: d
+      .varchar("connection_type_id", { length: 255 })
+      .references(() => communityConnectionTypes.id),
+    reason: d.text(),
     status: d
       .varchar({ length: 20 })
       .notNull()
@@ -6057,3 +6062,75 @@ export const paymentCommands = appSchema.table("payment_command", (d) => ({
   completedAt: d.timestamp({ withTimezone: true }),
   attemptedAt: d.timestamp({ withTimezone: true }),
 }));
+
+export const communityConnectionTypes = appSchema.table(
+  "community_connection_type",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    name: d.varchar({ length: 80 }).notNull(),
+    description: d.text().notNull().default(""),
+    mode: d
+      .varchar({ length: 20 })
+      .notNull()
+      .$type<"shared" | "complementary">(),
+    promptA: d.varchar({ length: 160 }).notNull(),
+    promptB: d.varchar({ length: 160 }).notNull().default(""),
+    topics: d.jsonb().$type<string[]>().notNull().default([]),
+    active: d.boolean().notNull().default(true),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [index("connection_type_community_idx").on(t.communityId)],
+);
+
+export const communityMatchingProfiles = appSchema.table(
+  "community_matching_profile",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    optedIn: d.boolean().notNull().default(false),
+    city: d.varchar({ length: 100 }).notNull().default(""),
+    languages: d.jsonb().$type<string[]>().notNull().default([]),
+    meeting: d
+      .varchar({ length: 20 })
+      .$type<MatchingProfile["meeting"]>()
+      .notNull()
+      .default("either"),
+    answers: d
+      .jsonb()
+      .$type<MatchingProfile["answers"]>()
+      .notNull()
+      .default({}),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [primaryKey({ columns: [t.communityId, t.userId] })],
+);
+
+export const communityMatchDismissals = appSchema.table(
+  "community_match_dismissal",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    pairKey: d.varchar({ length: 600 }).notNull(),
+    dismissedBy: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [primaryKey({ columns: [t.communityId, t.pairKey] })],
+);

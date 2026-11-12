@@ -78,6 +78,14 @@ existing introduction consent workflow. Additive schema changes remain unapplied
   English, Dutch and French; no live browser or integration tier was run.
 - Independent code review found a directory cursor bug and stale-answer opt-out
   failure; both were fixed with regression tests.
-- Migration prepared and registered, never applied. No database writes, push,
-  or outgoing messages were performed. Existing `src/payload-types.ts` edits
-  were left untouched.
+- At initial implementation, the migration was prepared and registered without
+  database writes, pushing, or outgoing messages. Existing `src/payload-types.ts`
+  edits were left untouched.
+
+## Migration execution — 2026-11-12
+
+The user subsequently explicitly requested running the migration. The default
+database configured by `.env` had only `20261112a_community_matching` pending.
+`pnpm db:apply` applied and recorded it as batch 155. A read-only verification
+confirmed its migration record, all three new app tables, and the introduction's
+`connection_type_id` and `reason` columns. No other migrations were applied.

@@ -7,7 +7,17 @@ import {
 } from "@/server/communities/referral-email/signup-attribution";
 // src/server/api/routers/communities.ts
 import { z } from "zod";
-import { and, eq, isNull, sql, desc, count, inArray } from "drizzle-orm";
+import {
+  and,
+  eq,
+  isNull,
+  sql,
+  desc,
+  count,
+  inArray,
+  ilike,
+  or,
+} from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
@@ -279,6 +289,7 @@ export const communitiesRouter = createTRPCRouter({
     .input(
       z.object({
         slug: z.string(),
+        q: z.string().trim().max(100).optional(),
         limit: z.number().min(1).max(50).default(20),
         cursor: z
           .object({ joinedAt: z.string().datetime(), userId: z.string() })
@@ -311,6 +322,17 @@ export const communitiesRouter = createTRPCRouter({
         eq(communityMemberships.status, input.status),
       ];
 
+      if (input.q) {
+        const search = `%${input.q.replace(/[\\%_]/g, "\\$&")}%`;
+        conditions.push(
+          or(
+            ilike(memberProfiles.displayName, search),
+            ilike(user.name, search),
+            ilike(memberProfiles.bio, search),
+          )!,
+        );
+      }
+
       // Keyset pagination: (joinedAt, userId) descending
       if (input.cursor) {
         conditions.push(
@@ -342,7 +364,8 @@ export const communitiesRouter = createTRPCRouter({
 
       let nextCursor: typeof input.cursor | undefined;
       if (items.length > input.limit) {
-        const next = items.pop()!;
+        items.pop();
+        const next = items.at(-1)!;
         nextCursor = {
           joinedAt: next.joinedAt.toISOString(),
           userId: next.userId,
