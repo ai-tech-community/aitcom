@@ -31,6 +31,7 @@ vi.mock("@/components/auth/auth-required-dialog", () => ({
   }),
 }));
 vi.mock("next-intl", () => ({
+  useLocale: () => "en",
   useTranslations: () => (k: string, vars?: Record<string, unknown>) =>
     vars ? `${k}:${JSON.stringify(vars)}` : k,
 }));
