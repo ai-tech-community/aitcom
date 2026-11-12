@@ -1,8 +1,12 @@
 /** Thin DB glue for community visibility. Policy lives in ./content-visibility. */
 
-import { and, eq, isNull, ne, notInArray } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, ne, notInArray } from "drizzle-orm";
 
-import { communities, communityMemberships } from "@/server/db/schema";
+import {
+  communities,
+  communityMemberships,
+  paymentPolicies,
+} from "@/server/db/schema";
 import type { db as _db } from "@/server/db";
 
 import {
@@ -11,6 +15,11 @@ import {
   type CommunityVisibility,
 } from "./content-visibility";
 import { HUB_SLUG } from "./hub";
+import {
+  canReadPaidCommunity,
+  membershipPaymentAllowed,
+  paymentsEnabled,
+} from "@/server/payments/access";
 
 type DB = typeof _db;
 
@@ -28,9 +37,13 @@ export async function isActiveCommunityMember(
       eq(communityMemberships.userId, userId),
       eq(communityMemberships.status, "active"),
     ),
-    columns: { communityId: true },
+    columns: { communityId: true, role: true },
   });
-  return !!membership;
+  return (
+    !!membership &&
+    (membership.role !== "member" ||
+      (await membershipPaymentAllowed(db, communityId, userId)))
+  );
 }
 
 /** Skips the membership lookup when the content is public anyway. */
@@ -39,6 +52,7 @@ export async function viewerCanReadContent(
   community: CommunityRef,
   userId: string | null | undefined,
 ): Promise<boolean> {
+  if (!(await canReadPaidCommunity(db, community.id, userId))) return false;
   if (canReadContent(community, false)) return true;
   return isActiveCommunityMember(db, community.id, userId);
 }
@@ -84,6 +98,7 @@ export async function viewerCanReadRoster(
   community: CommunityRef,
   userId: string | null | undefined,
 ): Promise<boolean> {
+  if (!(await canReadPaidCommunity(db, community.id, userId))) return false;
   if (canReadRoster(community, false)) return true;
   return isActiveCommunityMember(db, community.id, userId);
 }
@@ -121,5 +136,14 @@ export async function hiddenContentCommunityIds(
     .select({ id: communities.id })
     .from(communities)
     .where(and(...conditions));
-  return rows.map((r) => r.id);
+  const hidden = rows.map((r) => r.id);
+  if (paymentsEnabled()) {
+    const paid = await db
+      .select({ id: paymentPolicies.communityId })
+      .from(paymentPolicies)
+      .where(isNotNull(paymentPolicies.paidEntryAt));
+    for (const { id } of paid)
+      if (!(await canReadPaidCommunity(db, id, userId))) hidden.push(id);
+  }
+  return [...new Set(hidden)];
 }

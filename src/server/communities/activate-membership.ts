@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 import { logActivity } from "@/server/agent/activity";
 import { scrubJoinedReferralEmails } from "./referral-email/privacy";
@@ -6,6 +7,7 @@ import type { db as _db } from "@/server/db";
 import { communityMemberships } from "@/server/db/schema";
 import type { MembershipStatus } from "./invite-policy";
 import type { CommunityRole } from "./role-utils";
+import { membershipPaymentAllowed } from "@/server/payments/access";
 
 type DB = typeof _db;
 export type Tx = Parameters<Parameters<DB["transaction"]>[0]>[0];
@@ -44,7 +46,7 @@ export type ActivateMembershipInput = {
 /** The membership changed under us: roll back, report false. */
 class MembershipChanged extends Error {}
 
-async function writeActiveRow(
+export async function writeActiveRow(
   tx: Tx,
   input: ActivateMembershipInput,
 ): Promise<boolean> {
@@ -100,6 +102,46 @@ export async function activateMembership(
   db: DB,
   input: ActivateMembershipInput,
 ): Promise<boolean> {
+  if (
+    (!input.role || input.role === "member") &&
+    !(await membershipPaymentAllowed(db, input.communityId, input.userId))
+  ) {
+    // Preserve admission separately from paid activation, including magic invite links.
+    await db.transaction(async (tx) => {
+      if (input.existing) {
+        if (input.existing.status === "banned")
+          throw new TRPCError({ code: "FORBIDDEN" });
+        const changed = await tx
+          .update(communityMemberships)
+          .set({ status: "invited" })
+          .where(
+            and(
+              eq(communityMemberships.id, input.existing.id),
+              eq(communityMemberships.status, input.existing.status),
+            ),
+          )
+          .returning();
+        if (!changed.length) throw new TRPCError({ code: "CONFLICT" });
+      } else {
+        const created = await tx
+          .insert(communityMemberships)
+          .values({
+            communityId: input.communityId,
+            userId: input.userId,
+            status: "invited",
+            invitedBy: input.invitedBy,
+          })
+          .onConflictDoNothing()
+          .returning();
+        if (!created.length) throw new TRPCError({ code: "CONFLICT" });
+      }
+      await input.alongside?.(tx);
+    });
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Choose a paid membership from the community offers page.",
+    });
+  }
   try {
     await db.transaction(async (tx) => {
       if (!(await writeActiveRow(tx, input))) throw new MembershipChanged();

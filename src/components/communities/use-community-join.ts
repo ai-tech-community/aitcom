@@ -7,7 +7,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import type { JoinSource } from "@/lib/communities/join-source";
@@ -115,6 +115,7 @@ const CHANGES_HOME: ReadonlySet<Verb> = new Set(["accept", "decline"]);
  */
 function useMembershipRunner() {
   const t = useTranslations("communities.discover");
+  const locale = useLocale();
   const utils = api.useUtils();
   const join = api.communities.join.useMutation();
   const request = api.communities.requestToJoin.useMutation();
@@ -149,7 +150,20 @@ function useMembershipRunner() {
         void utils.feed.getHomeActivity.invalidate();
       }
       return true;
-    } catch {
+    } catch (error) {
+      if (
+        (verb === "join" || verb === "accept") &&
+        error &&
+        typeof error === "object" &&
+        "data" in error &&
+        (error.data as { code?: string } | undefined)?.code ===
+          "PRECONDITION_FAILED"
+      ) {
+        window.location.assign(
+          `/${locale}/communities/${encodeURIComponent(slug)}/offers`,
+        );
+        return false;
+      }
       // Name the problem and the way forward; never the raw server error.
       toast.error(said(SAID[verb].failed));
       return false;

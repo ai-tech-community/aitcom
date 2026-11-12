@@ -4,6 +4,7 @@ import { HUB_SLUG } from "@/server/communities/hub";
 import type { db as _db } from "@/server/db";
 import { enrollInHub } from "@/server/db/enroll-in-hub";
 import { communities, communityMemberships } from "@/server/db/schema";
+import { membershipPaymentAllowed } from "@/server/payments/access";
 
 type DB = typeof _db;
 
@@ -30,7 +31,7 @@ export async function queryMyCommunities(
   db: DB,
   userId: string,
 ): Promise<MyCommunity[]> {
-  return db
+  const rows = await db
     .select({
       communityId: communityMemberships.communityId,
       role: communityMemberships.role,
@@ -52,6 +53,15 @@ export async function queryMyCommunities(
     )
     .where(eq(communityMemberships.userId, userId))
     .orderBy(desc(communityMemberships.joinedAt));
+  return Promise.all(
+    rows.map(async (row) =>
+      row.role === "member" &&
+      row.status === "active" &&
+      !(await membershipPaymentAllowed(db, row.communityId, userId))
+        ? { ...row, status: "invited" as const }
+        : row,
+    ),
+  );
 }
 
 export function hasActiveHubMembership(rows: MyCommunity[]): boolean {

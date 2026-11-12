@@ -75,6 +75,32 @@ describe("event emails with a calendar invite", () => {
     expect(send.mock.calls[0]![0]).toMatchObject({ attachments: undefined });
   });
 
+  it("makes paid event confirmation retries idempotent and surfaces delivery failures", async () => {
+    await sendRegistrationConfirmation(
+      "ada@example.com",
+      "Ada",
+      EVENT,
+      INVITE,
+      "payment-order-1",
+    );
+    expect(send.mock.calls[0]![1]).toEqual({
+      idempotencyKey: "payment-order-1",
+    });
+    send.mockResolvedValueOnce({
+      data: null,
+      error: { message: "provider details" },
+    });
+    await expect(
+      sendRegistrationConfirmation(
+        "ada@example.com",
+        "Ada",
+        EVENT,
+        INVITE,
+        "payment-order-1",
+      ),
+    ).rejects.toThrow("Registration email could not be delivered.");
+  });
+
   it("waits and tries once more when sending too fast", async () => {
     vi.useFakeTimers();
     send

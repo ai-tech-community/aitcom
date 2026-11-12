@@ -91,6 +91,9 @@ import {
 import { checkInTransition } from "@/server/events/check-in";
 import { evaluateBadges } from "@/server/badges/engine";
 import { isFirstCheckIn } from "@/server/events/first-check-in";
+import { findResourceOffer, startCheckout } from "@/server/payments/checkout";
+import { paymentCommands, paymentOrders } from "@/server/db/schema";
+import { paymentsEnabled } from "@/server/payments/access";
 import {
   canSeeEventOrganizers,
   canSetEventOrganizer,
@@ -213,10 +216,49 @@ export const eventsRouter = createTRPCRouter({
         .limit(1);
 
       if (existing.length > 0) {
+        let checkoutUrl: string | null = null;
+        const registration = existing[0]!;
+        if (
+          paymentsEnabled() &&
+          registration.status === "pending_payment" &&
+          z.string().uuid().safeParse(registration.paymentId).success
+        ) {
+          const [order] = await ctx.db
+            .select()
+            .from(paymentOrders)
+            .where(
+              and(
+                eq(paymentOrders.id, registration.paymentId!),
+                eq(paymentOrders.buyerId, userId),
+              ),
+            );
+          checkoutUrl = order?.status === "pending" ? order.checkoutUrl : null;
+          if (
+            order?.status === "pending" &&
+            !checkoutUrl &&
+            order.reservationUntil &&
+            order.reservationUntil > new Date()
+          ) {
+            checkoutUrl = (
+              await startCheckout(ctx.db, {
+                offerId: order.offerId,
+                buyerId: userId,
+                email: ctx.session.user.email,
+                requestKey: order.requestKey,
+                consent: false,
+                locale: "en",
+                preparedEvent: {
+                  maxAttendees: event.maxAttendees ?? null,
+                  answers: registration.answers,
+                },
+              })
+            ).url;
+          }
+        }
         return {
           registration: existing[0]!,
           alreadyRegistered: true,
-          checkoutUrl: null,
+          checkoutUrl,
         };
       }
 
@@ -255,6 +297,42 @@ export const eventsRouter = createTRPCRouter({
 
       const price = (event.price as number | undefined) ?? 0;
       const isPaid = price > 0;
+      const connectedOffer = event.communityId
+        ? await findResourceOffer(
+            ctx.db,
+            event.communityId,
+            "event",
+            input.eventId,
+          )
+        : null;
+      if (connectedOffer) {
+        if (!connectedOffer.published)
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Ticket sales are closed.",
+          });
+        if (!isFull) {
+          const checkout = await startCheckout(ctx.db, {
+            offerId: connectedOffer.id,
+            buyerId: userId,
+            email: ctx.session.user.email,
+            requestKey: crypto.randomUUID(),
+            consent: false,
+            locale: "en",
+            preparedEvent: { maxAttendees, answers: checked.answers },
+          });
+          const [registration] = await ctx.db
+            .select()
+            .from(eventRegistrations)
+            .where(eq(eventRegistrations.paymentId, checkout.orderId))
+            .limit(1);
+          return {
+            registration: registration!,
+            alreadyRegistered: false,
+            checkoutUrl: checkout.url,
+          };
+        }
+      }
       const mollie = getMollie();
 
       if (isPaid && mollie && !isFull) {
@@ -461,6 +539,34 @@ export const eventsRouter = createTRPCRouter({
           ),
         );
 
+      if (paymentsEnabled() && active.status === "pending_payment") {
+        await ctx.db.transaction(async (tx) => {
+          const released = await tx
+            .update(paymentOrders)
+            .set({ status: "expired" })
+            .where(
+              and(
+                eq(paymentOrders.buyerId, userId),
+                eq(paymentOrders.kind, "event"),
+                eq(paymentOrders.resourceId, input.eventId),
+                eq(paymentOrders.status, "pending"),
+              ),
+            )
+            .returning({ id: paymentOrders.id });
+          if (released.length)
+            await tx
+              .insert(paymentCommands)
+              .values(
+                released.map(({ id }) => ({
+                  id: `expire-${id}`,
+                  orderId: id,
+                  kind: "expire_checkout" as const,
+                })),
+              )
+              .onConflictDoNothing();
+        });
+      }
+
       const [nextWaitlisted] = hadSeat
         ? await ctx.db
             .select()
@@ -476,35 +582,90 @@ export const eventsRouter = createTRPCRouter({
         : [];
 
       if (nextWaitlisted) {
-        await ctx.db
-          .update(eventRegistrations)
-          .set({ status: "registered" })
-          .where(eq(eventRegistrations.id, nextWaitlisted.id));
-
-        void (async () => {
-          try {
-            const event = await getEvent(input.eventId);
-            const [promotedUser] = await ctx.db
-              .select({ name: user.name, email: user.email })
-              .from(user)
-              .where(eq(user.id, nextWaitlisted.userId))
-              .limit(1);
-            if (promotedUser?.email) {
+        const paidEvent = paymentsEnabled()
+          ? await getEvent(input.eventId)
+          : null;
+        const paidOffer = paidEvent?.communityId
+          ? await findResourceOffer(
+              ctx.db,
+              paidEvent.communityId,
+              "event",
+              input.eventId,
+            )
+          : null;
+        if (paidOffer?.published && paidEvent) {
+          const [promotedUser] = await ctx.db
+            .select({ name: user.name, email: user.email })
+            .from(user)
+            .where(eq(user.id, nextWaitlisted.userId))
+            .limit(1);
+          if (promotedUser?.email) {
+            let paymentUrl: string | undefined;
+            try {
+              const checkout = await startCheckout(ctx.db, {
+                offerId: paidOffer.id,
+                buyerId: nextWaitlisted.userId,
+                email: promotedUser.email,
+                requestKey: crypto.randomUUID(),
+                consent: false,
+                locale: "en",
+                preparedEvent: {
+                  maxAttendees: paidEvent.maxAttendees ?? null,
+                  answers: nextWaitlisted.answers,
+                  registrationId: nextWaitlisted.id,
+                },
+              });
+              paymentUrl = checkout.url;
+            } catch {
+              console.error("[payments] waitlist checkout requires retry", {
+                eventId: input.eventId,
+              });
+            }
+            try {
               await sendWaitlistPromotion(
                 promotedUser.email,
                 promotedUser.name ?? "there",
-                toEventEmailData(event),
-                toRegistrationCalendarInvite(
-                  event,
-                  { email: promotedUser.email, name: promotedUser.name },
-                  "invite",
-                ),
+                toEventEmailData(paidEvent),
+                undefined,
+                { checkoutUrl: paymentUrl },
               );
+            } catch {
+              console.error("[payments] waitlist notice requires retry", {
+                eventId: input.eventId,
+              });
             }
-          } catch (e) {
-            console.error("Failed to send waitlist promotion email:", e);
           }
-        })();
+        } else if (!paidOffer) {
+          await ctx.db
+            .update(eventRegistrations)
+            .set({ status: "registered" })
+            .where(eq(eventRegistrations.id, nextWaitlisted.id));
+
+          void (async () => {
+            try {
+              const event = await getEvent(input.eventId);
+              const [promotedUser] = await ctx.db
+                .select({ name: user.name, email: user.email })
+                .from(user)
+                .where(eq(user.id, nextWaitlisted.userId))
+                .limit(1);
+              if (promotedUser?.email) {
+                await sendWaitlistPromotion(
+                  promotedUser.email,
+                  promotedUser.name ?? "there",
+                  toEventEmailData(event),
+                  toRegistrationCalendarInvite(
+                    event,
+                    { email: promotedUser.email, name: promotedUser.name },
+                    "invite",
+                  ),
+                );
+              }
+            } catch (e) {
+              console.error("Failed to send waitlist promotion email:", e);
+            }
+          })();
+        }
       }
 
       void (async () => {

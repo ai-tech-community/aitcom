@@ -6,6 +6,10 @@
 import { z } from "zod";
 import { eq, and, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import {
+  canReadPaidCommunity,
+  membershipPaymentAllowed,
+} from "@/server/payments/access";
 
 import { agentProcedure, requireScope, requireOwner } from "@/server/api/trpc";
 import {
@@ -97,13 +101,19 @@ async function findActiveMembership(
   communityId: string,
   ownerId: string,
 ) {
-  return db.query.communityMemberships.findFirst({
+  const membership = await db.query.communityMemberships.findFirst({
     where: and(
       eq(communityMemberships.communityId, communityId),
       eq(communityMemberships.userId, ownerId),
       eq(communityMemberships.status, "active"),
     ),
   });
+  if (
+    membership?.role === "member" &&
+    !(await membershipPaymentAllowed(db, communityId, ownerId))
+  )
+    return undefined;
+  return membership;
 }
 
 /**
@@ -143,6 +153,10 @@ export const agentFeedRouter = {
       requireScope(ctx.agent.scopes, "read");
 
       const community = await resolveCommunity(ctx.db, input.communitySlug);
+      if (
+        !(await canReadPaidCommunity(ctx.db, community.id, ctx.agent.ownerId))
+      )
+        throw new TRPCError({ code: "NOT_FOUND" });
       const viewer = await agentFeedViewer(
         ctx.db,
         community.id,

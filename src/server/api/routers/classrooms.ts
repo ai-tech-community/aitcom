@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { membershipPaymentAllowed } from "@/server/payments/access";
 import type { Where } from "payload";
 
 import {
@@ -82,6 +83,15 @@ async function resolveCommunityAndRole(
       ),
     });
     role = (membership?.role as CommunityRole | undefined) ?? null;
+    if (
+      role === "member" &&
+      !(await membershipPaymentAllowed(
+        ctx.db,
+        community.id,
+        ctx.session.user.id,
+      ))
+    )
+      role = null;
   }
 
   return {
@@ -322,7 +332,18 @@ export const classroomsRouter = createTRPCRouter({
       // One policy decides who may read a course (members-only, public,
       // drafts). `none` must not reveal that the course exists.
       const access = await loadCourseAccess(ctx.db, course, userId ?? null);
-      if (access === "none") throw new TRPCError({ code: "NOT_FOUND" });
+      if (access === "none") {
+        if (
+          (await loadCourseAccess(ctx.db, course, userId ?? null, {
+            ignorePurchase: true,
+          })) !== "none"
+        )
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "COURSE_PURCHASE_REQUIRED",
+          });
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
 
       const { docs: rawLessons } = await payload.find({
         collection: "lessons",

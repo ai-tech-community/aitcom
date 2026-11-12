@@ -5,6 +5,10 @@ import type { Course } from "@/payload-types";
 import type { db } from "@/server/db";
 import type { getPayloadClient } from "@/server/payload";
 import { communities, communityMemberships } from "@/server/db/schema";
+import {
+  coursePurchaseAllowed,
+  membershipPaymentAllowed,
+} from "@/server/payments/access";
 
 /**
  * Who may read a classroom course. The single source of the course read
@@ -55,7 +59,10 @@ export function resolveCourseAccess(input: {
   return course.isPublic === true ? "visitor" : "none";
 }
 
-export type LoadableCourse = CourseAccessCourse & { communityId: string };
+export type LoadableCourse = CourseAccessCourse & {
+  communityId: string;
+  id?: number;
+};
 
 /**
  * The caller's access to a course, read from the database. A course whose
@@ -66,6 +73,7 @@ export async function loadCourseAccess(
   database: typeof db,
   course: LoadableCourse,
   viewerId: string | null,
+  options: { ignorePurchase?: boolean } = {},
 ): Promise<CourseAccess> {
   const community = await database.query.communities.findFirst({
     where: and(
@@ -85,10 +93,30 @@ export async function loadCourseAccess(
       ),
       columns: { role: true, status: true },
     });
+    if (row?.status === "banned") return "none";
     if (row) membership = { role: row.role, active: row.status === "active" };
   }
 
-  return resolveCourseAccess({ course, viewerId, membership });
+  if (
+    membership?.role === "member" &&
+    viewerId &&
+    !(await membershipPaymentAllowed(database, course.communityId, viewerId))
+  )
+    membership = null;
+  const access = resolveCourseAccess({ course, viewerId, membership });
+  if (
+    !options.ignorePurchase &&
+    access !== "manager" &&
+    course.id &&
+    !(await coursePurchaseAllowed(
+      database,
+      course.communityId,
+      course.id,
+      viewerId,
+    ))
+  )
+    return "none";
+  return access;
 }
 
 /**

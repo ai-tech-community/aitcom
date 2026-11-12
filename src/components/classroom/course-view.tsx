@@ -64,13 +64,14 @@ export function CourseView({
   embedded?: boolean;
 }) {
   const t = useTranslations("classroom");
+  const tPayments = useTranslations("payments");
   const confirm = useConfirm();
   const router = useRouter();
   const utils = api.useUtils();
   const { data: session } = authClient.useSession();
   const { requireAuth } = useRequireAuth();
 
-  const { data, isLoading, isError } = api.classrooms.get.useQuery({
+  const { data, isLoading, isError, error } = api.classrooms.get.useQuery({
     slug: courseSlug,
   });
 
@@ -155,6 +156,23 @@ export function CourseView({
   }
 
   if (isError || !data) {
+    if (error?.data?.code === "PRECONDITION_FAILED")
+      return (
+        <div className="mx-auto max-w-2xl space-y-4 py-12">
+          <Lock className="text-muted-foreground size-7" aria-hidden="true" />
+          <h1 className="text-2xl font-semibold">
+            {tPayments("purchaseCourse")}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {tPayments("courseLocked")}
+          </p>
+          <Button asChild>
+            <Link href={`/communities/${slug}/offers` as never}>
+              {tPayments("offersTitle")}
+            </Link>
+          </Button>
+        </div>
+      );
     return (
       <p className="text-muted-foreground py-12 text-center text-sm">
         {t("notFound")}

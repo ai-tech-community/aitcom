@@ -7,7 +7,17 @@ import {
 } from "@/server/communities/referral-email/signup-attribution";
 // src/server/api/routers/communities.ts
 import { z } from "zod";
-import { and, eq, isNull, sql, desc, count, inArray } from "drizzle-orm";
+import {
+  and,
+  eq,
+  isNull,
+  sql,
+  desc,
+  count,
+  inArray,
+  ilike,
+  or,
+} from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
@@ -67,6 +77,8 @@ import {
 } from "@/server/communities/member-stack-queries";
 import { HUB_SLUG } from "@/server/api/trpc";
 import { listMyCommunities } from "@/server/communities/my-communities";
+import { membershipPaymentAllowed } from "@/server/payments/access";
+import { stopCommunityMembershipBilling } from "@/server/payments/management";
 import { countPendingJoinRequests } from "@/server/communities/pending-join-requests";
 import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
 import { activateMembership } from "@/server/communities/activate-membership";
@@ -277,6 +289,7 @@ export const communitiesRouter = createTRPCRouter({
     .input(
       z.object({
         slug: z.string(),
+        q: z.string().trim().max(100).optional(),
         limit: z.number().min(1).max(50).default(20),
         cursor: z
           .object({ joinedAt: z.string().datetime(), userId: z.string() })
@@ -309,6 +322,17 @@ export const communitiesRouter = createTRPCRouter({
         eq(communityMemberships.status, input.status),
       ];
 
+      if (input.q) {
+        const search = `%${input.q.replace(/[\\%_]/g, "\\$&")}%`;
+        conditions.push(
+          or(
+            ilike(memberProfiles.displayName, search),
+            ilike(user.name, search),
+            ilike(memberProfiles.bio, search),
+          )!,
+        );
+      }
+
       // Keyset pagination: (joinedAt, userId) descending
       if (input.cursor) {
         conditions.push(
@@ -340,7 +364,8 @@ export const communitiesRouter = createTRPCRouter({
 
       let nextCursor: typeof input.cursor | undefined;
       if (items.length > input.limit) {
-        const next = items.pop()!;
+        items.pop();
+        const next = items.at(-1)!;
         nextCursor = {
           joinedAt: next.joinedAt.toISOString(),
           userId: next.userId,
@@ -928,6 +953,11 @@ export const communitiesRouter = createTRPCRouter({
         }
       }
 
+      await stopCommunityMembershipBilling(
+        ctx.db,
+        community.id,
+        ctx.session.user.id,
+      );
       await ctx.db
         .delete(communityMemberships)
         .where(eq(communityMemberships.id, membership.id));
@@ -1075,10 +1105,15 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      const paid = await membershipPaymentAllowed(
+        ctx.db,
+        ctx.community.id,
+        input.userId,
+      );
       const updated = await ctx.db.transaction(async (tx) => {
         const [member] = await tx
           .update(communityMemberships)
-          .set({ status: "active" })
+          .set({ status: paid ? "active" : "invited" })
           .where(
             and(
               eq(communityMemberships.communityId, ctx.community.id),
@@ -1087,7 +1122,7 @@ export const communitiesRouter = createTRPCRouter({
             ),
           )
           .returning();
-        if (member)
+        if (member && paid)
           await scrubJoinedReferralEmails(tx, input.userId, ctx.community.id);
         return member;
       });
@@ -1111,14 +1146,15 @@ export const communitiesRouter = createTRPCRouter({
       // Emit a community.joined event attributed to the approved member so that
       // the Insights `newJoins` / `healthPulse` metric counts approval-path joins
       // consistently with the open-join path.
-      await logActivity(ctx.db, {
-        actorId: input.userId,
-        actorType: "member",
-        action: "community.joined",
-        targetType: "community",
-        targetId: ctx.community.id,
-        communityId: ctx.community.id,
-      });
+      if (paid)
+        await logActivity(ctx.db, {
+          actorId: input.userId,
+          actorType: "member",
+          action: "community.joined",
+          targetType: "community",
+          targetId: ctx.community.id,
+          communityId: ctx.community.id,
+        });
 
       return { success: true };
     }),
@@ -1298,6 +1334,11 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      await stopCommunityMembershipBilling(
+        ctx.db,
+        ctx.community.id,
+        input.userId,
+      );
       await ctx.db
         .update(communityMemberships)
         .set({ status: "banned" })
@@ -1339,6 +1380,11 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      await stopCommunityMembershipBilling(
+        ctx.db,
+        ctx.community.id,
+        input.userId,
+      );
       await ctx.db
         .delete(communityMemberships)
         .where(eq(communityMemberships.id, target.id));

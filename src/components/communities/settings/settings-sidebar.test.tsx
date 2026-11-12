@@ -15,6 +15,21 @@ vi.mock("@/i18n/navigation", () => ({
 import { SettingsSidebar } from "./settings-sidebar";
 
 describe("SettingsSidebar", () => {
+  it.each(["owner", "admin"] as const)(
+    "opens matching settings for the %s in both navigation layouts",
+    (memberRole) => {
+      renderWithIntl(
+        <SettingsSidebar slug="night-owls" memberRole={memberRole} />,
+      );
+      const links = screen.getAllByRole("link", { name: "Matching" });
+      expect(links).toHaveLength(2);
+      for (const link of links)
+        expect(link).toHaveAttribute(
+          "href",
+          "/communities/night-owls/settings/matching",
+        );
+    },
+  );
   it("opens the magazine settings directly from both navigation layouts", () => {
     renderWithIntl(<SettingsSidebar slug="night-owls" memberRole="owner" />);
     const links = screen.getAllByRole("link", { name: "Magazine" });

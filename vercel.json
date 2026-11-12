@@ -128,6 +128,10 @@
     {
       "path": "/api/cron/referral-invites",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/community-payments",
+      "schedule": "* * * * *"
     }
   ]
 }

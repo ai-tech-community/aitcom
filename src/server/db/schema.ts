@@ -1,4 +1,12 @@
+import type {
+  PaymentProvider,
+  OfferKind,
+  BillingInterval,
+  PaymentStatus,
+  SubscriptionStatus,
+} from "@/lib/payments";
 import type { RegistrationSource } from "@/lib/events/registration-source";
+import type { MatchingProfile } from "@/lib/communities/matching";
 import { relations, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { UiProducerTrust, UiResource } from "@/lib/chat/types";
@@ -1822,6 +1830,10 @@ export const introductions = appSchema.table(
       .$type<string[]>()
       .notNull()
       .default([]),
+    connectionTypeId: d
+      .varchar("connection_type_id", { length: 255 })
+      .references(() => communityConnectionTypes.id),
+    reason: d.text(),
     status: d
       .varchar({ length: 20 })
       .notNull()
@@ -5762,4 +5774,363 @@ export const newsContributions = appSchema.table(
       sql`${t.region} is null or ${t.region} in ('eu', 'il', 'asia')`,
     ),
   ],
+);
+
+// Community-owned payments. Financial state stays separate from moderation roles.
+export const paymentConnections = appSchema.table(
+  "payment_connection",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    ownerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    provider: d.text().notNull().$type<PaymentProvider>(),
+    accountId: d.text(),
+    balanceAccountId: d.text(),
+    legalEntityId: d.text(),
+    businessLineId: d.text(),
+    storeId: d.text(),
+    country: d.text().notNull().default("NL"),
+    chargesEnabled: d.boolean().notNull().default(false),
+    payoutsEnabled: d.boolean().notNull().default(false),
+    accountLabel: d.text(),
+    portalConfigurationId: d.text(),
+    environment: d.text().notNull().$type<"test" | "live">(),
+    stateHash: d.text(),
+    stateExpiresAt: d.timestamp({ withTimezone: true }),
+    disconnectedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("payment_connection_community_provider_uq")
+      .on(t.communityId, t.provider)
+      .where(sql`${t.disconnectedAt} IS NULL`),
+    uniqueIndex("payment_connection_account_uq").on(t.provider, t.accountId),
+  ],
+);
+
+export const paymentOffers = appSchema.table(
+  "payment_offer",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    connectionId: d
+      .uuid()
+      .notNull()
+      .references(() => paymentConnections.id),
+    title: d.text().notNull(),
+    description: d.text().notNull().default(""),
+    kind: d.text().notNull().$type<OfferKind>(),
+    amount: d.integer().notNull(),
+    currency: d.text().notNull().default("EUR"),
+    interval: d.text().notNull().$type<BillingInterval>(),
+    resourceId: d.integer(),
+    published: d.boolean().notNull().default(false),
+    publishedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    index("payment_offer_community_idx").on(t.communityId),
+    check(
+      "payment_offer_amount_positive",
+      sql`${t.amount} >= 100 AND ${t.amount} <= 1000000`,
+    ),
+  ],
+);
+
+export const paymentPolicies = appSchema.table("payment_policy", (d) => ({
+  communityId: d
+    .varchar({ length: 255 })
+    .primaryKey()
+    .references(() => communities.id),
+  activeConnectionId: d.uuid().references(() => paymentConnections.id),
+  paidEntryAt: d.timestamp({ withTimezone: true }),
+}));
+
+export const paymentOrders = appSchema.table(
+  "payment_order",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    connectionId: d
+      .uuid()
+      .notNull()
+      .references(() => paymentConnections.id),
+    offerId: d
+      .uuid()
+      .notNull()
+      .references(() => paymentOffers.id),
+    buyerId: d.varchar({ length: 255 }).references(() => user.id),
+    buyerEmail: d.text().notNull(),
+    checkoutLocale: d.text().notNull().default("en"),
+    title: d.text().notNull(),
+    kind: d.text().notNull().$type<OfferKind>(),
+    amount: d.integer().notNull(),
+    currency: d.text().notNull(),
+    interval: d.text().notNull().$type<BillingInterval>(),
+    resourceId: d.integer(),
+    status: d.text().notNull().default("pending").$type<PaymentStatus>(),
+    fulfillment: d
+      .text()
+      .notNull()
+      .default("pending")
+      .$type<"pending" | "fulfilled" | "refund_required" | "revoked">(),
+    providerReference: d.text(),
+    checkoutReference: d.text(),
+    captureReference: d.text(),
+    checkoutUrl: d.text(),
+    receiptUrl: d.text(),
+    renewalOf: d.uuid(),
+    paidPeriodEnd: d.timestamp({ withTimezone: true }),
+    requestKey: d.uuid().notNull(),
+    reservationUntil: d.timestamp({ withTimezone: true }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("payment_order_request_uq").on(t.requestKey),
+    uniqueIndex("payment_order_provider_reference_uq").on(
+      t.connectionId,
+      t.providerReference,
+    ),
+    uniqueIndex("payment_order_checkout_reference_uq").on(
+      t.connectionId,
+      t.checkoutReference,
+    ),
+    index("payment_order_buyer_idx").on(t.buyerId),
+    index("payment_order_resource_idx").on(t.communityId, t.kind, t.resourceId),
+  ],
+);
+
+export const paymentSubscriptions = appSchema.table(
+  "payment_subscription",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    orderId: d
+      .uuid()
+      .notNull()
+      .references(() => paymentOrders.id),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    connectionId: d
+      .uuid()
+      .notNull()
+      .references(() => paymentConnections.id),
+    userId: d.varchar({ length: 255 }).references(() => user.id),
+    providerReference: d.text(),
+    customerReference: d.text(),
+    token: d.text(),
+    status: d.text().notNull().default("pending").$type<SubscriptionStatus>(),
+    paidThrough: d.timestamp({ withTimezone: true }),
+    anchor: d.timestamp({ withTimezone: true }),
+    sequence: d.integer().notNull().default(0),
+    nextBillAt: d.timestamp({ withTimezone: true }),
+    cancelAtPeriodEnd: d.boolean().notNull().default(false),
+    providerUpdatedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [
+    uniqueIndex("payment_subscription_order_uq").on(t.orderId),
+    uniqueIndex("payment_subscription_provider_uq").on(
+      t.connectionId,
+      t.providerReference,
+    ),
+    index("payment_subscription_user_idx").on(t.communityId, t.userId),
+  ],
+);
+
+export const paymentBillingAttempts = appSchema.table(
+  "payment_billing_attempt",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    subscriptionId: d
+      .uuid()
+      .notNull()
+      .references(() => paymentSubscriptions.id),
+    sequence: d.integer().notNull(),
+    attempt: d.integer().notNull().default(0),
+    providerReference: d.text(),
+    status: d
+      .text()
+      .notNull()
+      .default("pending")
+      .$type<"pending" | "paid" | "failed" | "unknown">(),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("payment_billing_period_uq").on(
+      t.subscriptionId,
+      t.sequence,
+      t.attempt,
+    ),
+  ],
+);
+
+export const paymentEvents = appSchema.table("payment_event", (d) => ({
+  id: d.text().primaryKey(),
+  connectionId: d
+    .uuid()
+    .notNull()
+    .references(() => paymentConnections.id),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+}));
+
+export const paymentRefunds = appSchema.table(
+  "payment_refund",
+  (d) => ({
+    id: d
+      .uuid()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    orderId: d
+      .uuid()
+      .notNull()
+      .references(() => paymentOrders.id),
+    providerReference: d.text(),
+    amount: d.integer().notNull(),
+    status: d.text().notNull().$type<"pending" | "succeeded" | "failed">(),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("payment_refund_provider_uq").on(
+      t.orderId,
+      t.providerReference,
+    ),
+  ],
+);
+
+export const paymentComplimentaryMembers = appSchema.table(
+  "payment_complimentary_member",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+  }),
+  (t) => [primaryKey({ columns: [t.communityId, t.userId] })],
+);
+
+export const paymentOutbox = appSchema.table("payment_outbox", (d) => ({
+  orderId: d
+    .uuid()
+    .primaryKey()
+    .references(() => paymentOrders.id),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  attemptedAt: d.timestamp({ withTimezone: true }),
+  lastAttemptAt: d.timestamp({ withTimezone: true }),
+  sentAt: d.timestamp({ withTimezone: true }),
+}));
+
+export const paymentCommands = appSchema.table("payment_command", (d) => ({
+  id: d.text().primaryKey(),
+  orderId: d
+    .uuid()
+    .notNull()
+    .references(() => paymentOrders.id),
+  kind: d.text().notNull().$type<"cancel_subscription" | "expire_checkout">(),
+  createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  completedAt: d.timestamp({ withTimezone: true }),
+  attemptedAt: d.timestamp({ withTimezone: true }),
+}));
+
+export const communityConnectionTypes = appSchema.table(
+  "community_connection_type",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    name: d.varchar({ length: 80 }).notNull(),
+    description: d.text().notNull().default(""),
+    mode: d
+      .varchar({ length: 20 })
+      .notNull()
+      .$type<"shared" | "complementary">(),
+    promptA: d.varchar({ length: 160 }).notNull(),
+    promptB: d.varchar({ length: 160 }).notNull().default(""),
+    topics: d.jsonb().$type<string[]>().notNull().default([]),
+    active: d.boolean().notNull().default(true),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [index("connection_type_community_idx").on(t.communityId)],
+);
+
+export const communityMatchingProfiles = appSchema.table(
+  "community_matching_profile",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    optedIn: d.boolean().notNull().default(false),
+    city: d.varchar({ length: 100 }).notNull().default(""),
+    languages: d.jsonb().$type<string[]>().notNull().default([]),
+    meeting: d
+      .varchar({ length: 20 })
+      .$type<MatchingProfile["meeting"]>()
+      .notNull()
+      .default("either"),
+    answers: d
+      .jsonb()
+      .$type<MatchingProfile["answers"]>()
+      .notNull()
+      .default({}),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [primaryKey({ columns: [t.communityId, t.userId] })],
+);
+
+export const communityMatchDismissals = appSchema.table(
+  "community_match_dismissal",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    pairKey: d.varchar({ length: 600 }).notNull(),
+    dismissedBy: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [primaryKey({ columns: [t.communityId, t.pairKey] })],
 );

@@ -26,6 +26,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "general", href: `${basePath}/general` },
     { key: "spaces", href: `${basePath}/spaces` },
     { key: "members", href: `${basePath}/members` },
+    { key: "matching", href: `${basePath}/matching` },
     { key: "invites", href: `${basePath}/invites` },
     { key: "rules", href: `${basePath}/rules` },
     { key: "topics", href: `${basePath}/topics` },
@@ -36,6 +37,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "autonomy", href: `${basePath}/autonomy` },
     { key: "acquire", href: `${basePath}/acquire` },
     { key: "integrations", href: `${basePath}/integrations`, ownerOnly: true },
+    { key: "payments", href: `${basePath}/payments`, ownerOnly: true },
     { key: "ownership", href: `${basePath}/ownership`, ownerOnly: true },
   ];
 
@@ -65,6 +67,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "general"
                   | "spaces"
                   | "members"
+                  | "matching"
                   | "invites"
                   | "rules"
                   | "topics"
@@ -75,6 +78,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "autonomy"
                   | "acquire"
                   | "integrations"
+                  | "payments"
                   | "ownership",
               )}
             </Link>
@@ -102,6 +106,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "general"
                   | "spaces"
                   | "members"
+                  | "matching"
                   | "invites"
                   | "rules"
                   | "topics"
@@ -112,6 +117,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "autonomy"
                   | "acquire"
                   | "integrations"
+                  | "payments"
                   | "ownership",
               )}
             </Link>

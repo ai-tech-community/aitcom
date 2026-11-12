@@ -1,3 +1,4 @@
+import type { db as Database } from "@/server/db";
 import { z } from "zod";
 import { eq, and, desc, lt, sql, ne, or, ilike, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -21,6 +22,10 @@ import {
   user,
 } from "@/server/db/schema";
 import { isActiveMember } from "@/server/communities/room-access";
+import {
+  canReadPaidCommunity,
+  paymentsEnabled,
+} from "@/server/payments/access";
 import { countRoomUnread } from "@/server/communities/room-unread";
 import { logActivity } from "@/server/agent/activity";
 import { publishInboxEvent } from "@/server/inbox/publish";
@@ -51,7 +56,7 @@ const uiResourceSchema = z.object({
     .optional(),
 });
 
-type ConversationDb = typeof import("@/server/db").db;
+type ConversationDb = typeof Database;
 
 /**
  * For a space conversation, the caller must be an active member of the room.
@@ -62,7 +67,7 @@ async function requireSpaceConversationAccess(
   conversationSpaceId: string,
   userId: string,
 ): Promise<string[]> {
-  const members = await db
+  let members = await db
     .select({
       userId: spaceMemberships.userId,
       status: spaceMemberships.status,
@@ -74,6 +79,26 @@ async function requireSpaceConversationAccess(
         eq(spaceMemberships.status, "active"),
       ),
     );
+  if (paymentsEnabled()) {
+    const space = await db.query.spaces.findFirst({
+      where: eq(spaces.id, conversationSpaceId),
+      columns: { communityId: true },
+    });
+    if (!space) throw new TRPCError({ code: "FORBIDDEN" });
+    const allowed = await Promise.all(
+      members.map(async (member) => ({
+        member,
+        allowed: await canReadPaidCommunity(
+          db,
+          space.communityId,
+          member.userId,
+        ),
+      })),
+    );
+    members = allowed
+      .filter((entry) => entry.allowed)
+      .map((entry) => entry.member);
+  }
   const mine = members.find((m) => m.userId === userId);
   if (!isActiveMember(mine ? { status: "active" } : null)) {
     throw new TRPCError({ code: "FORBIDDEN" });
@@ -160,7 +185,7 @@ export const inboxRouter = createTRPCRouter({
       // ── Space (room) conversations the caller is an ACTIVE member of ────
       // Gate on spaceMemberships.status === "active". No participant rows exist,
       // so there is no lastReadAt — unread is computed from all messages below.
-      const roomRowsRaw = await ctx.db
+      let roomRowsRaw = await ctx.db
         .select({
           conversationId: conversations.id,
           convType: conversations.type,
@@ -170,6 +195,7 @@ export const inboxRouter = createTRPCRouter({
           roomSlug: spaces.slug,
           roomVisibility: spaces.visibility,
           communitySlug: communities.slug,
+          communityId: communities.id,
           communityName: communities.name,
           communityLogoUrl: communities.logoUrl,
           lastReadAt: spaceMemberships.lastReadAt,
@@ -188,6 +214,22 @@ export const inboxRouter = createTRPCRouter({
             eq(spaceMemberships.status, "active"),
           ),
         );
+
+      if (paymentsEnabled()) {
+        const allowed = await Promise.all(
+          roomRowsRaw.map(async (room) => ({
+            room,
+            allowed: await canReadPaidCommunity(
+              ctx.db,
+              room.communityId,
+              userId,
+            ),
+          })),
+        );
+        roomRowsRaw = allowed
+          .filter((entry) => entry.allowed)
+          .map((entry) => entry.room);
+      }
 
       // Active-member counts per room via a grouped query, mapped by spaceId. An
       // inline correlated subquery mis-correlates here: Drizzle emits the

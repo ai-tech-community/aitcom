@@ -17,6 +17,10 @@ import { imageIdsOf } from "./feed-images";
 import { loadMentionViews, type PostMentionView } from "./post-mentions";
 import { loadPollViews } from "./post-polls";
 import type { FeedPollView } from "@/lib/poll-rules";
+import {
+  canReadPaidCommunity,
+  membershipPaymentAllowed,
+} from "@/server/payments/access";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -58,7 +62,11 @@ export async function requireActiveFeedMember(
     ),
     columns: { id: true, role: true },
   });
-  if (!membership) {
+  if (
+    !membership ||
+    (membership.role === "member" &&
+      !(await membershipPaymentAllowed(database, community.id, userId)))
+  ) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: NOT_A_MEMBER,
@@ -100,7 +108,13 @@ export async function requireViewablePost(
   if (!post || post.isDeleted) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
   }
-  const membership =
+  if (
+    post.communityId &&
+    !(await canReadPaidCommunity(database, post.communityId, userId))
+  ) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+  }
+  let membership =
     userId && post.communityId
       ? ((await database.query.communityMemberships.findFirst({
           where: and(
@@ -111,6 +125,13 @@ export async function requireViewablePost(
           columns: { role: true },
         })) ?? null)
       : null;
+  if (
+    membership?.role === "member" &&
+    post.communityId &&
+    userId &&
+    !(await membershipPaymentAllowed(database, post.communityId, userId))
+  )
+    membership = null;
   if (options.requireMembership && !membership) {
     throw new TRPCError({
       code: "FORBIDDEN",

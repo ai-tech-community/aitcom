@@ -1,3 +1,4 @@
+import type * as PaymentAccess from "@/server/payments/access";
 // Router-level test: registering for an event AIT Community runs emails a
 // calendar invite; an event run on another site cannot be registered here
 // (the page sends people to its source); a waitlisted member gets no invite;
@@ -9,6 +10,18 @@ const payload = { findByID: vi.fn() };
 const sendRegistrationConfirmation = vi.fn();
 const sendCancellationConfirmation = vi.fn();
 const sendWaitlistPromotion = vi.fn();
+const paymentFeature = { enabled: false };
+const findResourceOffer = vi.fn();
+const startCheckout = vi.fn();
+vi.mock("@/server/payments/access", async () => ({
+  ...(await vi.importActual<typeof PaymentAccess>("@/server/payments/access")),
+  paymentsEnabled: () => paymentFeature.enabled,
+}));
+vi.mock("@/server/payments/checkout", () => ({
+  findResourceOffer,
+  startCheckout,
+  assertSellableResource: vi.fn(),
+}));
 
 /** Rows each awaited db chain resolves to, in call order. */
 const dbResults: unknown[][] = [];
@@ -17,7 +30,14 @@ const updates: unknown[] = [];
 
 function chain(): Record<string, unknown> {
   const c: Record<string, unknown> = {};
-  for (const m of ["from", "where", "limit", "orderBy", "returning"]) {
+  for (const m of [
+    "from",
+    "where",
+    "limit",
+    "orderBy",
+    "returning",
+    "onConflictDoNothing",
+  ]) {
     c[m] = () => c;
   }
   c.set = (values: unknown) => {
@@ -36,6 +56,9 @@ const fakeDb = {
   select: () => chain(),
   insert: () => chain(),
   update: vi.fn(() => chain()),
+  transaction: async (
+    callback: (tx: never) => Promise<unknown>,
+  ): Promise<unknown> => callback(fakeDb as never),
 };
 
 vi.mock("@/server/events/registration-attribution", () => ({
@@ -48,7 +71,7 @@ vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
   env: {
     NODE_ENV: "test",
-    DATABASE_URL: "postgres://localhost:5432/test",
+    DATABASE_URL: "postgres://localhost:1/none",
     NEXT_PUBLIC_APP_URL: "https://app.test",
   },
 }));
@@ -100,12 +123,68 @@ const NATIVE_EVENT = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  paymentFeature.enabled = false;
+  findResourceOffer.mockResolvedValue(null);
+  startCheckout.mockResolvedValue({
+    orderId: "order-1",
+    url: "https://checkout.stripe.com/example",
+  });
   dbResults.length = 0;
   inserted.length = 0;
   updates.length = 0;
 });
 
 describe("events.register", () => {
+  it("never gives a paid waitlist promotion a free registered ticket", async () => {
+    paymentFeature.enabled = true;
+    payload.findByID.mockResolvedValue({
+      ...NATIVE_EVENT,
+      communityId: "community",
+      price: 2500,
+    });
+    findResourceOffer.mockResolvedValue({ id: "offer-paid", published: true });
+    dbResults.push(
+      [{ status: "registered" }],
+      [],
+      [{ id: "waitlist-1", userId: "u2", answers: [] }],
+      [{ name: "Grace", email: "grace@example.com" }],
+    );
+    await memberCaller().events.cancelRegistration({ eventId: 7 });
+    expect(startCheckout).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        buyerId: "u2",
+        offerId: "offer-paid",
+        preparedEvent: expect.objectContaining({
+          registrationId: "waitlist-1",
+          maxAttendees: 10,
+        }),
+      }),
+    );
+    expect(updates).not.toContainEqual({ status: "registered" });
+    expect(sendWaitlistPromotion.mock.calls[0]?.[3]).toBeUndefined();
+    expect(sendWaitlistPromotion.mock.calls[0]?.[4]).toEqual({
+      checkoutUrl: "https://checkout.stripe.com/example",
+    });
+  });
+
+  it("releases a canceled pending ticket reservation and queues checkout closure", async () => {
+    paymentFeature.enabled = true;
+    payload.findByID.mockResolvedValue(NATIVE_EVENT);
+    dbResults.push(
+      [{ status: "pending_payment" }],
+      [],
+      [{ id: "order-1" }],
+      [],
+    );
+    await memberCaller().events.cancelRegistration({ eventId: 7 });
+    expect(updates).toContainEqual({ status: "expired" });
+    expect(inserted).toContainEqual([
+      { id: "expire-order-1", orderId: "order-1", kind: "expire_checkout" },
+    ]);
+    expect(sendWaitlistPromotion).not.toHaveBeenCalled();
+  });
+
   it("emails our own event's confirmation with a calendar invite", async () => {
     payload.findByID.mockResolvedValue(NATIVE_EVENT);
     dbResults.push(
