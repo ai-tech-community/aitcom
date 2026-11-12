@@ -317,6 +317,36 @@ describe("member matching interface", () => {
     );
     expect(screen.getByRole("checkbox", { name: "Cycling" })).toBeChecked();
   });
+  it("retains a valid language edit when saving an opt-out", () => {
+    show(
+      <MatchingProfileForm
+        slug="alpha"
+        types={[type]}
+        profile={{
+          ...emptyMatchingProfile,
+          optedIn: true,
+          languages: ["English"],
+        }}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(en.communityMatching.languages), {
+      target: { value: "Dutch" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I’m open to introductions/ }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save matching profile" }),
+    );
+    expect(m.saveProfile).toHaveBeenCalledWith({
+      slug: "alpha",
+      profile: {
+        ...emptyMatchingProfile,
+        languages: ["Dutch"],
+        optedIn: false,
+      },
+    });
+  });
   it("allows opting out after hiding an invalid unsaved language draft", () => {
     show(
       <MatchingProfileForm

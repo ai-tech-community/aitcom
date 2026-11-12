@@ -55,14 +55,18 @@ export function MatchingProfileForm({
       className="max-w-3xl space-y-6"
       onSubmit={(event) => {
         event.preventDefault();
+        const languageDraft = languages
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean);
+        const validLanguages =
+          matchingProfileInput.shape.languages.safeParse(languageDraft).success;
         const parsed = matchingProfileInput.safeParse({
           ...value,
-          languages: value.optedIn
-            ? languages
-                .split(",")
-                .map((v) => v.trim())
-                .filter(Boolean)
-            : profile.languages,
+          languages:
+            !value.optedIn && !validLanguages
+              ? profile.languages
+              : languageDraft,
         });
         setInvalid(!parsed.success);
         if (parsed.success) save.mutate({ slug, profile: parsed.data });

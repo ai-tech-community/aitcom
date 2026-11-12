@@ -33,7 +33,7 @@ saved answers remain the source of truth.
 
 ## Verification
 
-All 24 tests in the two touched UI test files passed. Root `pnpm typecheck`,
+All 25 tests in the two touched UI test files passed. Root `pnpm typecheck`,
 changed-file ESLint, Prettier and whitespace checks passed. The UI detector
 reported no deterministic issues. No database writes or push were performed;
 the existing `src/payload-types.ts` edit was left untouched.
