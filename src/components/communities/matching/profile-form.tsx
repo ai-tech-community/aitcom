@@ -57,10 +57,12 @@ export function MatchingProfileForm({
         event.preventDefault();
         const parsed = matchingProfileInput.safeParse({
           ...value,
-          languages: languages
-            .split(",")
-            .map((v) => v.trim())
-            .filter(Boolean),
+          languages: value.optedIn
+            ? languages
+                .split(",")
+                .map((v) => v.trim())
+                .filter(Boolean)
+            : profile.languages,
         });
         setInvalid(!parsed.success);
         if (parsed.success) save.mutate({ slug, profile: parsed.data });
@@ -89,126 +91,133 @@ export function MatchingProfileForm({
           </span>
         </span>
       </label>
-      <fieldset disabled={save.isPending} className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-city`}>{t("city")}</Label>
-            <Input
-              id={`${id}-city`}
-              value={value.city}
-              maxLength={100}
-              onChange={(e) => setValue({ ...value, city: e.target.value })}
-              autoComplete="address-level2"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-languages`}>{t("languages")}</Label>
-            <Input
-              id={`${id}-languages`}
-              value={languages}
-              onChange={(e) => setLanguages(e.target.value)}
-              aria-describedby={`${id}-languages-help`}
-            />
-            <p
-              id={`${id}-languages-help`}
-              className="text-muted-foreground text-xs"
-            >
-              {t("languagesHelp")}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-meeting`}>{t("meeting")}</Label>
-            <Select
-              value={value.meeting}
-              onValueChange={(meeting) =>
-                setValue({
-                  ...value,
-                  meeting: meeting as MatchingProfile["meeting"],
-                })
-              }
-            >
-              <SelectTrigger id={`${id}-meeting`} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(["either", "online", "in_person"] as const).map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {t(`meetingOptions.${option}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        {active.length === 0 ? (
-          <EmptyState
-            title={t("noQuestions")}
-            description={t("noQuestionsDescription")}
-          />
-        ) : (
-          active.map((type) => {
-            const answer = value.answers[type.id] ?? {
-              interests: [],
-              offering: [],
-              seeking: [],
-            };
-            const fields =
-              type.mode === "shared"
-                ? (["interests"] as const)
-                : (["offering", "seeking"] as const);
-            return (
-              <section key={type.id} className="space-y-4 border-t pt-5">
-                <div>
-                  <h3 className="font-medium">{type.name}</h3>
-                  {type.description && (
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {type.description}
-                    </p>
+      {value.optedIn && (
+        <fieldset disabled={save.isPending} className="space-y-6">
+          <p className="text-muted-foreground max-w-prose text-sm">
+            {t("optionalQuestions")}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-city`}>{t("city")}</Label>
+              <Input
+                id={`${id}-city`}
+                value={value.city}
+                maxLength={100}
+                onChange={(e) => setValue({ ...value, city: e.target.value })}
+                autoComplete="address-level2"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-languages`}>{t("languages")}</Label>
+              <Input
+                id={`${id}-languages`}
+                value={languages}
+                onChange={(e) => setLanguages(e.target.value)}
+                aria-describedby={`${id}-languages-help`}
+              />
+              <p
+                id={`${id}-languages-help`}
+                className="text-muted-foreground text-xs"
+              >
+                {t("languagesHelp")}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-meeting`}>{t("meeting")}</Label>
+              <Select
+                value={value.meeting}
+                onValueChange={(meeting) =>
+                  setValue({
+                    ...value,
+                    meeting: meeting as MatchingProfile["meeting"],
+                  })
+                }
+              >
+                <SelectTrigger id={`${id}-meeting`} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(["either", "online", "in_person"] as const).map(
+                    (option) => (
+                      <SelectItem key={option} value={option}>
+                        {t(`meetingOptions.${option}`)}
+                      </SelectItem>
+                    ),
                   )}
-                </div>
-                {fields.map((field) => (
-                  <fieldset key={field} className="space-y-3">
-                    <legend className="mb-2 text-sm font-medium">
-                      {field === "seeking" ? type.promptB : type.promptA}
-                    </legend>
-                    <div className="flex flex-wrap gap-x-5 gap-y-3">
-                      {type.topics.map((topic) => (
-                        <label
-                          key={topic}
-                          className="flex max-w-full cursor-pointer items-center gap-2 text-sm break-words"
-                        >
-                          <Checkbox
-                            tone="ink"
-                            checked={answer[field].includes(topic)}
-                            onCheckedChange={(checked) =>
-                              setValue((current) => ({
-                                ...current,
-                                answers: {
-                                  ...current.answers,
-                                  [type.id]: {
-                                    ...answer,
-                                    [field]:
-                                      checked === true
-                                        ? [...answer[field], topic]
-                                        : answer[field].filter(
-                                            (v) => v !== topic,
-                                          ),
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {active.length === 0 ? (
+            <EmptyState
+              title={t("noQuestions")}
+              description={t("noQuestionsDescription")}
+            />
+          ) : (
+            active.map((type) => {
+              const answer = value.answers[type.id] ?? {
+                interests: [],
+                offering: [],
+                seeking: [],
+              };
+              const fields =
+                type.mode === "shared"
+                  ? (["interests"] as const)
+                  : (["offering", "seeking"] as const);
+              return (
+                <section key={type.id} className="space-y-4 border-t pt-5">
+                  <div>
+                    <h3 className="font-medium">{type.name}</h3>
+                    {type.description && (
+                      <p className="text-muted-foreground mt-1 text-sm">
+                        {type.description}
+                      </p>
+                    )}
+                  </div>
+                  {fields.map((field) => (
+                    <fieldset key={field} className="space-y-3">
+                      <legend className="mb-2 text-sm font-medium">
+                        {field === "seeking" ? type.promptB : type.promptA}
+                      </legend>
+                      <div className="flex flex-wrap gap-x-5 gap-y-3">
+                        {type.topics.map((topic) => (
+                          <label
+                            key={topic}
+                            className="flex max-w-full cursor-pointer items-center gap-2 text-sm break-words"
+                          >
+                            <Checkbox
+                              tone="ink"
+                              checked={answer[field].includes(topic)}
+                              onCheckedChange={(checked) =>
+                                setValue((current) => ({
+                                  ...current,
+                                  answers: {
+                                    ...current.answers,
+                                    [type.id]: {
+                                      ...answer,
+                                      [field]:
+                                        checked === true
+                                          ? [...answer[field], topic]
+                                          : answer[field].filter(
+                                              (v) => v !== topic,
+                                            ),
+                                    },
                                   },
-                                },
-                              }))
-                            }
-                          />
-                          {topic}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                ))}
-              </section>
-            );
-          })
-        )}
-      </fieldset>
+                                }))
+                              }
+                            />
+                            {topic}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                  ))}
+                </section>
+              );
+            })
+          )}
+        </fieldset>
+      )}
       {(invalid || save.isError) && (
         <p role="alert" className="text-destructive text-sm">
           {invalid

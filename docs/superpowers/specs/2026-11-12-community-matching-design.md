@@ -7,8 +7,10 @@ are subsequent releases.
 
 ## Product flow
 
-The Members page retains its directory and adds My connections profile for active
-members. Owners and admins also see Matches, Introductions, and Connection types.
+The Members page retains its directory and adds My matching profile for active
+members. Owners and admins also see Matches and Introductions. Connection types,
+prompts and topic choices are managed in Community Settings → Matching; Matches
+links there for initial setup and later editing.
 The matching controls are never available to guests or inactive memberships.
 
 Owners define a name, description, topics, and prompts for each connection type.
@@ -18,11 +20,18 @@ mentorship, collaboration, hobbies, local connections, and accountability.
 Types can be edited and archived; changing the matching mode requires a new type
 so existing answers cannot acquire a different meaning.
 
-Members opt in explicitly for this community, select topics in the owner's
-questions, and optionally give a city, languages, and meeting preference. These
-answers are visible only to that member and community owners/admins. Opting out
+Members opt in explicitly for this community. They can answer the owner's
+questions and provide a city, languages and meeting preference. All questions are
+optional: members answer only those relevant to them. An unanswered question
+supplies no automatic matching signal. Opted-in members remain eligible for an
+owner-proposed manual introduction even without question answers. Answers are
+visible only to that member and community owners/admins. Opting out
 immediately removes them from suggestions and manual introduction choices. No
 global profile data is silently copied into matching profiles.
+
+The matching profile first shows the participation choice. Questions and meeting
+preferences appear only while opted in. Toggling participation retains answers;
+members can save an opt-out even if a hidden, unsaved language draft was invalid.
 
 Automatic suggestions require at least one shared topic or an offer-to-need
 overlap in an active connection type. Case, whitespace, and duplicate answers do

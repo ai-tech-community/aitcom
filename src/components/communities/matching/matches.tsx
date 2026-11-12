@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ArrowRight, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,11 +29,9 @@ import {
 export function CommunityMatches({
   slug,
   types,
-  onSetup,
 }: {
   slug: string;
   types: ConnectionType[];
-  onSetup: () => void;
 }) {
   const t = useTranslations("communityMatching");
   const utils = api.useUtils();
@@ -78,11 +77,20 @@ export function CommunityMatches({
             {t("matchesDescription")}
           </p>
         </div>
-        {!draft && (
-          <Button variant="outline" onClick={() => setDraft("manual")}>
-            {t("manualIntroduction")}
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {active.length > 0 && (
+            <Button variant="ghost" asChild>
+              <Link href={`/communities/${slug}/settings/matching`}>
+                {t("matchingSettings")}
+              </Link>
+            </Button>
+          )}
+          {!draft && (
+            <Button variant="outline" onClick={() => setDraft("manual")}>
+              {t("manualIntroduction")}
+            </Button>
+          )}
+        </div>
       </div>
       {draft && (
         <ProposeIntroduction
@@ -102,7 +110,13 @@ export function CommunityMatches({
           icon={<UsersRound />}
           title={t("setupTitle")}
           description={t("setupDescription")}
-          action={<Button onClick={onSetup}>{t("defineTypes")}</Button>}
+          action={
+            <Button asChild>
+              <Link href={`/communities/${slug}/settings/matching`}>
+                {t("setupMatching")}
+              </Link>
+            </Button>
+          }
         />
       ) : (
         <>

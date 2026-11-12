@@ -3160,6 +3160,7 @@
       "sidebar": {
         "general": "Général",
         "members": "Membres",
+        "matching": "Mise en relation",
         "invites": "Invitations",
         "rules": "Règles",
         "topics": "Sujets",
@@ -6270,6 +6271,9 @@
     "complimentaryPreview": "Membres existants qui conserveront un accès offert"
   },
   "communityMatching": {
+    "matchingSettings": "Paramètres de mise en relation",
+    "setupMatching": "Configurer la mise en relation",
+    "optionalQuestions": "La participation est facultative. Répondez uniquement aux questions qui vous concernent ; les questions sans réponse ne sont pas utilisées pour les suggestions automatiques. Vous pouvez modifier vos réponses ou vous retirer à tout moment.",
     "title": "Membres et connexions",
     "description": "Découvrez les personnes de votre communauté et facilitez des rencontres utiles.",
     "navigation": "Membres et connexions",
