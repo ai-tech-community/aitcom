@@ -37,3 +37,10 @@ All 25 tests in the two touched UI test files passed. Root `pnpm typecheck`,
 changed-file ESLint, Prettier and whitespace checks passed. The UI detector
 reported no deterministic issues. No database writes or push were performed;
 the existing `src/payload-types.ts` edit was left untouched.
+
+## CI build adjustment
+
+The initial PR build compiled successfully but exhausted its 4 GB Node heap
+during Next's build-time type checking. The standalone CI type-check and test
+jobs and Vercel preview passed. The CI build now receives a 6 GB heap to leave
+headroom for both phases; application behavior and database schema are unchanged.

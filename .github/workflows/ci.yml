@@ -109,8 +109,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Webpack's production compile exceeds Node's default heap on the
-      # runner (exit 134, ~2GB). 4GB fits the runner and leaves headroom.
+      # Compilation and Next's build-time type checking can exhaust a 4GB
+      # heap (SIGABRT). Leave additional headroom for both build phases.
       - run: pnpm build
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
+          NODE_OPTIONS: --max-old-space-size=6144
