@@ -26,6 +26,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "general", href: `${basePath}/general` },
     { key: "spaces", href: `${basePath}/spaces` },
     { key: "members", href: `${basePath}/members` },
+    { key: "matching", href: `${basePath}/matching` },
     { key: "invites", href: `${basePath}/invites` },
     { key: "rules", href: `${basePath}/rules` },
     { key: "topics", href: `${basePath}/topics` },
@@ -66,6 +67,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "general"
                   | "spaces"
                   | "members"
+                  | "matching"
                   | "invites"
                   | "rules"
                   | "topics"
@@ -104,6 +106,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "general"
                   | "spaces"
                   | "members"
+                  | "matching"
                   | "invites"
                   | "rules"
                   | "topics"

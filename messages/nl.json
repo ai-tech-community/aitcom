@@ -3160,6 +3160,7 @@
       "sidebar": {
         "general": "Algemeen",
         "members": "Leden",
+        "matching": "Matching",
         "invites": "Uitnodigingen",
         "rules": "Regels",
         "topics": "Onderwerpen",
@@ -6270,6 +6271,9 @@
     "complimentaryPreview": "Bestaande leden die gratis toegang behouden"
   },
   "communityMatching": {
+    "matchingSettings": "Matchinginstellingen",
+    "setupMatching": "Matching instellen",
+    "optionalQuestions": "Deelname is optioneel. Beantwoord alleen de vragen die voor jou relevant zijn; onbeantwoorde vragen worden niet gebruikt voor automatische matches. Je kunt je antwoorden aanpassen of je deelname op elk moment stoppen.",
     "title": "Leden & verbindingen",
     "description": "Ontdek de mensen in je community en help waardevolle contacten ontstaan.",
     "navigation": "Leden en verbindingen",

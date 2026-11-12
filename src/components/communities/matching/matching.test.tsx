@@ -26,6 +26,13 @@ vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => ({ data: m.session }) },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
@@ -73,6 +80,7 @@ import { MatchingProfileForm } from "./profile-form";
 import { ConnectionTypeEditor } from "./type-editor";
 import { CommunityMatches } from "./matches";
 import { ProposeIntroduction } from "./propose-introduction";
+import { MatchingSettings } from "../settings/matching-settings";
 
 const type: ConnectionType = {
   id: "type-a",
@@ -139,8 +147,61 @@ describe("member matching interface", () => {
     show(<CommunityMembersHub slug="alpha" />);
     expect(screen.getByRole("tab", { name: "Matches" })).toBeInTheDocument();
     expect(
-      screen.getByRole("tab", { name: "Connection types" }),
+      screen.queryByRole("tab", { name: "Connection types" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Topics members can choose"),
+    ).not.toBeInTheDocument();
+  });
+  it("edits connection types from matching settings", () => {
+    show(<MatchingSettings slug="alpha" />);
+    expect(
+      screen.getByLabelText("Topics members can choose"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save connection type" }),
+    ).toBeInTheDocument();
+  });
+  it("does not render the settings editor for a regular member", () => {
+    m.setup = {
+      data: { types: [type], profile: emptyMatchingProfile, canManage: false },
+    };
+    show(<MatchingSettings slug="alpha" />);
+    expect(
+      screen.getByText(en.communities.manage.accessDenied),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save connection type" }),
+    ).not.toBeInTheDocument();
+  });
+  it("lets an owner retry loading matching settings", () => {
+    const refetch = vi.fn();
+    m.setup = { isError: true, refetch };
+    show(<MatchingSettings slug="alpha" />);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: en.common.retry }));
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByLabelText("Topics members can choose"),
+    ).not.toBeInTheDocument();
+  });
+  it("links initial matching setup to this community's settings", () => {
+    show(<CommunityMatches slug="alpha" types={[]} />);
+    expect(
+      screen.getByRole("link", { name: "Set up matching" }),
+    ).toHaveAttribute("href", "/communities/alpha/settings/matching");
+    expect(
+      screen.queryByLabelText("Topics members can choose"),
+    ).not.toBeInTheDocument();
+  });
+  it("links configured matching to settings", () => {
+    show(<CommunityMatches slug="alpha" types={[type]} />);
+    expect(
+      screen.getByRole("link", { name: "Matching settings" }),
+    ).toHaveAttribute("href", "/communities/alpha/settings/matching");
+    expect(
+      screen.queryByRole("link", { name: "Set up matching" }),
+    ).not.toBeInTheDocument();
   });
   it("gives regular members a profile without owner controls", () => {
     m.setup = {
@@ -205,6 +266,119 @@ describe("member matching interface", () => {
       }),
     );
   });
+  it("lets a member opt in without answering any questions", () => {
+    show(
+      <MatchingProfileForm
+        slug="alpha"
+        types={[type]}
+        profile={emptyMatchingProfile}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I’m open to introductions/ }),
+    );
+    expect(
+      screen.getByText(en.communityMatching.optionalQuestions),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save matching profile" }),
+    );
+    expect(m.saveProfile).toHaveBeenCalledWith({
+      slug: "alpha",
+      profile: { ...emptyMatchingProfile, optedIn: true },
+    });
+  });
+  it("asks questions only after opt-in and retains answers when toggling participation", () => {
+    show(
+      <MatchingProfileForm
+        slug="alpha"
+        types={[type]}
+        profile={emptyMatchingProfile}
+      />,
+    );
+    expect(
+      screen.queryByRole("checkbox", { name: "Cycling" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(en.communityMatching.city),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I’m open to introductions/ }),
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Cycling" }));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I’m open to introductions/ }),
+    );
+    expect(
+      screen.queryByRole("checkbox", { name: "Cycling" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I’m open to introductions/ }),
+    );
+    expect(screen.getByRole("checkbox", { name: "Cycling" })).toBeChecked();
+  });
+  it("retains a valid language edit when saving an opt-out", () => {
+    show(
+      <MatchingProfileForm
+        slug="alpha"
+        types={[type]}
+        profile={{
+          ...emptyMatchingProfile,
+          optedIn: true,
+          languages: ["English"],
+        }}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(en.communityMatching.languages), {
+      target: { value: "Dutch" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I’m open to introductions/ }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save matching profile" }),
+    );
+    expect(m.saveProfile).toHaveBeenCalledWith({
+      slug: "alpha",
+      profile: {
+        ...emptyMatchingProfile,
+        languages: ["Dutch"],
+        optedIn: false,
+      },
+    });
+  });
+  it("allows opting out after hiding an invalid unsaved language draft", () => {
+    show(
+      <MatchingProfileForm
+        slug="alpha"
+        types={[type]}
+        profile={{
+          ...emptyMatchingProfile,
+          optedIn: true,
+          languages: ["English"],
+        }}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(en.communityMatching.languages), {
+      target: {
+        value: Array.from({ length: 11 }, (_, i) => `language-${i}`).join(", "),
+      },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I’m open to introductions/ }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save matching profile" }),
+    );
+    expect(m.saveProfile).toHaveBeenCalledWith({
+      slug: "alpha",
+      profile: {
+        ...emptyMatchingProfile,
+        languages: ["English"],
+        optedIn: false,
+      },
+    });
+  });
   it("shows both owner-defined questions for complementary types", () => {
     show(
       <MatchingProfileForm
@@ -217,7 +391,7 @@ describe("member matching interface", () => {
             promptB: "What do you want to learn?",
           },
         ]}
-        profile={emptyMatchingProfile}
+        profile={{ ...emptyMatchingProfile, optedIn: true }}
       />,
     );
     expect(
@@ -248,7 +422,7 @@ describe("member matching interface", () => {
     });
   });
   it("explains a match and requires review before proposing it", () => {
-    show(<CommunityMatches slug="alpha" types={[type]} onSetup={vi.fn()} />);
+    show(<CommunityMatches slug="alpha" types={[type]} />);
     expect(
       screen.getByText("Both are interested in Cycling."),
     ).toBeInTheDocument();
@@ -308,7 +482,7 @@ describe("member matching interface", () => {
       <MatchingProfileForm
         slug="alpha"
         types={[]}
-        profile={emptyMatchingProfile}
+        profile={{ ...emptyMatchingProfile, optedIn: true }}
       />,
       "nl",
     );

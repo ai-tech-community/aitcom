@@ -3160,6 +3160,7 @@
       "sidebar": {
         "general": "General",
         "members": "Members",
+        "matching": "Matching",
         "invites": "Invites",
         "rules": "Rules",
         "topics": "Topics",
@@ -6270,6 +6271,9 @@
     "complimentaryPreview": "Existing members who will keep complimentary access"
   },
   "communityMatching": {
+    "matchingSettings": "Matching settings",
+    "setupMatching": "Set up matching",
+    "optionalQuestions": "Participation is optional. Answer only the questions relevant to you; unanswered questions will not be used for automatic matches. You can update your answers or opt out at any time.",
     "title": "Members & connections",
     "description": "Discover the people in your community and help meaningful connections happen.",
     "navigation": "Members and connections",

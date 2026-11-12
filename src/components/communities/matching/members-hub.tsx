@@ -14,7 +14,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MemberIdentity } from "./member-identity";
 import { MatchingProfileForm } from "./profile-form";
-import { ConnectionTypeEditor } from "./type-editor";
 import { CommunityMatches } from "./matches";
 import { IntroductionHistory } from "./introduction-history";
 
@@ -123,7 +122,6 @@ function MatchingWorkspace({ slug }: { slug: string }) {
               <TabsTrigger value="introductions">
                 {t("introductionsTab")}
               </TabsTrigger>
-              <TabsTrigger value="types">{t("typesTab")}</TabsTrigger>
             </>
           )}
         </TabsList>
@@ -142,17 +140,10 @@ function MatchingWorkspace({ slug }: { slug: string }) {
       {canManage && (
         <>
           <TabsContent value="matches">
-            <CommunityMatches
-              slug={slug}
-              types={types}
-              onSetup={() => setTab("types")}
-            />
+            <CommunityMatches slug={slug} types={types} />
           </TabsContent>
           <TabsContent value="introductions">
             <IntroductionHistory slug={slug} />
-          </TabsContent>
-          <TabsContent value="types">
-            <ConnectionTypeEditor slug={slug} types={types} />
           </TabsContent>
         </>
       )}
