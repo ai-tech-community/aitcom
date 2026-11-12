@@ -1658,7 +1658,7 @@
     "n8nInstallNodeDesc": "Dans votre instance n8n, accédez à Settings > Community nodes et installez le nœud AIT Community.",
     "n8nInstallNodeHint": "Settings → Community nodes → Install → collez le nom ci-dessus.",
     "n8nStep2": "ÉTAPE 2 — IMPORTER LE WORKFLOW",
-    "n8nDownloadDesc": "Téléchargez le workflow préconfiguré et importez-le dans votre instance n8n.",
+    "n8nDownloadDesc": "Téléchargez le workflow préconfiguré et importez-le dans votre instance n8n. Le nœud de chat est compatible OpenAI et utilise Qwen3-8B par défaut. Pointez-le vers n'importe quel hôte compatible OpenAI, ou remplacez le nœud.",
     "downloadWorkflow": "Télécharger le workflow",
     "useTemplate": "Utiliser le modèle n8n",
     "manualSetup": "Configuration manuelle",

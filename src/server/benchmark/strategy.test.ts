@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
 import {
   buildStrategyInsights,
+  generateStrategy,
   normalizeStrategyRecommendations,
   parseStrategyResponse,
 } from "./strategy";
@@ -296,5 +298,68 @@ describe("normalizeStrategyRecommendations", () => {
     expect(normalizeStrategyRecommendations(recommendations, input)).toEqual(
       [],
     );
+  });
+});
+
+describe("generateStrategy", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("retries invalid JSON once and keeps only grounded evidence", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const input = {
+      brandName: "Acme",
+      hero: { visibilityPct: 12, totalMentions: 3, totalRuns: 25 },
+      perModel: [
+        { modelId: "chatgpt_grounded", visibilityPct: 15, sentimentPosPct: 35 },
+      ],
+      competitors: [{ canonical_name: "HubSpot", visibility_pct: 28 }],
+      citations: [{ domain: "g2.com", count: 3 }],
+      topPrompts: [{ text: "Best CRM for small teams?", mentions: 2 }],
+    };
+    const good = {
+      recommendations: [
+        {
+          title: "Pitch an invented outlet",
+          priority: "high",
+          why: "Someone else said so.",
+          evidence: ["g2.com appears in 3 category citations."],
+          suggestedAction: "Buy a mention on an invented site.",
+          relatedCompetitors: ["InventedSoft"],
+          relatedSources: ["g2.com", "invented.example"],
+          relatedPrompts: ["Best CRM for small teams?", "Invented prompt"],
+          expectedMetricImpact: "Invented lift.",
+        },
+      ],
+    };
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: "not json" } }],
+        }),
+        text: async () => "",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(good) } }],
+        }),
+        text: async () => "",
+      });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await generateStrategy(input);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.relatedSources).toEqual(["g2.com"]);
+    expect(result[0]?.relatedCompetitors).toEqual([]);
+    expect(result[0]?.relatedPrompts).toEqual(["Best CRM for small teams?"]);
+    expect(JSON.stringify(result[0])).not.toContain("InventedSoft");
+    expect(JSON.stringify(result[0])).not.toContain("invented.example");
   });
 });

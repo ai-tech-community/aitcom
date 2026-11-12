@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
-import { parseSuggestionResponse } from "./suggest-prompts";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import {
+  parseSuggestionResponse,
+  suggestPromptsForBrand,
+} from "./suggest-prompts";
+
+function requestJson(init: RequestInit): unknown {
+  if (typeof init.body !== "string") {
+    throw new Error("expected a JSON string body");
+  }
+  return JSON.parse(init.body);
+}
 
 const cats = new Set(["saas", "finance"]);
 const intents = new Set(["recommendation", "comparison"]);
@@ -84,5 +95,77 @@ describe("parseSuggestionResponse", () => {
 
   it("returns [] when suggestions field is missing", () => {
     expect(parseSuggestionResponse("{}", cats, intents)).toEqual([]);
+  });
+});
+
+describe("suggestPromptsForBrand", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("retries a bad JSON reply once, then drops unknown catalog slugs", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const good = {
+      suggestions: [
+        {
+          text: "What is the best CRM for startups?",
+          categorySlug: "saas",
+          intentSlug: "recommendation",
+          tags: ["crm"],
+        },
+        {
+          text: "What is the best bank for startups?",
+          categorySlug: "not-a-category",
+          intentSlug: "recommendation",
+          tags: [],
+        },
+      ],
+    };
+    const fetchSpy = vi.fn(async (_url: string, _init: RequestInit) => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: "" } }] }),
+      text: async () => "",
+    }));
+    fetchSpy
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: "<think>nope</think>not json" } }],
+        }),
+        text: async () => "",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(good) } }],
+        }),
+        text: async () => "",
+      });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await suggestPromptsForBrand({
+      brand: { canonicalName: "Acme", aliases: [] },
+      categories: [
+        { slug: "saas", name: "SaaS" },
+        { slug: "finance", name: "Finance" },
+      ],
+      intents: [{ slug: "recommendation", name: "Recommendation" }],
+      limit: 2,
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(result).toEqual([
+      {
+        text: "What is the best CRM for startups?",
+        categorySlug: "saas",
+        intentSlug: "recommendation",
+        tags: ["crm"],
+      },
+    ]);
+    const body = requestJson(fetchSpy.mock.calls[0]![1]) as {
+      model: string;
+    };
+    expect(body.model).toBe("qwen/qwen3-8b");
   });
 });

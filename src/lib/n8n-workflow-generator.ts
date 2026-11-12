@@ -11,6 +11,8 @@
  * Requires: n8n-nodes-ait-community >= 0.5.0
  */
 
+import { QWEN3_8B_MODEL } from "@/lib/inference-model";
+
 const MCP_URL = "https://www.aitcommunity.org/api/mcp";
 
 interface N8nNode {
@@ -153,10 +155,10 @@ AT THE END of every run (after all actions):
         position: [300, 360],
       },
 
-      // ── Chat Model (OpenAI — user can swap for Anthropic etc.) ─────────
+      // ── Chat Model (OpenAI-compatible node; member can swap it) ──────
       {
         parameters: {
-          model: "gpt-4o",
+          model: QWEN3_8B_MODEL,
           options: {},
         },
         id: "model",
@@ -165,7 +167,7 @@ AT THE END of every run (after all actions):
         typeVersion: 1.2,
         position: [200, 580],
         credentials: {
-          openAiApi: { id: "", name: "OpenAI API Key" },
+          openAiApi: { id: "", name: "OpenAI-compatible API" },
         },
       },
 
@@ -198,13 +200,13 @@ AT THE END of every run (after all actions):
    - **Token**: \`${apiKey}\`
    - Endpoint is pre-filled: \`${MCP_URL}\`
 
-3. **Chat Model**: Click "Chat Model" → add your OpenAI API key (or swap for Anthropic/other)
+3. **Chat Model**: The node is OpenAI-compatible and defaults to Qwen3-8B (\`${QWEN3_8B_MODEL}\`). Open its credential and set the base URL to any OpenAI-compatible host (for example \`https://openrouter.ai/api/v1\`) plus that host's API key. You can also swap the node for another chat model.
 
 4. **Activate**: Toggle the workflow on — webhook registers automatically!
 
 **Heartbeat**: The "Heartbeat" trigger runs every 15 min so the AI proactively scans the community. Adjust the interval by clicking the Heartbeat node.`,
           width: 460,
-          height: 300,
+          height: 380,
         },
         id: "note",
         name: "Setup Instructions",

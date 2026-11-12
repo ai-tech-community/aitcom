@@ -6,11 +6,17 @@
  *   pnpm dlx tsx --env-file=.env src/scripts/dev-extract-run.ts <runId>
  *
  * Env required: OPENROUTER_API_KEY, DATABASE_URL
- * Optional: EXTRACTOR_MODEL (defaults to moonshotai/kimi-k2.5)
+ * Optional: EXTRACTOR_MODEL (defaults to qwen/qwen3-8b)
+ * Optional: OPENROUTER_BASE_URL (defaults to https://openrouter.ai/api/v1)
  */
 
 import { neon } from "@neondatabase/serverless";
 import { slugifyBrandName } from "@/server/benchmark/slugify";
+import {
+  completeJson,
+  extractorModel,
+  inferenceApiKey,
+} from "@/server/inference/openai-compatible";
 
 const runId = process.argv[2];
 if (!runId) {
@@ -18,8 +24,7 @@ if (!runId) {
   process.exit(1);
 }
 
-const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
-if (!OPENROUTER_KEY) {
+if (!inferenceApiKey()) {
   console.error("OPENROUTER_API_KEY missing (put in .env)");
   process.exit(1);
 }
@@ -28,7 +33,7 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const MODEL = process.env.EXTRACTOR_MODEL ?? "moonshotai/kimi-k2.5";
+const MODEL = extractorModel();
 const sql = neon(process.env.DATABASE_URL);
 
 type PromptRow = { text: string; category_id: string };
@@ -40,31 +45,22 @@ type BrandRow = {
   aliases: string[] | null;
 };
 
-async function callExtractor(prompt: string): Promise<string> {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${OPENROUTER_KEY}`,
-      "HTTP-Referer": "https://aitcommunity.org",
-      "X-Title": "AIT Benchmark Extractor",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      temperature: 0,
-    }),
+async function callExtractor(prompt: string): Promise<{
+  mentions: Array<{
+    rawMention: string;
+    suggestedBrandSlug: string | null;
+    rank: number | null;
+    sentiment: "positive" | "neutral" | "negative";
+    context: string;
+    confidence: number;
+  }>;
+}> {
+  return completeJson({
+    model: MODEL,
+    temperature: 0,
+    title: "AIT Benchmark Extractor",
+    messages: [{ role: "user", content: prompt }],
   });
-  if (!res.ok) {
-    throw new Error(`OpenRouter ${res.status}: ${await res.text()}`);
-  }
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const text = data.choices?.[0]?.message?.content;
-  if (!text) throw new Error(`Empty response: ${JSON.stringify(data)}`);
-  return text;
 }
 
 async function main() {
@@ -132,24 +128,8 @@ RULES:
 - Do not invent brands. Do not include generic terms ("the database", "an editor").
 - Output ONLY the JSON object. No prose, no markdown fencing.`;
 
-  console.log(`Calling OpenRouter (model: ${MODEL})…`);
-  const text = await callExtractor(rendered);
-
-  let parsed: {
-    mentions: Array<{
-      rawMention: string;
-      suggestedBrandSlug: string | null;
-      rank: number | null;
-      sentiment: "positive" | "neutral" | "negative";
-      context: string;
-      confidence: number;
-    }>;
-  };
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error(`Extractor returned non-JSON: ${text.slice(0, 300)}`);
-  }
+  console.log(`Calling inference (model: ${MODEL})…`);
+  const parsed = await callExtractor(rendered);
   console.log(`Extractor produced ${parsed.mentions.length} mentions`);
 
   const bySlug = new Map<string, string>();
@@ -198,7 +178,7 @@ RULES:
       INSERT INTO "app"."benchmark_brand_mention"
       ("run_id", "raw_mention", "brand_id", "rank", "sentiment", "context", "confidence", "extractor_version")
       VALUES (${runId}, ${m.rawMention}, ${brandId}, ${m.rank},
-              ${m.sentiment}, ${m.context}, ${m.confidence.toString()}, 'v1-openrouter')
+              ${m.sentiment}, ${m.context}, ${m.confidence.toString()}, 'v3-qwen3-8b')
     `;
   }
 
