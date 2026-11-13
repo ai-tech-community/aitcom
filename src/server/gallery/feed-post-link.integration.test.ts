@@ -23,7 +23,7 @@ import {
   vi,
 } from "vitest";
 
-import type { eq as Eq, inArray as InArray } from "drizzle-orm";
+import type { eq as Eq, inArray as InArray, sql as Sql } from "drizzle-orm";
 import type { createCaller as CreateCaller } from "@/server/api/root";
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
@@ -33,6 +33,7 @@ import type * as PostTopics from "@/server/communities/post-topics";
 
 import type * as Access from "./access";
 import type * as EmptyBatches from "./empty-batches";
+import type * as FeedPostLink from "./feed-post-link";
 import type * as Items from "./items";
 
 function looksLikeCloudNeon(url: string): boolean {
@@ -63,6 +64,8 @@ describe.skipIf(!RUN_DB)(
       postTopics: typeof PostTopics;
       eq: typeof Eq;
       inArray: typeof InArray;
+      sql: typeof Sql;
+      feedPostLink: typeof FeedPostLink;
     };
     let m: Mods;
     let fx: {
@@ -89,6 +92,7 @@ describe.skipIf(!RUN_DB)(
         postReports,
         postTopics,
         drizzle,
+        feedPostLink,
       ] = await Promise.all([
         import("@/server/db"),
         import("@/server/db/schema"),
@@ -100,6 +104,7 @@ describe.skipIf(!RUN_DB)(
         import("@/server/communities/post-reports"),
         import("@/server/communities/post-topics"),
         import("drizzle-orm"),
+        import("./feed-post-link"),
       ]);
       m = {
         db,
@@ -113,6 +118,8 @@ describe.skipIf(!RUN_DB)(
         postTopics,
         eq: drizzle.eq,
         inArray: drizzle.inArray,
+        sql: drizzle.sql,
+        feedPostLink,
       };
     });
 
@@ -454,6 +461,44 @@ describe.skipIf(!RUN_DB)(
         galleryBatch: worded.batchId,
       });
       expect(await batchLink(worded.batchId)).toBe(worded.postId);
+    });
+
+    it("Review Focus 2: words saved while the empty post is being released keep the post", async () => {
+      const { postId, batchId, itemIds } = await galleryPost({ ready: 1 });
+      const payload = await m.getPayloadClient();
+      await payload.delete({
+        collection: "gallery-items",
+        where: { id: { in: itemIds } },
+      });
+      // The author's edit lands after the release read the post as empty
+      // and before it writes: between its two reads.
+      const racing = new Proxy(payload, {
+        get(target, key, receiver) {
+          if (key !== "find")
+            return Reflect.get(target, key, receiver) as unknown;
+          return async (args: Parameters<typeof payload.find>[0]) => {
+            const result = await target.find(args);
+            if (args.collection === "gallery-items") {
+              await m.db.execute(
+                m.sql`UPDATE "feed_posts" SET "content" = 'hi' WHERE "id" = ${postId}`,
+              );
+            }
+            return result;
+          };
+        },
+      });
+
+      await m.feedPostLink.releaseEmptyGalleryPost(
+        { payload: racing },
+        batchId,
+      );
+
+      expect(await saved(postId)).toMatchObject({
+        isDeleted: false,
+        content: "hi",
+        galleryBatch: batchId,
+      });
+      expect(await batchLink(batchId)).toBe(postId);
     });
   },
 );

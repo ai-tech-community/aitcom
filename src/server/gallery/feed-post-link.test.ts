@@ -1,3 +1,4 @@
+import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -71,17 +72,35 @@ function fakes(seed: { items?: Doc[]; posts?: Doc[]; batches?: Doc[] } = {}) {
       },
     ),
     update: vi.fn(
-      async (args: { collection: string; where: Where; data: Doc }) => {
+      async (args: {
+        collection: string;
+        id?: number;
+        where?: Where;
+        data: Doc;
+      }) => {
         const list = rows(args.collection);
         const docs: Doc[] = [];
         list.forEach((doc, index) => {
-          if (!matches(doc, args.where)) return;
+          const hit =
+            args.id === undefined
+              ? matches(doc, args.where)
+              : doc.id === args.id;
+          if (!hit) return;
           list[index] = { ...doc, ...args.data };
           docs.push(list[index]);
         });
         return { docs, errors: [] as unknown[] };
       },
     ),
+    // The empty-post claim is one SQL statement; it answers with the post
+    // it claimed (none: the post changed under it).
+    db: {
+      drizzle: {
+        execute: vi.fn(async (_claim: unknown) => ({
+          rows: [{ id: 40 }] as { id: number }[],
+        })),
+      },
+    },
     delete: vi.fn(async (args: { collection: string; where: Where }) => {
       const gone = rows(args.collection).filter((doc) =>
         matches(doc, args.where),
@@ -234,45 +253,67 @@ describe("releaseEmptyGalleryPost", () => {
     expect(store["gallery-batches"]![0]).toMatchObject({ feedPostId: null });
   });
 
-  it("leaves a post that gained words between the read and the write, and its batch link", async () => {
-    const { deps, payload, store } = fakes({ posts: [post()] });
-    const read = payload.find.getMockImplementation()!;
-    payload.find.mockImplementation(async (args) => {
-      const result = await read(args);
-      // The author saves words while the last item is being deleted.
-      if (args.collection === "gallery-items") {
-        store["feed-posts"]![0] = post({
-          content: "Our picnic",
-          updatedAt: "2026-11-13T10:00:05.000Z",
-        });
-      }
-      return result;
+  it("claims the post in one statement that re-checks it at write time", async () => {
+    const { deps, payload } = fakes({ posts: [post()] });
+    await releaseEmptyGalleryPost(deps, 3);
+
+    expect(payload.db.drizzle.execute).toHaveBeenCalledTimes(1);
+    const claim = new PgDialect().sqlToQuery(
+      payload.db.drizzle.execute.mock.calls[0]![0] as never,
+    );
+    const text = claim.sql.replace(/\s+/g, " ");
+    expect(text).toContain('UPDATE "feed_posts"');
+    expect(text).toContain('"is_deleted" = true');
+    expect(text).toContain('"gallery_batch_id" = NULL');
+    expect(text).toContain('"is_deleted" IS DISTINCT FROM true');
+    expect(text).toContain(`coalesce("content", '') !~ '\\S'`);
+    expect(text).toContain('"gallery_batch_id" = $');
+    expect(text).toContain('RETURNING "id"');
+    expect(claim.params).toEqual([40, 3]);
+    // Only after the claim: the rest of the removed shape, by id.
+    expect(payload.update).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      id: 40,
+      data: expect.objectContaining({ isDeleted: true, galleryBatch: null }),
+      depth: 0,
     });
+  });
+
+  it("writes nothing through Payload when the claim finds the post changed", async () => {
+    const { deps, payload, store } = fakes({ posts: [post()] });
+    // Words were saved (or the post deleted) after it was read.
+    payload.db.drizzle.execute.mockResolvedValueOnce({ rows: [] });
 
     await releaseEmptyGalleryPost(deps, 3);
 
-    expect(store["feed-posts"]![0]).toMatchObject({
-      isDeleted: false,
-      content: "Our picnic",
-      galleryBatch: 3,
-    });
+    expect(payload.update).not.toHaveBeenCalled();
+    expect(store["feed-posts"]![0]).toMatchObject({ isDeleted: false });
     expect(store["gallery-batches"]![0]).toMatchObject({ feedPostId: 40 });
   });
 
-  it("fails loudly when the post could not be saved", async () => {
-    const { deps, payload, log } = fakes({ posts: [post()] });
-    payload.update.mockResolvedValueOnce({
-      docs: [],
-      errors: [{ id: 40, message: "x" }],
-    });
+  it("never claims a post that has words or a batch with a ready item", async () => {
+    for (const seed of [
+      { posts: [post({ content: "Our picnic" })] },
+      { posts: [post()], items: [item(1)] },
+    ]) {
+      const { deps, payload } = fakes(seed);
+      await releaseEmptyGalleryPost(deps, 3);
+      expect(payload.db.drizzle.execute).not.toHaveBeenCalled();
+    }
+  });
+
+  it("fails loudly when the rest of the post could not be saved, still letting go of the batch", async () => {
+    const { deps, payload, store, log } = fakes({ posts: [post()] });
+    payload.update.mockRejectedValueOnce(new Error("db down"));
     await expect(releaseEmptyGalleryPost(deps, 3)).rejects.toMatchObject({
       code: "INTERNAL_SERVER_ERROR",
     });
-    expect(payload.update).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledWith(
       "[gallery.releaseEmptyGalleryPost] removing an empty gallery post failed",
       expect.objectContaining({ batchId: 3, postId: 40 }),
     );
+    // The claim already removed the post and let go of the batch.
+    expect(store["gallery-batches"]![0]).toMatchObject({ feedPostId: null });
   });
 });
 

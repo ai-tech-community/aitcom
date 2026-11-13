@@ -195,17 +195,35 @@ function fakes(
       return { totalDocs: topics.includes(slug) ? 1 : 0 };
     }),
     update: vi.fn(
-      async (args: { collection: string; where: Where; data: Doc }) => {
+      async (args: {
+        collection: string;
+        id?: number;
+        where?: Where;
+        data: Doc;
+      }) => {
         const list = rows(args.collection);
         const docs: Doc[] = [];
         list.forEach((doc, index) => {
-          if (!matches(doc, args.where)) return;
+          const hit =
+            args.id === undefined
+              ? matches(doc, args.where)
+              : doc.id === args.id;
+          if (!hit) return;
           list[index] = { ...doc, ...args.data };
           docs.push(list[index]);
         });
         return { docs, errors: [] as unknown[] };
       },
     ),
+    // The empty-post claim is one SQL statement; it answers with the post
+    // it claimed (none: the post changed under it).
+    db: {
+      drizzle: {
+        execute: vi.fn(async (_claim: unknown) => ({
+          rows: [{ id: 40 }] as { id: number }[],
+        })),
+      },
+    },
     delete: vi.fn(async (args: { collection: string; where: Where }) => {
       const gone = rows(args.collection).filter((doc) =>
         matches(doc, args.where),
@@ -1034,10 +1052,7 @@ describe("deleteItem", () => {
         items: [item(1)],
         posts: [galleryPost()],
       });
-      payload.update.mockResolvedValueOnce({
-        docs: [],
-        errors: [{ id: 40, message: "x" }],
-      });
+      payload.update.mockRejectedValueOnce(new Error("db down"));
 
       await expect(
         deleteItem(deps, { viewer: await moderator(), itemId: 1 }),

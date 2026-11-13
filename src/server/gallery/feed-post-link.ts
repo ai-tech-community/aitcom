@@ -1,3 +1,4 @@
+import { sql } from "@payloadcms/db-postgres";
 import { TRPCError } from "@trpc/server";
 
 import type { FeedPost } from "@/payload-types";
@@ -107,11 +108,18 @@ export async function removeBatchItems(
  * Removes the batch's live feed post (`removedPostData`, as a member or a
  * moderator removes one) once the batch has no ready item left and the post
  * has no words: such a post would show nothing. A hidden item still counts,
- * since a moderator may restore it. The write only matches while the post is
- * exactly as it was read (its `updatedAt`, as `writePostMedia` claims a
- * post), so a post edited meanwhile — words added, or deleted — is left
- * alone. Then the batch lets go of the post (`releaseBatchLink`). A failed
- * write is logged and thrown.
+ * since a moderator may restore it.
+ *
+ * The post is first claimed in one statement that checks, at write time,
+ * that it is still live, still has no words and still announces this
+ * batch, and in the same write marks it deleted, empties its text and lets
+ * go of the batch. A text edit saved meanwhile (`editPost` writes by id,
+ * unguarded) therefore either lands first and keeps the post, or finds it
+ * deleted. Payload's own `update` cannot do this: it matches its `where`
+ * before its hooks and then writes by id. Only a claimed post gets the
+ * rest of the removed shape through Payload, and the batch lets go of it
+ * (`releaseBatchLink`). A failed Payload write is logged and thrown after
+ * the batch link is released (the claim already removed the post).
  */
 export async function releaseEmptyGalleryPost(
   deps: Pick<GalleryDeps, "payload" | "log">,
@@ -135,24 +143,49 @@ export async function releaseEmptyGalleryPost(
     depth: 0,
   });
   if (ready.length > 0) return;
-  const { docs: removed, errors } = await deps.payload.update({
-    collection: "feed-posts",
-    where: {
-      and: [
-        { id: { equals: post.id } },
-        { updatedAt: { equals: post.updatedAt } },
-      ],
-    },
-    data: removedPostData(),
-    depth: 0,
-  });
-  if (errors.length > 0) {
+  if (!(await claimEmptyGalleryPost(deps, { postId: post.id, batchId }))) {
+    return;
+  }
+  let failure: unknown = null;
+  try {
+    await deps.payload.update({
+      collection: "feed-posts",
+      id: post.id,
+      data: removedPostData(),
+      depth: 0,
+    });
+  } catch (error) {
+    failure = error;
     (deps.log ?? console.error)(
       "[gallery.releaseEmptyGalleryPost] removing an empty gallery post failed",
-      { batchId, postId: post.id, errors },
+      { batchId, postId: post.id, error },
     );
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   }
-  if (removed.length === 0) return;
   await releaseBatchLink(deps, { batchId, postId: post.id });
+  if (failure !== null) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+}
+
+/**
+ * Marks the post deleted, without words and without its batch, only while
+ * it is live, has no words (whitespace counts as none, as `trim()` does)
+ * and announces this batch.
+ * True when this call claimed it.
+ */
+async function claimEmptyGalleryPost(
+  deps: Pick<GalleryDeps, "payload">,
+  claim: { postId: number; batchId: number },
+): Promise<boolean> {
+  const { rows } = await deps.payload.db.drizzle.execute(sql`
+    UPDATE "feed_posts"
+      SET "updated_at" = now(),
+          "is_deleted" = true,
+          "content" = '',
+          "gallery_batch_id" = NULL
+    WHERE "id" = ${claim.postId}
+      AND "is_deleted" IS DISTINCT FROM true
+      AND coalesce("content", '') !~ '\\S'
+      AND "gallery_batch_id" = ${claim.batchId}
+    RETURNING "id"
+  `);
+  return rows.length > 0;
 }
