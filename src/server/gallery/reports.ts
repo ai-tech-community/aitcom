@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
 import {
   GALLERY_REPORT_NOTE_MAX,
+  GALLERY_REVIEW_REPORTS_MAX,
   type GalleryReportReason,
 } from "@/lib/gallery-report-reasons";
 import { clampText } from "@/lib/text-utils";
@@ -52,27 +53,25 @@ export type GalleryReportDeps = GalleryDeps & {
   notify: GalleryReportNotifier;
 };
 
-/** What a moderator sees of one report. */
+/**
+ * What a moderator sees of one report. The report's own id travels, so a
+ * restore can name exactly the reports it was decided on; who reported
+ * never does.
+ */
 export type GalleryReportView = {
+  id: number;
   reason: GalleryReportReason;
   note: string | null;
   createdAt: string;
 };
 
-/**
- * An item's open reports as a moderator read them. `asOf` is the server's
- * time just before the read: a restore passes it back as `reviewedUpTo`,
- * so it dismisses only reports the moderator could have seen.
- */
-export type GalleryReportList = {
-  asOf: string;
-  reports: GalleryReportView[];
-};
+/** An item's open reports as a moderator read them. */
+export type GalleryReportList = { reports: GalleryReportView[] };
 
 /** A moderator's decision on a reported item. */
 export type GalleryReview =
   | { action: "remove" }
-  | { action: "restore"; reviewedUpTo: string };
+  | { action: "restore"; reviewedReportIds: readonly number[] };
 
 const REPORTS = "gallery-reports";
 
@@ -260,10 +259,9 @@ function assertModerator(viewer: GalleryViewer): void {
 }
 
 /**
- * An item's open reports, newest first, for its community's moderators
- * only — checked first, so no one else can probe whether an item exists.
- * `asOf` is taken before the read, so a report it misses is always newer
- * than `asOf` and a restore keeps it open.
+ * An item's open reports, newest first (at most
+ * `GALLERY_REVIEW_REPORTS_MAX`), for its community's moderators only —
+ * checked first, so no one else can probe whether an item exists.
  */
 export async function listItemReports(
   deps: GalleryDeps,
@@ -271,17 +269,17 @@ export async function listItemReports(
 ): Promise<GalleryReportList> {
   assertModerator(input.viewer);
   const item = await requireReadableItem(deps, input.viewer, input.itemId);
-  const asOf = nowOf(deps).toISOString();
   const { docs } = await deps.payload.find({
     collection: REPORTS,
     where: openReportsWhere(REPORTS, item.id),
     sort: "-createdAt",
+    limit: GALLERY_REVIEW_REPORTS_MAX,
     pagination: false,
     depth: 0,
   });
   return {
-    asOf,
     reports: docs.map((report) => ({
+      id: report.id,
       reason: report.reason,
       note: report.note ?? null,
       createdAt: report.createdAt,
@@ -309,29 +307,30 @@ export async function reviewItemReports(
     await removeItem(deps, item, "reviewItemReports");
     return;
   }
-  await restoreItem(deps, item, input.reviewedUpTo);
+  await restoreItem(deps, item, input.reviewedReportIds);
 }
 
 /**
- * Dismisses the open reports made up to `reviewedUpTo` (the `asOf` of the
- * list the moderator read; kept, so those reporters can't report again)
- * and shows the item. A report the moderator could not have seen — newer
- * than `reviewedUpTo`, or made while this restore ran and so unable to
- * hide an item that was still hidden — stays open: once the item is shown,
- * any open report hides it again through the same guarded write, and the
+ * Dismisses exactly the reports the moderator read (`reviewedReportIds`,
+ * from `listItemReports`) that are still open and are this item's — any
+ * other id is ignored — and shows the item. Dismissed reports are kept, so
+ * those reporters can't report again. A report the moderator did not see
+ * — made after the read, or while this restore ran and so unable to hide
+ * an item that was still hidden — stays open: once the item is shown, any
+ * open report hides it again through the same guarded write, and the
  * moderators are told, so a report is never left open on a shown item.
  */
 async function restoreItem(
   deps: GalleryReportDeps,
   item: GalleryItem,
-  reviewedUpTo: string,
+  reviewedReportIds: readonly number[],
 ): Promise<void> {
   const dismissed = await deps.payload.update({
     collection: REPORTS,
     where: {
       and: [
         openReportsWhere(REPORTS, item.id),
-        { createdAt: { less_than_equal: reviewedUpTo } },
+        { id: { in: [...reviewedReportIds] } },
       ],
     },
     data: { dismissedAt: nowOf(deps).toISOString() },

@@ -119,8 +119,8 @@ const START_ITEM = {
   height: 1536,
 };
 
-/** When a moderator read an item's reports. */
-const AS_OF = "2026-11-13T12:00:00.000Z";
+/** When a report was made, as the reports list shows it. */
+const CREATED_AT = "2026-11-13T12:00:00.000Z";
 
 /** One valid call per procedure, for the flag-off sweep. */
 const EVERY_PROCEDURE = {
@@ -147,7 +147,7 @@ const EVERY_PROCEDURE = {
       slug: "alpha",
       itemId: 1,
       action: "restore",
-      reviewedUpTo: AS_OF,
+      reviewedReportIds: [3],
     }),
 } as const;
 
@@ -340,7 +340,7 @@ describe("gallery router — input validation", () => {
         }),
     ],
     [
-      "a restore that names no reviewedUpTo",
+      "a restore that names no reports",
       (c) =>
         c.reviewItemReports({
           slug: "alpha",
@@ -349,13 +349,43 @@ describe("gallery router — input validation", () => {
         } as never),
     ],
     [
-      "a restore whose reviewedUpTo is not a date and time",
+      "a restore that names an empty list of reports",
       (c) =>
         c.reviewItemReports({
           slug: "alpha",
           itemId: 1,
           action: "restore",
-          reviewedUpTo: "yesterday",
+          reviewedReportIds: [],
+        }),
+    ],
+    [
+      "a restore that names report id 0",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "restore",
+          reviewedReportIds: [3, 0],
+        }),
+    ],
+    [
+      "a restore that names report id 1.5",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "restore",
+          reviewedReportIds: [1.5],
+        }),
+    ],
+    [
+      "a restore that names over 100 reports",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "restore",
+          reviewedReportIds: Array.from({ length: 101 }, (_, n) => n + 1),
         }),
     ],
     [
@@ -635,8 +665,7 @@ describe("gallery router — reports", () => {
 
   it("lists an item's reports for the caller's viewer", async () => {
     const reports = {
-      asOf: AS_OF,
-      reports: [{ reason: "spam", note: null, createdAt: AS_OF }],
+      reports: [{ id: 3, reason: "spam", note: null, createdAt: CREATED_AT }],
     };
     services.listItemReports.mockResolvedValue(reports);
     await expect(
@@ -649,7 +678,7 @@ describe("gallery router — reports", () => {
   });
 
   it.each([
-    ["restore", { action: "restore" as const, reviewedUpTo: AS_OF }],
+    ["restore", { action: "restore" as const, reviewedReportIds: [3, 4] }],
     ["remove", { action: "remove" as const }],
   ])(
     "reviews an item's reports: %s, with the report notices",

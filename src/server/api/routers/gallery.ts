@@ -17,6 +17,7 @@ import {
 import {
   GALLERY_REPORT_NOTE_MAX,
   GALLERY_REPORT_REASONS,
+  GALLERY_REVIEW_REPORTS_MAX,
 } from "@/lib/gallery-report-reasons";
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import type { db } from "@/server/db";
@@ -289,15 +290,18 @@ export const galleryRouter = createTRPCRouter({
 
   /**
    * A moderator restores a reported item or removes it. A restore names
-   * the `asOf` of the reports it was decided on (`itemReports`): newer
-   * reports stay open.
+   * the reports it was decided on (their ids from `itemReports`); any other
+   * open report stays open.
    */
   reviewItemReports: galleryProtectedProcedure
     .input(
       z.discriminatedUnion("action", [
         itemInCommunity.extend({
           action: z.literal("restore"),
-          reviewedUpTo: z.iso.datetime(),
+          reviewedReportIds: z
+            .array(recordId)
+            .min(1)
+            .max(GALLERY_REVIEW_REPORTS_MAX),
         }),
         itemInCommunity.extend({ action: z.literal("remove") }),
       ]),

@@ -15,6 +15,13 @@ export type GalleryReportReason = (typeof GALLERY_REPORT_REASONS)[number];
 /** The longest note a reporter may add, in characters. */
 export const GALLERY_REPORT_NOTE_MAX = 500;
 
+/**
+ * The most open reports of one item a moderator reads, and so dismisses,
+ * at once. Reports beyond it stay open, and the item hides again after a
+ * restore, showing the next ones.
+ */
+export const GALLERY_REVIEW_REPORTS_MAX = 100;
+
 /** Names for the admin panel (members see translated copy instead). */
 export const GALLERY_REPORT_REASON_LABELS: Record<GalleryReportReason, string> =
   {

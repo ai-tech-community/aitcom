@@ -4,6 +4,7 @@ import { ValidationError } from "payload";
 import { describe, expect, it, vi } from "vitest";
 
 import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
+import { GALLERY_REVIEW_REPORTS_MAX } from "@/lib/gallery-report-reasons";
 import {
   matchesWhere,
   selectFields,
@@ -488,7 +489,7 @@ describe("listItemReports", () => {
     }
   });
 
-  it("gives moderators the open reports, newest first, without who reported, as of the read", async () => {
+  it("gives moderators the open reports, newest first, with their ids but not who reported", async () => {
     const { deps } = fakes({
       items: [item(1, { hiddenAt: ago(HOUR) })],
       reports: [
@@ -502,12 +503,31 @@ describe("listItemReports", () => {
     await expect(
       listItemReports(deps, { viewer: moderator(), itemId: 1 }),
     ).resolves.toEqual({
-      asOf: NOW.toISOString(),
       reports: [
-        { reason: "this_is_me", note: null, createdAt: ago(HOUR - 2000) },
-        { reason: "spam", note: "Ads", createdAt: ago(HOUR - 1000) },
+        {
+          id: 2,
+          reason: "this_is_me",
+          note: null,
+          createdAt: ago(HOUR - 2000),
+        },
+        { id: 1, reason: "spam", note: "Ads", createdAt: ago(HOUR - 1000) },
       ],
     });
+  });
+
+  it("gives at most the reports one restore may name, newest first", async () => {
+    const { deps } = fakes({
+      items: [item(1, { hiddenAt: ago(HOUR) })],
+      reports: Array.from({ length: GALLERY_REVIEW_REPORTS_MAX + 1 }, (_, n) =>
+        report(n + 1),
+      ),
+    });
+    const { reports } = await listItemReports(deps, {
+      viewer: moderator(),
+      itemId: 1,
+    });
+    expect(reports).toHaveLength(GALLERY_REVIEW_REPORTS_MAX);
+    expect(reports[0]!.id).toBe(GALLERY_REVIEW_REPORTS_MAX + 1);
   });
 
   it("answers NOT_FOUND for another community's item", async () => {
@@ -523,11 +543,9 @@ describe("listItemReports", () => {
 
 describe("reviewItemReports", () => {
   const hiddenItem = () => [item(1, { hiddenAt: ago(HOUR), reportCount: 2 })];
-  /** A decision; a restore made on the reports as they are now. */
-  const review = (action: "restore" | "remove", reviewedUpTo = NOW) =>
-    action === "restore"
-      ? { action, reviewedUpTo: reviewedUpTo.toISOString() }
-      : { action };
+  /** A decision; a restore names the reports the moderator read. */
+  const review = (action: "restore" | "remove", reviewedReportIds = [1]) =>
+    action === "restore" ? { action, reviewedReportIds } : { action };
 
   it("refuses anyone but a moderator and changes nothing", async () => {
     for (const action of ["restore", "remove"] as const) {
@@ -548,7 +566,7 @@ describe("reviewItemReports", () => {
     }
   });
 
-  it("restore shows the item again and dismisses its open reports, keeping them", async () => {
+  it("restore shows the item again and dismisses the reviewed open reports, keeping them", async () => {
     const { deps, store } = fakes({
       items: hiddenItem(),
       reports: [
@@ -559,10 +577,11 @@ describe("reviewItemReports", () => {
       ],
     });
 
+    // 3 is already dismissed and 4 is another item's: both are ignored.
     await reviewItemReports(deps, {
       viewer: moderator(),
       itemId: 1,
-      ...review("restore"),
+      ...review("restore", [1, 2, 3, 4]),
     });
 
     expect(itemRow(store)).toMatchObject({ hiddenAt: null, reportCount: 0 });
@@ -596,19 +615,16 @@ describe("reviewItemReports", () => {
     expect(notify.itemReported).toHaveBeenCalledTimes(1);
   });
 
-  it("restore keeps a report newer than what the moderator read open, hides the item again and notifies once", async () => {
+  it("restore keeps a report the moderator did not review open, hides the item again and notifies once", async () => {
     const { deps, notify, store, log } = fakes({
       items: hiddenItem(),
-      reports: [
-        report(1, { createdAt: ago(HOUR) }),
-        report(2, { createdAt: ago(1000) }),
-      ],
+      reports: [report(1), report(2)],
     });
 
     await reviewItemReports(deps, {
       viewer: moderator(),
       itemId: 1,
-      ...review("restore", new Date(NOW.getTime() - HOUR / 2)),
+      ...review("restore", [1]),
     });
 
     expect(reportsOf(store).map((doc) => [doc.id, doc.dismissedAt])).toEqual([
@@ -680,14 +696,14 @@ describe("reviewItemReports", () => {
   it("a restore whose moderator notice fails is still a restore, and the failure is logged", async () => {
     const { deps, notify, log } = fakes({
       items: hiddenItem(),
-      reports: [report(1, { createdAt: ago(1000) })],
+      reports: [report(1), report(2)],
     });
     notify.itemReported.mockRejectedValueOnce(new Error("inbox down"));
     await expect(
       reviewItemReports(deps, {
         viewer: moderator(),
         itemId: 1,
-        ...review("restore", new Date(NOW.getTime() - HOUR)),
+        ...review("restore", [1]),
       }),
     ).resolves.toBeUndefined();
     expect(log).toHaveBeenCalledWith(

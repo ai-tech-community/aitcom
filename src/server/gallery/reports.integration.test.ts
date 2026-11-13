@@ -383,9 +383,9 @@ describe.skipIf(!RUN_DB)("gallery item reports [DB integration]", () => {
       itemId,
     });
     expect(read).toEqual({
-      asOf: expect.any(String),
       reports: [
         {
+          id: expect.any(Number),
           reason: "this_is_me",
           note: "I'm on the left",
           createdAt: expect.any(String),
@@ -397,7 +397,7 @@ describe.skipIf(!RUN_DB)("gallery item reports [DB integration]", () => {
       viewer: moderator,
       itemId,
       action: "restore",
-      reviewedUpTo: read.asOf,
+      reviewedReportIds: read.reports.map((report) => report.id),
     });
     expect(await savedItem(itemId)).toMatchObject({ hiddenAt: null });
     expect(Number((await savedItem(itemId))!.reportCount)).toBe(0);
@@ -413,35 +413,44 @@ describe.skipIf(!RUN_DB)("gallery item reports [DB integration]", () => {
     expect(await noticesOf("gallery_item_reported")).toHaveLength(4);
   });
 
-  it("restore keeps a report newer than what the moderator read open, and hides the item again with one notice", async () => {
+  it("restore keeps a report the moderator did not review open, hides the item again with one notice, and ignores another item's report ids", async () => {
     const deps = await depsWith();
-    const { itemIds } = await galleryPost(1);
-    const itemId = itemIds[0]!;
+    const { itemIds } = await galleryPost(2);
+    const [itemId, otherId] = [itemIds[0]!, itemIds[1]!];
     const moderator = await viewerOf(fx.moderatorId);
+    const reporter = await viewerOf(fx.reporterIds[0]);
     await m.reports.reportItem(deps, {
-      viewer: await viewerOf(fx.reporterIds[0]),
+      viewer: reporter,
       itemId,
       reason: "spam",
     });
-    const { asOf } = await m.reports.listItemReports(deps, {
+    await m.reports.reportItem(deps, {
+      viewer: reporter,
+      itemId: otherId,
+      reason: "spam",
+    });
+    const { reports } = await m.reports.listItemReports(deps, {
       viewer: moderator,
       itemId,
     });
-    // A later millisecond, so the next report is newer than the read.
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    // Hidden: only moderators can still read it, and report it.
+    const [otherReport] = await reportRows(otherId);
+    // Made after the moderator read the list. Hidden: only moderators can
+    // still read it, and report it.
     await m.reports.reportItem(deps, {
       viewer: await viewerOf(fx.ownerId),
       itemId,
       reason: "other",
     });
-    expect(await noticesOf("gallery_item_reported")).toHaveLength(2);
+    expect(await noticesOf("gallery_item_reported")).toHaveLength(4);
 
     await m.reports.reviewItemReports(deps, {
       viewer: moderator,
       itemId,
       action: "restore",
-      reviewedUpTo: asOf,
+      reviewedReportIds: [
+        ...reports.map((report) => report.id),
+        otherReport!.id,
+      ],
     });
 
     const rows = await reportRows(itemId);
@@ -449,7 +458,9 @@ describe.skipIf(!RUN_DB)("gallery item reports [DB integration]", () => {
     expect(rows.find((row) => !row.dismissedAt)!.reporterId).toBe(fx.ownerId);
     expect((await savedItem(itemId))!.hiddenAt).toBeTruthy();
     expect(Number((await savedItem(itemId))!.reportCount)).toBe(1);
-    expect(await noticesOf("gallery_item_reported")).toHaveLength(4);
+    expect(await noticesOf("gallery_item_reported")).toHaveLength(6);
+    expect((await reportRows(otherId))[0]!.dismissedAt ?? null).toBeNull();
+    expect((await savedItem(otherId))!.hiddenAt).toBeTruthy();
   });
 
   it("a report made while a restore runs ends with the item hidden and moderators told once", async () => {
@@ -463,7 +474,7 @@ describe.skipIf(!RUN_DB)("gallery item reports [DB integration]", () => {
       itemId,
       reason: "spam",
     });
-    const { asOf } = await m.reports.listItemReports(deps, {
+    const { reports } = await m.reports.listItemReports(deps, {
       viewer: moderator,
       itemId,
     });
@@ -490,7 +501,12 @@ describe.skipIf(!RUN_DB)("gallery item reports [DB integration]", () => {
 
     await m.reports.reviewItemReports(
       { ...deps, payload: racing },
-      { viewer: moderator, itemId, action: "restore", reviewedUpTo: asOf },
+      {
+        viewer: moderator,
+        itemId,
+        action: "restore",
+        reviewedReportIds: reports.map((report) => report.id),
+      },
     );
 
     expect((await savedItem(itemId))!.hiddenAt).toBeTruthy();
