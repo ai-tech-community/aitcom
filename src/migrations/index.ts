@@ -1,3 +1,4 @@
+import * as migration_20261113b_gallery_feed_posts from "./20261113b_gallery_feed_posts";
 import * as migration_20261113a_community_gallery from "./20261113a_community_gallery";
 import * as migration_20261107a_community_payments from "./20261107a_community_payments";
 import * as migration_20261112a_community_matching from "./20261112a_community_matching";
@@ -1194,5 +1195,10 @@ export const migrations = [
     up: migration_20261113a_community_gallery.up,
     down: migration_20261113a_community_gallery.down,
     name: "20261113a_community_gallery",
+  },
+  {
+    up: migration_20261113b_gallery_feed_posts.up,
+    down: migration_20261113b_gallery_feed_posts.down,
+    name: "20261113b_gallery_feed_posts",
   },
 ];

@@ -257,11 +257,6 @@ export default async function EventDetailPage({
   const heroImage = getMedia(
     (event.coverImage as MediaValue) ?? (event.image as MediaValue),
   );
-  const gallery = Array.isArray(event.gallery)
-    ? event.gallery
-        .map((entry) => getMedia(entry as MediaValue))
-        .filter(Boolean)
-    : [];
   const tags = Array.isArray(event.tags)
     ? event.tags
         .map((entry) =>
@@ -550,33 +545,6 @@ export default async function EventDetailPage({
                     </div>
                   );
                 })}
-              </div>
-            </div>
-          )}
-
-          {gallery.length > 0 && (
-            <div className="border-border border-t pt-8">
-              <SectionLabel>{tEvents("sectionGallery")}</SectionLabel>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {gallery.map((image, index) => (
-                  <div
-                    key={`${image?.url}-${index}`}
-                    className="border-border overflow-hidden rounded-lg border"
-                  >
-                    {image?.url && (
-                      <Image
-                        src={image.url}
-                        alt={
-                          image.alt ??
-                          `${event.title} gallery image ${index + 1}`
-                        }
-                        width={600}
-                        height={400}
-                        className="h-56 w-full object-cover"
-                      />
-                    )}
-                  </div>
-                ))}
               </div>
             </div>
           )}
@@ -900,33 +868,6 @@ export default async function EventDetailPage({
                     </div>
                   );
                 })}
-              </div>
-            </div>
-          )}
-
-          {gallery.length > 0 && (
-            <div className="border-border border-t pt-8">
-              <SectionLabel>{tEvents("sectionGallery")}</SectionLabel>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {gallery.map((image, index) => (
-                  <div
-                    key={`${image?.url}-${index}`}
-                    className="border-border overflow-hidden rounded-lg border"
-                  >
-                    {image?.url && (
-                      <Image
-                        src={image.url}
-                        alt={
-                          image.alt ??
-                          `${event.title} gallery image ${index + 1}`
-                        }
-                        width={600}
-                        height={400}
-                        className="h-56 w-full object-cover"
-                      />
-                    )}
-                  </div>
-                ))}
               </div>
             </div>
           )}

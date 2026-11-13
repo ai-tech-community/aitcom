@@ -546,12 +546,6 @@ export const Events: CollectionConfig = {
                 description: "Primary hero image for the event page.",
               },
             },
-            {
-              name: "gallery",
-              type: "upload",
-              relationTo: "media",
-              hasMany: true,
-            },
             { name: "videoUrl", type: "text" },
           ],
         },

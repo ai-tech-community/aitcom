@@ -9,12 +9,15 @@ export type PostMediaShape = {
   imageUrl?: string | null;
   gif?: { giphyId?: string | null } | null;
   video?: { key?: string | null } | null;
+  /** The gallery upload batch the post announces, by id or populated. */
+  galleryBatch?: number | { id: number } | null;
 };
 
 /**
- * Whether a stored post carries a picture, a GIF or a video: the data
- * rule the collection checks for every writer (a post without text must
- * carry something). Members meet the stricter `mayGoWithoutWords`.
+ * Whether a stored post carries a picture, a GIF, a video or a gallery
+ * batch: the data rule the collection checks for every writer (a post
+ * without text must carry something). Members meet the stricter
+ * `mayGoWithoutWords`.
  */
 export function carriesMedia(post: PostMediaShape): boolean {
   return (
@@ -22,7 +25,8 @@ export function carriesMedia(post: PostMediaShape): boolean {
     Boolean(post.image) ||
     Boolean(post.imageUrl) ||
     Boolean(post.gif?.giphyId) ||
-    Boolean(post.video?.key)
+    Boolean(post.video?.key) ||
+    post.galleryBatch != null
   );
 }
 

@@ -264,7 +264,6 @@
     "sectionPrizes": "Prizes",
     "sectionAbout": "About",
     "sectionSpeakers": "Speakers",
-    "sectionGallery": "Gallery",
     "sectionRelated": "Related Events",
     "location": {
       "toastUnsupported": "Geolocation not supported in this browser.",
