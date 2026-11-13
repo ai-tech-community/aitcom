@@ -102,6 +102,8 @@ export interface Config {
     lessons: Lesson;
     modules: Module;
     'hosted-materials': HostedMaterial;
+    'gallery-batches': GalleryBatch;
+    'gallery-items': GalleryItem;
     magazines: Magazine;
     'magazine-issues': MagazineIssue;
     'email-templates': EmailTemplate;
@@ -149,6 +151,8 @@ export interface Config {
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     modules: ModulesSelect<false> | ModulesSelect<true>;
     'hosted-materials': HostedMaterialsSelect<false> | HostedMaterialsSelect<true>;
+    'gallery-batches': GalleryBatchesSelect<false> | GalleryBatchesSelect<true>;
+    'gallery-items': GalleryItemsSelect<false> | GalleryItemsSelect<true>;
     magazines: MagazinesSelect<false> | MagazinesSelect<true>;
     'magazine-issues': MagazineIssuesSelect<false> | MagazineIssuesSelect<true>;
     'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
@@ -383,10 +387,6 @@ export interface Media {
    * What it was uploaded for. A feed post image belongs to one post and is deleted when the post stops using it. Empty for shared images (covers, logos).
    */
   purpose?: 'feed-post' | null;
-  /**
-   * S3 key prefix. Magazine uploads use `magazines/<id>`; empty keeps the
-   * object at the bucket root.
-   */
   prefix?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -510,8 +510,14 @@ export interface Magazine {
   communityId: string;
   description?: string | null;
   logoUrl?: string | null;
+  /**
+   * Shared media id for the logo.
+   */
   logoMediaId?: number | null;
   logoAlt?: string | null;
+  /**
+   * Shared media id for the magazine cover.
+   */
   coverMediaId?: number | null;
   coverImageUrl?: string | null;
   coverAlt?: string | null;
@@ -570,6 +576,9 @@ export interface MagazineIssue {
   title: string;
   slug: string;
   coverImageUrl?: string | null;
+  /**
+   * Shared media id for the cover.
+   */
   coverMediaId?: number | null;
   coverAlt?: string | null;
   editorNote?: {
@@ -799,7 +808,7 @@ export interface ForumThread {
   id: number;
   title: string;
   /**
-   * Auto-generated from title + timestamp. Do not edit manually.
+   * Generated from the title. A short number is added only when that address is taken.
    */
   slug: string;
   content: {
@@ -836,7 +845,13 @@ export interface ForumThread {
   replyCount?: number | null;
   lastActivityAt?: string | null;
   communityId?: string | null;
+  /**
+   * Shared media id. Leave empty when using imageUrl.
+   */
   imageMediaId?: number | null;
+  /**
+   * http(s) image, or the URL resolved from imageMediaId.
+   */
   imageUrl?: string | null;
   imageAlt?: string | null;
   isDeleted?: boolean | null;
@@ -1037,7 +1052,13 @@ export interface FeedPost {
    * Public URL of the first picture, written by the server so older readers (agents, MCP) get one picture without a join.
    */
   imageUrl?: string | null;
+  /**
+   * Shared media id when the picture was chosen by id. The gallery still holds feed pictures.
+   */
   imageMediaId?: number | null;
+  /**
+   * Alt text for a picture attached by URL or media id.
+   */
   imageAlt?: string | null;
   /**
    * Better Auth user ID (UUID).
@@ -1832,10 +1853,15 @@ export interface Module {
    */
   course: number;
   title: string;
-  /** Optional http(s) cover image URL. */
+  /**
+   * Optional http(s) cover image URL.
+   */
   coverImageUrl?: string | null;
   order?: number | null;
   summary?: string | null;
+  /**
+   * Shared media id. Leave empty when using imageUrl.
+   */
   imageMediaId?: number | null;
   imageUrl?: string | null;
   imageAlt?: string | null;
@@ -1877,6 +1903,117 @@ export interface HostedMaterial {
   createdAt: string;
 }
 /**
+ * One upload of photos and videos to a community gallery. Batches left open are closed by the daily cleanup.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gallery-batches".
+ */
+export interface GalleryBatch {
+  id: number;
+  communityId: string;
+  /**
+   * Better Auth user ID.
+   */
+  uploaderId: string;
+  /**
+   * The community event these photos are from, if any. Every item in the batch starts with this event.
+   */
+  event?: (number | null) | Event;
+  /**
+   * Category for every item in the batch: a community-topics slug.
+   */
+  topicSlug?: string | null;
+  visibility: 'community' | 'public';
+  /**
+   * The uploader let the community use these in its magazine.
+   */
+  magazineConsent?: boolean | null;
+  magazineConsentAt?: string | null;
+  /**
+   * What the uploader said about these. It goes on the feed post only, not on the items.
+   */
+  caption?: string | null;
+  /**
+   * How many files the uploader chose. No more are accepted.
+   */
+  plannedFiles: number;
+  /**
+   * How many of those files are videos. No more videos are accepted.
+   */
+  plannedVideos: number;
+  status: 'open' | 'finished';
+  /**
+   * feed-posts.id of the post that announced this batch, if one was made.
+   */
+  feedPostId?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Photos and videos in community galleries. Unfinished uploads are cleaned up daily.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gallery-items".
+ */
+export interface GalleryItem {
+  id: number;
+  communityId: string;
+  /**
+   * The event this is from, if any. Only an event of the same community.
+   */
+  event?: (number | null) | Event;
+  /**
+   * Category: a community-topics slug. Emptied when the topic is deleted.
+   */
+  topicSlug?: string | null;
+  mediaType: 'photo' | 'video';
+  /**
+   * Only ready items are ever shown.
+   */
+  status: 'uploading' | 'ready' | 'failed';
+  failureReason?: string | null;
+  /**
+   * Where the files are kept, from the visibility at upload. Never changes.
+   */
+  storage: 'public' | 'private';
+  visibility: 'community' | 'public';
+  fileKey: string;
+  thumbnailKey: string;
+  width: number;
+  height: number;
+  /**
+   * Size of the file plus its thumbnail, as declared at start. Counts toward the community's media allowance.
+   */
+  bytes: number;
+  /**
+   * Videos only, as reported by the uploader.
+   */
+  durationSeconds?: number | null;
+  caption?: string | null;
+  /**
+   * Description for screen readers. When empty, one is generated from the event and uploader.
+   */
+  alt?: string | null;
+  /**
+   * Better Auth user ID.
+   */
+  uploaderId: string;
+  batch: number | GalleryBatch;
+  uploadId: string;
+  /**
+   * The uploader let the community use this in its magazine. Editors can only pick items with this ticked.
+   */
+  magazineConsent?: boolean | null;
+  magazineConsentAt?: string | null;
+  /**
+   * Set by the first report; cleared when a moderator restores.
+   */
+  hiddenAt?: string | null;
+  reportCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Editable email templates. Use {{variable}} placeholders; unknown variables render as empty text. Variables for "event-registration-confirmation": {{name}}, {{eventTitle}}, {{eventDate}}, {{eventTime}}, {{eventLocation}}, {{eventSlug}}, {{eventUrl}}. Note: {{eventTime}} may be empty when the event has no start time set.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1904,7 +2041,7 @@ export interface EmailTemplate {
   createdAt: string;
 }
 /**
- * Staff editor row for an AI datacenter facility. Saving publishes the live investigations record.
+ * Add or edit a facility on the investigations map. Leave slug empty to match an existing facility by name and operator, or paste its slug to edit that one. The public URL stays on that slug. An https source and the time you checked it are required.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "datacenter-facilities".
@@ -1913,26 +2050,47 @@ export interface DatacenterFacility {
   id: number;
   name: string;
   operator: string;
+  /**
+   * Country code, such as US.
+   */
   country: string;
   city?: string | null;
   lat: number;
   lng: number;
+  /**
+   * Operating megawatts. Leave empty when unknown.
+   */
   capacityMw?: number | null;
+  /**
+   * Planned megawatts. Stored separately from operating capacity. Leave empty when unknown.
+   */
   capacityMwPlanned?: number | null;
+  /**
+   * Facility is dedicated to AI workloads.
+   */
   aiDedicated?: boolean | null;
   status: 'announced' | 'under-construction' | 'operational' | 'expanding' | 'decommissioned' | 'cancelled';
+  /**
+   * Required https source for this facility.
+   */
   sourceUrl: string;
+  /**
+   * When this source was checked.
+   */
   checkedAt: string;
+  /**
+   * Public URL slug. Leave blank on create. An existing facility keeps its slug.
+   */
   slug?: string | null;
   permits?:
     | {
-        id?: string | null;
         kind: 'zoning' | 'environmental' | 'water' | 'grid-interconnect' | 'building' | 'other';
         issuingBody: string;
         status: 'pending' | 'granted' | 'denied' | 'withdrawn';
         appliedDate?: string | null;
         issuedDate?: string | null;
         sourceUrl?: string | null;
+        id?: string | null;
       }[]
     | null;
   updatedAt: string;
@@ -2101,6 +2259,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'hosted-materials';
         value: number | HostedMaterial;
+      } | null)
+    | ({
+        relationTo: 'gallery-batches';
+        value: number | GalleryBatch;
+      } | null)
+    | ({
+        relationTo: 'gallery-items';
+        value: number | GalleryItem;
       } | null)
     | ({
         relationTo: 'magazines';
@@ -2974,6 +3140,57 @@ export interface HostedMaterialsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gallery-batches_select".
+ */
+export interface GalleryBatchesSelect<T extends boolean = true> {
+  communityId?: T;
+  uploaderId?: T;
+  event?: T;
+  topicSlug?: T;
+  visibility?: T;
+  magazineConsent?: T;
+  magazineConsentAt?: T;
+  caption?: T;
+  plannedFiles?: T;
+  plannedVideos?: T;
+  status?: T;
+  feedPostId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gallery-items_select".
+ */
+export interface GalleryItemsSelect<T extends boolean = true> {
+  communityId?: T;
+  event?: T;
+  topicSlug?: T;
+  mediaType?: T;
+  status?: T;
+  failureReason?: T;
+  storage?: T;
+  visibility?: T;
+  fileKey?: T;
+  thumbnailKey?: T;
+  width?: T;
+  height?: T;
+  bytes?: T;
+  durationSeconds?: T;
+  caption?: T;
+  alt?: T;
+  uploaderId?: T;
+  batch?: T;
+  uploadId?: T;
+  magazineConsent?: T;
+  magazineConsentAt?: T;
+  hiddenAt?: T;
+  reportCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "magazines_select".
  */
 export interface MagazinesSelect<T extends boolean = true> {
@@ -2988,6 +3205,8 @@ export interface MagazinesSelect<T extends boolean = true> {
   coverImageUrl?: T;
   coverAlt?: T;
   font?: T;
+  themeFontPair?: T;
+  themeAccent?: T;
   topics?:
     | T
     | {
