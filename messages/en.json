@@ -6444,5 +6444,85 @@
       "connected": "Connected",
       "declined": "Declined"
     }
+  },
+  "gallery": {
+    "label": {
+      "photoFromEvent": "Photo from {event} by {name}",
+      "photoBy": "Photo by {name}",
+      "videoFromEvent": "Video from {event} by {name}",
+      "videoBy": "Video by {name}"
+    },
+    "page": {
+      "kicker": "Gallery",
+      "title": "Photos and videos",
+      "membersLine": "From our events and everything in between. Only members see these, unless the person who added them chose everyone.",
+      "outsiderLine": "Photos and videos that members chose to share with everyone.",
+      "add": "Add photos and videos",
+      "signInToAdd": "Sign in to add photos and videos",
+      "joinTitle": "Join to add photos and videos",
+      "joinBody": "Only members can add to this gallery."
+    },
+    "filters": {
+      "label": "Filter photos and videos",
+      "event": "Event",
+      "allEvents": "All events",
+      "noEvent": "Not from an event",
+      "thisEvent": "This event",
+      "eventOption": "{title} · {day}",
+      "category": "Category",
+      "allCategories": "All",
+      "type": "Type",
+      "allTypes": "All",
+      "photos": "Photos",
+      "videos": "Videos"
+    },
+    "wall": {
+      "label": "Photos and videos",
+      "loading": "Loading photos and videos",
+      "emptyTitle": "No photos or videos yet",
+      "emptyBody": "Add the first photos from your last event.",
+      "outsiderEmptyTitle": "No photos or videos to show yet",
+      "outsiderEmptyBody": "Members can see more. Join to see and add their photos and videos.",
+      "filteredEmptyTitle": "Nothing matches these filters",
+      "filteredEmptyBody": "Try another event or category.",
+      "showEverything": "Show everything",
+      "loadMore": "Show more"
+    },
+    "tile": {
+      "video": "Video, {duration}",
+      "videoNoLength": "Video"
+    },
+    "lightbox": {
+      "previous": "Previous",
+      "next": "Next",
+      "close": "Close",
+      "details": "Details",
+      "event": "Event",
+      "noEvent": "Not from an event",
+      "category": "Category",
+      "noCategory": "None",
+      "whoCanSee": "Who can see",
+      "membersOnly": "Members only",
+      "everyone": "Everyone",
+      "magazine": "Magazine",
+      "magazineYes": "Editors may use it",
+      "magazineNo": "Not for the magazine",
+      "description": "Description",
+      "video": "Video {duration}",
+      "edit": "Edit details",
+      "delete": "Delete",
+      "deletePhotoTitle": "Delete this photo?",
+      "deleteVideoTitle": "Delete this video?",
+      "deleteBody": "It will be gone from the gallery for everyone. You can't undo this.",
+      "deleteConfirm": "Delete",
+      "deleting": "Deleting…",
+      "deleted": "Deleted"
+    },
+    "errors": {
+      "NOT_ALLOWED": "You can't change this photo or video.",
+      "GALLERY_DISABLED": "The gallery is switched off right now.",
+      "NOT_FOUND": "This photo or video is no longer here.",
+      "deleteFailed": "We couldn't delete it. Please try again."
+    }
   }
 }

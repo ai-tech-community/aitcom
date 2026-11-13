@@ -6444,5 +6444,85 @@
       "connected": "Verbonden",
       "declined": "Afgewezen"
     }
+  },
+  "gallery": {
+    "label": {
+      "photoFromEvent": "Foto van {event} door {name}",
+      "photoBy": "Foto door {name}",
+      "videoFromEvent": "Video van {event} door {name}",
+      "videoBy": "Video door {name}"
+    },
+    "page": {
+      "kicker": "Galerij",
+      "title": "Foto's en video's",
+      "membersLine": "Van onze events en alles daartussen. Alleen leden zien deze, tenzij degene die ze toevoegde iedereen koos.",
+      "outsiderLine": "Foto's en video's die leden met iedereen wilden delen.",
+      "add": "Foto's en video's toevoegen",
+      "signInToAdd": "Log in om foto's en video's toe te voegen",
+      "joinTitle": "Word lid om foto's en video's toe te voegen",
+      "joinBody": "Alleen leden kunnen iets aan deze galerij toevoegen."
+    },
+    "filters": {
+      "label": "Foto's en video's filteren",
+      "event": "Event",
+      "allEvents": "Alle events",
+      "noEvent": "Niet van een event",
+      "thisEvent": "Dit event",
+      "eventOption": "{title} · {day}",
+      "category": "Categorie",
+      "allCategories": "Alles",
+      "type": "Soort",
+      "allTypes": "Alles",
+      "photos": "Foto's",
+      "videos": "Video's"
+    },
+    "wall": {
+      "label": "Foto's en video's",
+      "loading": "Foto's en video's laden",
+      "emptyTitle": "Nog geen foto's of video's",
+      "emptyBody": "Voeg de eerste foto's van je laatste event toe.",
+      "outsiderEmptyTitle": "Nog geen foto's of video's om te tonen",
+      "outsiderEmptyBody": "Leden zien meer. Word lid om hun foto's en video's te zien en zelf toe te voegen.",
+      "filteredEmptyTitle": "Niets past bij deze filters",
+      "filteredEmptyBody": "Probeer een ander event of een andere categorie.",
+      "showEverything": "Alles tonen",
+      "loadMore": "Meer tonen"
+    },
+    "tile": {
+      "video": "Video, {duration}",
+      "videoNoLength": "Video"
+    },
+    "lightbox": {
+      "previous": "Vorige",
+      "next": "Volgende",
+      "close": "Sluiten",
+      "details": "Details",
+      "event": "Event",
+      "noEvent": "Niet van een event",
+      "category": "Categorie",
+      "noCategory": "Geen",
+      "whoCanSee": "Wie kan het zien",
+      "membersOnly": "Alleen leden",
+      "everyone": "Iedereen",
+      "magazine": "Magazine",
+      "magazineYes": "Redacteuren mogen het gebruiken",
+      "magazineNo": "Niet voor het magazine",
+      "description": "Beschrijving",
+      "video": "Video {duration}",
+      "edit": "Gegevens bewerken",
+      "delete": "Verwijderen",
+      "deletePhotoTitle": "Deze foto verwijderen?",
+      "deleteVideoTitle": "Deze video verwijderen?",
+      "deleteBody": "Hij verdwijnt voor iedereen uit de galerij. Je kunt dit niet ongedaan maken.",
+      "deleteConfirm": "Verwijderen",
+      "deleting": "Verwijderen…",
+      "deleted": "Verwijderd"
+    },
+    "errors": {
+      "NOT_ALLOWED": "Je kunt deze foto of video niet wijzigen.",
+      "GALLERY_DISABLED": "De galerij staat nu uit.",
+      "NOT_FOUND": "Deze foto of video is er niet meer.",
+      "deleteFailed": "Verwijderen is niet gelukt. Probeer het opnieuw."
+    }
   }
 }
