@@ -1,5 +1,5 @@
 "use client";
-import { SubscriptionAccessNotice } from "./subscription-access-notice";
+import { SubscriptionAccessNotice } from "@/components/communities/payments/subscription-access-notice";
 import { useLocale, useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,9 @@ export function MyPayments() {
   if (query.isPending) return <Spinner className="size-6" />;
   if (query.isError) return <ErrorState onRetry={() => void query.refetch()} />;
   return (
-    <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
+    <div className="space-y-8">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">{t("myPayments")}</h1>
+        <h2 className="text-xl font-semibold">{t("myPayments")}</h2>
         <p className="text-muted-foreground text-sm">{t("billingSummary")}</p>
       </header>
       {error && (
@@ -31,7 +31,7 @@ export function MyPayments() {
       )}
       {!!query.data.complimentaryCommunities.length && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">{t("complimentaryMembers")}</h2>
+          <h3 className="text-lg font-semibold">{t("complimentaryMembers")}</h3>
           {query.data.complimentaryCommunities.map((community) => (
             <p key={community.slug} className="text-sm">
               {community.name} · {t("complimentary")}
@@ -40,7 +40,7 @@ export function MyPayments() {
         </section>
       )}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">{t("subscriptions")}</h2>
+        <h3 className="text-lg font-semibold">{t("subscriptions")}</h3>
         <p className="text-muted-foreground text-sm">{t("cancelHelp")}</p>
         {!query.data.subscriptions.length && (
           <p className="text-muted-foreground text-sm">
@@ -135,7 +135,7 @@ export function MyPayments() {
         ))}
       </section>
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">{t("sales")}</h2>
+        <h3 className="text-lg font-semibold">{t("sales")}</h3>
         {!query.data.orders.length && (
           <p className="text-muted-foreground text-sm">{t("noPayments")}</p>
         )}

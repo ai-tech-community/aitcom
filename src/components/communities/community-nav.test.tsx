@@ -67,6 +67,19 @@ beforeEach(() => {
 });
 
 describe("CommunityNav", () => {
+  it.each(["member", "owner"] as const)(
+    "keeps personal payments out of community navigation for a %s",
+    (role) => {
+      renderNav(role);
+      expect(
+        screen.queryByRole("link", { name: en.payments.myPayments }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: en.payments.offersTitle }),
+      ).toHaveAttribute("href", "/communities/mlops/offers");
+    },
+  );
+
   it("is one navigation landmark for every screen size", () => {
     renderNav();
     expect(
