@@ -6489,6 +6489,9 @@
       "showEverything": "Alles tonen",
       "loadMore": "Meer tonen"
     },
+    "collage": {
+      "label": "{count, plural, one {Eén foto of video uit de galerij} other {# foto's en video's uit de galerij}}"
+    },
     "tile": {
       "video": "Video, {duration}",
       "videoNoLength": "Video"

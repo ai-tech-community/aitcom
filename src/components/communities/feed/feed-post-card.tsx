@@ -33,6 +33,8 @@ import { FeedGif, type FeedGifView } from "./feed-gif";
 import { FeedPoll } from "./feed-poll";
 import { FeedImageGallery, type GalleryImage } from "./feed-image-gallery";
 import { PostEditForm } from "./post-edit-form";
+import { GalleryCollage } from "../gallery/gallery-collage";
+import type { FeedGalleryView } from "@/server/gallery/feed-view";
 
 interface FeedPost {
   id: number;
@@ -76,6 +78,8 @@ interface FeedPost {
   announcedAt?: string | null;
   /** The post announces a gallery batch (its media is fixed). */
   isGalleryPost?: boolean;
+  /** The batch's items this viewer may see; null when none (text only). */
+  gallery?: FeedGalleryView | null;
 }
 
 /**
@@ -326,7 +330,8 @@ export function FeedPostCard({
         />
       )}
 
-      {/* Media (the edit form shows its own while editing) */}
+      {/* Media (the edit form shows its own while editing). A gallery post
+          whose batch the viewer may see none of shows its text only. */}
       {isEditing ? null : post.video ? (
         <FeedVideoPlayer video={post.video} onExpired={refreshVideo} />
       ) : post.gif?.mp4Url ? (
@@ -344,7 +349,16 @@ export function FeedPostCard({
           poll={post.poll}
           viewer={!currentUserId ? "guest" : memberRole ? "member" : "outsider"}
         />
-      ) : link && !isEditing && !post.linkPreview?.hidden ? (
+      ) : post.gallery ? (
+        <GalleryCollage
+          slug={communitySlug}
+          gallery={post.gallery}
+          memberRole={memberRole}
+          onChange={() => void onRefresh()}
+        />
+      ) : post.isGalleryPost ? null : link &&
+        !isEditing &&
+        !post.linkPreview?.hidden ? (
         <LinkPreviewCard href={link} preview={linkPreview} />
       ) : null}
 

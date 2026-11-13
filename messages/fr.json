@@ -6489,6 +6489,9 @@
       "showEverything": "Tout afficher",
       "loadMore": "Afficher plus"
     },
+    "collage": {
+      "label": "{count, plural, one {Une photo ou vidéo de la galerie} other {# photos et vidéos de la galerie}}"
+    },
     "tile": {
       "video": "Vidéo, {duration}",
       "videoNoLength": "Vidéo"

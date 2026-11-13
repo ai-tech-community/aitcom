@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { ImagePlus } from "lucide-react";
@@ -34,6 +34,7 @@ import {
 } from "./gallery-params";
 import { GalleryToolbar } from "./gallery-toolbar";
 import { GalleryWall, GalleryWallSkeleton } from "./gallery-wall";
+import { useOpening } from "./use-opening";
 import { useGalleryUploadLink } from "./use-gallery-upload-link";
 
 /**
@@ -45,32 +46,6 @@ const GalleryUploadDialog = dynamic(
     import("./gallery-upload-dialog").then((mod) => mod.GalleryUploadDialog),
   { ssr: false },
 );
-
-/**
- * One opening of a dialog. A new `key` mounts it afresh, so nothing from
- * the last opening carries over; `open: false` keeps it mounted while it
- * animates out.
- */
-type Opening<T> = T & { key: number; open: boolean };
-
-/** Opens a dialog afresh with `value`, or closes the current opening. */
-function useOpening<T>() {
-  const [opening, setOpening] = useState<Opening<T> | null>(null);
-  const open = useCallback(
-    (value: T) =>
-      setOpening((current) => ({
-        ...value,
-        key: (current?.key ?? 0) + 1,
-        open: true,
-      })),
-    [],
-  );
-  const close = useCallback(
-    () => setOpening((current) => current && { ...current, open: false }),
-    [],
-  );
-  return [opening, open, close] as const;
-}
 
 /** The signed-in viewer's standing in this community, for the add action. */
 function useGalleryViewer(slug: string): GalleryViewerState {

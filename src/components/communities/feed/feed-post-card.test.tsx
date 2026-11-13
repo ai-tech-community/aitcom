@@ -52,6 +52,13 @@ vi.mock("./reported-banner", () => ({
     return <div data-testid="banner" />;
   },
 }));
+const collageProps = vi.fn();
+vi.mock("../gallery/gallery-collage", () => ({
+  GalleryCollage: (props: unknown) => {
+    collageProps(props);
+    return <div data-testid="collage" />;
+  },
+}));
 vi.mock("./report-dialog", () => ({
   ReportDialog: ({ open, postId }: { open: boolean; postId: number }) =>
     open ? <div data-testid="report-dialog">{postId}</div> : null,
@@ -293,5 +300,77 @@ describe("FeedPostCard list updates", () => {
     const { onRefresh } = renderCard();
     mutationOptions.toggleLike!.onSuccess!({ liked: true, likeCount: 3 });
     expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("FeedPostCard gallery post", () => {
+  const LINK = "https://example.com/recap";
+  const gallery = {
+    batchId: 3,
+    items: [
+      {
+        id: 9,
+        mediaType: "photo" as const,
+        url: "https://files.test/9.jpg",
+        thumbnailUrl: "https://files.test/9-thumb.jpg",
+        width: 1200,
+        height: 800,
+        durationSeconds: null,
+        caption: "Demo time",
+        alt: null,
+        event: null,
+        topicSlug: null,
+        visibility: "public" as const,
+        magazineConsent: false,
+        uploader: { id: "author-1", name: "Ada", image: null },
+        createdAt: "2026-09-24T10:00:00Z",
+        isOwn: false,
+        batchId: 3,
+      },
+    ],
+    total: 1,
+    event: null,
+    topicSlug: null,
+  };
+
+  beforeEach(() => collageProps.mockClear());
+
+  it("shows the batch as a collage in place of the link card", () => {
+    const { onRefresh } = renderCard(
+      { content: `Our evening ${LINK}`, isGalleryPost: true, gallery },
+      { memberRole: "moderator" },
+    );
+    expect(screen.getByTestId("collage")).toBeInTheDocument();
+    const props = collageProps.mock.calls.at(-1)![0] as {
+      slug: string;
+      gallery: unknown;
+      memberRole: string;
+      onChange: () => void;
+    };
+    expect(props).toMatchObject({
+      slug: "town",
+      gallery,
+      memberRole: "moderator",
+    });
+    // Only the inline link in the text: no link card.
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    props.onChange();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows only the text when the viewer may see none of the batch", () => {
+    renderCard({
+      content: `Our evening ${LINK}`,
+      isGalleryPost: true,
+      gallery: null,
+    });
+    expect(screen.queryByTestId("collage")).toBeNull();
+    expect(screen.getByText(/Our evening/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("has no Public badge, even when its items are open to everyone", () => {
+    renderCard({ isGalleryPost: true, gallery });
+    expect(screen.queryByText("Public")).toBeNull();
   });
 });
