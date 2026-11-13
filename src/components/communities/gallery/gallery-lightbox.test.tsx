@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -222,6 +223,48 @@ describe("GalleryLightbox", () => {
     fireEvent.keyDown(dialog, { key: "ArrowRight" });
     expect(fetchNextPage).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Group song");
+  });
+
+  it("stops waiting for the next page when it fails to load", () => {
+    type PageQuery = {
+      hasNextPage: boolean;
+      isFetchingNextPage: boolean;
+      isFetchNextPageError: boolean;
+    };
+    const page: { fail?: () => void } = {};
+    function Failing() {
+      const [query, set] = useState<PageQuery>({
+        hasNextPage: true,
+        // A failure from an earlier try is still flagged when Next is pressed.
+        isFetchingNextPage: false,
+        isFetchNextPageError: true,
+      });
+      page.fail = () =>
+        set((q) => ({
+          ...q,
+          isFetchingNextPage: false,
+          isFetchNextPageError: true,
+        }));
+      return (
+        <Harness
+          items={ITEMS.slice(0, 2)}
+          more={{
+            ...query,
+            fetchNextPage: () =>
+              set((q) => ({ ...q, isFetchingNextPage: true })),
+          }}
+        />
+      );
+    }
+    render(<Failing />);
+    const dialog = open("Demo time");
+    const nextButton = within(dialog).getByRole("button", { name: "Next" });
+    fireEvent.click(nextButton);
+    expect(nextButton).toHaveAttribute("aria-busy", "true");
+    // The page fails again: the fetch ends with the error flag set.
+    act(() => page.fail?.());
+    expect(nextButton).not.toHaveAttribute("aria-busy");
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Demo time");
   });
 
   it("stops at the last item once there is no next page", () => {

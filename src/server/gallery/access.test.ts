@@ -18,6 +18,7 @@ import {
   isLinkableEvent,
   loadGalleryViewer,
   loadGalleryViewerById,
+  publicItemsReachOutsiders,
 } from "./access";
 
 const NOW = new Date("2026-11-13T12:00:00.000Z");
@@ -76,7 +77,7 @@ describe("loadGalleryViewer", () => {
       isMember: false,
       isModerator: false,
       canSeePublic: true,
-      community: { id: "c1", slug: "town" },
+      community: { id: "c1", slug: "town", isListedInDirectory: true },
     });
     expect(
       (db as { query: { communityMemberships: { findFirst: unknown } } }).query
@@ -177,6 +178,39 @@ describe("what a viewer may see", () => {
         { communityId: "c1", userId: "u1" },
       ),
     ).resolves.toMatchObject({ isMember: false, canSeePublic: false });
+  });
+});
+
+describe("publicItemsReachOutsiders", () => {
+  const community = (listed: boolean) => ({
+    id: "c1",
+    slug: "town",
+    isListedInDirectory: listed,
+  });
+
+  it("is true where signed-out visitors may read the community", async () => {
+    await expect(
+      publicItemsReachOutsiders({ db: fakeDb() }, community(true)),
+    ).resolves.toBe(true);
+    expect(payments.canReadPaidCommunity).toHaveBeenCalledWith(
+      expect.anything(),
+      "c1",
+      null,
+    );
+  });
+
+  it("is false for a members-only community, without a payment lookup", async () => {
+    await expect(
+      publicItemsReachOutsiders({ db: fakeDb() }, community(false)),
+    ).resolves.toBe(false);
+    expect(payments.canReadPaidCommunity).not.toHaveBeenCalled();
+  });
+
+  it("is false for a paid community", async () => {
+    payments.canReadPaidCommunity.mockResolvedValue(false);
+    await expect(
+      publicItemsReachOutsiders({ db: fakeDb() }, community(true)),
+    ).resolves.toBe(false);
   });
 });
 

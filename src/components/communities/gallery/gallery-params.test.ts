@@ -4,6 +4,8 @@ import {
   galleryListInput,
   hasGalleryFilters,
   parseGalleryParams,
+  readUploadLink,
+  uploadLinkPath,
   writeGalleryParams,
 } from "./gallery-params";
 
@@ -94,5 +96,44 @@ describe("hasGalleryFilters", () => {
     expect(
       hasGalleryFilters({ event: null, topic: "a", type: null, item: null }),
     ).toBe(true);
+  });
+});
+
+describe("the upload link", () => {
+  const link = (search: string) => readUploadLink(new URLSearchParams(search));
+
+  it("opens the upload with the linked event", () => {
+    expect(link("upload=1&event=4")).toEqual({ eventId: 4 });
+  });
+
+  it("opens the upload with no event when none or a bad one is linked", () => {
+    expect(link("upload=1")).toEqual({ eventId: null });
+    expect(link("upload=1&event=none")).toEqual({ eventId: null });
+    expect(link("upload=1&event=abc")).toEqual({ eventId: null });
+  });
+
+  it("is absent without upload=1", () => {
+    expect(link("event=4")).toBeNull();
+    expect(link("upload=yes")).toBeNull();
+  });
+
+  it("adds upload=1 to the page's own URL, keeping its filters", () => {
+    expect(
+      uploadLinkPath({
+        pathname: "/en/communities/mlops/gallery",
+        search: "?event=4",
+      }),
+    ).toBe("/en/communities/mlops/gallery?event=4&upload=1");
+    expect(
+      uploadLinkPath({ pathname: "/en/communities/mlops/gallery", search: "" }),
+    ).toBe("/en/communities/mlops/gallery?upload=1");
+  });
+
+  it("is removed like any other param", () => {
+    expect(
+      writeGalleryParams(new URLSearchParams("upload=1&event=4"), {
+        upload: null,
+      }).toString(),
+    ).toBe("event=4");
   });
 });

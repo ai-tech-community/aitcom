@@ -23,10 +23,10 @@ import { galleryEnabled } from "@/server/gallery/flag";
 import {
   deleteItem,
   getItem,
-  linkableEvents,
   listFacets,
   listItems,
   updateItem,
+  uploadChoices,
 } from "@/server/gallery/items";
 import {
   discardItem,
@@ -132,12 +132,12 @@ export const galleryRouter = createTRPCRouter({
       return getItem(deps, { viewer, itemId: input.itemId });
     }),
 
-  /** Events the upload dialog offers (members only). */
-  linkableEvents: galleryProtectedProcedure
+  /** What the upload and edit dialogs offer: events, audience (members only). */
+  uploadChoices: galleryProtectedProcedure
     .input(inCommunity)
     .query(async ({ ctx, input }) => {
       const { deps, viewer } = await viewerIn(ctx, input.slug);
-      return linkableEvents(deps, { viewer });
+      return uploadChoices(deps, { viewer });
     }),
 
   startBatch: galleryProtectedProcedure

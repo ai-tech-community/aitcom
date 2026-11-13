@@ -11,7 +11,7 @@ const services = vi.hoisted(() => ({
   listItems: vi.fn(),
   listFacets: vi.fn(),
   getItem: vi.fn(),
-  linkableEvents: vi.fn(),
+  uploadChoices: vi.fn(),
   updateItem: vi.fn(),
   deleteItem: vi.fn(),
   loadGalleryViewer: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock("@/server/gallery/items", () => ({
   listItems: services.listItems,
   listFacets: services.listFacets,
   getItem: services.getItem,
-  linkableEvents: services.linkableEvents,
+  uploadChoices: services.uploadChoices,
   updateItem: services.updateItem,
   deleteItem: services.deleteItem,
 }));
@@ -108,8 +108,8 @@ const EVERY_PROCEDURE = {
   list: (c: ReturnType<typeof caller>) => c.list({ slug: "alpha" }),
   facets: (c: ReturnType<typeof caller>) => c.facets({ slug: "alpha" }),
   item: (c: ReturnType<typeof caller>) => c.item({ slug: "alpha", itemId: 1 }),
-  linkableEvents: (c: ReturnType<typeof caller>) =>
-    c.linkableEvents({ slug: "alpha" }),
+  uploadChoices: (c: ReturnType<typeof caller>) =>
+    c.uploadChoices({ slug: "alpha" }),
   startBatch: (c: ReturnType<typeof caller>) => c.startBatch(START_BATCH),
   startItem: (c: ReturnType<typeof caller>) => c.startItem(START_ITEM),
   finishItem: (c: ReturnType<typeof caller>) => c.finishItem({ itemId: 1 }),
@@ -432,14 +432,17 @@ describe("gallery router — signed-in work", () => {
     expect(services.finishBatch.mock.calls[0]).toHaveLength(2);
   });
 
-  it("lists linkable events for the caller's viewer", async () => {
-    services.linkableEvents.mockResolvedValue([]);
-    await caller().linkableEvents({ slug: "alpha" });
+  it("gives the upload choices for the caller's viewer", async () => {
+    services.uploadChoices.mockResolvedValue({
+      events: [],
+      publicReachesOutsiders: true,
+    });
+    await caller().uploadChoices({ slug: "alpha" });
     expect(services.loadGalleryViewer).toHaveBeenCalledWith(expect.anything(), {
       slug: "alpha",
       userId: "user-1",
     });
-    expect(services.linkableEvents).toHaveBeenCalledWith(expect.anything(), {
+    expect(services.uploadChoices).toHaveBeenCalledWith(expect.anything(), {
       viewer: viewerFor("user-1"),
     });
   });

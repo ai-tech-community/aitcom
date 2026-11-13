@@ -58,12 +58,18 @@ describe("GalleryAddAction", () => {
     expect(onUpload).toHaveBeenCalledTimes(1);
   });
 
-  it("asks a guest to sign in instead of opening the upload", () => {
+  it("asks a guest to sign in, coming back to the open upload", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/en/communities/mlops/gallery?topic=meetups",
+    );
     const { onUpload } = renderAction({ kind: "guest" });
     fireEvent.click(screen.getByRole("button", ADD));
     expect(m.requireAuth).toHaveBeenCalledWith(
       expect.any(Function),
       "Sign in to add photos and videos",
+      { returnTo: "/en/communities/mlops/gallery?topic=meetups&upload=1" },
     );
     expect(onUpload).not.toHaveBeenCalled();
   });

@@ -118,8 +118,13 @@ export function GalleryLightbox({
 
   // Next at the last loaded item asks for the next page, then moves on to
   // the first new item once it arrives. Moving elsewhere or closing cancels
-  // it, so a late page never reopens or redirects the lightbox.
+  // it, so a late page never reopens or redirects the lightbox; so does a
+  // failed page, so Next is not left busy. A failure flagged from an earlier
+  // try does not count: only one that ends the fetch seen since (`fetched`).
   const [advanceFrom, setAdvanceFrom] = useState<number | null>(null);
+  const fetched = useRef(false);
+  const fetching = !!more?.isFetchingNextPage;
+  const fetchFailed = !!more?.isFetchNextPageError;
   useEffect(() => {
     if (advanceFrom === null) return;
     if (openId !== advanceFrom) {
@@ -133,8 +138,20 @@ export function GalleryLightbox({
       onNavigate(after.id);
     } else if (at < 0 || !more?.hasNextPage) {
       setAdvanceFrom(null);
+    } else if (fetching) {
+      fetched.current = true;
+    } else if (fetchFailed && fetched.current) {
+      setAdvanceFrom(null);
     }
-  }, [advanceFrom, openId, items, more?.hasNextPage, onNavigate]);
+  }, [
+    advanceFrom,
+    openId,
+    items,
+    more?.hasNextPage,
+    fetching,
+    fetchFailed,
+    onNavigate,
+  ]);
 
   const goTo = (target: GalleryItemView | undefined) => {
     if (!target) return;
@@ -144,6 +161,7 @@ export function GalleryLightbox({
   const goNext = () => {
     if (next) return goTo(next);
     if (!canLoadMore || !current || !more) return;
+    fetched.current = more.isFetchingNextPage;
     setAdvanceFrom(current.id);
     if (!more.isFetchingNextPage) void more.fetchNextPage();
   };

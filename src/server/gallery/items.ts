@@ -22,6 +22,8 @@ import {
   assertLinkableEvent,
   isLinkableEvent,
   LINKABLE_EVENT_STATUSES,
+  publicItemsReachOutsiders,
+  type GalleryCommunity,
   type GalleryViewer,
 } from "./access";
 import { nowOf, type GalleryDeps } from "./deps";
@@ -70,6 +72,17 @@ export type GalleryFacets = {
 };
 
 export type LinkableEvent = { id: number; title: string; startsAt: string };
+
+/** What a member may choose for their uploads in this community. */
+export type GalleryUploadChoices = {
+  /** Events uploads may link to, newest first. */
+  events: LinkableEvent[];
+  /**
+   * Whether "Everyone" reaches anyone beyond the members. False in a
+   * members-only or paid community: the dialog then offers no choice.
+   */
+  publicReachesOutsiders: boolean;
+};
 
 /** What an uploader whose account record is gone is called. */
 const UNKNOWN_UPLOADER = "Member";
@@ -373,17 +386,32 @@ export async function getItem(
 }
 
 /**
+ * The upload dialog's choices (members only): the events uploads may link
+ * to, and whether "Everyone" reaches anyone beyond the members.
+ */
+export async function uploadChoices(
+  deps: GalleryDeps,
+  input: { viewer: GalleryViewer & { community: GalleryCommunity } },
+): Promise<GalleryUploadChoices> {
+  const { viewer } = input;
+  if (!viewer.isMember) throw galleryError("NOT_A_MEMBER");
+  const [events, publicReachesOutsiders] = await Promise.all([
+    linkableEvents(deps, viewer),
+    publicItemsReachOutsiders(deps, viewer.community),
+  ]);
+  return { events, publicReachesOutsiders };
+}
+
+/**
  * Events a member may link uploads to, newest first: the community's own
  * events that have started and are published or completed. The query only
  * narrows the candidates; `isLinkableEvent`, the rule uploads and edits are
  * checked against, decides.
  */
-export async function linkableEvents(
+async function linkableEvents(
   deps: GalleryDeps,
-  input: { viewer: GalleryViewer },
+  viewer: GalleryViewer,
 ): Promise<LinkableEvent[]> {
-  const { viewer } = input;
-  if (!viewer.isMember) throw galleryError("NOT_A_MEMBER");
   const now = nowOf(deps);
   const { docs } = await deps.payload.find({
     collection: "events",

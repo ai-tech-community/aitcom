@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { isGalleryErrorCode } from "@/lib/gallery-rules";
 import type en from "../../../../messages/en.json";
+import type { GalleryUploadErrorCode } from "./use-gallery-upload";
 
 /** A key with copy under `gallery.errors`. */
 export type GalleryErrorCopyKey = keyof (typeof en)["gallery"]["errors"];
@@ -28,5 +29,29 @@ export function useGalleryErrorText() {
       return t(fallback);
     },
     [t],
+  );
+}
+
+/**
+ * Copy for why a file or a batch did not upload. The video problems say
+ * what the feed's video upload says, word for word.
+ */
+export function useGalleryUploadErrorText() {
+  const t = useTranslations("gallery.errors");
+  const video = useTranslations("communities.video");
+  return useCallback(
+    (code: GalleryUploadErrorCode): string => {
+      switch (code) {
+        case "VIDEO_TOO_LONG":
+          return video("tooLong");
+        case "UNSUPPORTED_VIDEO":
+          return video("unreadable");
+        case "CANNOT_CONVERT_VIDEO":
+          return video("unsupported");
+        default:
+          return t(code);
+      }
+    },
+    [t, video],
   );
 }

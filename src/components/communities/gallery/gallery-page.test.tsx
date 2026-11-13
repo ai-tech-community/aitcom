@@ -15,6 +15,19 @@ import type { GalleryFacets, GalleryItemView } from "@/server/gallery/items";
 import { GalleryPage } from "./gallery-page";
 import { galleryItem } from "./gallery-test-fixtures";
 
+type UploadStandInProps = {
+  slug: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialEventId?: number;
+};
+type EditStandInProps = {
+  slug: string;
+  item: GalleryItemView;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
 type ListState = {
   isPending: boolean;
   isError: boolean;
@@ -35,7 +48,11 @@ const m = vi.hoisted(() => ({
   itemError: null as null | { message: string; data: { code: string } },
   signedIn: false,
   memberships: [] as { slug: string; status: string; role: string }[],
+  membershipsPending: false,
   requireAuth: vi.fn(),
+  promptAuth: vi.fn(),
+  uploadProps: [] as UploadStandInProps[],
+  editProps: [] as EditStandInProps[],
   invalidateList: vi.fn(),
   invalidateFacets: vi.fn(),
   deleteFails: false,
@@ -119,8 +136,9 @@ vi.mock("@/trpc/react", () => ({
       },
       getMyCommunities: {
         useQuery: (_: unknown, opts: { enabled: boolean }) => ({
-          data: opts.enabled ? m.memberships : undefined,
-          isPending: !opts.enabled,
+          data:
+            opts.enabled && !m.membershipsPending ? m.memberships : undefined,
+          isPending: !opts.enabled || m.membershipsPending,
         }),
       },
     },
@@ -129,7 +147,7 @@ vi.mock("@/trpc/react", () => ({
 vi.mock("@/components/auth/auth-required-dialog", () => ({
   useRequireAuth: () => ({
     requireAuth: m.requireAuth,
-    promptAuth: vi.fn(),
+    promptAuth: m.promptAuth,
     authStatus: m.signedIn ? "authenticated" : "guest",
   }),
 }));
@@ -152,6 +170,33 @@ vi.mock("@/i18n/navigation", () => ({
       {children}
     </a>
   ),
+}));
+// next/dynamic loads a component's code only when it first renders: a
+// render of the stand-in is the upload dialog's code being loaded.
+vi.mock("next/dynamic", () => ({
+  default: () =>
+    function UploadStandIn(props: UploadStandInProps) {
+      m.uploadProps.push(props);
+      return props.open ? (
+        <div role="dialog" aria-label="Upload stand-in">
+          <button type="button" onClick={() => props.onOpenChange(false)}>
+            Close upload
+          </button>
+        </div>
+      ) : null;
+    },
+}));
+vi.mock("./gallery-edit-dialog", () => ({
+  GalleryEditDialog: (props: EditStandInProps) => {
+    m.editProps.push(props);
+    return props.open ? (
+      <div role="dialog" aria-label="Edit stand-in">
+        <button type="button" onClick={() => props.onOpenChange(false)}>
+          Close edit
+        </button>
+      </div>
+    ) : null;
+  },
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: m.toastError },
@@ -208,8 +253,13 @@ beforeEach(() => {
   m.itemError = null;
   m.signedIn = false;
   m.memberships = [];
+  m.membershipsPending = false;
   m.deleteFails = false;
+  m.uploadProps = [];
+  m.editProps = [];
 });
+
+const lastUpload = () => m.uploadProps.at(-1);
 
 describe("GalleryPage", () => {
   it("opens with the house kicker, the heading and the add action", () => {
@@ -282,7 +332,109 @@ describe("GalleryPage", () => {
     expect(m.requireAuth).toHaveBeenCalledWith(
       expect.any(Function),
       "Sign in to add photos and videos",
+      { returnTo: `${PATH}?upload=1` },
     );
+    expect(m.uploadProps).toEqual([]);
+  });
+
+  it("loads the upload dialog only when a member presses Add", () => {
+    asMember();
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    renderPage();
+    expect(m.uploadProps).toEqual([]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add photos and videos" }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Upload stand-in" }),
+    ).toBeVisible();
+    expect(lastUpload()).toMatchObject({ slug: "mlops", open: true });
+    expect(lastUpload()?.initialEventId).toBeUndefined();
+  });
+
+  it("starts each opening of the upload afresh", () => {
+    asMember();
+    renderPage();
+    const add = () =>
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Add photos and videos" })[0]!,
+      );
+    add();
+    const first = lastUpload();
+    fireEvent.click(screen.getByRole("button", { name: "Close upload" }));
+    expect(lastUpload()?.open).toBe(false);
+    add();
+    // A new instance (the page keys it): its state does not carry over.
+    expect(lastUpload()).not.toBe(first);
+    expect(lastUpload()?.open).toBe(true);
+  });
+
+  it("opens the upload with the linked event for a member", () => {
+    asMember();
+    setUrl("upload=1&event=4");
+    renderPage();
+    expect(
+      screen.getByRole("dialog", { name: "Upload stand-in" }),
+    ).toBeVisible();
+    expect(lastUpload()?.initialEventId).toBe(4);
+    // The event is also the wall's filter.
+    expect(lastListInput()).toMatchObject({ eventId: 4 });
+    fireEvent.click(screen.getByRole("button", { name: "Close upload" }));
+    // Closing drops the link, so a refresh does not open it again; the
+    // wall stays filtered to the event.
+    expect(window.location.search).toBe("?event=4");
+    expect(
+      screen.queryByRole("dialog", { name: "Upload stand-in" }),
+    ).toBeNull();
+  });
+
+  it("asks a guest who follows an upload link to sign in and come back to it", () => {
+    setUrl("upload=1&event=4");
+    renderPage();
+    expect(m.promptAuth).toHaveBeenCalledWith(
+      "Sign in to add photos and videos",
+      { returnTo: `${PATH}?upload=1&event=4` },
+    );
+    expect(m.uploadProps).toEqual([]);
+    expect(window.location.search).toBe("?event=4");
+  });
+
+  it("ignores an upload link for a signed-in visitor who is not a member", () => {
+    m.signedIn = true;
+    setUrl("upload=1");
+    renderPage();
+    expect(m.uploadProps).toEqual([]);
+    expect(m.promptAuth).not.toHaveBeenCalled();
+    expect(window.location.search).toBe("");
+  });
+
+  it("waits for the memberships before acting on an upload link", () => {
+    m.signedIn = true;
+    m.membershipsPending = true;
+    setUrl("upload=1");
+    renderPage();
+    expect(m.uploadProps).toEqual([]);
+    expect(window.location.search).toBe("?upload=1");
+  });
+
+  it("opens Edit details for the member's own item from the lightbox", () => {
+    asMember();
+    const own = galleryItem({ id: 1, caption: "Mine", isOwn: true });
+    m.list.items = [own];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Mine" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Mine" })).getByRole("button", {
+        name: "Edit details",
+      }),
+    );
+    // (The stand-in is not a real stacked dialog, so the lightbox hides it
+    // from the accessibility tree; the props say what the page asked for.)
+    expect(m.editProps.at(-1)).toMatchObject({
+      slug: "mlops",
+      item: own,
+      open: true,
+    });
   });
 
   it("shows tile placeholders while the wall loads", () => {

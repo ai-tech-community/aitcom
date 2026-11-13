@@ -2,15 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GALLERY_CAPTION_MAX, GALLERY_PAGE_SIZE } from "@/lib/gallery-rules";
 
-import { loadGalleryViewer, type GalleryViewer } from "./access";
+import {
+  loadGalleryViewer,
+  type GalleryCommunity,
+  type GalleryViewer,
+} from "./access";
 import {
   deleteItem,
   getItem,
   galleryReadableWhere,
-  linkableEvents,
   listFacets,
   listItems,
   updateItem,
+  uploadChoices,
 } from "./items";
 
 const NOW = new Date("2026-11-13T12:00:00.000Z");
@@ -237,7 +241,7 @@ async function viewerFor(input: {
   userId: string | null;
   role?: string | null;
   listed?: boolean;
-}): Promise<GalleryViewer> {
+}): Promise<GalleryViewer & { community: GalleryCommunity }> {
   const db = {
     query: {
       communities: {
@@ -585,7 +589,7 @@ describe("getItem", () => {
   });
 });
 
-describe("linkableEvents", () => {
+describe("uploadChoices", () => {
   it("lists the community's started, published or completed events, newest first", async () => {
     const { deps } = fakes({
       events: [
@@ -601,19 +605,38 @@ describe("linkableEvents", () => {
       ],
     });
 
-    await expect(
-      linkableEvents(deps, { viewer: await member() }),
-    ).resolves.toEqual([
+    const choices = await uploadChoices(deps, { viewer: await member() });
+
+    expect(choices.events).toEqual([
       { id: 2, title: "Event 2", startsAt: "2026-11-13T10:00:00.000Z" },
       { id: 3, title: "Event 3", startsAt: "2026-11-01T10:00:00.000Z" },
       { id: 1, title: "Event 1", startsAt: "2026-10-01T09:00:00.000Z" },
     ]);
   });
 
+  it("offers Everyone where outsiders can read the community", async () => {
+    const { deps } = fakes();
+    await expect(
+      uploadChoices(deps, { viewer: await member() }),
+    ).resolves.toMatchObject({ publicReachesOutsiders: true });
+  });
+
+  it("says Everyone reaches no outsider in a members-only community", async () => {
+    const { deps } = fakes();
+    const viewer = await viewerFor({
+      userId: "u2",
+      role: "member",
+      listed: false,
+    });
+    await expect(uploadChoices(deps, { viewer })).resolves.toMatchObject({
+      publicReachesOutsiders: false,
+    });
+  });
+
   it("refuses someone who is not a member with NOT_A_MEMBER", async () => {
     const { deps } = fakes();
     await expect(
-      linkableEvents(deps, { viewer: await outsider() }),
+      uploadChoices(deps, { viewer: await outsider() }),
     ).rejects.toMatchObject({ code: "FORBIDDEN", message: "NOT_A_MEMBER" });
   });
 });

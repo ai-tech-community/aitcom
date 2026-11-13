@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { ImagePlus } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -20,17 +21,56 @@ import {
   GalleryAddAction,
   type GalleryViewerState,
 } from "./gallery-add-action";
+import { GalleryEditDialog } from "./gallery-edit-dialog";
 import { useGalleryErrorText } from "./gallery-error-text";
 import { GalleryLightbox } from "./gallery-lightbox";
 import {
   galleryListInput,
   hasGalleryFilters,
   parseGalleryParams,
+  readUploadLink,
   writeGalleryParams,
-  type GalleryFilters,
+  type GalleryParamsPatch,
 } from "./gallery-params";
 import { GalleryToolbar } from "./gallery-toolbar";
 import { GalleryWall, GalleryWallSkeleton } from "./gallery-wall";
+import { useGalleryUploadLink } from "./use-gallery-upload-link";
+
+/**
+ * The upload dialog's code — with the video converter it pulls in — loads
+ * only when someone opens it, not with the wall.
+ */
+const GalleryUploadDialog = dynamic(
+  () =>
+    import("./gallery-upload-dialog").then((mod) => mod.GalleryUploadDialog),
+  { ssr: false },
+);
+
+/**
+ * One opening of a dialog. A new `key` mounts it afresh, so nothing from
+ * the last opening carries over; `open: false` keeps it mounted while it
+ * animates out.
+ */
+type Opening<T> = T & { key: number; open: boolean };
+
+/** Opens a dialog afresh with `value`, or closes the current opening. */
+function useOpening<T>() {
+  const [opening, setOpening] = useState<Opening<T> | null>(null);
+  const open = useCallback(
+    (value: T) =>
+      setOpening((current) => ({
+        ...value,
+        key: (current?.key ?? 0) + 1,
+        open: true,
+      })),
+    [],
+  );
+  const close = useCallback(
+    () => setOpening((current) => current && { ...current, open: false }),
+    [],
+  );
+  return [opening, open, close] as const;
+}
 
 /** The signed-in viewer's standing in this community, for the add action. */
 function useGalleryViewer(slug: string): GalleryViewerState {
@@ -58,7 +98,11 @@ function useGalleryParams() {
     () => parseGalleryParams(searchParams),
     [searchParams],
   );
-  const setParams = useCallback((patch: Partial<GalleryFilters>) => {
+  const uploadLink = useMemo(
+    () => readUploadLink(searchParams),
+    [searchParams],
+  );
+  const setParams = useCallback((patch: GalleryParamsPatch) => {
     const url = new URL(window.location.href);
     const next = writeGalleryParams(url.searchParams, patch).toString();
     window.history.replaceState(
@@ -67,32 +111,46 @@ function useGalleryParams() {
       next ? `${url.pathname}?${next}` : url.pathname,
     );
   }, []);
-  return [params, setParams] as const;
+  return [params, setParams, uploadLink] as const;
 }
 
 /**
  * A community's Gallery tab (spec 2026-11-13, variant A): the header with
- * the add action, the filters, the wall and the lightbox. Everything the
- * viewer may not see is filtered by the server; this only decides what to
- * offer. `onUpload` and `onEdit` open the upload and edit dialogs.
+ * the add action, the filters, the wall, the lightbox, and the upload and
+ * Edit details dialogs. Everything the viewer may not see is filtered by
+ * the server; this only decides what to offer.
  */
-export function GalleryPage({
-  slug,
-  onUpload = () => undefined,
-  onEdit,
-}: {
-  slug: string;
-  onUpload?: () => void;
-  onEdit?: (item: GalleryItemView) => void;
-}) {
+export function GalleryPage({ slug }: { slug: string }) {
   const t = useTranslations("gallery");
   const errorText = useGalleryErrorText();
   const utils = api.useUtils();
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const [params, setParams] = useGalleryParams();
+  const [params, setParams, uploadLink] = useGalleryParams();
   const viewer = useGalleryViewer(slug);
   const isMember = viewer.kind === "member";
   const canModerate = isMember && isModeratorRole(viewer.role);
+
+  const [upload, openUploadWith, closeUpload] = useOpening<{
+    eventId: number | null;
+  }>();
+  const openUpload = useCallback(
+    (eventId: number | null = null) => openUploadWith({ eventId }),
+    [openUploadWith],
+  );
+  const dropUploadLink = useCallback(
+    () => setParams({ upload: null }),
+    [setParams],
+  );
+  useGalleryUploadLink({
+    link: uploadLink,
+    viewer,
+    intent: t("page.signInToAdd"),
+    openUpload,
+    dropLink: dropUploadLink,
+  });
+  const [editing, openEdit, closeEdit] = useOpening<{
+    item: GalleryItemView;
+  }>();
 
   const community = api.communities.getBySlug.useQuery({ slug });
   const facets = api.gallery.facets.useQuery({ slug });
@@ -133,7 +191,7 @@ export function GalleryPage({
       communityName={community.data?.name}
       joinPolicy={community.data?.joinPolicy}
       viewer={viewer}
-      onUpload={onUpload}
+      onUpload={() => openUpload()}
     />
   );
 
@@ -165,7 +223,7 @@ export function GalleryPage({
         description={t("wall.emptyBody")}
         action={
           // The header keeps the orange; this copy of the action is quiet.
-          <Button type="button" variant="outline" onClick={onUpload}>
+          <Button type="button" variant="outline" onClick={() => openUpload()}>
             <ImagePlus aria-hidden="true" />
             {t("page.add")}
           </Button>
@@ -227,7 +285,7 @@ export function GalleryPage({
         openId={openId}
         onNavigate={(itemId) => setParams({ item: itemId })}
         onClose={() => setParams({ item: null })}
-        onEdit={isMember ? onEdit : undefined}
+        onEdit={isMember ? (item) => openEdit({ item }) : undefined}
         onDeleted={() => {
           void utils.gallery.list.invalidate({ slug });
           void utils.gallery.facets.invalidate({ slug });
@@ -236,6 +294,31 @@ export function GalleryPage({
         fallbackFocus={headingRef}
         more={onWall ? list : undefined}
       />
+
+      {upload ? (
+        <GalleryUploadDialog
+          key={upload.key}
+          slug={slug}
+          open={upload.open}
+          onOpenChange={(open) => {
+            if (open) return;
+            closeUpload();
+            dropUploadLink();
+          }}
+          initialEventId={upload.eventId ?? undefined}
+        />
+      ) : null}
+      {editing ? (
+        <GalleryEditDialog
+          key={editing.key}
+          slug={slug}
+          item={editing.item}
+          open={editing.open}
+          onOpenChange={(open) => {
+            if (!open) closeEdit();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -34,6 +34,9 @@ export type GalleryViewer = {
   canSeePublic: boolean;
 };
 
+/** What the access rules need to know about a community. */
+export type GalleryCommunity = CommunityVisibility & { id: string };
+
 const VIEWER_COMMUNITY_COLUMNS = {
   id: true,
   slug: true,
@@ -47,7 +50,7 @@ const VIEWER_COMMUNITY_COLUMNS = {
  */
 async function outsidersMayRead(
   deps: Pick<GalleryDeps, "db">,
-  community: CommunityVisibility & { id: string },
+  community: GalleryCommunity,
   userId: string | null,
 ): Promise<boolean> {
   return (
@@ -59,7 +62,7 @@ async function outsidersMayRead(
 /** The viewer behind a user (or a signed-out visitor) in a live community. */
 async function viewerIn(
   deps: Pick<GalleryDeps, "db">,
-  community: CommunityVisibility & { id: string },
+  community: GalleryCommunity,
   userId: string | null,
 ): Promise<GalleryViewer> {
   const role = await activeCommunityRole(deps.db, community.id, userId);
@@ -80,7 +83,7 @@ async function viewerIn(
 export async function loadGalleryViewer(
   deps: Pick<GalleryDeps, "db">,
   input: { slug: string; userId: string | null },
-): Promise<GalleryViewer & { community: { id: string; slug: string } }> {
+): Promise<GalleryViewer & { community: GalleryCommunity }> {
   const community = await deps.db.query.communities.findFirst({
     where: and(eq(communities.slug, input.slug), isNull(communities.deletedAt)),
     columns: VIEWER_COMMUNITY_COLUMNS,
@@ -88,8 +91,25 @@ export async function loadGalleryViewer(
   if (!community) throw new TRPCError({ code: "NOT_FOUND" });
   return {
     ...(await viewerIn(deps, community, input.userId)),
-    community: { id: community.id, slug: community.slug },
+    community: {
+      id: community.id,
+      slug: community.slug,
+      isListedInDirectory: community.isListedInDirectory,
+    },
   };
+}
+
+/**
+ * Whether an item shared with "Everyone" reaches anyone beyond the members:
+ * true when a signed-out visitor may read the community's content. False in
+ * a members-only or paid community, where outsiders see nothing, so the
+ * upload dialog does not offer a choice that changes nothing.
+ */
+export async function publicItemsReachOutsiders(
+  deps: Pick<GalleryDeps, "db">,
+  community: GalleryCommunity,
+): Promise<boolean> {
+  return outsidersMayRead(deps, community, null);
 }
 
 /**

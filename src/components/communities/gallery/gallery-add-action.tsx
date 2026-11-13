@@ -21,6 +21,7 @@ import {
 } from "@/server/communities/invite-policy";
 
 import { JoinButton } from "../join-button";
+import { uploadLinkPath } from "./gallery-params";
 
 /** Who is looking at the gallery, as far as adding to it goes. */
 export type GalleryViewerState =
@@ -35,7 +36,8 @@ export type GalleryViewerState =
  * "Add photos and videos" for whoever is looking (DESIGN.md Gate-Before-
  * Fail: no one presses a button that then fails):
  * - members: the screen's one primary action; it opens the upload;
- * - guests: the sign-in prompt (they may be members once signed in);
+ * - guests: the sign-in prompt (they may be members once signed in),
+ *   which brings them back with the upload open;
  * - signed-in visitors who can join: the community's join control, in a
  *   small dialog that says why;
  * - anyone else (request pending, invite-only, banned, still loading):
@@ -74,7 +76,12 @@ export function GalleryAddAction({
     case "member":
       return button("default", onUpload);
     case "guest":
-      return button("ink", () => requireAuth(onUpload, t("signInToAdd")));
+      // Signing in comes back to the gallery with the upload open.
+      return button("ink", () =>
+        requireAuth(onUpload, t("signInToAdd"), {
+          returnTo: uploadLinkPath(window.location),
+        }),
+      );
     case "outsider": {
       if (!joinPolicy) return null;
       const action = viewerJoinAction({ joinPolicy, status: viewer.status });

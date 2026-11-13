@@ -2,7 +2,8 @@
  * The Gallery tab's filters and open item as URL search params (`?event=`,
  * `topic=`, `type=`, `item=`), so a filtered wall or an open photo survives
  * refresh and Back, and other pages (an event's "See all in the gallery")
- * can link straight to it.
+ * can link straight to it. `?upload=1` opens the upload dialog (an event's
+ * "Add yours" adds `&event=<id>`, which also filters the wall to it).
  */
 import {
   GALLERY_MEDIA_TYPES,
@@ -20,6 +21,11 @@ export type GalleryFilters = {
 };
 
 type ParamReader = { get(key: string): string | null };
+
+/** A change to the params; null removes one. */
+export type GalleryParamsPatch = Partial<GalleryFilters> & { upload?: null };
+
+const UPLOAD_PARAM = "upload";
 
 /** The API's own bound on a topic slug. */
 const TOPIC_MAX = 100;
@@ -50,7 +56,7 @@ export function parseGalleryParams(params: ParamReader): GalleryFilters {
 /** Writes `patch` into a copy of `search`; null removes a param. */
 export function writeGalleryParams(
   search: URLSearchParams,
-  patch: Partial<GalleryFilters>,
+  patch: GalleryParamsPatch,
 ): URLSearchParams {
   const next = new URLSearchParams(search);
   for (const [key, value] of Object.entries(patch)) {
@@ -75,4 +81,28 @@ export function galleryListInput(slug: string, filters: GalleryFilters) {
     ...(filters.type !== null && { mediaType: filters.type }),
     limit: GALLERY_PAGE_SIZE,
   };
+}
+
+/**
+ * The upload link in the params: null without `upload=1`, else the event to
+ * start the upload with (none when absent or not an event id).
+ */
+export function readUploadLink(
+  params: ParamReader,
+): { eventId: number | null } | null {
+  if (params.get(UPLOAD_PARAM) !== "1") return null;
+  return { eventId: recordId(params.get("event")) };
+}
+
+/**
+ * This page's path with the upload link added, filters kept: where a guest
+ * comes back to after signing in, so the upload opens for them there.
+ */
+export function uploadLinkPath(location: {
+  pathname: string;
+  search: string;
+}): string {
+  const params = new URLSearchParams(location.search);
+  params.set(UPLOAD_PARAM, "1");
+  return `${location.pathname}?${params}`;
 }
