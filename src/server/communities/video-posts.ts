@@ -26,6 +26,7 @@ import {
   NO_GIF,
   loadPostForMediaEdit,
   postDetailsUpdate,
+  requireChangeableMedia,
   writePostMedia,
   type PostDetailsChange,
 } from "./post-media";
@@ -311,7 +312,8 @@ export async function finishVideoPost(
  * have been granted for that same visibility. The old video's files are
  * removed before the grant closes, so a retry after a failed close finds
  * nothing left to clean. Safe to retry: a post that already carries this
- * upload just closes the grant.
+ * upload just closes the grant. A gallery post is refused before the grant
+ * is touched: its media never changes.
  */
 export async function replacePostVideo(
   deps: VideoPostDeps,
@@ -328,6 +330,7 @@ export async function replacePostVideo(
   } & UploadedVideo,
 ): Promise<{ id: number }> {
   const post = await loadPostForMediaEdit(deps.payload, input);
+  requireChangeableMedia(post);
   const { grant, keys } = await openGrant(deps, input);
   const now = deps.now?.() ?? new Date();
   if (post.video?.key === keys.video) {

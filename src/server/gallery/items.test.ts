@@ -138,10 +138,16 @@ const USERS = [
 ];
 
 function fakes(
-  seed: { items?: Doc[]; events?: Doc[]; topics?: string[] } = {},
+  seed: {
+    items?: Doc[];
+    events?: Doc[];
+    topics?: string[];
+    posts?: Doc[];
+  } = {},
 ) {
   const store: Record<string, Doc[]> = {
     "gallery-items": seed.items ?? [],
+    "feed-posts": seed.posts ?? [],
     "gallery-batches": [{ id: 3, communityId: "c1", uploaderId: "u1" }],
     events: seed.events ?? [event(5), event(6)],
   };
@@ -961,6 +967,92 @@ describe("deleteItem", () => {
       deleteItem(deps, { viewer: await moderator(), itemId: 1 }),
     ).resolves.toBeUndefined();
     expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  describe("the batch's feed post", () => {
+    const galleryPost = (over: Doc = {}): Doc => ({
+      id: 40,
+      content: "",
+      authorName: "Dana",
+      communityId: "c1",
+      isDeleted: false,
+      galleryBatch: 3,
+      ...over,
+    });
+
+    it("removes a post with no words when its last ready item is deleted", async () => {
+      const { deps, store } = fakes({
+        items: [item(1), item(2, { status: "failed" })],
+        posts: [galleryPost()],
+      });
+
+      await deleteItem(deps, { viewer: await member("u1"), itemId: 1 });
+
+      expect(store["feed-posts"]![0]).toMatchObject({
+        isDeleted: true,
+        content: "",
+        authorName: "",
+        galleryBatch: null,
+      });
+    });
+
+    it("keeps the post while another item of the batch is ready", async () => {
+      const { deps, store } = fakes({
+        items: [item(1), item(2)],
+        posts: [galleryPost()],
+      });
+      await deleteItem(deps, { viewer: await member("u1"), itemId: 1 });
+      expect(store["feed-posts"]![0]).toMatchObject({
+        isDeleted: false,
+        galleryBatch: 3,
+      });
+    });
+
+    it("keeps a post that has words, and the post of another batch", async () => {
+      const { deps, store } = fakes({
+        items: [item(1)],
+        posts: [
+          galleryPost({ content: "Our picnic" }),
+          galleryPost({ id: 41, galleryBatch: 8 }),
+        ],
+      });
+      await deleteItem(deps, { viewer: await moderator(), itemId: 1 });
+      expect(store["feed-posts"]!.map((p) => p.isDeleted)).toEqual([
+        false,
+        false,
+      ]);
+    });
+
+    it("keeps the item's deletion when the post could not be removed, and logs it", async () => {
+      const { deps, payload, store, log } = fakes({
+        items: [item(1)],
+        posts: [galleryPost()],
+      });
+      payload.update.mockResolvedValueOnce({
+        docs: [],
+        errors: [{ id: 40, message: "x" }],
+      });
+
+      await expect(
+        deleteItem(deps, { viewer: await moderator(), itemId: 1 }),
+      ).resolves.toBeUndefined();
+
+      expect(store["gallery-items"]).toEqual([]);
+      expect(log).toHaveBeenCalledWith(
+        "[gallery.deleteItem] removing the batch's empty feed post failed",
+        expect.objectContaining({ itemId: 1, batchId: 3 }),
+      );
+    });
+
+    it("leaves the post alone when the delete lost a race", async () => {
+      const { deps, payload } = fakes({
+        items: [item(1)],
+        posts: [galleryPost()],
+      });
+      payload.delete.mockResolvedValueOnce({ docs: [], errors: [] });
+      await deleteItem(deps, { viewer: await moderator(), itemId: 1 });
+      expect(payload.update).not.toHaveBeenCalled();
+    });
   });
 
   it("answers a second delete of the same item with NOT_FOUND", async () => {

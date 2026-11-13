@@ -29,6 +29,7 @@ import {
 } from "./access";
 import { nowOf, type GalleryDeps } from "./deps";
 import { galleryError } from "./errors";
+import { releaseEmptyGalleryPost } from "./feed-post-link";
 import { itemFileUrls, removeItemFiles } from "./item-files";
 
 /**
@@ -550,6 +551,8 @@ export async function updateItem(
  * net). The uploader may always delete their own item — hidden, members-only,
  * or after leaving the community or letting a paid membership lapse. The
  * item's batch stays, even when it is now empty: the cleanup owns batches.
+ * The batch's feed post goes when it has no ready item and no words left
+ * (`releaseEmptyGalleryPost`).
  * Anyone else is refused NOT_ALLOWED; an item they cannot see is NOT_FOUND.
  * A row Payload could not delete is a server error, and its files are kept.
  */
@@ -581,4 +584,14 @@ export async function deleteItem(
   // A concurrent delete removed the row first; it removes the files too.
   if (docs.length === 0) return;
   await removeItemFiles(deps, item, "deleteItem");
+  const batchId = typeof item.batch === "object" ? item.batch.id : item.batch;
+  // The item is gone either way: a post left showing nothing is logged.
+  try {
+    await releaseEmptyGalleryPost(deps, batchId);
+  } catch (error) {
+    (deps.log ?? console.error)(
+      "[gallery.deleteItem] removing the batch's empty feed post failed",
+      { itemId: item.id, batchId, error },
+    );
+  }
 }

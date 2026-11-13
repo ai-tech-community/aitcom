@@ -3427,6 +3427,7 @@
       "keepCurrentVideo": "Conserver la vidéo actuelle",
       "mediaChangesOnSave": "L’image ou la vidéo sera modifiée lorsque vous appuierez sur Enregistrer.",
       "mediaLockedWhileReviewed": "Cette publication est en cours d’examen. Vous pourrez modifier son image ou sa vidéo après qu’un modérateur l’aura examinée.",
+      "galleryMediaFixed": "Les photos et vidéos restent telles quelles. Vous pouvez les gérer dans la galerie.",
       "discardChanges": "Abandonner les modifications",
       "postActions": "Actions de la publication",
       "poll": {

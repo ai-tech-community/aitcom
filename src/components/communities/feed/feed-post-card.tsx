@@ -74,6 +74,8 @@ interface FeedPost {
   poll?: FeedPollView | null;
   /** When the post's "@everyone" went out to the community. */
   announcedAt?: string | null;
+  /** The post announces a gallery batch (its media is fixed). */
+  isGalleryPost?: boolean;
 }
 
 /**

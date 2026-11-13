@@ -2,12 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { ValidationError, type Where } from "payload";
 
 import type { PostReport } from "@/payload-types";
+import type { ObjectStorageSource } from "@/server/media/object-storage";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { ReportReason } from "@/lib/post-report-reasons";
+import { removeBatchItems } from "@/server/gallery/feed-post-link";
 import { canViewPost, type FeedViewer } from "./post-visibility";
 import { cleanUpPostImages } from "./feed-images";
-import { NO_GIF } from "./post-media";
+import { removedPostData } from "./post-media";
 import { cleanUpPostVideoFiles } from "./post-video-files";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -26,6 +28,15 @@ export type ReportDeps = {
   }) => Promise<void>;
   now?: () => Date;
   log?: (message: string, detail: unknown) => void;
+};
+
+/** What reviewing a report needs on top of reporting. */
+export type ReviewDeps = ReportDeps & {
+  /**
+   * Gallery object storage, reached only when a removed post is a gallery
+   * post (its batch's items go with it).
+   */
+  galleryStorage: ObjectStorageSource;
 };
 
 /** What a moderator sees of one report. Who reported stays private. */
@@ -163,10 +174,13 @@ export async function reportPost(
 /**
  * Restore shows the post again and dismisses its open reports (kept, so
  * those reporters can't report it again). Remove deletes the post, its
- * files, and its reports.
+ * files, and its reports. Removing a gallery post removes its batch's items
+ * from the gallery too (the report is about that content), first: if they
+ * cannot all be deleted, the post stays hidden, still pointing at its
+ * batch, so the moderator can try again. Restoring leaves the items alone.
  */
 export async function reviewReport(
-  deps: ReportDeps,
+  deps: ReviewDeps,
   input: { postId: number; action: "restore" | "remove" },
 ): Promise<void> {
   const clearReports = () =>
@@ -195,18 +209,17 @@ export async function reviewReport(
     });
     return;
   }
+  const batch = post.galleryBatch;
+  if (batch != null) {
+    await removeBatchItems(
+      { payload: deps.payload, storage: deps.galleryStorage, log: deps.log },
+      typeof batch === "object" ? batch.id : batch,
+    );
+  }
   await deps.payload.update({
     collection: "feed-posts",
     id: post.id,
-    data: {
-      isDeleted: true,
-      content: "",
-      authorName: "",
-      images: [],
-      image: null,
-      imageUrl: null,
-      gif: NO_GIF,
-    },
+    data: removedPostData(),
   });
   // Best effort: the post is already removed, so a storage failure is
   // logged rather than failing the moderator's action.

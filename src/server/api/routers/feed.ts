@@ -37,6 +37,7 @@ import {
 } from "@/server/communities/feed-post-counters";
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import { getVideoStorage } from "@/server/media/video-storage";
+import { getObjectStorage } from "@/server/media/object-storage";
 import { isModeratorRole } from "@/lib/communities/moderator-roles";
 import {
   feedViewerFor,
@@ -96,11 +97,11 @@ const imageChoices = z
   .min(1)
   .max(MAX_POST_IMAGES);
 import {
-  NO_GIF,
   gifFields,
   lookUpGif,
   loadPostForMediaEdit,
   postDetailsUpdate,
+  removedPostData,
   requireWordsUnless,
   setPostMedia,
 } from "@/server/communities/post-media";
@@ -664,7 +665,8 @@ export const feedRouter = createTRPCRouter({
    * remove it, or set an image (which replaces a video). Changing media is
    * posting new content, so it needs the same right as posting; the media
    * rules live in `setPostMedia`. Putting a new video on the post is
-   * `replacePostVideo`.
+   * `replacePostVideo`. A gallery post's media never changes; its text may
+   * be emptied.
    */
   editPost: protectedProcedure
     .input(
@@ -753,10 +755,12 @@ export const feedRouter = createTRPCRouter({
       if (post.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      // Without words, the post's own GIF or described pictures must say it.
+      // Without words, the post's own GIF, described pictures or gallery
+      // batch must say it.
       if (!input.content.trim()) {
         requireWordsUnless(input.content, {
           gif: Boolean(post.gif?.giphyId),
+          gallery: post.galleryBatch != null,
           pictureAlts: await loadImageAlts(payload, post),
         });
       }
@@ -912,18 +916,11 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      // A gallery post lets go of its batch; the items stay in the gallery.
       await payload.update({
         collection: "feed-posts",
         id: input.postId,
-        data: {
-          isDeleted: true,
-          content: "",
-          authorName: "",
-          images: [],
-          image: null,
-          imageUrl: null,
-          gif: NO_GIF,
-        },
+        data: removedPostData(),
       });
       // Best effort: the post is already gone, so a storage failure is logged
       // rather than surfaced.
@@ -1314,6 +1311,7 @@ export const feedRouter = createTRPCRouter({
         {
           payload,
           storage: getVideoStorage,
+          galleryStorage: getObjectStorage,
           notifyModerators: async () => undefined,
         },
         input,

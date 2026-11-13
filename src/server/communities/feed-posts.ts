@@ -198,8 +198,14 @@ export type FeedImageView = {
  */
 export type FeedPostView = Omit<
   FeedPost,
-  "video" | "reportCount" | "images" | "mentions" | "poll"
+  "video" | "reportCount" | "images" | "mentions" | "poll" | "galleryBatch"
 > & {
+  /**
+   * The post announces a gallery batch: its media is fixed (the editor
+   * offers no media change) and its text may be empty. The batch id itself
+   * stays on the server.
+   */
+  isGalleryPost: boolean;
   authorImage: string | null;
   hasLiked: boolean;
   video: FeedVideoView | null;
@@ -328,8 +334,9 @@ export async function decorateFeedPosts(
     );
   }
   return Promise.all(
-    posts.map(async ({ reportCount: _reportCount, ...post }) => ({
+    posts.map(async ({ reportCount: _reportCount, galleryBatch, ...post }) => ({
       ...post,
+      isGalleryPost: galleryBatch != null,
       authorImage: images.get(post.authorId) ?? null,
       hasLiked: liked.has(post.id),
       video: await videoView(post, storage),

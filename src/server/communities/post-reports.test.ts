@@ -12,7 +12,12 @@ const member = { userId: "r1", isMember: true, isModerator: false };
 
 function fakes(
   post: Record<string, unknown> | null,
-  over: { existing?: unknown[]; reportTotal?: number } = {},
+  over: {
+    existing?: unknown[];
+    reportTotal?: number;
+    /** The gallery items a removed gallery post's batch holds. */
+    galleryItems?: unknown[];
+  } = {},
 ) {
   const payload = {
     findByID: vi
@@ -26,22 +31,35 @@ function fakes(
     count: vi.fn().mockResolvedValue({ totalDocs: over.reportTotal ?? 1 }),
     create: vi.fn().mockResolvedValue({}),
     update: vi.fn().mockResolvedValue({}),
-    delete: vi.fn().mockResolvedValue({}),
+    delete: vi
+      .fn()
+      .mockImplementation(({ collection }: { collection: string }) =>
+        Promise.resolve(
+          collection === "gallery-items"
+            ? { docs: over.galleryItems ?? [], errors: [] }
+            : {},
+        ),
+      ),
   };
   const notifyModerators = vi.fn().mockResolvedValue(undefined);
   const storage = { remove: vi.fn().mockResolvedValue(undefined) };
   const getStorage = vi.fn(() => storage);
+  const galleryStorage = { remove: vi.fn().mockResolvedValue(undefined) };
+  const getGalleryStorage = vi.fn(() => galleryStorage);
   const log = vi.fn();
   return {
     payload,
     notifyModerators,
     storage,
     getStorage,
+    galleryStorage,
+    getGalleryStorage,
     log,
     deps: {
       payload: payload as never,
       notifyModerators,
       storage: getStorage as never,
+      galleryStorage: getGalleryStorage as never,
       now: () => NOW,
       log,
     },
@@ -59,7 +77,44 @@ const video = {
   video: { key: "k.mp4", thumbnailKey: "k.jpg" },
 };
 
+/** A caption-less post whose only content is its gallery batch. */
+const galleryPost = {
+  id: 5,
+  authorId: "a1",
+  communityId: "c1",
+  visibility: "community",
+  content: "",
+  hiddenAt: null,
+  reportCount: 0,
+  isDeleted: false,
+  video: null,
+  galleryBatch: 9,
+};
+
 describe("reportPost", () => {
+  it("hides a caption-less gallery post with only the hide fields", async () => {
+    const { deps, payload, notifyModerators } = fakes(galleryPost);
+    await expect(
+      reportPost(deps, {
+        postId: 5,
+        reporterId: "r1",
+        reason: "spam",
+        note: "",
+        viewer: member,
+      }),
+    ).resolves.toEqual({ hidden: true });
+    expect(payload.update).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      id: 5,
+      data: { hiddenAt: NOW.toISOString(), reportCount: 1 },
+    });
+    expect(notifyModerators).toHaveBeenCalledWith({
+      communityId: "c1",
+      postId: 5,
+      isVideo: false,
+    });
+  });
+
   it("records the report, hides the post, and tells moderators once", async () => {
     const { deps, payload, notifyModerators } = fakes(video);
     await expect(
@@ -308,6 +363,7 @@ describe("reviewReport", () => {
           width: null,
           height: null,
         },
+        galleryBatch: null,
       },
     });
     expect(storage.remove).toHaveBeenCalledWith(["k.mp4", "k.jpg"]);
@@ -353,6 +409,94 @@ describe("reviewReport", () => {
     const text = fakes({ ...video, video: null, hiddenAt: NOW.toISOString() });
     await reviewReport(text.deps, { postId: 5, action: "remove" });
     expect(text.getStorage).not.toHaveBeenCalled();
+  });
+
+  it("remove on a gallery post deletes the batch's items and their files too", async () => {
+    const items = [1, 2].map((id) => ({
+      id,
+      batch: 9,
+      fileKey: `private/gallery/c1/u${id}.jpg`,
+      thumbnailKey: `private/gallery/c1/u${id}-thumb.jpg`,
+    }));
+    const { deps, payload, galleryStorage, getStorage } = fakes(
+      { ...galleryPost, hiddenAt: NOW.toISOString() },
+      { galleryItems: items },
+    );
+
+    await reviewReport(deps, { postId: 5, action: "remove" });
+
+    expect(payload.delete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "gallery-items",
+        where: { batch: { equals: 9 } },
+      }),
+    );
+    expect(galleryStorage.remove).toHaveBeenCalledWith([
+      "private/gallery/c1/u1.jpg",
+      "private/gallery/c1/u1-thumb.jpg",
+    ]);
+    expect(galleryStorage.remove).toHaveBeenCalledTimes(2);
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "feed-posts",
+        id: 5,
+        data: expect.objectContaining({ isDeleted: true, galleryBatch: null }),
+      }),
+    );
+    expect(getStorage).not.toHaveBeenCalled();
+  });
+
+  it("remove on a gallery post keeps it under review when its items could not be deleted", async () => {
+    const { deps, payload } = fakes({
+      ...galleryPost,
+      hiddenAt: NOW.toISOString(),
+    });
+    payload.delete.mockImplementation(
+      ({ collection }: { collection: string }) =>
+        Promise.resolve(
+          collection === "gallery-items"
+            ? { docs: [], errors: [{ id: 1, message: "x" }] }
+            : {},
+        ),
+    );
+
+    await expect(
+      reviewReport(deps, { postId: 5, action: "remove" }),
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+
+    // The post still points at its batch, so the moderator can try again.
+    expect(payload.update).not.toHaveBeenCalled();
+    expect(payload.delete).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "post-reports" }),
+    );
+  });
+
+  it("restore on a gallery post leaves its items as they are", async () => {
+    const { deps, payload, getGalleryStorage } = fakes({
+      ...galleryPost,
+      hiddenAt: NOW.toISOString(),
+      reportCount: 1,
+    });
+    await reviewReport(deps, { postId: 5, action: "restore" });
+    expect(payload.update).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      id: 5,
+      data: { hiddenAt: null, reportCount: 0 },
+    });
+    expect(payload.delete).not.toHaveBeenCalled();
+    expect(getGalleryStorage).not.toHaveBeenCalled();
+  });
+
+  it("remove on any other post never reaches gallery storage", async () => {
+    const { deps, payload, getGalleryStorage } = fakes({
+      ...video,
+      hiddenAt: NOW.toISOString(),
+    });
+    await reviewReport(deps, { postId: 5, action: "remove" });
+    expect(getGalleryStorage).not.toHaveBeenCalled();
+    expect(payload.delete).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "gallery-items" }),
+    );
   });
 
   it("reviewing a post its author already deleted clears its reports and says not found", async () => {

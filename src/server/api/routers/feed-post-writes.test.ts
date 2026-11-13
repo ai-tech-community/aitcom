@@ -573,6 +573,128 @@ describe("feed post writes", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  describe("a gallery post", () => {
+    /** A caption-less post whose only content is its gallery batch. */
+    const galleryPost = {
+      ...post,
+      content: "",
+      video: null,
+      images: [],
+      galleryBatch: 9,
+      updatedAt: "2026-11-13T10:00:00.000Z",
+    };
+
+    it.each([
+      ["no media", { kind: "none" as const }],
+      ["pictures", { kind: "images" as const, images: [{ id: 77, alt: "" }] }],
+      ["a GIF", { kind: "gif" as const, giphyId: "abc123" }],
+      [
+        "a poll",
+        {
+          kind: "poll" as const,
+          poll: { options: ["Yes", "No"], days: 3 as const },
+        },
+      ],
+    ])("editPost refuses to change its media to %s", async (_label, media) => {
+      storedPost = galleryPost;
+      await expect(
+        caller().feed.editPost({
+          postId: 5,
+          communitySlug: "c",
+          content: "New words",
+          media,
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(payload.update).not.toHaveBeenCalled();
+      expect(payload.db.drizzle.execute).not.toHaveBeenCalled();
+      expect(giphy.byId).not.toHaveBeenCalled();
+    });
+
+    it("editPost saves its text, which may be emptied, and leaves its batch alone", async () => {
+      storedPost = { ...galleryPost, content: "Our picnic" };
+      await expect(
+        caller().feed.editPost({ postId: 5, communitySlug: "c", content: "" }),
+      ).resolves.toEqual({ id: 5 });
+      const data = payload.update.mock.calls[0]![0].data as Record<
+        string,
+        unknown
+      >;
+      expect(data).toMatchObject({ content: "", isEdited: true });
+      expect(data).not.toHaveProperty("galleryBatch");
+    });
+
+    it("replacePostVideo refuses it before opening the upload", async () => {
+      storedPost = galleryPost;
+      await expect(
+        caller().feed.replacePostVideo({
+          postId: 5,
+          communitySlug: "c",
+          uploadId: "1b4e28ba-2fa1-41d2-883f-0016d3cca427",
+          caption: "A video now",
+          durationSeconds: 10,
+          width: 720,
+          height: 1280,
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(payload.find).not.toHaveBeenCalledWith(
+        expect.objectContaining({ collection: "video-uploads" }),
+      );
+      expect(payload.update).not.toHaveBeenCalled();
+    });
+
+    it("deletePost removes the post and lets go of its batch, leaving the items in the gallery", async () => {
+      storedPost = galleryPost;
+      await expect(caller().feed.deletePost({ postId: 5 })).resolves.toEqual({
+        id: 5,
+      });
+      expect(payload.update.mock.calls[0]![0].data).toMatchObject({
+        isDeleted: true,
+        content: "",
+        galleryBatch: null,
+      });
+      expect(payload.delete).not.toHaveBeenCalledWith(
+        expect.objectContaining({ collection: "gallery-items" }),
+      );
+      expect(storage.remove).not.toHaveBeenCalled();
+    });
+
+    it("pinPost pins it with the pin field only", async () => {
+      hooks.membership = { role: "moderator" };
+      storedPost = galleryPost;
+      payload.find.mockResolvedValue({ docs: [], totalDocs: 0 });
+      await expect(
+        caller().feed.pinPost({ postId: 5, isPinned: true }),
+      ).resolves.toEqual({ ok: true });
+      expect(payload.update).toHaveBeenCalledWith({
+        collection: "feed-posts",
+        id: 5,
+        data: { isPinned: true },
+      });
+    });
+  });
+
+  it("editPost never puts a gallery batch on a post through a media change", async () => {
+    storedPost = { ...post, video: null, images: [66] };
+    for (const media of [
+      { kind: "none" as const },
+      { kind: "images" as const, images: [{ id: 77, alt: "Desk" }] },
+      { kind: "gif" as const, giphyId: "abc123" },
+    ]) {
+      payload.update.mockClear();
+      await caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "Changed",
+        media,
+      });
+      const data = payload.update.mock.calls.find(
+        ([args]) =>
+          (args as { collection: string }).collection === "feed-posts",
+      )![0].data as Record<string, unknown>;
+      expect(data).not.toHaveProperty("galleryBatch");
+    }
+  });
+
   it("deletePost answers with the id only", async () => {
     const result = await caller().feed.deletePost({ postId: 5 });
     expect(result).toEqual({ id: 5 });

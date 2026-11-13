@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { carriesMedia } from "./feed-post-rules";
+import { carriesMedia, mayGoWithoutWords } from "./feed-post-rules";
 
 describe("carriesMedia", () => {
   it("is false for a post that carries nothing", () => {
@@ -32,5 +32,18 @@ describe("carriesMedia", () => {
   it("is false when the gallery batch is cleared", () => {
     expect(carriesMedia({ galleryBatch: null })).toBe(false);
     expect(carriesMedia({ galleryBatch: undefined })).toBe(false);
+  });
+});
+
+describe("mayGoWithoutWords", () => {
+  it("lets a gallery post go without words: its items carry their own descriptions", () => {
+    expect(mayGoWithoutWords({ gallery: true })).toBe(true);
+  });
+
+  it("still needs words for a post with nothing that speaks for it", () => {
+    expect(mayGoWithoutWords({})).toBe(false);
+    expect(mayGoWithoutWords({ gallery: false, pictureAlts: [""] })).toBe(
+      false,
+    );
   });
 });

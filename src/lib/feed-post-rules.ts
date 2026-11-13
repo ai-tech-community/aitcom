@@ -33,17 +33,20 @@ export function carriesMedia(post: PostMediaShape): boolean {
 /**
  * Whether a member's post may go without words, so that it still says
  * something to everyone, screen readers included: a GIF (GIPHY gives it a
- * title), or pictures that all have a description. A video (no text
- * alternative yet), a legacy picture (no description), a poll (its words
- * are the question) and an empty post need words. The one rule for the
- * editor and the server.
+ * title), pictures that all have a description, or a gallery batch (every
+ * gallery item has a description, generated when the uploader gave none).
+ * A video (no text alternative yet), a legacy picture (no description), a
+ * poll (its words are the question) and an empty post need words. The one
+ * rule for the editor and the server.
  */
 export function mayGoWithoutWords(media: {
   gif?: boolean;
   /** The descriptions of the pictures the post will carry. */
   pictureAlts?: readonly string[];
+  /** The post announces a gallery batch (its media, fixed for good). */
+  gallery?: boolean;
 }): boolean {
-  if (media.gif) return true;
+  if (media.gif || media.gallery) return true;
   const alts = media.pictureAlts ?? [];
   return alts.length > 0 && alts.every((alt) => alt.trim() !== "");
 }

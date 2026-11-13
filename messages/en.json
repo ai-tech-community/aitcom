@@ -3427,6 +3427,7 @@
       "keepCurrentVideo": "Keep current video",
       "mediaChangesOnSave": "The picture or video changes when you press Save.",
       "mediaLockedWhileReviewed": "This post is being reviewed. You can change its picture or video once a moderator has looked at it.",
+      "galleryMediaFixed": "The photos and videos stay as they are. You can manage them in the gallery.",
       "discardChanges": "Discard changes",
       "postActions": "Post actions",
       "poll": {
