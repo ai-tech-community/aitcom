@@ -119,6 +119,9 @@ const START_ITEM = {
   height: 1536,
 };
 
+/** When a moderator read an item's reports. */
+const AS_OF = "2026-11-13T12:00:00.000Z";
+
 /** One valid call per procedure, for the flag-off sweep. */
 const EVERY_PROCEDURE = {
   list: (c: ReturnType<typeof caller>) => c.list({ slug: "alpha" }),
@@ -140,7 +143,12 @@ const EVERY_PROCEDURE = {
   itemReports: (c: ReturnType<typeof caller>) =>
     c.itemReports({ slug: "alpha", itemId: 1 }),
   reviewItemReports: (c: ReturnType<typeof caller>) =>
-    c.reviewItemReports({ slug: "alpha", itemId: 1, action: "restore" }),
+    c.reviewItemReports({
+      slug: "alpha",
+      itemId: 1,
+      action: "restore",
+      reviewedUpTo: AS_OF,
+    }),
 } as const;
 
 const PUBLIC_PROCEDURES = ["list", "facets", "item"] as const;
@@ -329,6 +337,25 @@ describe("gallery router — input validation", () => {
           slug: "alpha",
           itemId: 1,
           action: "delete" as "remove",
+        }),
+    ],
+    [
+      "a restore that names no reviewedUpTo",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "restore",
+        } as never),
+    ],
+    [
+      "a restore whose reviewedUpTo is not a date and time",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "restore",
+          reviewedUpTo: "yesterday",
         }),
     ],
     [
@@ -607,7 +634,10 @@ describe("gallery router — reports", () => {
   });
 
   it("lists an item's reports for the caller's viewer", async () => {
-    const reports = [{ reason: "spam", note: null, createdAt: "x" }];
+    const reports = {
+      asOf: AS_OF,
+      reports: [{ reason: "spam", note: null, createdAt: AS_OF }],
+    };
     services.listItemReports.mockResolvedValue(reports);
     await expect(
       caller().itemReports({ slug: "alpha", itemId: 5 }),
@@ -618,16 +648,22 @@ describe("gallery router — reports", () => {
     );
   });
 
-  it.each(["restore", "remove"] as const)(
-    "reviews an item's reports: %s",
-    async (action) => {
+  it.each([
+    ["restore", { action: "restore" as const, reviewedUpTo: AS_OF }],
+    ["remove", { action: "remove" as const }],
+  ])(
+    "reviews an item's reports: %s, with the report notices",
+    async (_, review) => {
+      const notices = { itemReported: vi.fn(), uploaderThisIsMe: vi.fn() };
+      services.galleryReportNotices.mockReturnValue(notices);
       services.reviewItemReports.mockResolvedValue(undefined);
       await expect(
-        caller().reviewItemReports({ slug: "alpha", itemId: 5, action }),
+        caller().reviewItemReports({ slug: "alpha", itemId: 5, ...review }),
       ).resolves.toBeUndefined();
+      expect(services.galleryReportNotices).toHaveBeenCalledWith(DB);
       expect(services.reviewItemReports).toHaveBeenCalledWith(
-        expect.objectContaining({ db: DB, payload: PAYLOAD }),
-        { viewer: viewerFor("user-1"), itemId: 5, action },
+        expect.objectContaining({ db: DB, payload: PAYLOAD, notify: notices }),
+        { viewer: viewerFor("user-1"), itemId: 5, ...review },
       );
     },
   );

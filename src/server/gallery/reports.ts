@@ -59,6 +59,21 @@ export type GalleryReportView = {
   createdAt: string;
 };
 
+/**
+ * An item's open reports as a moderator read them. `asOf` is the server's
+ * time just before the read: a restore passes it back as `reviewedUpTo`,
+ * so it dismisses only reports the moderator could have seen.
+ */
+export type GalleryReportList = {
+  asOf: string;
+  reports: GalleryReportView[];
+};
+
+/** A moderator's decision on a reported item. */
+export type GalleryReview =
+  | { action: "remove" }
+  | { action: "restore"; reviewedUpTo: string };
+
 const REPORTS = "gallery-reports";
 
 /**
@@ -94,16 +109,9 @@ export async function reportItem(
     reason: input.reason,
     note: input.note,
   });
-  if (await claimHide(deps, item.id)) {
-    await notifySafely(deps, "moderator", item, () =>
-      deps.notify.itemReported({
-        communityId: item.communityId,
-        itemId: item.id,
-      }),
-    );
-  }
+  await hideAndNotify(deps, item, "reportItem");
   if (input.reason === "this_is_me" && item.uploaderId !== DELETED_AUTHOR_ID) {
-    await notifySafely(deps, "uploader", item, () =>
+    await notifySafely(deps, "reportItem", "uploader", item, () =>
       deps.notify.uploaderThisIsMe({
         communityId: item.communityId,
         itemId: item.id,
@@ -111,7 +119,12 @@ export async function reportItem(
       }),
     );
   }
-  await saveReportCount(deps, item.id);
+  await saveReportCount(
+    deps,
+    item.id,
+    await countOpenReports(deps.payload, REPORTS, item.id),
+    "reportItem",
+  );
   return { hidden: true };
 }
 
@@ -178,16 +191,37 @@ async function claimHide(
 }
 
 /**
- * Writes the item's open-report count, counted from storage so reports
- * landing together never write a stale number. Server-side only; a write
- * Payload could not apply is logged (the next report or a restore writes it
- * again).
+ * Hides the item (`claimHide`) and, when this call is the one that hid it,
+ * tells the community's moderators — once per hide, whichever of a report
+ * or a restore with reports still open got there first.
+ */
+async function hideAndNotify(
+  deps: GalleryReportDeps,
+  item: Pick<GalleryItem, "id" | "communityId">,
+  context: string,
+): Promise<void> {
+  if (!(await claimHide(deps, item.id))) return;
+  await notifySafely(deps, context, "moderator", item, () =>
+    deps.notify.itemReported({
+      communityId: item.communityId,
+      itemId: item.id,
+    }),
+  );
+}
+
+/**
+ * Writes the item's open-report count, counted from storage by the caller
+ * just before. Count-then-write is not atomic, so two reports landing
+ * together may write the same number; a later report or restore corrects
+ * it. Server-side only: a write Payload could not apply is logged, not
+ * thrown.
  */
 async function saveReportCount(
-  deps: GalleryReportDeps,
+  deps: Pick<GalleryDeps, "payload" | "log">,
   itemId: number,
+  reportCount: number,
+  context: string,
 ): Promise<void> {
-  const reportCount = await countOpenReports(deps.payload, REPORTS, itemId);
   const { errors } = await deps.payload.update({
     collection: "gallery-items",
     where: { id: { equals: itemId } },
@@ -196,14 +230,16 @@ async function saveReportCount(
   });
   if (errors.length > 0) {
     (deps.log ?? console.error)(
-      "[gallery.reportItem] saving the report count failed",
+      `[gallery.${context}] saving the report count failed`,
       { itemId, errors },
     );
   }
 }
 
+/** Sends a notice; a failure is logged, never passed on. */
 async function notifySafely(
   deps: Pick<GalleryDeps, "log">,
+  context: string,
   recipient: "moderator" | "uploader",
   item: Pick<GalleryItem, "id">,
   send: () => Promise<void>,
@@ -212,7 +248,7 @@ async function notifySafely(
     await send();
   } catch (error) {
     (deps.log ?? console.error)(
-      `[gallery.reportItem] ${recipient} notification failed`,
+      `[gallery.${context}] ${recipient} notification failed`,
       { itemId: item.id, error },
     );
   }
@@ -226,13 +262,16 @@ function assertModerator(viewer: GalleryViewer): void {
 /**
  * An item's open reports, newest first, for its community's moderators
  * only — checked first, so no one else can probe whether an item exists.
+ * `asOf` is taken before the read, so a report it misses is always newer
+ * than `asOf` and a restore keeps it open.
  */
 export async function listItemReports(
   deps: GalleryDeps,
   input: { viewer: GalleryViewer; itemId: number },
-): Promise<GalleryReportView[]> {
+): Promise<GalleryReportList> {
   assertModerator(input.viewer);
   const item = await requireReadableItem(deps, input.viewer, input.itemId);
+  const asOf = nowOf(deps).toISOString();
   const { docs } = await deps.payload.find({
     collection: REPORTS,
     where: openReportsWhere(REPORTS, item.id),
@@ -240,27 +279,25 @@ export async function listItemReports(
     pagination: false,
     depth: 0,
   });
-  return docs.map((report) => ({
-    reason: report.reason,
-    note: report.note ?? null,
-    createdAt: report.createdAt,
-  }));
+  return {
+    asOf,
+    reports: docs.map((report) => ({
+      reason: report.reason,
+      note: report.note ?? null,
+      createdAt: report.createdAt,
+    })),
+  };
 }
 
 /**
- * A moderator's decision on a reported item. Restore shows it again and
- * dismisses its open reports (kept, so those reporters can't report it
- * again). Remove takes it out of the gallery the way a delete does
- * (`removeItem`), its reports with it. An item that is gone is NOT_FOUND,
- * after clearing any reports it left behind.
+ * A moderator's decision on a reported item. Remove takes it out of the
+ * gallery the way a delete does (`removeItem`), its reports with it.
+ * Restore (`restoreItem`) shows it again. An item that is gone is
+ * NOT_FOUND, after clearing any reports it left behind.
  */
 export async function reviewItemReports(
-  deps: GalleryDeps,
-  input: {
-    viewer: GalleryViewer;
-    itemId: number;
-    action: "restore" | "remove";
-  },
+  deps: GalleryReportDeps,
+  input: { viewer: GalleryViewer; itemId: number } & GalleryReview,
 ): Promise<void> {
   assertModerator(input.viewer);
   const item = await findReadableItem(deps, input.viewer, input.itemId);
@@ -272,9 +309,31 @@ export async function reviewItemReports(
     await removeItem(deps, item, "reviewItemReports");
     return;
   }
+  await restoreItem(deps, item, input.reviewedUpTo);
+}
+
+/**
+ * Dismisses the open reports made up to `reviewedUpTo` (the `asOf` of the
+ * list the moderator read; kept, so those reporters can't report again)
+ * and shows the item. A report the moderator could not have seen — newer
+ * than `reviewedUpTo`, or made while this restore ran and so unable to
+ * hide an item that was still hidden — stays open: once the item is shown,
+ * any open report hides it again through the same guarded write, and the
+ * moderators are told, so a report is never left open on a shown item.
+ */
+async function restoreItem(
+  deps: GalleryReportDeps,
+  item: GalleryItem,
+  reviewedUpTo: string,
+): Promise<void> {
   const dismissed = await deps.payload.update({
     collection: REPORTS,
-    where: openReportsWhere(REPORTS, item.id),
+    where: {
+      and: [
+        openReportsWhere(REPORTS, item.id),
+        { createdAt: { less_than_equal: reviewedUpTo } },
+      ],
+    },
     data: { dismissedAt: nowOf(deps).toISOString() },
     depth: 0,
   });
@@ -301,6 +360,10 @@ export async function reviewItemReports(
     );
   }
   if (restored.docs.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
+  const stillOpen = await countOpenReports(deps.payload, REPORTS, item.id);
+  if (stillOpen === 0) return;
+  await hideAndNotify(deps, item, "reviewItemReports");
+  await saveReportCount(deps, item.id, stillOpen, "reviewItemReports");
 }
 
 /**

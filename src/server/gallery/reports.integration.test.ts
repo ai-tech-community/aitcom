@@ -378,20 +378,26 @@ describe.skipIf(!RUN_DB)("gallery item reports [DB integration]", () => {
     expect(
       (await noticesOf("gallery_item_this_is_me")).map((row) => row.userId),
     ).toEqual([fx.uploaderId]);
-    await expect(
-      m.reports.listItemReports(deps, { viewer: moderator, itemId }),
-    ).resolves.toEqual([
-      {
-        reason: "this_is_me",
-        note: "I'm on the left",
-        createdAt: expect.any(String),
-      },
-    ]);
+    const read = await m.reports.listItemReports(deps, {
+      viewer: moderator,
+      itemId,
+    });
+    expect(read).toEqual({
+      asOf: expect.any(String),
+      reports: [
+        {
+          reason: "this_is_me",
+          note: "I'm on the left",
+          createdAt: expect.any(String),
+        },
+      ],
+    });
 
     await m.reports.reviewItemReports(deps, {
       viewer: moderator,
       itemId,
       action: "restore",
+      reviewedUpTo: read.asOf,
     });
     expect(await savedItem(itemId)).toMatchObject({ hiddenAt: null });
     expect(Number((await savedItem(itemId))!.reportCount)).toBe(0);
@@ -404,6 +410,92 @@ describe.skipIf(!RUN_DB)("gallery item reports [DB integration]", () => {
     });
     expect((await savedItem(itemId))!.hiddenAt).toBeTruthy();
     expect(Number((await savedItem(itemId))!.reportCount)).toBe(1);
+    expect(await noticesOf("gallery_item_reported")).toHaveLength(4);
+  });
+
+  it("restore keeps a report newer than what the moderator read open, and hides the item again with one notice", async () => {
+    const deps = await depsWith();
+    const { itemIds } = await galleryPost(1);
+    const itemId = itemIds[0]!;
+    const moderator = await viewerOf(fx.moderatorId);
+    await m.reports.reportItem(deps, {
+      viewer: await viewerOf(fx.reporterIds[0]),
+      itemId,
+      reason: "spam",
+    });
+    const { asOf } = await m.reports.listItemReports(deps, {
+      viewer: moderator,
+      itemId,
+    });
+    // A later millisecond, so the next report is newer than the read.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    // Hidden: only moderators can still read it, and report it.
+    await m.reports.reportItem(deps, {
+      viewer: await viewerOf(fx.ownerId),
+      itemId,
+      reason: "other",
+    });
+    expect(await noticesOf("gallery_item_reported")).toHaveLength(2);
+
+    await m.reports.reviewItemReports(deps, {
+      viewer: moderator,
+      itemId,
+      action: "restore",
+      reviewedUpTo: asOf,
+    });
+
+    const rows = await reportRows(itemId);
+    expect(rows.filter((row) => !row.dismissedAt)).toHaveLength(1);
+    expect(rows.find((row) => !row.dismissedAt)!.reporterId).toBe(fx.ownerId);
+    expect((await savedItem(itemId))!.hiddenAt).toBeTruthy();
+    expect(Number((await savedItem(itemId))!.reportCount)).toBe(1);
+    expect(await noticesOf("gallery_item_reported")).toHaveLength(4);
+  });
+
+  it("a report made while a restore runs ends with the item hidden and moderators told once", async () => {
+    const deps = await depsWith();
+    const { itemIds } = await galleryPost(1);
+    const itemId = itemIds[0]!;
+    const moderator = await viewerOf(fx.moderatorId);
+    const owner = await viewerOf(fx.ownerId);
+    await m.reports.reportItem(deps, {
+      viewer: await viewerOf(fx.reporterIds[0]),
+      itemId,
+      reason: "spam",
+    });
+    const { asOf } = await m.reports.listItemReports(deps, {
+      viewer: moderator,
+      itemId,
+    });
+    // The owner's report lands after the restore dismissed the reviewed
+    // reports and before it shows the item: its own hide finds it hidden.
+    const racing = new Proxy(deps.payload, {
+      get(target, key, receiver) {
+        if (key !== "update") {
+          return Reflect.get(target, key, receiver) as unknown;
+        }
+        return async (args: Parameters<typeof target.update>[0]) => {
+          const result = await target.update(args as never);
+          if (args.collection === "gallery-reports") {
+            await m.reports.reportItem(deps, {
+              viewer: owner,
+              itemId,
+              reason: "other",
+            });
+          }
+          return result;
+        };
+      },
+    });
+
+    await m.reports.reviewItemReports(
+      { ...deps, payload: racing },
+      { viewer: moderator, itemId, action: "restore", reviewedUpTo: asOf },
+    );
+
+    expect((await savedItem(itemId))!.hiddenAt).toBeTruthy();
+    expect(Number((await savedItem(itemId))!.reportCount)).toBe(1);
+    // Two moderators: one notice each for the first hide, one each now.
     expect(await noticesOf("gallery_item_reported")).toHaveLength(4);
   });
 

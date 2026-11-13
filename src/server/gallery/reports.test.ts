@@ -488,7 +488,7 @@ describe("listItemReports", () => {
     }
   });
 
-  it("gives moderators the open reports, newest first, without who reported", async () => {
+  it("gives moderators the open reports, newest first, without who reported, as of the read", async () => {
     const { deps } = fakes({
       items: [item(1, { hiddenAt: ago(HOUR) })],
       reports: [
@@ -501,10 +501,13 @@ describe("listItemReports", () => {
 
     await expect(
       listItemReports(deps, { viewer: moderator(), itemId: 1 }),
-    ).resolves.toEqual([
-      { reason: "this_is_me", note: null, createdAt: ago(HOUR - 2000) },
-      { reason: "spam", note: "Ads", createdAt: ago(HOUR - 1000) },
-    ]);
+    ).resolves.toEqual({
+      asOf: NOW.toISOString(),
+      reports: [
+        { reason: "this_is_me", note: null, createdAt: ago(HOUR - 2000) },
+        { reason: "spam", note: "Ads", createdAt: ago(HOUR - 1000) },
+      ],
+    });
   });
 
   it("answers NOT_FOUND for another community's item", async () => {
@@ -520,6 +523,11 @@ describe("listItemReports", () => {
 
 describe("reviewItemReports", () => {
   const hiddenItem = () => [item(1, { hiddenAt: ago(HOUR), reportCount: 2 })];
+  /** A decision; a restore made on the reports as they are now. */
+  const review = (action: "restore" | "remove", reviewedUpTo = NOW) =>
+    action === "restore"
+      ? { action, reviewedUpTo: reviewedUpTo.toISOString() }
+      : { action };
 
   it("refuses anyone but a moderator and changes nothing", async () => {
     for (const action of ["restore", "remove"] as const) {
@@ -528,7 +536,11 @@ describe("reviewItemReports", () => {
         reports: [report(1)],
       });
       await expect(
-        reviewItemReports(deps, { viewer: member("u1"), itemId: 1, action }),
+        reviewItemReports(deps, {
+          viewer: member("u1"),
+          itemId: 1,
+          ...review(action),
+        }),
       ).rejects.toMatchObject({ code: "FORBIDDEN", message: "NOT_ALLOWED" });
       expect(itemRow(store)).toMatchObject({ hiddenAt: ago(HOUR) });
       expect(reportsOf(store)).toHaveLength(1);
@@ -550,7 +562,7 @@ describe("reviewItemReports", () => {
     await reviewItemReports(deps, {
       viewer: moderator(),
       itemId: 1,
-      action: "restore",
+      ...review("restore"),
     });
 
     expect(itemRow(store)).toMatchObject({ hiddenAt: null, reportCount: 0 });
@@ -570,7 +582,7 @@ describe("reviewItemReports", () => {
     await reviewItemReports(deps, {
       viewer: moderator(),
       itemId: 1,
-      action: "restore",
+      ...review("restore"),
     });
 
     await expect(
@@ -582,6 +594,106 @@ describe("reviewItemReports", () => {
       reason: "spam",
     });
     expect(notify.itemReported).toHaveBeenCalledTimes(1);
+  });
+
+  it("restore keeps a report newer than what the moderator read open, hides the item again and notifies once", async () => {
+    const { deps, notify, store, log } = fakes({
+      items: hiddenItem(),
+      reports: [
+        report(1, { createdAt: ago(HOUR) }),
+        report(2, { createdAt: ago(1000) }),
+      ],
+    });
+
+    await reviewItemReports(deps, {
+      viewer: moderator(),
+      itemId: 1,
+      ...review("restore", new Date(NOW.getTime() - HOUR / 2)),
+    });
+
+    expect(reportsOf(store).map((doc) => [doc.id, doc.dismissedAt])).toEqual([
+      [1, NOW.toISOString()],
+      [2, null],
+    ]);
+    expect(itemRow(store)).toMatchObject({
+      hiddenAt: NOW.toISOString(),
+      reportCount: 1,
+    });
+    expect(notify.itemReported).toHaveBeenCalledExactlyOnceWith({
+      communityId: "c1",
+      itemId: 1,
+    });
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("restore does not notify when every open report was reviewed", async () => {
+    const { deps, notify, execute } = fakes({
+      items: hiddenItem(),
+      reports: [report(1)],
+    });
+    await reviewItemReports(deps, {
+      viewer: moderator(),
+      itemId: 1,
+      ...review("restore"),
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect(notify.itemReported).not.toHaveBeenCalled();
+  });
+
+  it("a report made while a restore runs, too late to hide the item, still hides it once shown, and notifies once", async () => {
+    const { deps, payload, notify, store } = fakes({
+      items: hiddenItem(),
+      reports: [report(1)],
+    });
+    // The new report lands after the restore dismissed the reviewed ones
+    // and before it shows the item: its own hide finds the item hidden.
+    const update = payload.update.getMockImplementation()!;
+    payload.update.mockImplementation(async (args) => {
+      const result = await update(args);
+      if (args.collection === "gallery-reports") {
+        await reportItem(deps, {
+          viewer: moderator("u5"),
+          itemId: 1,
+          reason: "spam",
+        });
+        expect(notify.itemReported).not.toHaveBeenCalled();
+      }
+      return result;
+    });
+
+    await reviewItemReports(deps, {
+      viewer: moderator(),
+      itemId: 1,
+      ...review("restore"),
+    });
+
+    expect(itemRow(store)).toMatchObject({
+      hiddenAt: NOW.toISOString(),
+      reportCount: 1,
+    });
+    expect(
+      reportsOf(store).filter((doc) => doc.dismissedAt == null),
+    ).toHaveLength(1);
+    expect(notify.itemReported).toHaveBeenCalledTimes(1);
+  });
+
+  it("a restore whose moderator notice fails is still a restore, and the failure is logged", async () => {
+    const { deps, notify, log } = fakes({
+      items: hiddenItem(),
+      reports: [report(1, { createdAt: ago(1000) })],
+    });
+    notify.itemReported.mockRejectedValueOnce(new Error("inbox down"));
+    await expect(
+      reviewItemReports(deps, {
+        viewer: moderator(),
+        itemId: 1,
+        ...review("restore", new Date(NOW.getTime() - HOUR)),
+      }),
+    ).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      "[gallery.reviewItemReports] moderator notification failed",
+      expect.objectContaining({ itemId: 1 }),
+    );
   });
 
   it("remove deletes the item and its files, and removes its batch's post once it shows nothing", async () => {
@@ -647,7 +759,11 @@ describe("reviewItemReports", () => {
         reports: [report(1), report(2, { item: 2 })],
       });
       await expect(
-        reviewItemReports(deps, { viewer: moderator(), itemId: 1, action }),
+        reviewItemReports(deps, {
+          viewer: moderator(),
+          itemId: 1,
+          ...review(action),
+        }),
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
       expect(reportsOf(store).map((doc) => doc.id)).toEqual([2]);
     }

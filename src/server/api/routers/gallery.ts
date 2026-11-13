@@ -287,12 +287,27 @@ export const galleryRouter = createTRPCRouter({
       return listItemReports(deps, { viewer, itemId: input.itemId });
     }),
 
-  /** A moderator restores a reported item or removes it. */
+  /**
+   * A moderator restores a reported item or removes it. A restore names
+   * the `asOf` of the reports it was decided on (`itemReports`): newer
+   * reports stay open.
+   */
   reviewItemReports: galleryProtectedProcedure
-    .input(itemInCommunity.extend({ action: z.enum(["restore", "remove"]) }))
+    .input(
+      z.discriminatedUnion("action", [
+        itemInCommunity.extend({
+          action: z.literal("restore"),
+          reviewedUpTo: z.iso.datetime(),
+        }),
+        itemInCommunity.extend({ action: z.literal("remove") }),
+      ]),
+    )
     .mutation(async ({ ctx, input }) => {
       const { slug, ...review } = input;
       const { deps, viewer } = await viewerIn(ctx, slug);
-      return reviewItemReports(deps, { viewer, ...review });
+      return reviewItemReports(
+        { ...deps, notify: galleryReportNotices(deps.db) },
+        { viewer, ...review },
+      );
     }),
 });

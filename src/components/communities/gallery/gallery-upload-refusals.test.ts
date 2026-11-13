@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { GALLERY_ERROR_CODES } from "@/lib/gallery-rules";
+import {
+  GALLERY_ERROR_CODES,
+  isGalleryUploadRefusalCode,
+} from "@/lib/gallery-rules";
 
 import { endsBatch, wouldRepeat } from "./gallery-upload-refusals";
 
@@ -50,8 +53,10 @@ describe("gallery upload refusals", () => {
     expect(wouldRepeat("UPLOAD_FAILED")).toBe(false);
   });
 
-  it("classifies every code the server can send", () => {
-    for (const code of GALLERY_ERROR_CODES) {
+  it("classifies every code an upload call can be refused with", () => {
+    const codes = GALLERY_ERROR_CODES.filter(isGalleryUploadRefusalCode);
+    expect(codes.length).toBe(GALLERY_ERROR_CODES.length - 2);
+    for (const code of codes) {
       expect(typeof endsBatch(code)).toBe("boolean");
       expect(typeof wouldRepeat(code)).toBe("boolean");
     }

@@ -1,4 +1,4 @@
-import type { GalleryErrorCode } from "@/lib/gallery-rules";
+import type { GalleryUploadRefusalCode } from "@/lib/gallery-rules";
 
 /**
  * Why a file or the batch did not upload: a server refusal code, or one of
@@ -6,7 +6,7 @@ import type { GalleryErrorCode } from "@/lib/gallery-rules";
  * Anything unrecognised is `UPLOAD_FAILED`.
  */
 export type GalleryUploadErrorCode =
-  | GalleryErrorCode
+  | GalleryUploadRefusalCode
   /** The browser cannot read the photo (HEIC in Chrome, a damaged file). */
   | "UNDECODABLE_PHOTO"
   | "VIDEO_TOO_LONG"
@@ -62,11 +62,6 @@ const REFUSALS: Record<GalleryUploadErrorCode, Refusal> = {
   STORAGE_FULL: { scope: "batch", repeats: false },
   // A transfer or check that failed this time.
   UPLOAD_FAILED: { scope: "file", repeats: false },
-  // Report refusals: no upload call gives them. Classified only because
-  // every server code must be; were one to arrive, it would hold for the
-  // whole batch, every time.
-  OWN_ITEM: SAME_SETTINGS,
-  ALREADY_REPORTED: SAME_SETTINGS,
 };
 
 /** Whether the refusal holds for every remaining file of the batch. */
