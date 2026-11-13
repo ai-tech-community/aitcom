@@ -11,6 +11,7 @@ import {
   GALLERY_VIDEOS_PER_DAY,
   galleryItemLabel,
   galleryObjectKeys,
+  isGalleryErrorCode,
   isGalleryKey,
 } from "./gallery-rules";
 
@@ -134,5 +135,16 @@ describe("galleryItemLabel", () => {
     expect(
       galleryItemLabel({ ...base, mediaType: "video", eventTitle: null }),
     ).toEqual({ key: "gallery.label.videoBy", values: { name: "Ada" } });
+  });
+});
+
+describe("isGalleryErrorCode", () => {
+  it("recognises the gallery's refusal codes and nothing else", () => {
+    expect(isGalleryErrorCode("STORAGE_FULL")).toBe(true);
+    expect(isGalleryErrorCode("UPLOAD_EXPIRED")).toBe(true);
+    expect(isGalleryErrorCode("storage_full")).toBe(false);
+    expect(isGalleryErrorCode("Internal server error")).toBe(false);
+    expect(isGalleryErrorCode(undefined)).toBe(false);
+    expect(isGalleryErrorCode(42)).toBe(false);
   });
 });

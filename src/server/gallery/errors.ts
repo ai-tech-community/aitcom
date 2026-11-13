@@ -1,10 +1,15 @@
 import { TRPCError } from "@trpc/server";
 
+import type { GalleryErrorCode } from "@/lib/gallery-rules";
+
+export type { GalleryErrorCode } from "@/lib/gallery-rules";
+
 /**
  * Every refusal the gallery gives, as a stable code (spec 2026-11-13). The
  * code travels as the error message; the UI maps it to translated copy and
  * never shows the message itself. Each code always carries the same tRPC
- * status, so callers and tests can rely on both.
+ * status, so callers and tests can rely on both. The codes themselves are
+ * listed in `gallery-rules.ts` (shared with the browser).
  */
 const GALLERY_ERROR_STATUS = {
   GALLERY_DISABLED: "NOT_FOUND",
@@ -19,9 +24,7 @@ const GALLERY_ERROR_STATUS = {
   UPLOAD_EXPIRED: "NOT_FOUND",
   UPLOAD_FAILED: "BAD_REQUEST",
   NOT_ALLOWED: "FORBIDDEN",
-} as const satisfies Record<string, TRPCError["code"]>;
-
-export type GalleryErrorCode = keyof typeof GALLERY_ERROR_STATUS;
+} as const satisfies Record<GalleryErrorCode, TRPCError["code"]>;
 
 export function galleryError(code: GalleryErrorCode): TRPCError {
   return new TRPCError({ code: GALLERY_ERROR_STATUS[code], message: code });

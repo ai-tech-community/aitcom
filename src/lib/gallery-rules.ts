@@ -57,6 +57,35 @@ export const GALLERY_STORAGE_LABELS: Record<VideoStorageClass, string> = {
   private: "Private",
 };
 
+/**
+ * Every refusal the gallery server gives, as the stable code it sends as the
+ * error message. Here, not in `src/server/gallery/errors.ts`, so the browser
+ * can tell a known code from any other message without importing server
+ * code; the server's status table must cover exactly these.
+ */
+export const GALLERY_ERROR_CODES = [
+  "GALLERY_DISABLED",
+  "NOT_A_MEMBER",
+  "EVENT_NOT_ALLOWED",
+  "TOPIC_NOT_FOUND",
+  "BATCH_TOO_LARGE",
+  "UPLOAD_LIMIT",
+  "STORAGE_FULL",
+  "FILE_TYPE_NOT_ALLOWED",
+  "FILE_TOO_LARGE",
+  "UPLOAD_EXPIRED",
+  "UPLOAD_FAILED",
+  "NOT_ALLOWED",
+] as const;
+export type GalleryErrorCode = (typeof GALLERY_ERROR_CODES)[number];
+
+export function isGalleryErrorCode(value: unknown): value is GalleryErrorCode {
+  return (
+    typeof value === "string" &&
+    (GALLERY_ERROR_CODES as readonly string[]).includes(value)
+  );
+}
+
 /** Photos are always re-encoded to JPEG in the browser before upload. */
 export const GALLERY_PHOTO_CONTENT_TYPES = ["image/jpeg"] as const;
 export const GALLERY_VIDEO_CONTENT_TYPE = VIDEO_CONTENT_TYPE;
