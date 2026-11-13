@@ -30,10 +30,10 @@ describe("visibleSpaceCondition", () => {
     vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
     const condition = visibleSpaceCondition();
     expect(condition).toBeDefined();
-    const query = new PgDialect().sqlToQuery(condition!);
-    expect(query.sql).toMatch(/"builtin_surface" is null/);
-    expect(query.sql).toMatch(/"builtin_surface" not in \(\$1\)/);
-    expect(query.params).toEqual(["gallery"]);
+    // The hidden surfaces are the only bound values; the SQL shape itself
+    // (rooms kept via IS NULL) is proven against Postgres in
+    // spaces.integration.test.ts.
+    expect(new PgDialect().sqlToQuery(condition!).params).toEqual(["gallery"]);
   });
 
   it("adds no condition once the flag is on", () => {

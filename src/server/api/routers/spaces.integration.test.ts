@@ -9,6 +9,13 @@ import {
   vi,
 } from "vitest";
 
+// Type-only: erased at runtime, so the modules still load lazily (after the
+// RUN_DB gate) through the dynamic imports in each beforeAll.
+import type { createCaller as CreateCaller } from "@/server/api/root";
+import type { buildDefaultSpaceRows as BuildDefaultSpaceRows } from "@/server/communities/space-defaults";
+import type { db as Db } from "@/server/db";
+import type * as Schema from "@/server/db/schema";
+
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
 }
@@ -146,10 +153,10 @@ describe.skipIf(!RUN_DB)("spaces router [DB integration]", () => {
 
 describe.skipIf(!RUN_DB)("gallery tab behind its flag [DB integration]", () => {
   type Mods = {
-    db: typeof import("@/server/db").db;
-    schema: typeof import("@/server/db/schema");
-    buildDefaultSpaceRows: typeof import("@/server/communities/space-defaults").buildDefaultSpaceRows;
-    createCaller: typeof import("@/server/api/root").createCaller;
+    db: typeof Db;
+    schema: typeof Schema;
+    buildDefaultSpaceRows: typeof BuildDefaultSpaceRows;
+    createCaller: typeof CreateCaller;
   };
   let m: Mods;
   let communityId: string;
@@ -268,6 +275,24 @@ describe.skipIf(!RUN_DB)("gallery tab behind its flag [DB integration]", () => {
     const on = await owner().spaces.listForAdmin({ slug });
     expect(on.map((r) => r.slug)).toContain("gallery");
     expect(on).toHaveLength(7);
+  });
+
+  it("a reorder while the flag is off moves the hidden gallery row to the end", async () => {
+    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
+    const visible = await owner().spaces.listForAdmin({ slug });
+    expect(visible.map((r) => r.slug)).not.toContain("gallery");
+    // The Compose page sends every row it shows, in the new order.
+    const orderedIds = visible.map((r) => r.id).reverse();
+    await owner().spaces.reorder({ slug, orderedIds });
+
+    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
+    const rows = await guest().spaces.list({ slug });
+    expect(rows.map((r) => r.id)).toEqual([
+      ...orderedIds,
+      rows.find((r) => r.builtinSurface === "gallery")!.id,
+    ]);
+    expect(rows.at(-1)!.builtinSurface).toBe("gallery");
+    expect(new Set(rows.map((r) => r.position)).size).toBe(rows.length);
   });
 
   it("listRooms never returns the gallery, flag on or off", async () => {

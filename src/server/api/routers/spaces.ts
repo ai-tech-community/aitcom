@@ -1,5 +1,14 @@
 import { z } from "zod";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  notInArray,
+  sql,
+} from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -98,7 +107,12 @@ export const spacesRouter = createTRPCRouter({
       return rows.map((r) => ({ ...r, enabled: r.archivedAt === null }));
     }),
 
-  /** Persist a new ordering: ids in display order → position = index. */
+  /**
+   * Persist a new ordering: ids in display order → position = index. Spaces
+   * the caller did not send (a surface still behind its rollout flag, which
+   * listForAdmin hides) move after them in their current order, so no
+   * position is shared and they keep the "append at the end" rule.
+   */
   reorder: communityProcedure
     .input(z.object({ slug: z.string(), orderedIds: z.array(z.string()) }))
     .mutation(async ({ ctx, input }) => {
@@ -117,6 +131,26 @@ export const spacesRouter = createTRPCRouter({
                   eq(spaces.communityId, ctx.community.id),
                 ),
               ),
+          ),
+        );
+        const unsent = await tx
+          .select({ id: spaces.id })
+          .from(spaces)
+          .where(
+            and(
+              eq(spaces.communityId, ctx.community.id),
+              input.orderedIds.length > 0
+                ? notInArray(spaces.id, input.orderedIds)
+                : undefined,
+            ),
+          )
+          .orderBy(asc(spaces.position), asc(spaces.id));
+        await Promise.all(
+          unsent.map((row, index) =>
+            tx
+              .update(spaces)
+              .set({ position: input.orderedIds.length + index })
+              .where(eq(spaces.id, row.id)),
           ),
         );
       });
