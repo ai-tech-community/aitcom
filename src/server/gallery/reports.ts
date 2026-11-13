@@ -86,8 +86,13 @@ const REPORTS = "gallery-reports";
  * reports landing together exactly one hides it and notifies the
  * moderators; a restore and a new report notify again. "This is me" also
  * tells the uploader, on every such report, unless their account is gone.
- * A notice that fails is logged: the report is stored by then, and a retry
- * would only say ALREADY_REPORTED.
+ *
+ * A request that stored its report but failed before the hide is finished
+ * by the reporter's retry (`fileReport`): their report is still open and
+ * the item still shows, so the hide and the notices run as the first
+ * attempt would have, from the stored report. A notice that fails is only
+ * logged: by then the item is hidden, and a retry would say
+ * ALREADY_REPORTED.
  */
 export async function reportItem(
   deps: GalleryReportDeps,
@@ -102,14 +107,13 @@ export async function reportItem(
   if (!reporterId) throw new TRPCError({ code: "UNAUTHORIZED" });
   const item = await requireReadableItem(deps, input.viewer, input.itemId);
   if (item.uploaderId === reporterId) throw galleryError("OWN_ITEM");
-  await createReport(deps, {
-    itemId: item.id,
+  const { reason } = await fileReport(deps, item, {
     reporterId,
     reason: input.reason,
     note: input.note,
   });
   await hideAndNotify(deps, item, "reportItem");
-  if (input.reason === "this_is_me" && item.uploaderId !== DELETED_AUTHOR_ID) {
+  if (reason === "this_is_me" && item.uploaderId !== DELETED_AUTHOR_ID) {
     await notifySafely(deps, "reportItem", "uploader", item, () =>
       deps.notify.uploaderThisIsMe({
         communityId: item.communityId,
@@ -127,33 +131,47 @@ export async function reportItem(
   return { hidden: true };
 }
 
-/** Stores one report, or refuses a second one by the same person. */
-async function createReport(
+/**
+ * The report this request acts on: a new one, stored; or the reporter's
+ * earlier one, when that request stored it and then failed before the hide
+ * (it is still open and the item still shows), so the caller finishes it.
+ * Any other second report by the same person is refused
+ * (ALREADY_REPORTED): one a restore dismissed, or one that already hid the
+ * item.
+ */
+async function fileReport(
   deps: GalleryReportDeps,
+  item: Pick<GalleryItem, "id" | "hiddenAt">,
   report: {
-    itemId: number;
     reporterId: string;
     reason: GalleryReportReason;
     note?: string;
   },
-): Promise<void> {
-  const { docs: existing } = await deps.payload.find({
+): Promise<{ reason: GalleryReportReason }> {
+  const {
+    docs: [existing],
+  } = await deps.payload.find({
     collection: REPORTS,
     where: {
       and: [
-        { item: { equals: report.itemId } },
+        { item: { equals: item.id } },
         { reporterId: { equals: report.reporterId } },
       ],
     },
     limit: 1,
     depth: 0,
   });
-  if (existing.length > 0) throw galleryError("ALREADY_REPORTED");
+  if (existing) {
+    if (existing.dismissedAt == null && item.hiddenAt == null) {
+      return { reason: existing.reason };
+    }
+    throw galleryError("ALREADY_REPORTED");
+  }
   try {
     await deps.payload.create({
       collection: REPORTS,
       data: {
-        item: report.itemId,
+        item: item.id,
         reporterId: report.reporterId,
         reason: report.reason,
         note:
@@ -162,12 +180,14 @@ async function createReport(
       },
     });
   } catch (error) {
-    // A concurrent report by the same person won the unique index.
+    // A concurrent report by the same person won the unique index; that
+    // request hides the item.
     if (isDuplicateReportError(error, REPORTS)) {
       throw galleryError("ALREADY_REPORTED");
     }
     throw error;
   }
+  return { reason: report.reason };
 }
 
 /**

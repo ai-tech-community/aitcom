@@ -356,6 +356,90 @@ describe("reportItem — the report and the hide", () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
+  describe("a retry after the hide failed", () => {
+    it("finishes the first attempt: hides, tells moderators, stores no second report", async () => {
+      const { deps, execute, payload, notify, store } = fakes();
+      execute.mockRejectedValueOnce(new Error("db blip"));
+      await expect(
+        reportItem(deps, { viewer: member("u2"), itemId: 1, reason: "spam" }),
+      ).rejects.toThrow("db blip");
+      // The report is stored, the item still shows, no one was told.
+      expect(reportsOf(store)).toHaveLength(1);
+      expect(itemRow(store)!.hiddenAt).toBeNull();
+      expect(notify.itemReported).not.toHaveBeenCalled();
+
+      await expect(
+        reportItem(deps, { viewer: member("u2"), itemId: 1, reason: "other" }),
+      ).resolves.toEqual({ hidden: true });
+
+      expect(payload.create).toHaveBeenCalledTimes(1);
+      expect(reportsOf(store)).toEqual([
+        expect.objectContaining({ reporterId: "u2", reason: "spam" }),
+      ]);
+      expect(itemRow(store)).toMatchObject({
+        hiddenAt: NOW.toISOString(),
+        reportCount: 1,
+      });
+      expect(notify.itemReported).toHaveBeenCalledExactlyOnceWith({
+        communityId: "c1",
+        itemId: 1,
+      });
+      expect(notify.uploaderThisIsMe).not.toHaveBeenCalled();
+    });
+
+    it("tells the uploader when the stored report says 'this is me'", async () => {
+      const { deps, notify } = fakes({
+        reports: [report(1, { reporterId: "u2", reason: "this_is_me" })],
+      });
+      // The retry's own reason does not matter: the stored report decides.
+      await reportItem(deps, {
+        viewer: member("u2"),
+        itemId: 1,
+        reason: "spam",
+      });
+      expect(notify.itemReported).toHaveBeenCalledTimes(1);
+      expect(notify.uploaderThisIsMe).toHaveBeenCalledExactlyOnceWith({
+        communityId: "c1",
+        itemId: 1,
+        uploaderId: "u1",
+      });
+    });
+
+    it("follows the stored report's reason, not the retry's", async () => {
+      const { deps, notify } = fakes({
+        reports: [report(1, { reporterId: "u2", reason: "spam" })],
+      });
+      await reportItem(deps, {
+        viewer: member("u2"),
+        itemId: 1,
+        reason: "this_is_me",
+      });
+      expect(notify.itemReported).toHaveBeenCalledTimes(1);
+      expect(notify.uploaderThisIsMe).not.toHaveBeenCalled();
+    });
+
+    it("answers ALREADY_REPORTED once the item is hidden, telling no one again", async () => {
+      const { deps, payload, execute, notify } = fakes({
+        items: [item(1, { hiddenAt: ago(HOUR), reportCount: 1 })],
+        reports: [report(1, { reporterId: "u3" })],
+      });
+      await expect(
+        reportItem(deps, {
+          viewer: moderator("u3"),
+          itemId: 1,
+          reason: "spam",
+        }),
+      ).rejects.toMatchObject({
+        code: "CONFLICT",
+        message: "ALREADY_REPORTED",
+      });
+      expect(payload.create).not.toHaveBeenCalled();
+      expect(execute).not.toHaveBeenCalled();
+      expect(notify.itemReported).not.toHaveBeenCalled();
+      expect(notify.uploaderThisIsMe).not.toHaveBeenCalled();
+    });
+  });
+
   it("answers ALREADY_REPORTED when a concurrent report by the same person won", async () => {
     const { deps, payload, execute, store } = fakes();
     // The check finds nothing; the unique index then refuses the create.
