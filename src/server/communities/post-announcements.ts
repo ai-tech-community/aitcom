@@ -36,6 +36,7 @@ type AnnouncedPost = {
   announcedAt?: string | null;
   mentions?: unknown;
   video?: { key?: string | null } | null;
+  galleryBatch?: number | { id: number } | null;
 };
 
 /** What `sendCommunityBroadcast` takes for an announced post. */
@@ -55,6 +56,10 @@ function saysEveryone(post: AnnouncedPost): boolean {
  * and only the first time — the post is claimed in one statement
  * (`announcedAt`), so two saves racing announce once. Returns the
  * broadcast to send, or null. For anyone else "@everyone" is plain text.
+ *
+ * A gallery post (one with a `galleryBatch`) never announces: it is made
+ * from the upload dialog's caption, which offers no "@everyone" and warns
+ * no one, so the words stay plain text whoever uploaded.
  */
 export async function announceToEveryone(
   database: Database,
@@ -63,6 +68,7 @@ export async function announceToEveryone(
   claim: (postId: number) => Promise<boolean>,
 ): Promise<PostAnnouncement | null> {
   if (!post.communityId || post.isDeleted || post.hiddenAt) return null;
+  if (post.galleryBatch != null) return null;
   if (post.announcedAt || !saysEveryone(post)) return null;
   const membership = await database.query.communityMemberships.findFirst({
     where: and(

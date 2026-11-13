@@ -34,7 +34,9 @@ type AnnounceDeps = Pick<GalleryDeps, "payload" | "db" | "log">;
  * follow the gallery's read rule per viewer). Its text is the batch's
  * caption, which may be empty. It mentions no one: the upload dialog has no
  * mention picker, and guessing members from "@Name" in the caption could
- * notify the wrong person (the feed-posts hook stores no mentions).
+ * notify the wrong person (the feed-posts hook stores no mentions). Nor
+ * does an "@everyone" in the caption reach the community, even from an
+ * owner: `announceToEveryone` skips every post with a `galleryBatch`.
  *
  * No post is made (null) when the uploader may no longer post to the
  * community's feed: they left, were banned, lost paid access, or are a plain

@@ -307,7 +307,8 @@ lets the member retry or drop them.
   may post to the feed. It awards the same XP and logs the same activity as a
   normal post. It carries no @mentions (the upload dialog has no mention
   picker, and guessing members from typed names could notify the wrong
-  person). If the announcement
+  person), and an "@everyone" in its caption is plain text: a gallery post
+  never broadcasts to the community, even an owner's. If the announcement
   fails, the batch stays finished without a post (the items are in the
   gallery; nothing retries).
 - The card renders a collage: first item large, two small, "+N" on the third.
