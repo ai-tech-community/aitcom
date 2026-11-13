@@ -44,6 +44,7 @@ import {
 import { nowOf, type GalleryDeps } from "./deps";
 import { galleryError } from "./errors";
 import { galleryEnabled } from "./flag";
+import { removeItemFiles } from "./item-files";
 
 export type { GalleryDeps } from "./deps";
 
@@ -454,26 +455,6 @@ function leaveUploading(
   });
 }
 
-/** Removes an item's file and thumbnail, best effort: the sweep is the net. */
-async function removeObjects(
-  deps: GalleryDeps,
-  item: GalleryItem,
-  context: string,
-): Promise<void> {
-  try {
-    await deps.storage().remove([item.fileKey, item.thumbnailKey]);
-  } catch (error) {
-    (deps.log ?? console.error)(
-      `[gallery.${context}] removing an item's objects failed`,
-      {
-        itemId: item.id,
-        keys: [item.fileKey, item.thumbnailKey],
-        error,
-      },
-    );
-  }
-}
-
 /**
  * Whether S3 holds what the grants allowed: both objects, each of its type
  * and 1 byte up to its limit, and together no more than declared at start.
@@ -547,7 +528,7 @@ export async function finishItem(
       failureReason: FAILURE.mismatch,
     });
     if (!failed) return settledItem(await requireOwnItem(deps, input));
-    await removeObjects(deps, item, "finishItem");
+    await removeItemFiles(deps, item, "finishItem");
     throw galleryError("UPLOAD_FAILED");
   }
   if (await leaveUploading(deps, item.id, { status: "ready" })) {
@@ -579,7 +560,7 @@ export async function discardItem(
   });
   // A concurrent finish settled it first: its result stands.
   if (!discarded) return;
-  await removeObjects(deps, item, "discardItem");
+  await removeItemFiles(deps, item, "discardItem");
 }
 
 /** The batch's ready items, oldest first. */

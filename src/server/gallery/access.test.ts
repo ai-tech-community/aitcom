@@ -4,10 +4,12 @@ import type * as PaymentsAccess from "@/server/payments/access";
 
 const payments = vi.hoisted(() => ({
   membershipPaymentAllowed: vi.fn(),
+  canReadPaidCommunity: vi.fn(),
 }));
 vi.mock("@/server/payments/access", async (importOriginal) => ({
   ...(await importOriginal<typeof PaymentsAccess>()),
   membershipPaymentAllowed: payments.membershipPaymentAllowed,
+  canReadPaidCommunity: payments.canReadPaidCommunity,
 }));
 
 import {
@@ -22,19 +24,24 @@ const NOW = new Date("2026-11-13T12:00:00.000Z");
 
 beforeEach(() => {
   payments.membershipPaymentAllowed.mockReset().mockResolvedValue(true);
+  payments.canReadPaidCommunity.mockReset().mockResolvedValue(true);
 });
 
 function fakeDb(
-  over: { community?: boolean; role?: string | null } = {},
+  over: { community?: boolean; role?: string | null; listed?: boolean } = {},
 ): never {
   return {
     query: {
       communities: {
-        findFirst: vi
-          .fn()
-          .mockResolvedValue(
-            over.community === false ? undefined : { id: "c1", slug: "town" },
-          ),
+        findFirst: vi.fn().mockResolvedValue(
+          over.community === false
+            ? undefined
+            : {
+                id: "c1",
+                slug: "town",
+                isListedInDirectory: over.listed ?? true,
+              },
+        ),
       },
       communityMemberships: {
         findFirst: vi
@@ -68,6 +75,7 @@ describe("loadGalleryViewer", () => {
       communityId: "c1",
       isMember: false,
       isModerator: false,
+      canSeePublic: true,
       community: { id: "c1", slug: "town" },
     });
     expect(
@@ -115,6 +123,63 @@ describe("loadGalleryViewer", () => {
   });
 });
 
+describe("what a viewer may see", () => {
+  it("lets outsiders see public items of a community whose content is public", async () => {
+    await expect(
+      loadGalleryViewer(
+        { db: fakeDb({ role: null }) },
+        { slug: "town", userId: "u1" },
+      ),
+    ).resolves.toMatchObject({ isMember: false, canSeePublic: true });
+    expect(payments.canReadPaidCommunity).toHaveBeenCalledWith(
+      expect.anything(),
+      "c1",
+      "u1",
+    );
+  });
+
+  it.each([
+    ["a signed-out visitor", null],
+    ["a signed-in non-member", "u1"],
+  ])(
+    "shows %s nothing of a members-only community, without a payment lookup",
+    async (_label, userId) => {
+      await expect(
+        loadGalleryViewer(
+          { db: fakeDb({ role: null, listed: false }) },
+          { slug: "town", userId },
+        ),
+      ).resolves.toMatchObject({ isMember: false, canSeePublic: false });
+      expect(payments.canReadPaidCommunity).not.toHaveBeenCalled();
+    },
+  );
+
+  it("shows outsiders nothing of a paid community they have not paid for", async () => {
+    payments.canReadPaidCommunity.mockResolvedValue(false);
+    await expect(
+      loadGalleryViewer({ db: fakeDb() }, { slug: "town", userId: null }),
+    ).resolves.toMatchObject({ isMember: false, canSeePublic: false });
+  });
+
+  it("lets a member of a members-only community see its public items too", async () => {
+    await expect(
+      loadGalleryViewer(
+        { db: fakeDb({ listed: false }) },
+        { slug: "town", userId: "u1" },
+      ),
+    ).resolves.toMatchObject({ isMember: true, canSeePublic: true });
+  });
+
+  it("decides the same way when reached through a record", async () => {
+    await expect(
+      loadGalleryViewerById(
+        { db: fakeDb({ role: null, listed: false }) },
+        { communityId: "c1", userId: "u1" },
+      ),
+    ).resolves.toMatchObject({ isMember: false, canSeePublic: false });
+  });
+});
+
 describe("loadGalleryViewerById", () => {
   it("answers null for a deleted community", async () => {
     await expect(
@@ -134,6 +199,7 @@ describe("loadGalleryViewerById", () => {
       communityId: "c1",
       isMember: true,
       isModerator: true,
+      canSeePublic: true,
     });
     expect(
       (db as { query: { communityMemberships: { findFirst: unknown } } }).query

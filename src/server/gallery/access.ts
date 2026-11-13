@@ -3,10 +3,15 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { eventStartInstant } from "@/lib/event-time";
 import type { Event } from "@/payload-types";
+import {
+  canReadContent,
+  type CommunityVisibility,
+} from "@/server/communities/content-visibility";
 import { activeCommunityRole } from "@/server/communities/content-visibility-queries";
 import { DEFAULT_TOPIC } from "@/server/communities/post-topics";
 import { isModeratorRole } from "@/server/communities/post-visibility";
 import { communities } from "@/server/db/schema";
+import { canReadPaidCommunity } from "@/server/payments/access";
 
 import type { GalleryDeps, Payload } from "./deps";
 import { galleryError } from "./errors";
@@ -15,26 +20,56 @@ import { galleryError } from "./errors";
  * Who is looking at a community's gallery. A member is an active member
  * whose paid membership (where the community charges) is in order; a
  * moderator is an active owner, admin or moderator.
+ *
+ * What the viewer may see is decided here, once: members see `community`
+ * and `public` items; anyone else sees `public` items only when outsiders
+ * may read the community's content at all (`canSeePublic`) — "Everyone"
+ * never punches through a members-only or paid community.
  */
 export type GalleryViewer = {
   userId: string | null;
   communityId: string;
   isMember: boolean;
   isModerator: boolean;
+  canSeePublic: boolean;
 };
+
+const VIEWER_COMMUNITY_COLUMNS = {
+  id: true,
+  slug: true,
+  isListedInDirectory: true,
+} as const;
+
+/**
+ * Whether someone who is not an active member may read the community's
+ * content: the outsider half of `viewerCanReadContent`. The pure check runs
+ * first so a members-only community never needs the payment lookup.
+ */
+async function outsidersMayRead(
+  deps: Pick<GalleryDeps, "db">,
+  community: CommunityVisibility & { id: string },
+  userId: string | null,
+): Promise<boolean> {
+  return (
+    canReadContent(community, false) &&
+    (await canReadPaidCommunity(deps.db, community.id, userId))
+  );
+}
 
 /** The viewer behind a user (or a signed-out visitor) in a live community. */
 async function viewerIn(
   deps: Pick<GalleryDeps, "db">,
-  communityId: string,
+  community: CommunityVisibility & { id: string },
   userId: string | null,
 ): Promise<GalleryViewer> {
-  const role = await activeCommunityRole(deps.db, communityId, userId);
+  const role = await activeCommunityRole(deps.db, community.id, userId);
+  const isMember = role !== null;
   return {
     userId,
-    communityId,
-    isMember: role !== null,
+    communityId: community.id,
+    isMember,
     isModerator: isModeratorRole(role),
+    canSeePublic: isMember || (await outsidersMayRead(deps, community, userId)),
   };
 }
 
@@ -48,11 +83,11 @@ export async function loadGalleryViewer(
 ): Promise<GalleryViewer & { community: { id: string; slug: string } }> {
   const community = await deps.db.query.communities.findFirst({
     where: and(eq(communities.slug, input.slug), isNull(communities.deletedAt)),
-    columns: { id: true, slug: true },
+    columns: VIEWER_COMMUNITY_COLUMNS,
   });
   if (!community) throw new TRPCError({ code: "NOT_FOUND" });
   return {
-    ...(await viewerIn(deps, community.id, input.userId)),
+    ...(await viewerIn(deps, community, input.userId)),
     community: { id: community.id, slug: community.slug },
   };
 }
@@ -71,17 +106,20 @@ export async function loadGalleryViewerById(
       eq(communities.id, input.communityId),
       isNull(communities.deletedAt),
     ),
-    columns: { id: true },
+    columns: VIEWER_COMMUNITY_COLUMNS,
   });
   if (!community) return null;
-  return viewerIn(deps, community.id, input.userId);
+  return viewerIn(deps, community, input.userId);
 }
 
 /**
  * Event states whose photos may be added. This is the event's own `status`
  * field, never Payload's `_status`: live events can be Payload drafts.
  */
-const LINKABLE_EVENT_STATUSES: readonly string[] = ["published", "completed"];
+export const LINKABLE_EVENT_STATUSES = [
+  "published",
+  "completed",
+] as const satisfies readonly Event["status"][];
 
 /**
  * Whether gallery items of `communityId` may link to this event (spec
@@ -98,7 +136,9 @@ export function isLinkableEvent(
   now: Date,
 ): boolean {
   if (!event.communityId || event.communityId !== communityId) return false;
-  if (!LINKABLE_EVENT_STATUSES.includes(event.status)) return false;
+  if (!(LINKABLE_EVENT_STATUSES as readonly string[]).includes(event.status)) {
+    return false;
+  }
   const start = eventStartInstant(event);
   return start !== null && start.getTime() <= now.getTime();
 }
