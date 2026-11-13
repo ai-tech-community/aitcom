@@ -747,7 +747,7 @@ describe("useGalleryUpload", () => {
     });
   });
 
-  it("retryFailed sends only the failed files again, in a new batch, without preparing them again", async () => {
+  it("retryUnsent sends only the files that did not upload, in a new batch, without preparing them again", async () => {
     LoggingXHR.failing.add("https://s3.test/file-2");
     const { result } = renderIt();
     await runToEnd(result, [photoA, photoB, clip]);
@@ -757,7 +757,7 @@ describe("useGalleryUpload", () => {
     m.startBatch.mockResolvedValueOnce({ batchId: 78 });
     m.finishBatch.mockResolvedValueOnce({ readyCount: 1, feedPostId: null });
     await act(async () => {
-      await result.current.retryFailed();
+      await result.current.retryUnsent();
     });
 
     expect(m.startBatch).toHaveBeenLastCalledWith({
@@ -784,14 +784,14 @@ describe("useGalleryUpload", () => {
     ]);
   });
 
-  it("retryFailed after a refused batch tries every file again", async () => {
+  it("retryUnsent after a refused batch tries every file again", async () => {
     m.startBatch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     const { result } = renderIt();
     await runToEnd(result, [photoA, clip]);
     expect(result.current.state.error).toBe("UPLOAD_FAILED");
 
     await act(async () => {
-      await result.current.retryFailed();
+      await result.current.retryUnsent();
     });
     expect(m.startBatch).toHaveBeenLastCalledWith(
       expect.objectContaining({ plannedFiles: 2, plannedVideos: 1 }),
@@ -803,11 +803,99 @@ describe("useGalleryUpload", () => {
     ]);
   });
 
-  it("retryFailed does nothing when nothing failed", async () => {
+  it("retryUnsent resends the refused file and the ones left waiting after a batch-wide refusal", async () => {
+    const photoC = new File(["c"], "c.jpg", { type: "image/jpeg" });
+    const photoD = new File(["d"], "d.jpg", { type: "image/jpeg" });
+    m.startItem
+      .mockImplementationOnce(async () => grantsFor(nextItemId++))
+      .mockRejectedValueOnce(trpcError("UPLOAD_EXPIRED"));
+    const { result } = renderIt();
+    await runToEnd(result, [photoA, photoB, photoC, photoD]);
+    expect(result.current.state.files.map((file) => file.phase)).toEqual([
+      "done",
+      "failed",
+      "waiting",
+      "waiting",
+    ]);
+
+    m.startBatch.mockResolvedValueOnce({ batchId: 78 });
+    m.prepareGalleryPhoto.mockClear();
+    await act(async () => {
+      await result.current.retryUnsent();
+    });
+    expect(m.startBatch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ plannedFiles: 3, plannedVideos: 0 }),
+    );
+    // b.png was kept prepared, so it goes first; c and d are shrunk now.
+    expect(
+      m.prepareGalleryPhoto.mock.calls.map((call) => (call[0] as File).name),
+    ).toEqual(["c.jpg", "d.jpg"]);
+    expect(m.finishBatch).toHaveBeenLastCalledWith({ batchId: 78 });
+    const { state } = result.current;
+    expect(state.error).toBeUndefined();
+    expect(state.files.map((file) => file.phase)).toEqual([
+      "done",
+      "done",
+      "done",
+      "done",
+    ]);
+  });
+
+  it("retryUnsent resends the files a cancel left waiting", async () => {
+    LoggingXHR.holding = new Set(["https://s3.test/file-2"]);
+    const { result } = renderIt();
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.start([photoA, photoB, clip], settings);
+    });
+    await waitFor(() => expect(LoggingXHR.held.size).toBe(1));
+    await act(async () => {
+      result.current.cancel();
+      await pending;
+    });
+    expect(result.current.state.files.map((file) => file.phase)).toEqual([
+      "done",
+      "waiting",
+      "waiting",
+    ]);
+
+    LoggingXHR.holding = new Set();
+    await act(async () => {
+      await result.current.retryUnsent();
+    });
+    expect(m.startBatch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ plannedFiles: 2, plannedVideos: 1 }),
+    );
+    expect(result.current.state.files.map((file) => file.phase)).toEqual([
+      "done",
+      "done",
+      "done",
+    ]);
+  });
+
+  it("retryUnsent does nothing while a run is going", async () => {
+    FakeXHR.mode = "hang";
+    const { result } = renderIt();
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.start([photoA], settings);
+    });
+    await waitFor(() => expect(FakeXHR.sent).toHaveLength(1));
+    await act(async () => {
+      await result.current.retryUnsent();
+    });
+    expect(m.startBatch).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      result.current.cancel();
+      await pending;
+    });
+  });
+
+  it("retryUnsent does nothing when every file uploaded", async () => {
     const { result } = renderIt();
     await runToEnd(result, [photoA]);
     await act(async () => {
-      await result.current.retryFailed();
+      await result.current.retryUnsent();
     });
     expect(m.startBatch).toHaveBeenCalledTimes(1);
   });
@@ -825,7 +913,7 @@ describe("useGalleryUpload", () => {
     ]);
     // Nothing is left to retry.
     await act(async () => {
-      await result.current.retryFailed();
+      await result.current.retryUnsent();
     });
     expect(m.startBatch).toHaveBeenCalledTimes(1);
   });
@@ -846,7 +934,7 @@ describe("useGalleryUpload", () => {
     m.transcodeForUpload.mockClear();
     m.log.length = 0;
     await act(async () => {
-      await result.current.retryFailed();
+      await result.current.retryUnsent();
     });
     // Only the last converted clip was kept; it goes first, then the first
     // two are converted again.
@@ -879,7 +967,7 @@ describe("useGalleryUpload", () => {
     LoggingXHR.failing = new Set();
     m.prepareGalleryPhoto.mockClear();
     await act(async () => {
-      await result.current.retryFailed();
+      await result.current.retryUnsent();
     });
     expect(m.prepareGalleryPhoto).not.toHaveBeenCalled();
     expect(result.current.state.files.map((file) => file.phase)).toEqual([
@@ -898,13 +986,13 @@ describe("useGalleryUpload", () => {
 
       m.transcodeForUpload.mockClear();
       await act(async () => {
-        await result.current.retryFailed();
+        await result.current.retryUnsent();
       });
       expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
     },
   );
 
-  it("retryFailed from an earlier render still retries the latest failures", async () => {
+  it("retryUnsent from an earlier render still retries the latest failures", async () => {
     LoggingXHR.holding = new Set(["https://s3.test/file-1"]);
     const { result } = renderIt();
     let pending: Promise<void> = Promise.resolve();
@@ -923,7 +1011,7 @@ describe("useGalleryUpload", () => {
 
     LoggingXHR.holding = new Set();
     await act(async () => {
-      await early.retryFailed();
+      await early.retryUnsent();
     });
     expect(m.startBatch).toHaveBeenCalledTimes(2);
     expect(result.current.state.files[0]?.phase).toBe("done");

@@ -183,11 +183,12 @@ const INITIAL_STATE: GalleryUploadState = {
  *
  * `cancel()` (or unmounting) stops the current step, discards that file's
  * item, leaves the files not yet sent `waiting`, and still finishes the
- * batch with what is ready. `retryFailed()` sends the failed files again in
- * a new batch with the same settings, those with prepared output kept
- * (`PreparedCache`) first, so they are not prepared again; `dropFailed()`
- * forgets them. One run at a time:
- * `start` while running does nothing.
+ * batch with what is ready. Once a run has finished, `retryUnsent()` sends
+ * every file that did not upload — failed, or left waiting by a cancel or a
+ * batch-wide refusal — in one new batch with the same settings, those with
+ * prepared output kept (`PreparedCache`) first, so they are not prepared
+ * again. `dropFailed()` forgets the failed files. One run at a time: `start`
+ * while running does nothing.
  */
 export function useGalleryUpload(slug: string) {
   const utils = api.useUtils();
@@ -430,17 +431,16 @@ export function useGalleryUpload(slug: string) {
     await run(entries, settings);
   }
 
-  async function retryFailed(): Promise<void> {
+  async function retryUnsent(): Promise<void> {
     const settings = settingsRef.current;
-    if (inFlight.current || !settings) return;
-    const failed = latest.current.files.filter(
-      (file) => file.phase === "failed",
-    );
-    if (failed.length === 0) return;
+    const current = latest.current;
+    if (inFlight.current || !settings || current.phase !== "finished") return;
+    const unsent = current.files.filter((file) => file.phase !== "done");
+    if (unsent.length === 0) return;
     // Files already prepared go first, so the kept clip is sent before
     // converting another one would push it out of the cache.
-    const kept = failed.filter((file) => prepared.current.has(file.id));
-    const rest = failed.filter((file) => !prepared.current.has(file.id));
+    const kept = unsent.filter((file) => prepared.current.has(file.id));
+    const rest = unsent.filter((file) => !prepared.current.has(file.id));
     await run([...kept, ...rest], settings);
   }
 
@@ -461,7 +461,7 @@ export function useGalleryUpload(slug: string) {
     state,
     start,
     cancel: () => inFlight.current?.abort(),
-    retryFailed,
+    retryUnsent,
     dropFailed,
   };
 }
