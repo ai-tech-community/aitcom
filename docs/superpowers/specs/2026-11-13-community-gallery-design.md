@@ -235,8 +235,13 @@ their category (set to empty), the same moment feed posts move to `general`.
   isn't a member, only public items show, and "Add yours" leads to joining.
 - `Events.gallery` is removed. Production has 0 rows using it (checked
   13 Nov 2026). The migration drops it only if it's still empty — in both
-  `events_rels` and the versions table `_events_v_rels` — and fails loudly
-  otherwise.
+  `events_rels` (path `gallery`) and the versions table `_events_v_rels` (path
+  `version.gallery`; any non-null `media_id`) — and fails loudly otherwise.
+  `gallery` is Events' only hasMany media relation, so the now-unused
+  `media_id` column, index and foreign key go from both rels tables.
+- The section is not shown for Hub events (no community), for events that
+  can't be linked (draft, cancelled, rejected) or haven't started, or while
+  the flag is off.
 
 ### Gallery tab (variant A · Wall)
 
@@ -283,14 +288,28 @@ lets the member retry or drop them.
 
 ### Feed post (collage)
 
-- A new feed post kind, **gallery batch**: `feed-posts` gets a `galleryBatchId`
-  text field. The post's `communityId`, `authorId`, `visibility` (`public` only if
-  every ready item in the batch is public, otherwise `community`) and an
-  optional caption come from the batch. `topicSlug` is the batch's topic or
+- A new feed post kind, **gallery batch**: `feed-posts` gets a `galleryBatch`
+  relationship → `gallery-batches`, unique (one post per batch, so a retried
+  announcement can never make two). The post's `communityId`, `authorId` and
+  optional caption come from the batch; `topicSlug` is the batch's topic or
   `general`.
+- **Gallery feed posts are always `community` visibility** (settled 13 Nov,
+  slice 2). A feed post's `public` lets outsiders read it without the
+  community's own read rule, which the gallery's "Everyone" never bypasses. The
+  collage's items still follow the gallery's read rule per viewer.
+- The post is made by `closeBatch`'s announcement (`src/server/gallery/
+  announce.ts`) — from `finishBatch` and from the daily cleanup alike — only if
+  at least one item is ready and the uploader is still an active member who
+  may post to the feed. It awards the same XP and logs the same activity as a
+  normal post, and resolves @mentions in the caption. If the announcement
+  fails, the batch stays finished without a post (the items are in the
+  gallery; nothing retries).
 - The card renders a collage: first item large, two small, "+N" on the third.
   It shows the event as a link chip and the category badge. Clicking a tile
-  opens the gallery lightbox for that batch.
+  opens the gallery lightbox for that batch. Each viewer sees only the batch's
+  items they may read; with none left, the card shows its text only.
+- Editing a gallery post can change its text (which may be empty) but never
+  its media.
 - Gallery items are owned by the gallery, not by the post:
   - Deleting the post leaves the items in the gallery.
   - Deleting the last visible item of a batch soft-deletes a post that has no
@@ -299,7 +318,7 @@ lets the member retry or drop them.
     (the report is about that content). **Restoring** the post leaves items as
     they are.
 - The feed's "one media type per post" rules (`feed-post-rules.ts`,
-  `post-media.ts`, the zod refines) treat `galleryBatchId` as a media kind: a
+  `post-media.ts`, the zod refines) treat `galleryBatch` as a media kind: a
   gallery post can't also carry images, a GIF, a video or a poll. Gallery posts
   can't be created through `createPost`; only `finishBatch` makes them.
 - **Proper design not done here:** feed post media are ad-hoc fields plus an
