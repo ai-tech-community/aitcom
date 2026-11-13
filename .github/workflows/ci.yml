@@ -30,7 +30,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # `next lint` type-aware rules load the whole program and can exhaust
+      # Node 20's default heap (FATAL ... heap out of memory, exit 134), which
+      # already failed main runs intermittently. Same headroom as `pnpm build`.
       - run: pnpm lint
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - run: pnpm tsc --noEmit
 
