@@ -27,6 +27,16 @@ describe("drawScaled", () => {
     expect(bitmap.close).not.toHaveBeenCalled();
   });
 
+  it("paints white under the picture, so transparent areas are not black in a JPEG", () => {
+    const { drawImage, fillRect, fills } = installFakeCanvas(() => 1);
+    drawScaled(fakeBitmap(400, 300) as unknown as ImageBitmap, 200);
+    expect(fillRect).toHaveBeenCalledWith(0, 0, 200, 150);
+    expect(fills).toEqual(["#ffffff"]);
+    expect(fillRect.mock.invocationCallOrder[0]).toBeLessThan(
+      drawImage.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
   it("keeps portrait pictures portrait", () => {
     installFakeCanvas(() => 1);
     const canvas = drawScaled(

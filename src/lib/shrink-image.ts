@@ -3,9 +3,10 @@ const JPEG_QUALITIES = [0.85, 0.7, 0.55];
 
 /**
  * Draws a decoded picture on a new canvas, its long side brought down to
- * `maxSide` (never enlarged). The bitmap stays open: the caller may draw it
- * again at another size, and closes it. Throws when the browser gives no 2D
- * context.
+ * `maxSide` (never enlarged), over white: JPEG has no transparency, and
+ * transparent pixels would otherwise turn black. The bitmap stays open: the
+ * caller may draw it again at another size, and closes it. Throws when the
+ * browser gives no 2D context.
  */
 export function drawScaled(
   bitmap: ImageBitmap,
@@ -17,6 +18,8 @@ export function drawScaled(
   canvas.height = Math.round(bitmap.height * scale);
   const context = canvas.getContext("2d");
   if (!context) throw new Error("no 2D canvas context");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
   context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   return canvas;
 }

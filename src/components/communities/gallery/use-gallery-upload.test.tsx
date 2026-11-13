@@ -451,7 +451,7 @@ describe("useGalleryUpload", () => {
   });
 
   it.each([
-    ["STORAGE_FULL", "STORAGE_FULL"],
+    ["FILE_TYPE_NOT_ALLOWED", "FILE_TYPE_NOT_ALLOWED"],
     ["FILE_TOO_LARGE", "FILE_TOO_LARGE"],
     ["BATCH_TOO_LARGE", "BATCH_TOO_LARGE"],
     ["upload network error", "UPLOAD_FAILED"],
@@ -472,23 +472,57 @@ describe("useGalleryUpload", () => {
     },
   );
 
-  it.each(["UPLOAD_EXPIRED", "NOT_A_MEMBER", "GALLERY_DISABLED"])(
-    "stops trying the remaining files once the server answers %s for the whole batch",
+  it.each([
+    "UPLOAD_EXPIRED",
+    "NOT_A_MEMBER",
+    "GALLERY_DISABLED",
+    "STORAGE_FULL",
+  ])(
+    "stops the run once the server answers %s for the whole batch",
     async (code) => {
-      m.startItem.mockRejectedValueOnce(trpcError(code));
+      m.startItem.mockImplementationOnce(async () => {
+        m.log.push("startItem refused");
+        throw trpcError(code);
+      });
       const { result } = renderIt();
       await runToEnd(result, [photoA, clip, photoB]);
       // Nothing more is prepared: converting a clip just to be refused wastes minutes.
-      expect(m.log).toEqual(["startBatch", "prepare a.jpg", "finishBatch"]);
-      expect(
-        result.current.state.files.map((file) => [file.phase, file.error]),
-      ).toEqual([
-        ["failed", code],
-        ["failed", code],
-        ["failed", code],
+      expect(m.log).toEqual([
+        "startBatch",
+        "prepare a.jpg",
+        "startItem refused",
+        "finishBatch",
       ]);
+      const { state } = result.current;
+      expect(state.files.map((file) => [file.phase, file.error])).toEqual([
+        ["failed", code],
+        ["waiting", undefined],
+        ["waiting", undefined],
+      ]);
+      // The batch still finished; the refusal is the batch's error too.
+      expect(state.phase).toBe("finished");
+      expect(state.result).toEqual({ readyCount: 3, feedPostId: null });
+      expect(state.error).toBe(code);
     },
   );
+
+  it("a later file that ends the batch keeps earlier uploads and the server's count", async () => {
+    m.startItem
+      .mockImplementationOnce(async () => grantsFor(nextItemId++))
+      .mockRejectedValueOnce(trpcError("STORAGE_FULL"));
+    m.finishBatch.mockResolvedValueOnce({ readyCount: 1, feedPostId: null });
+    const { result } = renderIt();
+    await runToEnd(result, [photoA, photoB, clip]);
+    expect(m.transcodeForUpload).not.toHaveBeenCalled();
+    const { state } = result.current;
+    expect(state.files.map((file) => [file.phase, file.error])).toEqual([
+      ["done", undefined],
+      ["failed", "STORAGE_FULL"],
+      ["waiting", undefined],
+    ]);
+    expect(state.error).toBe("STORAGE_FULL");
+    expect(state.result).toEqual({ readyCount: 1, feedPostId: null });
+  });
 
   it("attempts no file when the batch is refused, and reports the refusal", async () => {
     m.startBatch.mockRejectedValueOnce(trpcError("UPLOAD_LIMIT"));
@@ -794,6 +828,129 @@ describe("useGalleryUpload", () => {
       await result.current.retryFailed();
     });
     expect(m.startBatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps at most one converted clip for a retry, so memory stays bounded", async () => {
+    const clips = ["one.mov", "two.mov", "three.mov"].map(
+      (name) => new File(["c"], name, { type: "video/mp4" }),
+    );
+    // Every transfer fails (the network dropped): each clip was converted.
+    LoggingXHR.failing = new Set(
+      [1, 2, 3].map((id) => `https://s3.test/file-${id}`),
+    );
+    const { result } = renderIt();
+    await runToEnd(result, clips);
+    expect(m.transcodeForUpload).toHaveBeenCalledTimes(3);
+
+    LoggingXHR.failing = new Set();
+    m.transcodeForUpload.mockClear();
+    m.log.length = 0;
+    await act(async () => {
+      await result.current.retryFailed();
+    });
+    // Only the last converted clip was kept; it goes first, then the first
+    // two are converted again.
+    expect(
+      m.transcodeForUpload.mock.calls.map((call) => (call[0] as File).name),
+    ).toEqual(["one.mov", "two.mov"]);
+    // three.mov (kept) went out before anything was converted again.
+    expect(m.log.slice(0, 3)).toEqual([
+      "startBatch",
+      "startItem 4",
+      "send https://s3.test/file-4",
+    ]);
+    expect(m.log.indexOf("transcode one.mov")).toBeGreaterThan(
+      m.log.indexOf("finishItem 4"),
+    );
+    expect(result.current.state.files.map((file) => file.phase)).toEqual([
+      "done",
+      "done",
+      "done",
+    ]);
+  });
+
+  it("keeps every prepared photo that failed in transfer for a retry", async () => {
+    LoggingXHR.failing = new Set([
+      "https://s3.test/file-1",
+      "https://s3.test/file-2",
+    ]);
+    const { result } = renderIt();
+    await runToEnd(result, [photoA, photoB]);
+    LoggingXHR.failing = new Set();
+    m.prepareGalleryPhoto.mockClear();
+    await act(async () => {
+      await result.current.retryFailed();
+    });
+    expect(m.prepareGalleryPhoto).not.toHaveBeenCalled();
+    expect(result.current.state.files.map((file) => file.phase)).toEqual([
+      "done",
+      "done",
+    ]);
+  });
+
+  it.each(["FILE_TOO_LARGE", "FILE_TYPE_NOT_ALLOWED", "STORAGE_FULL"])(
+    "does not keep a file's prepared output after %s, which a retry cannot get past",
+    async (code) => {
+      m.startItem.mockRejectedValueOnce(trpcError(code));
+      const { result } = renderIt();
+      await runToEnd(result, [clip]);
+      expect(result.current.state.files[0]?.error).toBe(code);
+
+      m.transcodeForUpload.mockClear();
+      await act(async () => {
+        await result.current.retryFailed();
+      });
+      expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("retryFailed from an earlier render still retries the latest failures", async () => {
+    LoggingXHR.holding = new Set(["https://s3.test/file-1"]);
+    const { result } = renderIt();
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.start([photoA], settings);
+    });
+    await waitFor(() => expect(LoggingXHR.held.size).toBe(1));
+    // Captured while nothing has failed yet.
+    const early = result.current;
+    m.finishItem.mockRejectedValueOnce(trpcError("UPLOAD_FAILED"));
+    await act(async () => {
+      LoggingXHR.release("https://s3.test/file-1");
+      await pending;
+    });
+    expect(result.current.state.files[0]?.phase).toBe("failed");
+
+    LoggingXHR.holding = new Set();
+    await act(async () => {
+      await early.retryFailed();
+    });
+    expect(m.startBatch).toHaveBeenCalledTimes(2);
+    expect(result.current.state.files[0]?.phase).toBe("done");
+  });
+
+  it("dropFailed from an earlier render still drops the latest failures", async () => {
+    LoggingXHR.holding = new Set(["https://s3.test/file-1"]);
+    const { result } = renderIt();
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.start([photoA, photoB], settings);
+    });
+    await waitFor(() => expect(LoggingXHR.held.size).toBe(1));
+    const early = result.current;
+    LoggingXHR.failing = new Set(["https://s3.test/file-2"]);
+    await act(async () => {
+      LoggingXHR.release("https://s3.test/file-1");
+      await pending;
+    });
+    expect(result.current.state.files.map((file) => file.phase)).toEqual([
+      "done",
+      "failed",
+    ]);
+    act(() => early.dropFailed());
+    expect(result.current.state.files.map((file) => file.name)).toEqual([
+      "a.jpg",
+    ]);
   });
 
   it("a new start replaces the previous files", async () => {

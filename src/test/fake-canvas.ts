@@ -8,10 +8,11 @@ export function fakeBitmap(width: number, height: number): FakeBitmap {
 }
 
 /**
- * jsdom has no 2D canvas. Gives every canvas a context whose `drawImage`
- * records calls, and a `toBlob` that encodes to `bytesFor(canvas, quality)`
- * bytes (null makes the browser's "could not encode" answer). Returns the
- * spies; restore with `vi.restoreAllMocks()`.
+ * jsdom has no 2D canvas. Gives every canvas a context whose `fillRect` (with
+ * the `fillStyle` at the time) and `drawImage` are recorded, and a `toBlob`
+ * that encodes to `bytesFor(canvas, quality)` bytes (null makes the
+ * browser's "could not encode" answer). Returns the spies; restore with
+ * `vi.restoreAllMocks()`.
  */
 export function installFakeCanvas(
   bytesFor: (
@@ -20,11 +21,22 @@ export function installFakeCanvas(
   ) => number | null,
 ) {
   const drawImage = vi.fn();
+  /** Each fillRect call's fillStyle, in order. */
+  const fills: string[] = [];
+  const fillRect = vi.fn();
   const getContext = vi
     .spyOn(HTMLCanvasElement.prototype, "getContext")
-    .mockImplementation(
-      () => ({ drawImage }) as unknown as CanvasRenderingContext2D,
-    );
+    .mockImplementation(() => {
+      const context = {
+        fillStyle: "#000000",
+        drawImage,
+        fillRect: (...args: number[]) => {
+          fills.push(context.fillStyle);
+          fillRect(...args);
+        },
+      };
+      return context as unknown as CanvasRenderingContext2D;
+    });
   const toBlob = vi
     .spyOn(HTMLCanvasElement.prototype, "toBlob")
     .mockImplementation(function (
@@ -38,5 +50,5 @@ export function installFakeCanvas(
         bytes === null ? null : new Blob([new Uint8Array(bytes)], { type }),
       );
     });
-  return { drawImage, getContext, toBlob };
+  return { drawImage, fillRect, fills, getContext, toBlob };
 }
