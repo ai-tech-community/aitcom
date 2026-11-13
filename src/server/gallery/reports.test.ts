@@ -394,6 +394,21 @@ describe("reportItem — Review Focus 5: this is me", () => {
     }
   });
 
+  it("refuses the uploader after they left: they still read their item, and delete it", async () => {
+    const { deps, store, execute } = fakes({
+      items: [item(1, { hiddenAt: ago(HOUR) })],
+    });
+    await expect(
+      reportItem(deps, {
+        viewer: outsider("u1", false),
+        itemId: 1,
+        reason: "this_is_me",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "OWN_ITEM" });
+    expect(reportsOf(store)).toEqual([]);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it("refuses a moderator reporting their own hidden item too", async () => {
     const { deps } = fakes({
       items: [item(1, { uploaderId: "u3", hiddenAt: ago(HOUR) })],

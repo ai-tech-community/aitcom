@@ -349,8 +349,13 @@ export async function loadActivityStream({
     ),
   ]);
   const postById = new Map(decorated.map((post) => [String(post.id), post]));
+  // A post decorating left out (a gallery post that shows this viewer
+  // nothing) leaves the page; the cursor still follows what was read.
+  const shown = entries.filter(
+    (entry) => entry.kind !== "post" || postById.has(entry.id),
+  );
 
-  const items = groupAdjacentJoins<ActivityMember>(entries).map(
+  const items = groupAdjacentJoins<ActivityMember>(shown).map(
     (group): CommunityFeedItem => {
       if (group.kind === "joins") {
         return {

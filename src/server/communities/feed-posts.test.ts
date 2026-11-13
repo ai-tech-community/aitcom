@@ -65,7 +65,7 @@ describe("decorateFeedPosts gallery posts", () => {
         galleryStorage: vi.fn(),
       },
       [
-        { ...base, galleryBatch: 9 },
+        { ...base, content: "Our picnic", galleryBatch: 9 },
         { ...base, id: 2, content: "hi", galleryBatch: null },
       ] as never,
       null,
@@ -158,11 +158,79 @@ describe("decorateFeedPosts gallery posts", () => {
         videoStorage: vi.fn(),
         galleryStorage: vi.fn(),
       },
-      [{ ...base, galleryBatch: 9 }] as never,
+      [{ ...base, content: "Our picnic", galleryBatch: 9 }] as never,
       undefined,
     );
     expect(galleryViewsForPosts.mock.lastCall![2]).toBeNull();
     // A post the gallery read left out still says it has no collage.
     expect(view!.gallery).toBeNull();
+  });
+
+  const deps = () => ({
+    database: {} as never,
+    payload: { find: vi.fn(async () => ({ docs: [] })) } as never,
+    videoStorage: vi.fn(),
+    galleryStorage: vi.fn(),
+  });
+
+  it("leaves out a gallery post with no words that shows this viewer nothing", async () => {
+    const collage = { batchId: 7, items: [], total: 1 };
+    galleryViewsForPosts.mockResolvedValue(
+      new Map([
+        [1, null],
+        [2, null],
+        [3, collage],
+        [4, null],
+        [5, null],
+      ]),
+    );
+    const views = await decorateFeedPosts(
+      deps(),
+      [
+        // Caption-less, every item hidden from this viewer: nothing to show.
+        { ...base, id: 1, content: "", galleryBatch: 9 },
+        { ...base, id: 2, content: "  \n ", galleryBatch: 8 },
+        { ...base, id: 3, content: "", galleryBatch: 7 },
+        // Words: shown as text only, with no "added" line (no collage).
+        { ...base, id: 4, content: "Our picnic", galleryBatch: 6 },
+        // Not a gallery post: never left out here.
+        { ...base, id: 5, content: "", galleryBatch: null },
+      ] as never,
+      "u2",
+    );
+    expect(views.map((view) => view.id)).toEqual([3, 4, 5]);
+    expect(views[0]!.gallery).toBe(collage);
+    expect(views[1]).toMatchObject({
+      content: "Our picnic",
+      isGalleryPost: true,
+      gallery: null,
+    });
+  });
+
+  it("keeps that post for a moderator, who may still see its hidden items", async () => {
+    const collage = { batchId: 9, items: [], total: 1 };
+    galleryViewsForPosts.mockImplementation(
+      async (_deps: unknown, _posts: unknown, userId: string | null) =>
+        new Map([[1, userId === "mod" ? collage : null]]),
+    );
+    const posts = [{ ...base, content: "", galleryBatch: 9 }] as never;
+
+    await expect(decorateFeedPosts(deps(), posts, "u2")).resolves.toEqual([]);
+    const [view] = await decorateFeedPosts(deps(), posts, "mod");
+    expect(view!.gallery).toBe(collage);
+  });
+
+  it("leaves out a gallery post with no words when the gallery read fails", async () => {
+    galleryViewsForPosts.mockRejectedValue(new Error("gallery down"));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const views = await decorateFeedPosts(
+      deps(),
+      [
+        { ...base, id: 1, content: "", galleryBatch: 9 },
+        { ...base, id: 2, content: "Our picnic", galleryBatch: 8 },
+      ] as never,
+      "u2",
+    );
+    expect(views.map((view) => view.id)).toEqual([2]);
   });
 });

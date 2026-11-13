@@ -762,6 +762,94 @@ describe("galleryReadableWhere", () => {
   });
 });
 
+describe("an uploader who left the community", () => {
+  // u1 added items 1–4; u5 added item 5. The community is members-only
+  // (`listed: false`) unless a test says otherwise.
+  const seed = () => [
+    item(1),
+    item(2, { hiddenAt: ago(HOUR) }),
+    item(3, { visibility: "public", hiddenAt: ago(HOUR), event: 6 }),
+    item(4, { status: "uploading" }),
+    item(5, { uploaderId: "u5", visibility: "public", topicSlug: "demos" }),
+    item(6, { communityId: "c2" }),
+  ];
+
+  it("still reads every one of their own ready items, hidden or members-only", async () => {
+    const { deps } = fakes({ items: seed() });
+    const viewer = await outsider("u1", false);
+
+    expect(ids((await listItems(deps, { viewer })).items)).toEqual([3, 2, 1]);
+    await expect(countItems(deps, { viewer, eventId: 5 })).resolves.toBe(2);
+    await expect(listFacets(deps, { viewer })).resolves.toEqual({
+      events: [
+        { id: 5, title: "Event 5", day: "2026-11-13" },
+        { id: 6, title: "Event 6", day: "2026-11-13" },
+      ],
+      topics: ["talks"],
+      hasUnlinked: false,
+    });
+    // The "this is me" link opens their hidden, members-only item.
+    await expect(getItem(deps, { viewer, itemId: 2 })).resolves.toMatchObject({
+      id: 2,
+      hidden: true,
+      isOwn: true,
+      visibility: "community",
+    });
+  });
+
+  it("adds their own items to what outsiders may read where outsiders read public items", async () => {
+    const { deps } = fakes({ items: seed() });
+    const viewer = await outsider("u1", true);
+    expect(ids((await listItems(deps, { viewer })).items)).toEqual([
+      5, 3, 2, 1,
+    ]);
+  });
+
+  it("never reads their item still uploading, or their item in another community", async () => {
+    const { deps } = fakes({ items: seed() });
+    const viewer = await outsider("u1", false);
+    for (const itemId of [4, 6]) {
+      await expect(getItem(deps, { viewer, itemId })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+    }
+  });
+
+  it("still may not edit them (members only)", async () => {
+    const { deps, payload } = fakes({ items: seed() });
+    await expect(
+      updateItem(deps, {
+        viewer: await outsider("u1", false),
+        itemId: 1,
+        caption: "Mine",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "NOT_ALLOWED" });
+    expect(payload.update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "a signed-in non-member, members-only community",
+      () => outsider("u9", false),
+      [],
+    ],
+    [
+      "a signed-out visitor, members-only community",
+      () => outsider(null, false),
+      [],
+    ],
+    ["a signed-in non-member", () => outsider("u9", true), [5]],
+    ["a signed-out visitor", () => outsider(null, true), [5]],
+    ["another member", () => member("u2"), [5, 1]],
+    ["a moderator", () => moderator(), [5, 3, 2, 1]],
+  ])("gives nobody else anything more: %s", async (_label, who, expected) => {
+    const { deps } = fakes({ items: seed() });
+    expect(ids((await listItems(deps, { viewer: await who() })).items)).toEqual(
+      expected,
+    );
+  });
+});
+
 describe("listFacets", () => {
   it("offers only the events, categories and 'no event' that readable items have", async () => {
     const { deps } = fakes({

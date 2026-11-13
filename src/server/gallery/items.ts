@@ -102,32 +102,31 @@ const UNNAMED_UPLOADER = "Member";
 /**
  * The items this viewer may see: ready items of the viewer's community, and
  * of those —
- * - members: every item that is not hidden, plus their own hidden ones;
- *   moderators: every item, hidden or not;
+ * - moderators: every item, hidden or not;
+ * - anyone signed in: their own items, hidden or not, whatever their
+ *   visibility, member or not — it is their content, so an uploader who
+ *   left can still open (and delete) what they added;
+ * - members: every other item that is not hidden;
  * - anyone else, when outsiders may read the community: public items that
  *   are not hidden;
- * - anyone else: nothing.
+ * - anyone else: nothing more.
  */
 export function galleryReadableWhere(viewer: GalleryViewer): Where {
   const base: Where[] = [
     { communityId: { equals: viewer.communityId } },
     { status: { equals: "ready" } },
   ];
-  const notHidden: Where = { hiddenAt: { exists: false } };
   if (viewer.isModerator) return { and: base };
-  if (viewer.isMember) {
-    const own: Where[] = viewer.userId
-      ? [{ uploaderId: { equals: viewer.userId } }]
-      : [];
-    return { and: [...base, { or: [notHidden, ...own] }] };
-  }
-  if (viewer.canSeePublic) {
-    return {
-      and: [...base, { visibility: { equals: "public" } }, notHidden],
-    };
+  const notHidden: Where = { hiddenAt: { exists: false } };
+  const readable: Where[] = [];
+  if (viewer.userId) readable.push({ uploaderId: { equals: viewer.userId } });
+  if (viewer.isMember) readable.push(notHidden);
+  else if (viewer.canSeePublic) {
+    readable.push({ and: [{ visibility: { equals: "public" } }, notHidden] });
   }
   // Every row has an id, so this matches nothing.
-  return { and: [...base, { id: { exists: false } }] };
+  if (readable.length === 0) readable.push({ id: { exists: false } });
+  return { and: [...base, { or: readable }] };
 }
 
 /**
@@ -223,29 +222,6 @@ async function toViews(
       };
     }),
   );
-}
-
-/**
- * The items a viewer may ask to delete: those they may read, plus their own
- * ready items in the community whatever their visibility or hidden state and
- * whether or not they are still a member — an uploader can always take
- * their own photos down.
- */
-function galleryDeletableWhere(viewer: GalleryViewer): Where {
-  const readable = galleryReadableWhere(viewer);
-  if (!viewer.userId) return readable;
-  return {
-    or: [
-      readable,
-      {
-        and: [
-          { communityId: { equals: viewer.communityId } },
-          { status: { equals: "ready" } },
-          { uploaderId: { equals: viewer.userId } },
-        ],
-      },
-    ],
-  };
 }
 
 /** The item among those `where` matches, or null. */
@@ -671,19 +647,16 @@ export async function updateItem(
 /**
  * The uploader or a moderator deletes an item (`removeItem`). The uploader
  * may always delete their own item — hidden, members-only, or after leaving
- * the community or letting a paid membership lapse. Anyone else is refused
- * NOT_ALLOWED; an item they cannot see is NOT_FOUND.
+ * the community or letting a paid membership lapse — since they may always
+ * read it (`galleryReadableWhere`). Anyone else is refused NOT_ALLOWED; an
+ * item they cannot see is NOT_FOUND.
  */
 export async function deleteItem(
   deps: GalleryDeps,
   input: { viewer: GalleryViewer; itemId: number },
 ): Promise<void> {
   const { viewer } = input;
-  const item = await requireItemIn(
-    deps,
-    galleryDeletableWhere(viewer),
-    input.itemId,
-  );
+  const item = await requireReadableItem(deps, viewer, input.itemId);
   const isOwn = viewer.userId !== null && item.uploaderId === viewer.userId;
   if (!isOwn && !viewer.isModerator) throw galleryError("NOT_ALLOWED");
   await removeItem(deps, item, "deleteItem");
