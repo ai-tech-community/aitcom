@@ -8,49 +8,33 @@ import { cn } from "@/lib/utils";
 
 import { useGalleryUploadErrorText } from "./gallery-error-text";
 import type {
-  GalleryUploadErrorCode,
   GalleryUploadFile,
   GalleryUploadState,
 } from "./use-gallery-upload";
 
-/**
- * Refusals that belong to the file itself: sending it again fails the same
- * way, so a retry is not offered for them, only leaving them out.
- */
-const FILE_BOUND_CODES: ReadonlySet<GalleryUploadErrorCode> = new Set([
-  "FILE_TOO_LARGE",
-  "FILE_TYPE_NOT_ALLOWED",
-  "UNDECODABLE_PHOTO",
-  "VIDEO_TOO_LONG",
-  "UNSUPPORTED_VIDEO",
-  "CANNOT_CONVERT_VIDEO",
-]);
-
-/** What the finished run leaves the member to decide. */
+/** What a run added and left over, counted from its files. */
 export function uploadOutcome(state: GalleryUploadState) {
   const done = state.files.filter((file) => file.phase === "done");
-  const failed = state.files.filter((file) => file.phase === "failed");
-  const unsent = state.files.filter((file) => file.phase === "waiting");
-  const hitLimit =
-    state.error === "UPLOAD_LIMIT" ||
-    failed.some((file) => file.error === "UPLOAD_LIMIT");
   return {
     photosAdded: done.filter((file) => file.mediaType === "photo").length,
     videosAdded: done.filter((file) => file.mediaType === "video").length,
-    failed: failed.length,
-    unsent: unsent.length,
-    /** Some file could still go through if sent again. */
-    canRetry:
-      unsent.length > 0 ||
-      failed.some((file) => !file.error || !FILE_BOUND_CODES.has(file.error)),
-    hitLimit,
+    failed: state.files.filter((file) => file.phase === "failed").length,
+    unsent: state.files.filter((file) => file.phase === "waiting").length,
+    hitLimit:
+      state.error === "UPLOAD_LIMIT" ||
+      state.files.some((file) => file.error === "UPLOAD_LIMIT"),
   };
 }
 
 /**
  * The upload dialog while sending and after: a refusal of the whole batch
- * first, then what was added, then one row per file with its progress (the
- * conversion's, for a video) or why it did not upload.
+ * first, then the run's summary, then one row per file with its progress
+ * (the conversion's, for a video) or why it did not upload.
+ *
+ * The summary is one live region, mounted from the first file to the end:
+ * "2 of 5 added" while sending, then what was added, what failed and what
+ * was not sent — so a screen reader hears the outcome, a failed run too
+ * (WCAG 4.1.3).
  */
 export function GalleryUploadProgress({
   state,
@@ -75,6 +59,16 @@ export function GalleryUploadProgress({
         ? videos
         : photos;
 
+  const summary = finished
+    ? [
+        doneCount > 0
+          ? t("addedTo", { what, place: place ?? t("theGallery") })
+          : null,
+        outcome.failed > 0 ? t("someFailed", { count: outcome.failed }) : null,
+        outcome.unsent > 0 ? t("someNotSent", { count: outcome.unsent }) : null,
+      ].filter((line) => line !== null)
+    : [];
+
   return (
     <div className="grid gap-3">
       {state.error ? (
@@ -83,44 +77,42 @@ export function GalleryUploadProgress({
         </p>
       ) : null}
 
-      {finished && doneCount > 0 ? (
-        <p role="status" className="text-sm font-medium">
-          {t("addedTo", { what, place: place ?? t("theGallery") })}
-        </p>
-      ) : null}
-      {finished && outcome.failed > 0 ? (
-        <p className="text-sm">{t("someFailed", { count: outcome.failed })}</p>
-      ) : null}
-      {finished && outcome.unsent > 0 ? (
-        <p className="text-sm">{t("someNotSent", { count: outcome.unsent })}</p>
-      ) : null}
+      <div role="status" className="grid gap-1 text-sm">
+        {finished ? (
+          summary.map((line, index) => (
+            <p key={line} className={cn(index === 0 && "font-medium")}>
+              {line}
+            </p>
+          ))
+        ) : (
+          <p className="sr-only">
+            {t("overall", { done: doneCount, total: state.files.length })}
+          </p>
+        )}
+      </div>
       {finished && outcome.hitLimit ? (
         <p className="text-muted-foreground text-xs">{t("limitNote")}</p>
       ) : null}
 
-      {finished ? null : (
-        <p role="status" className="sr-only">
-          {t("overall", { done: doneCount, total: state.files.length })}
-        </p>
-      )}
-
-      <ul
-        aria-label={t("progress")}
-        className="divide-border max-h-80 divide-y overflow-y-auto rounded-lg border"
-      >
-        {state.files.map((file) => (
-          <ProgressRow
-            key={file.id}
-            file={file}
-            finished={finished}
-            reason={
-              file.phase === "failed"
-                ? errorText(file.error ?? "UPLOAD_FAILED")
-                : null
-            }
-          />
-        ))}
-      </ul>
+      {state.files.length > 0 ? (
+        <ul
+          aria-label={t("progress")}
+          className="divide-border max-h-80 divide-y overflow-y-auto rounded-lg border"
+        >
+          {state.files.map((file) => (
+            <ProgressRow
+              key={file.id}
+              file={file}
+              finished={finished}
+              reason={
+                file.phase === "failed"
+                  ? errorText(file.error ?? "UPLOAD_FAILED")
+                  : null
+              }
+            />
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

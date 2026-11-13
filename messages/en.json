@@ -6535,6 +6535,8 @@
       "notMedia": "Only photos and videos can be added. We left out the other files.",
       "event": "Event",
       "eventHint": "Where were these taken? Leave it empty for photos that aren't from an event.",
+      "eventUnavailable": "Photos can't be added to that event yet, so these won't be linked to it.",
+      "eventUnchecked": "We couldn't check that event, so these won't be linked to it.",
       "noEvent": "Not from an event",
       "eventOption": "{title} · {day}",
       "eventsLoading": "Loading events",
@@ -6570,7 +6572,7 @@
       "someNotSent": "{count, plural, one {# file wasn't sent.} other {# files weren't sent.}}",
       "retry": "Try again",
       "drop": "Leave out failed files",
-      "limitNote": "Files that didn't finish still count toward today's limit, so trying again may go over it.",
+      "limitNote": "Files that started uploading but didn't finish count toward today's limit too.",
       "done": "Done"
     },
     "edit": {
@@ -6599,8 +6601,8 @@
       "NOT_A_MEMBER": "Only members can add photos and videos here.",
       "EVENT_NOT_ALLOWED": "Photos can't be linked to that event.",
       "TOPIC_NOT_FOUND": "That category no longer exists.",
-      "BATCH_TOO_LARGE": "That's more than one upload allows: up to 30 files, with at most 10 videos.",
-      "UPLOAD_LIMIT": "You've added the most photos and videos allowed for today. Try again tomorrow.",
+      "BATCH_TOO_LARGE": "That's more than one upload allows: up to {maxFiles} files, with at most {maxVideos} videos.",
+      "UPLOAD_LIMIT": "This is more than you can still add today. Close this and choose fewer files, or add them tomorrow.",
       "STORAGE_FULL": "This community's storage is full. Ask an admin to make room.",
       "FILE_TYPE_NOT_ALLOWED": "This kind of file can't be added.",
       "FILE_TOO_LARGE": "Too large, even after shrinking.",

@@ -57,7 +57,14 @@ export function GalleryUploadPicker({
           event.preventDefault();
           setDragging(true);
         }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={(event) => {
+          // Moving onto a thumbnail or button inside is not leaving.
+          const into = event.relatedTarget;
+          if (into instanceof Node && event.currentTarget.contains(into)) {
+            return;
+          }
+          setDragging(false);
+        }}
         onDrop={(event) => {
           event.preventDefault();
           setDragging(false);

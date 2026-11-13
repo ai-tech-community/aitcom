@@ -3,12 +3,22 @@
 import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 
-import { isGalleryErrorCode } from "@/lib/gallery-rules";
+import {
+  GALLERY_MAX_FILES_PER_BATCH,
+  GALLERY_MAX_VIDEOS_PER_BATCH,
+  isGalleryErrorCode,
+} from "@/lib/gallery-rules";
 import type en from "../../../../messages/en.json";
 import type { GalleryUploadErrorCode } from "./use-gallery-upload";
 
 /** A key with copy under `gallery.errors`. */
 export type GalleryErrorCopyKey = keyof (typeof en)["gallery"]["errors"];
+
+/** The numbers some error copy names, from the rules themselves. */
+const ERROR_VALUES = {
+  maxFiles: GALLERY_MAX_FILES_PER_BATCH,
+  maxVideos: GALLERY_MAX_VIDEOS_PER_BATCH,
+};
 
 type ErrorLike = { message?: unknown; data?: { code?: unknown } | null };
 
@@ -24,7 +34,9 @@ export function useGalleryErrorText() {
   return useCallback(
     (error: unknown, fallback: GalleryErrorCopyKey): string => {
       const { message, data } = (error ?? {}) as ErrorLike;
-      if (isGalleryErrorCode(message) && t.has(message)) return t(message);
+      if (isGalleryErrorCode(message) && t.has(message)) {
+        return t(message, ERROR_VALUES);
+      }
       if (data?.code === "NOT_FOUND") return t("NOT_FOUND");
       return t(fallback);
     },
@@ -49,7 +61,7 @@ export function useGalleryUploadErrorText() {
         case "CANNOT_CONVERT_VIDEO":
           return video("unsupported");
         default:
-          return t(code);
+          return t(code, ERROR_VALUES);
       }
     },
     [t, video],

@@ -976,21 +976,95 @@ describe("useGalleryUpload", () => {
     ]);
   });
 
-  it.each(["FILE_TOO_LARGE", "FILE_TYPE_NOT_ALLOWED", "STORAGE_FULL"])(
-    "does not keep a file's prepared output after %s, which a retry cannot get past",
-    async (code) => {
-      m.startItem.mockRejectedValueOnce(trpcError(code));
-      const { result } = renderIt();
-      await runToEnd(result, [clip]);
-      expect(result.current.state.files[0]?.error).toBe(code);
+  it("does not keep a file's prepared output after STORAGE_FULL, which a retry cannot get past", async () => {
+    m.startItem.mockRejectedValueOnce(trpcError("STORAGE_FULL"));
+    const { result } = renderIt();
+    await runToEnd(result, [clip]);
+    expect(result.current.state.files[0]?.error).toBe("STORAGE_FULL");
+    // Room may be made, so the file can still be sent again.
+    expect(result.current.retryable.map((file) => file.name)).toEqual([
+      "clip.mov",
+    ]);
 
-      m.transcodeForUpload.mockClear();
+    m.transcodeForUpload.mockClear();
+    await act(async () => {
+      await result.current.retryUnsent();
+    });
+    expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["FILE_TOO_LARGE", "FILE_TYPE_NOT_ALLOWED", "UPLOAD_LIMIT"])(
+    "retryUnsent leaves out a file refused with %s, which would fail again",
+    async (code) => {
+      m.startItem
+        .mockRejectedValueOnce(trpcError(code))
+        .mockImplementation(async () => grantsFor(nextItemId++));
+      LoggingXHR.failing.add("https://s3.test/file-1");
+      const { result } = renderIt();
+      await runToEnd(result, [photoA, photoB]);
+      expect(
+        result.current.state.files.map((file) => [file.phase, file.error]),
+      ).toEqual([
+        ["failed", code],
+        ["failed", "UPLOAD_FAILED"],
+      ]);
+      expect(result.current.retryable.map((file) => file.name)).toEqual([
+        "b.png",
+      ]);
+
+      LoggingXHR.failing = new Set();
       await act(async () => {
         await result.current.retryUnsent();
       });
-      expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
+      expect(m.startBatch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ plannedFiles: 1 }),
+      );
+      expect(
+        result.current.state.files.map((file) => [file.name, file.phase]),
+      ).toEqual([
+        ["a.jpg", "failed"],
+        ["b.png", "done"],
+      ]);
     },
   );
+
+  it("leaves out a photo the browser could not read", async () => {
+    m.prepareGalleryPhoto.mockRejectedValueOnce(new m.UndecodablePhotoError());
+    const { result } = renderIt();
+    await runToEnd(result, [photoA]);
+    expect(result.current.state.files[0]?.error).toBe("UNDECODABLE_PHOTO");
+    expect(result.current.retryable).toEqual([]);
+  });
+
+  it("offers nothing to retry after the batch went over today's limit", async () => {
+    m.startBatch.mockRejectedValueOnce(trpcError("UPLOAD_LIMIT"));
+    const { result } = renderIt();
+    await runToEnd(result, [photoA, photoB]);
+    expect(result.current.state.error).toBe("UPLOAD_LIMIT");
+    expect(result.current.retryable).toEqual([]);
+    await act(async () => {
+      await result.current.retryUnsent();
+    });
+    expect(m.startBatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers nothing to retry while a run is going", async () => {
+    FakeXHR.mode = "hang";
+    const { result } = renderIt();
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.start([photoA], settings);
+    });
+    await waitFor(() => expect(FakeXHR.sent).toHaveLength(1));
+    expect(result.current.retryable).toEqual([]);
+    await act(async () => {
+      result.current.cancel();
+      await pending;
+    });
+    expect(result.current.retryable.map((file) => file.name)).toEqual([
+      "a.jpg",
+    ]);
+  });
 
   it("retryUnsent from an earlier render still retries the latest failures", async () => {
     LoggingXHR.holding = new Set(["https://s3.test/file-1"]);

@@ -187,6 +187,22 @@ describe("GalleryEditDialog", () => {
     ]);
   });
 
+  it("moves the item to another event", () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("combobox", { name: "Event" }));
+    fireEvent.click(screen.getByRole("option", { name: /Summer picnic/ }));
+    fireEvent.click(save());
+    expect(m.updates).toEqual([{ slug: "mlops", itemId: 7, eventId: 3 }]);
+  });
+
+  it("unlinks the item from its event as null", () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("combobox", { name: "Event" }));
+    fireEvent.click(screen.getByRole("option", { name: "Not from an event" }));
+    fireEvent.click(save());
+    expect(m.updates).toEqual([{ slug: "mlops", itemId: 7, eventId: null }]);
+  });
+
   it("shows who can see it as fixed, not as a choice", () => {
     renderDialog();
     expect(screen.queryByRole("radio", { name: "Everyone" })).toBeNull();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { Globe, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -14,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { GALLERY_ALT_MAX, GALLERY_CAPTION_MAX } from "@/lib/gallery-rules";
 import type { GalleryItemView } from "@/server/gallery/items";
 import { api, type RouterInputs } from "@/trpc/react";
@@ -23,7 +22,7 @@ import {
   GalleryCategoryField,
   GalleryEventField,
   GalleryMagazineField,
-  TextCounter,
+  GalleryTextField,
 } from "./gallery-detail-fields";
 import { useGalleryErrorText } from "./gallery-error-text";
 
@@ -98,8 +97,6 @@ export function GalleryEditDialog({
     { enabled: open },
   );
   const topics = api.topics.list.useQuery({ communitySlug: slug });
-  const captionId = useId();
-  const altId = useId();
   const [details, setDetails] = useState(() => detailsOf(item));
   const [failure, setFailure] = useState<string | null>(null);
   const change = (patch: Partial<ItemDetails>) =>
@@ -136,16 +133,14 @@ export function GalleryEditDialog({
             update.mutate({ slug, itemId: item.id, ...changes });
           }}
         >
-          <TextField
-            id={captionId}
+          <GalleryTextField
             label={t("caption")}
             hint={t("captionHint")}
             value={details.caption}
             max={GALLERY_CAPTION_MAX}
             onChange={(caption) => change({ caption })}
           />
-          <TextField
-            id={altId}
+          <GalleryTextField
             label={t("alt")}
             hint={t("altHint")}
             value={details.alt}
@@ -202,43 +197,5 @@ export function GalleryEditDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function TextField({
-  id,
-  label,
-  hint,
-  value,
-  max,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  hint: string;
-  value: string;
-  max: number;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      <Textarea
-        id={id}
-        value={value}
-        maxLength={max}
-        rows={2}
-        onChange={(event) => onChange(event.target.value)}
-        aria-describedby={`${id}-hint ${id}-count`}
-      />
-      <div className="flex items-start justify-between gap-3">
-        <p id={`${id}-hint`} className="text-muted-foreground text-xs">
-          {hint}
-        </p>
-        <TextCounter id={`${id}-count`} count={value.length} max={max} />
-      </div>
-    </div>
   );
 }

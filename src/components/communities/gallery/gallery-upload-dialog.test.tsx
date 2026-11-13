@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  createEvent,
   fireEvent,
   render,
   screen,
@@ -30,6 +31,7 @@ Object.assign(URL, {
 
 const m = vi.hoisted(() => ({
   state: null as unknown as GalleryUploadState,
+  retryable: [] as GalleryUploadFile[],
   start: vi.fn(),
   cancel: vi.fn(),
   retryUnsent: vi.fn(),
@@ -46,6 +48,7 @@ const m = vi.hoisted(() => ({
 vi.mock("./use-gallery-upload", () => ({
   useGalleryUpload: () => ({
     state: m.state,
+    retryable: m.retryable,
     start: m.start,
     cancel: m.cancel,
     retryUnsent: m.retryUnsent,
@@ -129,6 +132,7 @@ function file(
 beforeEach(() => {
   vi.clearAllMocks();
   m.state = IDLE;
+  m.retryable = [];
   m.canTranscode = true;
   m.choices = {
     isPending: false,
@@ -286,15 +290,78 @@ describe("GalleryUploadDialog: choosing", () => {
     });
   });
 
-  it("drops a linked event that photos may not be added to", async () => {
+  it("drops a linked event that photos may not be added to, and says so", async () => {
     renderDialog({ initialEventId: 99 });
     expect(screen.getByRole("combobox", { name: "Event" })).toHaveTextContent(
       "Not from an event",
     );
+    expect(
+      screen.getByText(
+        "Photos can't be added to that event yet, so these won't be linked to it.",
+      ),
+    ).toBeVisible();
     pick([photo(1)]);
     await screen.findByText("Upload 1");
     fireEvent.click(uploadButton());
     expect(m.start.mock.calls[0]?.[1]).not.toHaveProperty("eventId");
+  });
+
+  it("waits for the event list before sending a linked event", async () => {
+    m.choices = {
+      isPending: true,
+      isError: false,
+      data: undefined,
+      refetch: vi.fn(),
+    };
+    renderDialog({ initialEventId: 4 });
+    pick([photo(1)]);
+    await screen.findByText("Upload 1");
+    expect(uploadButton()).toBeDisabled();
+  });
+
+  it("drops a linked event it could not check, and says so", async () => {
+    m.choices = {
+      isPending: false,
+      isError: true,
+      data: undefined,
+      refetch: vi.fn(),
+    };
+    renderDialog({ initialEventId: 4 });
+    expect(
+      screen.getByText(
+        "We couldn't check that event, so these won't be linked to it.",
+      ),
+    ).toBeVisible();
+    pick([photo(1)]);
+    await screen.findByText("Upload 1");
+    fireEvent.click(uploadButton());
+    expect(m.start.mock.calls[0]?.[1]).not.toHaveProperty("eventId");
+  });
+
+  it("keeps a file dropped beside the drop zone from opening in the tab", () => {
+    renderDialog();
+    const drop = createEvent.drop(window);
+    fireEvent(window, drop);
+    expect(drop.defaultPrevented).toBe(true);
+  });
+
+  it("stays highlighted while a drag moves onto a button inside the zone", () => {
+    renderDialog();
+    const zone = screen
+      .getByText("Drop photos and videos here")
+      .closest<HTMLElement>("[class*='border-dashed']")!;
+    fireEvent.dragOver(zone);
+    expect(zone).toHaveClass("border-foreground");
+    // jsdom has no DragEvent, so the target moved to is set by hand.
+    const leaveTo = (into: Element) => {
+      const leave = createEvent.dragLeave(zone);
+      Object.defineProperty(leave, "relatedTarget", { value: into });
+      fireEvent(zone, leave);
+    };
+    leaveTo(screen.getByRole("button", { name: "Choose files" }));
+    expect(zone).toHaveClass("border-foreground");
+    leaveTo(document.body);
+    expect(zone).not.toHaveClass("border-foreground");
   });
 
   it("offers no Everyone where outsiders cannot see the community", () => {
@@ -405,6 +472,7 @@ describe("GalleryUploadDialog: sending", () => {
         file({ id: "3", phase: "failed", error: "FILE_TOO_LARGE" }),
       ],
     };
+    m.retryable = [m.state.files[1]!];
     renderDialog();
     expect(screen.getByRole("status")).toHaveTextContent(
       "1 photo added to the gallery.",
@@ -423,7 +491,7 @@ describe("GalleryUploadDialog: sending", () => {
     expect(m.dropFailed).toHaveBeenCalled();
   });
 
-  it("offers only Drop when every failed file would fail again", () => {
+  it("makes Done the main action when every failed file would fail again", () => {
     m.state = {
       phase: "finished",
       result: { readyCount: 0, feedPostId: null },
@@ -434,9 +502,13 @@ describe("GalleryUploadDialog: sending", () => {
     };
     renderDialog();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
     expect(
       screen.getByRole("button", { name: "Leave out failed files" }),
-    ).toBeVisible();
+    ).toHaveAttribute("data-variant", "outline");
   });
 
   it("shows a refusal of the whole batch first, and the daily limit note", () => {
@@ -449,13 +521,19 @@ describe("GalleryUploadDialog: sending", () => {
     renderDialog();
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent(
-      "You've added the most photos and videos allowed for today. Try again tomorrow.",
+      "This is more than you can still add today. Close this and choose fewer files, or add them tomorrow.",
     );
     expect(
       screen.getByText(
-        "Files that didn't finish still count toward today's limit, so trying again may go over it.",
+        "Files that started uploading but didn't finish count toward today's limit too.",
       ),
     ).toBeVisible();
+    // Sending the same files again today would be refused again.
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
     // The batch refusal comes before the file list.
     expect(
       alert.compareDocumentPosition(
@@ -473,6 +551,7 @@ describe("GalleryUploadDialog: sending", () => {
         file({ id: "2", phase: "waiting" }),
       ],
     };
+    m.retryable = [m.state.files[1]!];
     renderDialog();
     expect(screen.getByText("1 file wasn't sent.")).toBeVisible();
     const rows = within(
@@ -484,6 +563,46 @@ describe("GalleryUploadDialog: sending", () => {
     expect(
       screen.queryByRole("button", { name: "Leave out failed files" }),
     ).toBeNull();
+  });
+
+  it("announces the outcome in the same live region that counted progress", () => {
+    m.state = {
+      phase: "running",
+      result: null,
+      files: [
+        file({ id: "1", phase: "uploading", progress: 0.5 }),
+        file({ id: "2", phase: "waiting" }),
+      ],
+    };
+    const { rerender } = renderDialog();
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("0 of 2 added");
+    // Every file failed: nothing was added, and that is still announced.
+    m.state = {
+      phase: "finished",
+      result: { readyCount: 0, feedPostId: null },
+      files: [
+        file({ id: "1", phase: "failed", error: "UPLOAD_FAILED" }),
+        file({ id: "2", phase: "failed", error: "UPLOAD_FAILED" }),
+      ],
+    };
+    rerender(
+      <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+        <GalleryUploadDialog slug="mlops" open onOpenChange={onOpenChange} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent("2 files didn't upload.");
+  });
+
+  it("shows no empty file list once every file was left out", () => {
+    m.state = {
+      phase: "finished",
+      result: { readyCount: 0, feedPostId: null },
+      files: [],
+    };
+    renderDialog();
+    expect(screen.queryByRole("list", { name: "Upload progress" })).toBeNull();
   });
 
   it("asks the browser to convert videos only when one is picked", async () => {

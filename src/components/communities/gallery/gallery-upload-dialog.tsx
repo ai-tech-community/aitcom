@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Globe, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { Textarea } from "@/components/ui/textarea";
 import { GALLERY_BATCH_TEXT_MAX } from "@/lib/gallery-rules";
 import { canTranscode } from "@/lib/video-transcode";
 import type { VideoVisibility } from "@/lib/video-rules";
@@ -24,7 +23,7 @@ import {
   GalleryCategoryField,
   GalleryEventField,
   GalleryMagazineField,
-  TextCounter,
+  GalleryTextField,
   linkableEvent,
 } from "./gallery-detail-fields";
 import {
@@ -81,7 +80,6 @@ export function GalleryUploadDialog({
     { enabled: open },
   );
   const topics = api.topics.list.useQuery({ communitySlug: slug });
-  const textId = useId();
   const nextId = useRef(0);
   const videoCheck = useRef<Promise<boolean> | null>(null);
 
@@ -100,13 +98,25 @@ export function GalleryUploadDialog({
   const { phase } = upload.state;
   const running = phase === "running";
 
-  // A linked event photos may no longer be added to is dropped once the
-  // choices are known; "Everyone" counts only where outsiders can see it.
-  const eventId =
-    choices.data && !linkableEvent(choices.data, form.eventId)
-      ? null
-      : form.eventId;
+  // A linked event is sent only once the choices show photos may be added
+  // to it: until then Upload waits; if it is not among them, or the
+  // choices cannot load, it is dropped with a line that says so.
+  let eventId = form.eventId;
+  let eventNote: string | null = null;
+  if (form.eventId !== null && choices.isError) {
+    eventId = null;
+    eventNote = t("eventUnchecked");
+  } else if (
+    form.eventId !== null &&
+    choices.data &&
+    !linkableEvent(choices.data, form.eventId)
+  ) {
+    eventId = null;
+    eventNote = t("eventUnavailable");
+  }
+  const checkingEvent = form.eventId !== null && choices.isPending;
   const event = linkableEvent(choices.data, eventId);
+  // "Everyone" counts only where outsiders can see the community.
   const offerEveryone = choices.data?.publicReachesOutsiders === true;
   const visibility = offerEveryone ? form.visibility : "community";
 
@@ -159,6 +169,19 @@ export function GalleryUploadDialog({
     );
   }
 
+  // A file dropped beside the drop zone must not make the browser leave
+  // the page (and the upload) to show it.
+  useEffect(() => {
+    if (!open) return;
+    const stay = (event: DragEvent) => event.preventDefault();
+    window.addEventListener("dragover", stay);
+    window.addEventListener("drop", stay);
+    return () => {
+      window.removeEventListener("dragover", stay);
+      window.removeEventListener("drop", stay);
+    };
+  }, [open]);
+
   const close = () => onOpenChange(false);
   const holdWhileRunning = (event: Event) => {
     if (running) event.preventDefault();
@@ -204,6 +227,7 @@ export function GalleryUploadDialog({
               <GalleryEventField
                 choices={choices}
                 value={eventId}
+                note={eventNote}
                 onChange={(next) => change({ eventId: next })}
               />
               <GalleryCategoryField
@@ -250,32 +274,13 @@ export function GalleryUploadDialog({
                   </p>
                 )}
               </div>
-              <div className="grid gap-1.5">
-                <label htmlFor={textId} className="text-sm font-medium">
-                  {t("text")}
-                </label>
-                <Textarea
-                  id={textId}
-                  value={form.text}
-                  maxLength={GALLERY_BATCH_TEXT_MAX}
-                  onChange={(e) => change({ text: e.target.value })}
-                  aria-describedby={`${textId}-hint ${textId}-count`}
-                  rows={2}
-                />
-                <div className="flex items-start justify-between gap-3">
-                  <p
-                    id={`${textId}-hint`}
-                    className="text-muted-foreground text-xs"
-                  >
-                    {t("textHint")}
-                  </p>
-                  <TextCounter
-                    id={`${textId}-count`}
-                    count={form.text.length}
-                    max={GALLERY_BATCH_TEXT_MAX}
-                  />
-                </div>
-              </div>
+              <GalleryTextField
+                label={t("text")}
+                hint={t("textHint")}
+                value={form.text}
+                max={GALLERY_BATCH_TEXT_MAX}
+                onChange={(text) => change({ text })}
+              />
               <GalleryMagazineField
                 label={t("magazine")}
                 checked={form.magazineConsent}
@@ -288,7 +293,7 @@ export function GalleryUploadDialog({
               </Button>
               <Button
                 type="button"
-                disabled={form.files.length === 0}
+                disabled={form.files.length === 0 || checkingEvent}
                 onClick={submit}
               >
                 {t("upload", { count: form.files.length })}
@@ -308,7 +313,8 @@ export function GalleryUploadDialog({
                 </Button>
               ) : (
                 <FinishedActions
-                  outcome={uploadOutcome(upload.state)}
+                  canRetry={upload.retryable.length > 0}
+                  failed={uploadOutcome(upload.state).failed}
                   onRetry={() => void upload.retryUnsent()}
                   onDrop={upload.dropFailed}
                   onDone={close}
@@ -324,37 +330,34 @@ export function GalleryUploadDialog({
 
 /**
  * After a run: Try again (when some file could still go through) is the
- * main action, Leave out failed files beside it; with nothing left to send,
- * Done is.
+ * main action; with nothing a retry could send, Done is. Leave out failed
+ * files is offered beside them whenever a file failed.
  */
 function FinishedActions({
-  outcome,
+  canRetry,
+  failed,
   onRetry,
   onDrop,
   onDone,
 }: {
-  outcome: ReturnType<typeof uploadOutcome>;
+  canRetry: boolean;
+  failed: number;
   onRetry: () => void;
   onDrop: () => void;
   onDone: () => void;
 }) {
   const t = useTranslations("gallery.upload");
-  const { canRetry } = outcome;
   return (
     <>
       <Button
         type="button"
-        variant={canRetry || outcome.failed > 0 ? "ghost" : "default"}
+        variant={canRetry ? "ghost" : "default"}
         onClick={onDone}
       >
         {t("done")}
       </Button>
-      {outcome.failed > 0 ? (
-        <Button
-          type="button"
-          variant={canRetry ? "outline" : "default"}
-          onClick={onDrop}
-        >
+      {failed > 0 ? (
+        <Button type="button" variant="outline" onClick={onDrop}>
           {t("drop")}
         </Button>
       ) : null}

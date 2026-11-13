@@ -143,6 +143,48 @@ const RETRY_FUTILE_CODES: ReadonlySet<GalleryUploadErrorCode> = new Set([
   "GALLERY_DISABLED",
 ]);
 
+/**
+ * Refusals a retry today cannot get past, so `retryUnsent` leaves the file
+ * out: the file itself is the problem (too large, the wrong kind, a photo
+ * or clip the browser cannot read or convert), or the member reached
+ * today's limit for its kind.
+ */
+const FILE_REFUSAL_CODES: ReadonlySet<GalleryUploadErrorCode> = new Set([
+  "FILE_TOO_LARGE",
+  "FILE_TYPE_NOT_ALLOWED",
+  "UNDECODABLE_PHOTO",
+  "VIDEO_TOO_LONG",
+  "UNSUPPORTED_VIDEO",
+  "CANNOT_CONVERT_VIDEO",
+  "UPLOAD_LIMIT",
+]);
+
+/**
+ * Refusals of a whole batch that sending the same files again today cannot
+ * get past: they are more than today's limit leaves, or more than a batch
+ * may hold.
+ */
+const BATCH_REFUSAL_CODES: ReadonlySet<GalleryUploadErrorCode> = new Set([
+  "UPLOAD_LIMIT",
+  "BATCH_TOO_LARGE",
+]);
+
+/**
+ * The files `retryUnsent` would send: once a run has finished, every file
+ * that did not upload (failed, or left waiting) unless its refusal would
+ * only repeat. None after a batch refusal that would repeat.
+ */
+export function retryableFiles(state: GalleryUploadState): GalleryUploadFile[] {
+  if (state.phase !== "finished") return [];
+  if (state.error && BATCH_REFUSAL_CODES.has(state.error)) return [];
+  return state.files.filter(
+    (file) =>
+      file.phase === "waiting" ||
+      (file.phase === "failed" &&
+        !(file.error && FILE_REFUSAL_CODES.has(file.error))),
+  );
+}
+
 /** The browser has no H.264 encoder, so nothing was tried. */
 class CannotConvertHereError extends Error {}
 
@@ -187,8 +229,9 @@ const INITIAL_STATE: GalleryUploadState = {
  * every file that did not upload — failed, or left waiting by a cancel or a
  * batch-wide refusal — in one new batch with the same settings, those with
  * prepared output kept (`PreparedCache`) first, so they are not prepared
- * again. `dropFailed()` forgets the failed files. One run at a time: `start`
- * while running does nothing.
+ * again; files whose refusal would only repeat are left out
+ * (`retryableFiles`). `dropFailed()` forgets the failed files. One run at
+ * a time: `start` while running does nothing.
  */
 export function useGalleryUpload(slug: string) {
   const utils = api.useUtils();
@@ -433,9 +476,8 @@ export function useGalleryUpload(slug: string) {
 
   async function retryUnsent(): Promise<void> {
     const settings = settingsRef.current;
-    const current = latest.current;
-    if (inFlight.current || !settings || current.phase !== "finished") return;
-    const unsent = current.files.filter((file) => file.phase !== "done");
+    if (inFlight.current || !settings) return;
+    const unsent = retryableFiles(latest.current);
     if (unsent.length === 0) return;
     // Files already prepared go first, so the kept clip is sent before
     // converting another one would push it out of the cache.
@@ -459,6 +501,8 @@ export function useGalleryUpload(slug: string) {
 
   return {
     state,
+    /** The files a retry would send (see `retryableFiles`). */
+    retryable: retryableFiles(state),
     start,
     cancel: () => inFlight.current?.abort(),
     retryUnsent,

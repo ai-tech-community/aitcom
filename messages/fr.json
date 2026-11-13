@@ -6535,6 +6535,8 @@
       "notMedia": "Seules les photos et vidéos peuvent être ajoutées. Nous avons laissé les autres fichiers de côté.",
       "event": "Événement",
       "eventHint": "Où ont-elles été prises ? Laissez vide pour des photos qui ne viennent pas d’un événement.",
+      "eventUnavailable": "On ne peut pas encore ajouter de photos à cet événement : celles-ci n’y seront pas liées.",
+      "eventUnchecked": "Nous n’avons pas pu vérifier cet événement : celles-ci n’y seront pas liées.",
       "noEvent": "Pas d’un événement",
       "eventOption": "{title} · {day}",
       "eventsLoading": "Chargement des événements",
@@ -6570,7 +6572,7 @@
       "someNotSent": "{count, plural, one {# fichier n’est pas parti.} other {# fichiers ne sont pas partis.}}",
       "retry": "Réessayer",
       "drop": "Laisser de côté les fichiers en échec",
-      "limitNote": "Les fichiers qui n’ont pas abouti comptent quand même dans la limite du jour : réessayer peut la dépasser.",
+      "limitNote": "Les fichiers dont l’envoi a commencé sans aboutir comptent aussi dans la limite du jour.",
       "done": "Terminé"
     },
     "edit": {
@@ -6599,8 +6601,8 @@
       "NOT_A_MEMBER": "Seuls les membres peuvent ajouter des photos et vidéos ici.",
       "EVENT_NOT_ALLOWED": "Les photos ne peuvent pas être liées à cet événement.",
       "TOPIC_NOT_FOUND": "Cette catégorie n’existe plus.",
-      "BATCH_TOO_LARGE": "C’est plus qu’un envoi ne le permet : jusqu’à 30 fichiers, dont 10 vidéos au plus.",
-      "UPLOAD_LIMIT": "Vous avez ajouté le nombre maximal de photos et vidéos autorisé aujourd’hui. Réessayez demain.",
+      "BATCH_TOO_LARGE": "C’est plus qu’un envoi ne le permet : jusqu’à {maxFiles} fichiers, dont {maxVideos} vidéos au plus.",
+      "UPLOAD_LIMIT": "C’est plus que ce que vous pouvez encore ajouter aujourd’hui. Fermez cette fenêtre et choisissez moins de fichiers, ou ajoutez-les demain.",
       "STORAGE_FULL": "L’espace de stockage de cette communauté est plein. Demandez à un administrateur de faire de la place.",
       "FILE_TYPE_NOT_ALLOWED": "Ce type de fichier ne peut pas être ajouté.",
       "FILE_TOO_LARGE": "Trop volumineux, même après réduction.",

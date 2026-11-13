@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   topicLabel,
   topicText,
@@ -57,12 +58,15 @@ export function GalleryEventField({
   value,
   onChange,
   current,
+  note,
   disabled,
 }: {
   choices: UploadChoicesQuery;
   value: number | null;
   onChange: (eventId: number | null) => void;
   current?: { id: number; title: string } | null;
+  /** Why a linked event was not kept, shown under the control. */
+  note?: string | null;
   disabled?: boolean;
 }) {
   const t = useTranslations("gallery.upload");
@@ -133,6 +137,7 @@ export function GalleryEventField({
     <div className="grid gap-1.5">
       <span className="text-sm font-medium">{t("event")}</span>
       {control}
+      {note ? <p className="text-sm">{note}</p> : null}
       <p id={hintId} className="text-muted-foreground text-xs">
         {t("eventHint")}
       </p>
@@ -218,20 +223,49 @@ export function GalleryMagazineField({
   );
 }
 
-/** A character count under a text field, as `12/500`. */
-export function TextCounter({
-  id,
-  count,
+/**
+ * A labelled text area with a hint and a `12/500` count under it, cut off
+ * at `max` (the API's own limit for the field).
+ */
+export function GalleryTextField({
+  label,
+  hint,
+  value,
   max,
+  onChange,
 }: {
-  id: string;
-  count: number;
+  label: string;
+  hint: string;
+  value: string;
   max: number;
+  onChange: (value: string) => void;
 }) {
   const t = useTranslations("gallery.upload");
+  const id = useId();
   return (
-    <p id={id} className="text-muted-foreground font-mono text-xs tabular-nums">
-      {t("counter", { count, max })}
-    </p>
+    <div className="grid gap-1.5">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <Textarea
+        id={id}
+        value={value}
+        maxLength={max}
+        rows={2}
+        onChange={(event) => onChange(event.target.value)}
+        aria-describedby={`${id}-hint ${id}-count`}
+      />
+      <div className="flex items-start justify-between gap-3">
+        <p id={`${id}-hint`} className="text-muted-foreground text-xs">
+          {hint}
+        </p>
+        <p
+          id={`${id}-count`}
+          className="text-muted-foreground font-mono text-xs tabular-nums"
+        >
+          {t("counter", { count: value.length, max })}
+        </p>
+      </div>
+    </div>
   );
 }
