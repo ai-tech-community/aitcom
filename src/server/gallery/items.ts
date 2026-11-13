@@ -413,7 +413,7 @@ export async function previewBatches(
   }
   if (picked.length === 0) return previews;
   // Read again under the same rule: an item hidden or deleted in between
-  // stays out.
+  // stays out, and out of its batch's total, so "+N" never over-counts.
   const { docs } = await deps.payload.find({
     collection: "gallery-items",
     where: { and: [readable, { id: { in: picked } }] },
@@ -424,12 +424,12 @@ export async function previewBatches(
   for (const view of await toViews(deps, input.viewer, docs)) {
     const preview = previews.get(view.batchId);
     if (preview) preview.items.push(view);
-    else {
-      previews.set(view.batchId, {
-        items: [view],
-        total: totals.get(view.batchId)!,
-      });
-    }
+    else previews.set(view.batchId, { items: [view], total: 0 });
+  }
+  for (const [batchId, preview] of previews) {
+    const total = totals.get(batchId)!;
+    const gone = Math.min(total, input.perBatch) - preview.items.length;
+    preview.total = total - gone;
   }
   return previews;
 }

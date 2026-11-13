@@ -41,7 +41,7 @@ vi.mock("@/server/better-auth", () => ({
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
 vi.mock("@/server/communities/feed-posts", async (importOriginal) => ({
   ...(await importOriginal<typeof FeedPosts>()),
-  decorateFeedPosts: vi.fn(async (_db, _p, posts: object[]) =>
+  decorateFeedPosts: vi.fn(async (_deps, posts: object[]) =>
     posts.map((p) => ({ ...p })),
   ),
 }));
@@ -115,11 +115,12 @@ describe("feed.getReels", () => {
     });
     expect(page.notice).toBeNull();
     expect(page.items.map((p) => p.id)).toEqual([7]);
-    const call = vi.mocked(decorateFeedPosts).mock.calls[0]!;
-    expect(call[3]).toBe("mod-1");
+    const [decorationDeps, , viewerId] =
+      vi.mocked(decorateFeedPosts).mock.calls[0]!;
+    expect(viewerId).toBe("mod-1");
     // Storage is handed over lazily, not reached for up front.
-    expect(call[4]).toBe(getVideoStorage);
-    expect(call[5]).toBe(getObjectStorage);
+    expect(decorationDeps.videoStorage).toBe(getVideoStorage);
+    expect(decorationDeps.galleryStorage).toBe(getObjectStorage);
   });
 
   it("gives a signed-in non-member the visitor's view", async () => {

@@ -301,23 +301,30 @@ export async function loadUserImages(
   return images;
 }
 
+/** What decorating posts needs from the outside world. */
+export type FeedPostDecorationDeps = {
+  database: Database;
+  payload: Payload;
+  /** Makes video playback links; opened only for a post with a video. */
+  videoStorage: VideoStorageSource;
+  /** Makes gallery item links; opened only when there is an item to show. */
+  galleryStorage: ObjectStorageSource;
+};
+
 /**
  * Adds the author photo, whether the viewer liked each post, playback
  * links for a post's video (the raw storage keys never leave the server),
  * its pictures with their descriptions (never who uploaded them), whom
  * it mentions, its poll's counts (never who voted for what), and the
- * gallery items of its batch the viewer may see. `galleryStorage` makes
- * the gallery's links; it is opened only when there is an item to show.
+ * gallery items of its batch the viewer may see.
  */
 export async function decorateFeedPosts(
-  database: Database,
-  payload: Payload,
+  deps: FeedPostDecorationDeps,
   posts: readonly FeedPost[],
   viewerId: string | null | undefined,
-  storage: VideoStorageSource,
-  galleryStorage: ObjectStorageSource,
 ): Promise<FeedPostView[]> {
   if (posts.length === 0) return [];
+  const { database, payload, videoStorage, galleryStorage } = deps;
   const [images, pictures, mentionsOf, pollOf, galleries] = await Promise.all([
     loadUserImages(
       database,
@@ -359,7 +366,7 @@ export async function decorateFeedPosts(
       gallery: galleries.get(post.id) ?? null,
       authorImage: images.get(post.authorId) ?? null,
       hasLiked: liked.has(post.id),
-      video: await videoView(post, storage),
+      video: await videoView(post, videoStorage),
       images: imageIdsOf(post)
         .map((id) => pictures.get(id))
         .filter((view): view is FeedImageView => view !== undefined),

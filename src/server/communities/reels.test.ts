@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./feed-posts", () => ({
-  decorateFeedPosts: vi.fn((_db, _p, posts: object[]) =>
+  decorateFeedPosts: vi.fn((_deps, posts: object[]) =>
     Promise.resolve(posts.map((p) => ({ ...p }))),
   ),
 }));
@@ -81,10 +81,12 @@ describe("listReels", () => {
       startAtPostId: null,
       limit: 5,
     });
-    const call = vi.mocked(decorateFeedPosts).mock.calls.at(-1)!;
-    expect(call[3]).toBe("m");
-    expect(call[4]).toBe(storage);
-    expect(call[5]).toBe(galleryStorage);
+    const [decorationDeps, , viewerId] = vi
+      .mocked(decorateFeedPosts)
+      .mock.calls.at(-1)!;
+    expect(viewerId).toBe("m");
+    expect(decorationDeps.videoStorage).toBe(storage);
+    expect(decorationDeps.galleryStorage).toBe(galleryStorage);
     expect(storage).not.toHaveBeenCalled();
     expect(galleryStorage).not.toHaveBeenCalled();
   });

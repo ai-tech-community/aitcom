@@ -1,10 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { isModeratorRole } from "@/lib/communities/moderator-roles";
+import {
+  matchesWhere,
+  selectFields,
+  sortDocs,
+} from "@/test/fake-payload-query";
 
 import type * as Access from "./access";
 import type { GalleryViewer } from "./access";
-import { matchesWhere, selectFields, sortDocs } from "./fake-payload-query";
 import { galleryViewsForPosts } from "./feed-view";
 
 /**
@@ -328,7 +332,7 @@ describe("galleryViewsForPosts", () => {
   });
 
   describe("query budget", () => {
-    /** `perCommunity` gallery posts in each of c1 and c2, three items each. */
+    /** `perCommunity` gallery posts in each of c1 and c2, four items each. */
     function feed(perCommunity: number) {
       const items: Doc[] = [];
       const batches: Doc[] = [];

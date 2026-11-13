@@ -2,13 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GALLERY_CAPTION_MAX, GALLERY_PAGE_SIZE } from "@/lib/gallery-rules";
 import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
+import {
+  matchesWhere,
+  selectFields,
+  sortDocs,
+} from "@/test/fake-payload-query";
 
 import {
   loadGalleryViewer,
   type GalleryCommunity,
   type GalleryViewer,
 } from "./access";
-import { matchesWhere, selectFields, sortDocs } from "./fake-payload-query";
 import {
   countItems,
   deleteItem,
@@ -641,6 +645,27 @@ describe("previewBatches", () => {
     expect(ids(previews.get(3)!.items)).toEqual([1]);
     expect(previews.get(3)!.total).toBe(1);
     expect(storage.signedGetUrl).not.toHaveBeenCalled();
+  });
+
+  it("leaves an item hidden between the two reads out of the items and the total", async () => {
+    const { deps, payload, store } = fakes({
+      items: [item(1), item(2), item(3), item(4)],
+    });
+    const find = payload.find.getMockImplementation()!;
+    payload.find.mockImplementationOnce(async (args) => {
+      const scanned = await find(args);
+      store["gallery-items"]!.find((doc) => doc.id === 4)!.hiddenAt = ago(HOUR);
+      return scanned;
+    });
+
+    const previews = await previewBatches(deps, {
+      viewer: await member(),
+      batchIds: [3],
+      perBatch: 3,
+    });
+
+    expect(ids(previews.get(3)!.items)).toEqual([3, 2]);
+    expect(previews.get(3)!.total).toBe(3);
   });
 
   it("reads any number of batches in two queries and looks people and events up once", async () => {

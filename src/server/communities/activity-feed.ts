@@ -335,12 +335,9 @@ export async function loadActivityStream({
     .map((entry) => entry.data as (typeof posts.docs)[number]);
   const [decorated, authorImages] = await Promise.all([
     decorateFeedPosts(
-      database,
-      payload,
+      { database, payload, videoStorage: storage, galleryStorage },
       pagePosts,
       viewerId,
-      storage,
-      galleryStorage,
     ),
     loadUserImages(
       database,
@@ -467,12 +464,9 @@ async function loadPinnedPosts({
     depth: 0,
   });
   return decorateFeedPosts(
-    database,
-    payload,
+    { database, payload, videoStorage: storage, galleryStorage },
     docs,
     viewerId,
-    storage,
-    galleryStorage,
   );
 }
 

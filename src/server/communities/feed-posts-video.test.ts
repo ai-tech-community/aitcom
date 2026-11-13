@@ -26,8 +26,12 @@ describe("decorateFeedPosts video view", () => {
       remove: vi.fn(),
     };
     const [withVideo, plain] = await decorateFeedPosts(
-      {} as never,
-      {} as never,
+      {
+        database: {} as never,
+        payload: {} as never,
+        videoStorage: () => storage,
+        galleryStorage: vi.fn(),
+      },
       [
         {
           ...base,
@@ -44,8 +48,6 @@ describe("decorateFeedPosts video view", () => {
         { ...base, id: 2 },
       ] as never,
       null,
-      () => storage,
-      vi.fn(),
     );
     expect(withVideo!.video).toEqual({
       url: "private:private/videos/c1/u.mp4",
@@ -61,14 +63,16 @@ describe("decorateFeedPosts video view", () => {
 
   it("keeps the report count for moderators only (not in the view)", async () => {
     const [view] = await decorateFeedPosts(
-      {} as never,
-      {} as never,
+      {
+        database: {} as never,
+        payload: {} as never,
+        videoStorage: vi.fn(),
+        galleryStorage: vi.fn(),
+      },
       [
         { ...base, reportCount: 2, hiddenAt: "2026-09-24T00:00:00.000Z" },
       ] as never,
       null,
-      vi.fn(),
-      vi.fn(),
     );
     expect(view).not.toHaveProperty("reportCount");
     expect(view).toHaveProperty("hiddenAt", "2026-09-24T00:00:00.000Z");
@@ -79,12 +83,14 @@ describe("decorateFeedPosts video view", () => {
       throw new Error("S3 is not configured for video storage");
     });
     const views = await decorateFeedPosts(
-      {} as never,
-      {} as never,
+      {
+        database: {} as never,
+        payload: {} as never,
+        videoStorage: storage,
+        galleryStorage: vi.fn(),
+      },
       [base, { ...base, id: 2 }] as never,
       null,
-      storage,
-      vi.fn(),
     );
     expect(storage).not.toHaveBeenCalled();
     expect(views.map((view) => view.video)).toEqual([null, null]);

@@ -132,12 +132,14 @@ export async function listReels(
   const hasMore = candidates.length > input.limit;
   const page = candidates.slice(0, input.limit);
   const items = await decorateFeedPosts(
-    deps.database,
-    deps.payload,
+    {
+      database: deps.database,
+      payload: deps.payload,
+      videoStorage: deps.storage,
+      galleryStorage: deps.galleryStorage,
+    },
     page,
     input.viewer.userId,
-    deps.storage,
-    deps.galleryStorage,
   );
   const last = page.at(-1);
   return {

@@ -258,7 +258,8 @@ describe.skipIf(!RUN_DB)("gallery feed post views [DB integration]", () => {
       visibility: "community",
       hiddenAt: new Date().toISOString(),
     });
-    await readyItem(batch, {
+    // Hidden, but the uploader's own: they still see it.
+    const ownHiddenPublic = await readyItem(batch, {
       visibility: "public",
       hiddenAt: new Date().toISOString(),
     });
@@ -286,11 +287,12 @@ describe.skipIf(!RUN_DB)("gallery feed post views [DB integration]", () => {
 
     const forUploader = await view(fx.uploaderId);
     expect(forUploader!.items.map((i) => i.id)).toEqual([
+      ownHiddenPublic,
       hidden,
       open,
-      members,
     ]);
     expect(forUploader!.total).toBe(4);
+    expect(forUploader!.items[0]!.isOwn).toBe(true);
 
     const all = await m.feedView.galleryViewsForPosts(deps, posts, fx.memberId);
     expect(all.get(2)).toBeNull();

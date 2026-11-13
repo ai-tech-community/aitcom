@@ -290,12 +290,14 @@ export const feedRouter = createTRPCRouter({
       const hasMore = docs.length > input.limit;
       const page = hasMore ? docs.slice(0, input.limit) : docs;
       const posts = await decorateFeedPosts(
-        ctx.db,
-        payload,
+        {
+          database: ctx.db,
+          payload,
+          videoStorage: getVideoStorage,
+          galleryStorage: getObjectStorage,
+        },
         page,
         ctx.session.user.id,
-        getVideoStorage,
-        getObjectStorage,
       );
       const last = page.at(-1);
       const nextCursor =
