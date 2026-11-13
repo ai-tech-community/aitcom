@@ -1,11 +1,15 @@
+import type { Where } from "payload";
+
 import { UPLOAD_GRANT_SECONDS } from "@/lib/video-rules";
 import type { getPayloadClient } from "@/server/payload";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
 /**
- * A community's hosted-media limits (spec 2026-09-27 §7). Slice 2 has stored
- * files only; slice 3 adds stored video and monthly viewing.
+ * A community's hosted-media limits (spec 2026-09-27 §7), shared by classroom
+ * files and the community gallery (spec 2026-11-13): both draw from the same
+ * stored-bytes allowance. Stored files only today; stored video and monthly
+ * viewing come later.
  */
 export type MediaAllowance = { fileBytesStored: number };
 export type MediaUsage = { fileBytesStored: number };
@@ -48,10 +52,15 @@ export async function allowanceFor(
   return DEFAULT_MEDIA_ALLOWANCE;
 }
 
+/** Collections whose records hold files that count against the allowance. */
+const COUNTED_COLLECTIONS = ["hosted-materials", "gallery-items"] as const;
+
 /**
- * Current usage, summed from the records (no calls to S3): uploading and
- * ready files, plus failed ones whose upload grant may still be live — the
- * grant could still store a full-size object at their key.
+ * Current usage, summed from the records (no calls to S3) of classroom hosted
+ * materials and gallery items: uploading and ready files, plus failed ones
+ * whose upload grant may still be live — the grant could still store a
+ * full-size object at their key. A gallery item's `bytes` already holds its
+ * file plus its thumbnail.
  */
 export async function usageFor(
   payload: Payload,
@@ -61,29 +70,31 @@ export async function usageFor(
   const grantLiveSince = new Date(
     now.getTime() - UPLOAD_GRANT_LIVE_SECONDS * 1000,
   ).toISOString();
-  const { docs } = await payload.find({
-    collection: "hosted-materials",
-    where: {
-      and: [
-        { communityId: { equals: communityId } },
-        {
-          or: [
-            { status: { in: [...STORAGE_COUNTED_STATUSES] } },
-            {
-              and: [
-                { status: { equals: "failed" } },
-                { createdAt: { greater_than: grantLiveSince } },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-    pagination: false,
-    depth: 0,
-  });
+  const where: Where = {
+    and: [
+      { communityId: { equals: communityId } },
+      {
+        or: [
+          { status: { in: [...STORAGE_COUNTED_STATUSES] } },
+          {
+            and: [
+              { status: { equals: "failed" } },
+              { createdAt: { greater_than: grantLiveSince } },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const results = await Promise.all(
+    COUNTED_COLLECTIONS.map((collection) =>
+      payload.find({ collection, where, pagination: false, depth: 0 }),
+    ),
+  );
   return {
-    fileBytesStored: docs.reduce((sum, doc) => sum + doc.bytes, 0),
+    fileBytesStored: results
+      .flatMap(({ docs }) => docs)
+      .reduce((sum, doc) => sum + doc.bytes, 0),
   };
 }
 

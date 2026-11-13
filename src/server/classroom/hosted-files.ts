@@ -33,7 +33,7 @@ import {
   exceedsAllowance,
   mayUploadGrantBeLive,
   usageFor,
-} from "@/server/classroom/media-allowance";
+} from "@/server/media/media-allowance";
 import type { db } from "@/server/db";
 import { communities, communityMemberships } from "@/server/db/schema";
 import type {

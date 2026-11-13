@@ -19,7 +19,8 @@ const CLEANUP_PAGE_SIZE = 200;
  *   sweep never act on the same upload at once.
  * - `failed`, whatever the reason (cancelled, deleted, a stored file that did
  *   not match): kept as records so a live grant keeps counting against the
- *   allowance (media-allowance.ts); by now every grant has long expired.
+ *   allowance (src/server/media/media-allowance.ts); by now every grant has
+ *   long expired.
  *
  * For each, the object at its key is removed first, then the record. The
  * object may exist even for a failed record: the browser can finish storing

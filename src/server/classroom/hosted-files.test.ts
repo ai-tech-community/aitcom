@@ -75,7 +75,10 @@ type Over = {
   policy?: "all_members" | "admins_only";
   role?: string | null;
   recent?: number;
+  /** hosted-materials rows returned by find. */
   docs?: unknown[];
+  /** gallery-items rows returned by find (they share the media allowance). */
+  galleryDocs?: unknown[];
   stored?: unknown;
   removeFails?: boolean;
   /** A concurrent request changed the record first: the conditional write
@@ -97,7 +100,14 @@ function fakes(over: Over = {}) {
       return Promise.resolve(found[collection] ?? null);
     }),
     count: vi.fn().mockResolvedValue({ totalDocs: over.recent ?? 0 }),
-    find: vi.fn().mockResolvedValue({ docs: over.docs ?? [] }),
+    find: vi.fn(({ collection }: { collection: string }) =>
+      Promise.resolve({
+        docs:
+          collection === "gallery-items"
+            ? (over.galleryDocs ?? [])
+            : (over.docs ?? []),
+      }),
+    ),
     create: vi.fn(({ data }: { data: Record<string, unknown> }) =>
       Promise.resolve({
         id: 7,
@@ -345,6 +355,13 @@ describe("startFileUpload", () => {
     [
       "an upload past the allowance",
       { docs: [{ bytes: GB5 - 2047 }] },
+      {},
+      "FORBIDDEN",
+      "STORAGE_FULL",
+    ],
+    [
+      "an upload past the allowance the gallery shares",
+      { docs: [{ bytes: GB5 - 4096 }], galleryDocs: [{ bytes: 2049 }] },
       {},
       "FORBIDDEN",
       "STORAGE_FULL",
