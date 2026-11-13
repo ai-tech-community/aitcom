@@ -22,7 +22,7 @@ import {
   updateMaterial,
   type HostedFileDeps,
 } from "@/server/classroom/hosted-files";
-import { allowanceFor, usageFor } from "@/server/classroom/media-allowance";
+import { allowanceFor, usageFor } from "@/server/media/media-allowance";
 import type { db } from "@/server/db";
 import { getObjectStorage } from "@/server/media/object-storage";
 import { getPayloadClient } from "@/server/payload";

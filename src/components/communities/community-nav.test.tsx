@@ -181,6 +181,31 @@ describe("CommunityNav", () => {
     ).toBeInTheDocument();
   });
 
+  it("leaves the gated Gallery tab out of the fallback list", () => {
+    renderNav();
+    expect(screen.getByRole("link", { name: "Events" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Gallery" })).toBeNull();
+  });
+
+  it("shows the Gallery tab when the spaces list returns it", () => {
+    m.spacesError = false;
+    m.spaces = [
+      {
+        id: "g",
+        kind: "builtin",
+        builtinSurface: "gallery",
+        name: null,
+        slug: "gallery",
+      },
+    ];
+    m.rooms = [];
+    renderNav();
+    expect(screen.getByRole("link", { name: "Gallery" })).toHaveAttribute(
+      "href",
+      "/communities/mlops/gallery",
+    );
+  });
+
   it("shows Settings to an owner only", () => {
     const { unmount } = renderNav("member");
     expect(

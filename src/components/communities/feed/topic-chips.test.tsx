@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -25,19 +25,30 @@ const topics = [
 ];
 
 describe("TopicChipsView", () => {
-  it("renders an All chip plus one chip per topic", () => {
+  it("renders an All chip plus one chip per topic, as one choice", () => {
     render(<TopicChipsView topics={topics} active="all" onSelect={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /all/i })).toBeInTheDocument();
+    const group = screen.getByRole("radiogroup", { name: "selectTopic" });
     expect(
-      screen.getByRole("button", { name: /general/i }),
+      within(group).getByRole("radio", { name: "allTopics" }),
+    ).toBeChecked();
+    expect(
+      within(group).getByRole("radio", { name: "General" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /wins/i })).toBeInTheDocument();
+    expect(
+      within(group).getByRole("radio", { name: "⭐ Wins" }),
+    ).toBeInTheDocument();
   });
 
-  it("calls onSelect with the slug when a chip is clicked", () => {
+  it("marks the active topic", () => {
+    render(<TopicChipsView topics={topics} active="wins" onSelect={vi.fn()} />);
+    expect(screen.getByRole("radio", { name: "⭐ Wins" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "allTopics" })).not.toBeChecked();
+  });
+
+  it("calls onSelect with the slug when a chip is chosen", () => {
     const onSelect = vi.fn();
     render(<TopicChipsView topics={topics} active="all" onSelect={onSelect} />);
-    fireEvent.click(screen.getByRole("button", { name: /wins/i }));
+    fireEvent.click(screen.getByRole("radio", { name: "⭐ Wins" }));
     expect(onSelect).toHaveBeenCalledWith("wins");
   });
 });

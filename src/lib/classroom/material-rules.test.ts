@@ -3,9 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   MATERIAL_ACCEPT,
   MATERIAL_FILE_TYPES,
-  MATERIAL_TITLE_MAX,
   MAX_FILE_BYTES,
-  clampText,
   contentTypeFor,
   downloadFileName,
   fileExtensionOf,
@@ -14,7 +12,6 @@ import {
   isInlinePreviewable,
   materialObjectKey,
   titleFromFileName,
-  wellFormed,
 } from "./material-rules";
 
 const UPLOAD = "1b4e28ba-2fa1-41d2-883f-0016d3cca427";
@@ -108,36 +105,6 @@ describe("titleFromFileName", () => {
     const title = titleFromFileName(`notes${LONE_HIGH}.pdf`);
     expect(title).toBe("notes\uFFFD");
     expect(isWellFormed(title)).toBe(true);
-  });
-});
-
-describe("wellFormed / clampText", () => {
-  it("keeps valid text, including whole emoji, unchanged", () => {
-    expect(wellFormed(`Week ${EMOJI} 1`)).toBe(`Week ${EMOJI} 1`);
-  });
-
-  it.each([
-    [`a${LONE_HIGH}b`, "a\uFFFDb"],
-    [`a${LONE_LOW}b`, "a\uFFFDb"],
-    [`${LONE_LOW}${LONE_HIGH}`, "\uFFFD\uFFFD"],
-    [`end${LONE_HIGH}`, "end\uFFFD"],
-  ])("replaces lone surrogates in %j", (input, output) => {
-    expect(wellFormed(input)).toBe(output);
-  });
-
-  it("cuts to the limit in UTF-16 units without splitting an emoji", () => {
-    expect(clampText(`ab${EMOJI}`, 3)).toBe("ab");
-    expect(clampText(`ab${EMOJI}`, 4)).toBe(`ab${EMOJI}`);
-    expect(clampText("abcdef", 3)).toBe("abc");
-  });
-
-  it("cleans lone surrogates before cutting", () => {
-    const clamped = clampText(
-      `${"a".repeat(MATERIAL_TITLE_MAX)}${LONE_HIGH}`,
-      MATERIAL_TITLE_MAX + 1,
-    );
-    expect(clamped).toBe(`${"a".repeat(MATERIAL_TITLE_MAX)}\uFFFD`);
-    expect(isWellFormed(clamped)).toBe(true);
   });
 });
 

@@ -6,7 +6,10 @@ const m = vi.hoisted(() => ({
   materials: vi.fn(),
   unused: vi.fn(),
   images: vi.fn(),
+  gallery: vi.fn(),
+  unusedGallery: vi.fn(),
   ownsStorage: vi.fn(),
+  galleryEnabled: vi.fn(),
   getVideoStorage: vi.fn(),
   getObjectStorage: vi.fn(),
   payload: { name: "payload" },
@@ -26,6 +29,15 @@ vi.mock("@/server/communities/unused-video-files-sweep", () => ({
 }));
 vi.mock("@/server/classroom/material-uploads-cleanup", () => ({
   cleanupAbandonedMaterialUploads: m.materials,
+}));
+vi.mock("@/server/gallery/flag", () => ({
+  galleryEnabled: m.galleryEnabled,
+}));
+vi.mock("@/server/gallery/cleanup", () => ({
+  cleanupAbandonedGalleryUploads: m.gallery,
+}));
+vi.mock("@/server/gallery/unused-files-sweep", () => ({
+  sweepUnusedGalleryFiles: m.unusedGallery,
 }));
 vi.mock("@/server/media/video-storage", () => ({
   getVideoStorage: m.getVideoStorage,
@@ -50,7 +62,15 @@ beforeEach(() => {
   m.materials.mockResolvedValue({ removed: 2, failed: 1 });
   m.unused.mockResolvedValue({ scanned: 9, removed: 3, failed: 0 });
   m.images.mockResolvedValue({ removed: 4, failed: 0 });
+  m.gallery.mockResolvedValue({
+    removed: 5,
+    failed: 0,
+    batchesClosed: 2,
+    batchesDeleted: 1,
+  });
+  m.unusedGallery.mockResolvedValue({ scanned: 7, removed: 1, failed: 0 });
   m.ownsStorage.mockReturnValue(true);
+  m.galleryEnabled.mockReturnValue(true);
 });
 
 describe("video-uploads-cleanup cron", () => {
@@ -96,6 +116,69 @@ describe("video-uploads-cleanup cron", () => {
     });
     expect(m.getObjectStorage).not.toHaveBeenCalled();
     expect(m.getVideoStorage).not.toHaveBeenCalled();
+  });
+
+  it("cleans up abandoned gallery uploads and sweeps unused gallery files", async () => {
+    const res = await GET(authorized());
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      success: true,
+      gallery: { removed: 5, failed: 0, batchesClosed: 2, batchesDeleted: 1 },
+      unusedGalleryFiles: { scanned: 7, removed: 1, failed: 0 },
+    });
+    expect(m.gallery).toHaveBeenCalledWith({
+      payload: m.payload,
+      storage: m.getObjectStorage,
+    });
+    expect(m.unusedGallery).toHaveBeenCalledWith({
+      payload: m.payload,
+      storage: m.getObjectStorage,
+    });
+    // The sweep runs after the abandoned uploads are gone.
+    expect(m.unusedGallery.mock.invocationCallOrder[0]).toBeGreaterThan(
+      m.gallery.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("reports a failed gallery cleanup without losing the other results", async () => {
+    m.gallery.mockRejectedValue(new Error("db down"));
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const res = await GET(authorized());
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toMatchObject({
+      success: false,
+      removed: 1,
+      materials: { removed: 2, failed: 1 },
+      gallery: null,
+      unusedGalleryFiles: { scanned: 7, removed: 1, failed: 0 },
+    });
+    expect(error).toHaveBeenCalledWith(
+      "[video-uploads-cleanup] gallery sweep failed",
+      expect.any(Error),
+    );
+    error.mockRestore();
+  });
+
+  it("reports a failed unused gallery files sweep without losing the other results", async () => {
+    m.unusedGallery.mockRejectedValue(new Error("s3 down"));
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const res = await GET(authorized());
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toMatchObject({
+      success: false,
+      gallery: { removed: 5, failed: 0, batchesClosed: 2, batchesDeleted: 1 },
+      unusedGalleryFiles: null,
+      unusedVideoFiles: { scanned: 9, removed: 3, failed: 0 },
+    });
+    expect(error).toHaveBeenCalledWith(
+      "[video-uploads-cleanup] unused gallery files sweep failed",
+      expect.any(Error),
+    );
+    error.mockRestore();
   });
 
   it("still sweeps classroom files when the video sweep throws, and reports the failure", async () => {
@@ -168,10 +251,14 @@ describe("video-uploads-cleanup cron", () => {
       success: true,
       unusedVideoFiles: { skipped: "not production" },
       unusedFeedImages: { skipped: "not production" },
+      unusedGalleryFiles: { skipped: "not production" },
+      gallery: { removed: 5, failed: 0, batchesClosed: 2, batchesDeleted: 1 },
     });
     expect(m.unused).not.toHaveBeenCalled();
     expect(m.images).not.toHaveBeenCalled();
+    expect(m.unusedGallery).not.toHaveBeenCalled();
     expect(m.videos).toHaveBeenCalledTimes(1);
+    expect(m.gallery).toHaveBeenCalledTimes(1);
   });
 
   it("reports a failed feed image sweep without losing the other results", async () => {
@@ -191,5 +278,37 @@ describe("video-uploads-cleanup cron", () => {
       expect.any(Error),
     );
     error.mockRestore();
+  });
+
+  it("skips both gallery sweeps while the gallery is switched off", async () => {
+    // Its S3 permissions arrive with the flag: listing the gallery folders
+    // before then is refused and would fail the whole run.
+    m.galleryEnabled.mockReturnValue(false);
+    const res = await GET(authorized());
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      success: true,
+      gallery: { skipped: "gallery disabled" },
+      unusedGalleryFiles: { skipped: "gallery disabled" },
+      unusedVideoFiles: { scanned: 9, removed: 3, failed: 0 },
+      unusedFeedImages: { removed: 4, failed: 0 },
+    });
+    expect(m.gallery).not.toHaveBeenCalled();
+    expect(m.unusedGallery).not.toHaveBeenCalled();
+    expect(m.videos).toHaveBeenCalledTimes(1);
+    expect(m.unused).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports the gallery off rather than not production when both apply", async () => {
+    m.galleryEnabled.mockReturnValue(false);
+    m.ownsStorage.mockReturnValue(false);
+    const res = await GET(authorized());
+    await expect(res.json()).resolves.toMatchObject({
+      success: true,
+      gallery: { skipped: "gallery disabled" },
+      unusedGalleryFiles: { skipped: "gallery disabled" },
+      unusedVideoFiles: { skipped: "not production" },
+    });
+    expect(m.unusedGallery).not.toHaveBeenCalled();
   });
 });

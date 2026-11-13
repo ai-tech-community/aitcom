@@ -7,7 +7,11 @@ const { createPresignedPost, getSignedUrl } = vi.hoisted(() => ({
 vi.mock("@aws-sdk/s3-presigned-post", () => ({ createPresignedPost }));
 vi.mock("@aws-sdk/s3-request-presigner", () => ({ getSignedUrl }));
 
-import { contentDisposition, createObjectStorage } from "./object-storage";
+import {
+  contentDisposition,
+  createObjectStorage,
+  objectUrl,
+} from "./object-storage";
 
 const KEY = "private/classroom/c1/12/1b4e28ba-2fa1-41d2-883f-0016d3cca427.pdf";
 
@@ -151,6 +155,28 @@ describe("object storage", () => {
     const { storage, send } = setup();
     send.mockResolvedValue({ Errors: [{ Key: "a", Code: "AccessDenied" }] });
     await expect(storage.remove(["a", "b"])).rejects.toThrow(/a.*AccessDenied/);
+  });
+});
+
+describe("objectUrl", () => {
+  it("links to a public object directly, without signing", async () => {
+    const { storage } = setup();
+    await expect(
+      objectUrl(storage, "media/gallery/public/c1/u.jpg", "public"),
+    ).resolves.toBe(
+      "https://ait-media.s3.eu-central-1.amazonaws.com/media/gallery/public/c1/u.jpg",
+    );
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it("signs a link to a private object", async () => {
+    const { storage } = setup();
+    await expect(
+      objectUrl(storage, "private/gallery/c1/u.jpg", "private"),
+    ).resolves.toBe("https://signed");
+    expect(lastSignedInput()).toMatchObject({
+      Key: "private/gallery/c1/u.jpg",
+    });
   });
 });
 

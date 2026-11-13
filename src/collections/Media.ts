@@ -3,8 +3,7 @@ import type { CollectionConfig } from "payload";
 import { MEDIA_PURPOSES } from "@/lib/image-uploads";
 import { unlinkFeedPostsBeforeMediaDelete } from "@/server/communities/feed-post-image-url-hook";
 
-/** Who uploaded what is for Payload admins, not the public media API. */
-const adminsOnly = ({ req }: { req: { user?: unknown } }) => Boolean(req.user);
+import { adminsOnly } from "./shared/admins-only";
 
 export const Media: CollectionConfig = {
   slug: "media",
@@ -34,6 +33,7 @@ export const Media: CollectionConfig = {
         (typeof value === "string" && value.trim().length > 0) ||
         "Describe the image.",
     },
+    // Who uploaded what is for Payload admins, not the public media API.
     {
       name: "uploadedBy",
       type: "text",

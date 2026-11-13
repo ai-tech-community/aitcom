@@ -4,10 +4,8 @@ import {
   VIDEO_KEY_PREFIXES,
   videoObjectKeys,
 } from "@/lib/video-rules";
-import {
-  RemoveObjectsError,
-  type ObjectStorage,
-} from "@/server/media/object-storage";
+import { chunkedRemoval } from "@/server/media/chunked-removal";
+import type { ObjectStorage } from "@/server/media/object-storage";
 import type { getPayloadClient } from "@/server/payload";
 
 import { videoKeysOf } from "./post-video-files";
@@ -27,9 +25,6 @@ if (
 ) {
   throw new Error("UNUSED_VIDEO_MIN_AGE_HOURS must outlast every upload");
 }
-
-/** S3 deletes at most 1,000 keys per request. */
-const REMOVE_BATCH = 1000;
 
 /**
  * Garbage collection by reachability for Reels video files. Removing a
@@ -54,41 +49,22 @@ export async function sweepUnusedVideoFiles(deps: {
   const inUse = await keysInUse(deps.payload);
 
   const storage = deps.storage();
+  const removal = chunkedRemoval(storage, (keys, error) =>
+    (deps.log ?? console.error)("[unused-video-files] removal failed", {
+      keys,
+      error,
+    }),
+  );
   let scanned = 0;
-  let removed = 0;
-  let failed = 0;
-  let batch: string[] = [];
-  const flush = async () => {
-    if (batch.length === 0) return;
-    const keys = batch;
-    batch = [];
-    try {
-      await storage.remove(keys);
-      removed += keys.length;
-    } catch (error) {
-      // S3 deletes what it can; only the keys it refused are left.
-      const left =
-        error instanceof RemoveObjectsError ? error.failedKeys : keys;
-      removed += keys.length - left.length;
-      failed += left.length;
-      (deps.log ?? console.error)("[unused-video-files] removal failed", {
-        keys: left,
-        error,
-      });
-    }
-  };
-
   for (const prefix of Object.values(VIDEO_KEY_PREFIXES)) {
     for await (const object of storage.list(prefix)) {
       scanned++;
       if (object.lastModified.getTime() >= cutoff) continue;
       if (inUse.has(object.key)) continue;
-      batch.push(object.key);
-      if (batch.length >= REMOVE_BATCH) await flush();
+      await removal.add(object.key);
     }
   }
-  await flush();
-  return { scanned, removed, failed };
+  return { scanned, ...(await removal.finish()) };
 }
 
 /** Every key a live post or an open upload grant points at. */

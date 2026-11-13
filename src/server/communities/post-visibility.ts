@@ -1,5 +1,7 @@
 import type { Where } from "payload";
 
+import { isModeratorRole } from "@/lib/communities/moderator-roles";
+
 /** Who is looking at a community's posts. */
 export type FeedViewer = {
   userId: string | null;
@@ -16,10 +18,6 @@ export const OUTSIDE_VIEWER: FeedViewer = {
   isMember: false,
   isModerator: false,
 };
-
-export function isModeratorRole(role: string | null | undefined): boolean {
-  return role === "owner" || role === "admin" || role === "moderator";
-}
 
 /**
  * The viewer behind a user and their active membership in the post's

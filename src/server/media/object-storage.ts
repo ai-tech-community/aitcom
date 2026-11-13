@@ -14,6 +14,7 @@ import {
   PLAYBACK_LINK_SECONDS,
   PLAYBACK_LINK_WINDOW_SECONDS,
   UPLOAD_GRANT_SECONDS,
+  type VideoStorageClass,
 } from "@/lib/video-rules";
 
 export type PresignedUpload = { url: string; fields: Record<string, string> };
@@ -71,6 +72,22 @@ export type ObjectStorage = {
  * the requests that actually need it.
  */
 export type ObjectStorageSource = () => ObjectStorage;
+
+/**
+ * The link a reader gets to a stored object, by its storage class: public
+ * objects are read by direct URL; private ones only through a signed link.
+ * Call it only after the reader's access was checked — a signed link is the
+ * access.
+ */
+export function objectUrl(
+  storage: ObjectStorage,
+  key: string,
+  storageClass: VideoStorageClass,
+): Promise<string> {
+  return storageClass === "public"
+    ? Promise.resolve(storage.publicUrl(key))
+    : storage.signedGetUrl(key);
+}
 
 /**
  * A Content-Disposition header value: an ASCII fallback `filename` for old

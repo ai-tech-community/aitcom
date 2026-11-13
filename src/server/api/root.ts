@@ -51,6 +51,7 @@ import { magazineStatsRouter } from "@/server/api/routers/magazine-stats";
 import { magazineSubscriptionsRouter } from "@/server/api/routers/magazine-subscriptions";
 import { classroomsRouter } from "@/server/api/routers/classrooms";
 import { classroomMaterialsRouter } from "@/server/api/routers/classroom-materials";
+import { galleryRouter } from "@/server/api/routers/gallery";
 import { spacesRouter } from "@/server/api/routers/spaces";
 import { awesomeAiOssRouter } from "@/server/api/routers/awesome-ai-oss";
 import { startupsRouter } from "@/server/api/routers/startups";
@@ -120,6 +121,7 @@ export const appRouter = createTRPCRouter({
   links: linksRouter,
   classrooms: classroomsRouter,
   classroomMaterials: classroomMaterialsRouter,
+  gallery: galleryRouter,
   spaces: spacesRouter,
   awesomeAiOss: awesomeAiOssRouter,
   startups: startupsRouter,

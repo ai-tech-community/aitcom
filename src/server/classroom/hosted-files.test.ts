@@ -23,6 +23,10 @@ const testEnv = vi.hoisted(() => ({
   CLASSROOM_FILE_UPLOADS: "on" as "on" | "off" | undefined,
 }));
 vi.mock("@/env", () => ({ env: testEnv }));
+const transition = vi.hoisted(() => vi.fn());
+vi.mock("@/server/payload-status-transition", () => ({
+  transitionStatus: transition,
+}));
 afterEach(() => {
   testEnv.CLASSROOM_FILE_UPLOADS = "on";
 });
@@ -33,10 +37,16 @@ const KEY = `private/classroom/c1/12/${UPLOAD}.pdf`;
 const GB5 = 5 * 1024 ** 3;
 const ago = (seconds: number) =>
   new Date(NOW.getTime() - seconds * 1000).toISOString();
-/** The conditional write finish and discard use: only while still uploading. */
-const WHILE_UPLOADING = {
-  and: [{ id: { equals: 7 } }, { status: { equals: "uploading" } }],
-};
+/** The compare-and-set finish and discard use: only while still uploading. */
+function whileUploading(to: "ready" | "failed", failureReason?: string) {
+  return {
+    collection: "hosted-materials",
+    id: 7,
+    from: "uploading",
+    to,
+    ...(failureReason && { set: { failureReason } }),
+  };
+}
 const COURSE = {
   id: 12,
   authorId: "u1",
@@ -75,7 +85,10 @@ type Over = {
   policy?: "all_members" | "admins_only";
   role?: string | null;
   recent?: number;
+  /** hosted-materials rows: returned by find, and their bytes summed as usage. */
   docs?: unknown[];
+  /** gallery-items rows whose bytes count too (they share the allowance). */
+  galleryDocs?: unknown[];
   stored?: unknown;
   removeFails?: boolean;
   /** A concurrent request changed the record first: the conditional write
@@ -89,6 +102,24 @@ function fakes(over: Over = {}) {
     "hosted-materials": "material" in over ? over.material : material(),
   };
   let materialReads = 0;
+  // The compare-and-set: it wins and moves the record, unless a concurrent
+  // request is set up to have changed the record first.
+  transition
+    .mockReset()
+    .mockImplementation(
+      (
+        _payload: unknown,
+        t: { to: string; set?: { failureReason?: string } },
+      ) => {
+        if ("lostRace" in over) return Promise.resolve(false);
+        found["hosted-materials"] = {
+          ...(found["hosted-materials"] as object),
+          status: t.to,
+          ...t.set,
+        };
+        return Promise.resolve(true);
+      },
+    );
   const payload = {
     findByID: vi.fn(({ collection }: { collection: string }) => {
       if (collection === "hosted-materials" && materialReads++ > 0) {
@@ -97,7 +128,14 @@ function fakes(over: Over = {}) {
       return Promise.resolve(found[collection] ?? null);
     }),
     count: vi.fn().mockResolvedValue({ totalDocs: over.recent ?? 0 }),
-    find: vi.fn().mockResolvedValue({ docs: over.docs ?? [] }),
+    find: vi.fn(({ collection }: { collection: string }) =>
+      Promise.resolve({
+        docs:
+          collection === "gallery-items"
+            ? (over.galleryDocs ?? [])
+            : (over.docs ?? []),
+      }),
+    ),
     create: vi.fn(({ data }: { data: Record<string, unknown> }) =>
       Promise.resolve({
         id: 7,
@@ -130,6 +168,24 @@ function fakes(over: Over = {}) {
       },
     ),
     delete: vi.fn().mockResolvedValue({}),
+    // The allowance's usage query: the database sums both tables' bytes.
+    db: {
+      drizzle: {
+        execute: vi.fn(async () => ({
+          rows: [
+            {
+              bytes: String(
+                [...(over.docs ?? []), ...(over.galleryDocs ?? [])].reduce(
+                  (sum: number, doc) =>
+                    sum + ((doc as { bytes?: number }).bytes ?? 0),
+                  0,
+                ),
+              ),
+            },
+          ],
+        })),
+      },
+    },
   };
   const db = {
     query: {
@@ -349,6 +405,13 @@ describe("startFileUpload", () => {
       "FORBIDDEN",
       "STORAGE_FULL",
     ],
+    [
+      "an upload past the allowance the gallery shares",
+      { docs: [{ bytes: GB5 - 4096 }], galleryDocs: [{ bytes: 2049 }] },
+      {},
+      "FORBIDDEN",
+      "STORAGE_FULL",
+    ],
   ];
 
   it.each([
@@ -396,11 +459,7 @@ describe("finishFileUpload", () => {
     });
     const done = await finishFileUpload(deps, { userId: "u1", materialId: 7 });
     expect(storage.inspect).toHaveBeenCalledWith(KEY);
-    expect(payload.update).toHaveBeenCalledWith({
-      collection: "hosted-materials",
-      where: WHILE_UPLOADING,
-      data: { status: "ready" },
-    });
+    expect(transition).toHaveBeenCalledWith(payload, whileUploading("ready"));
     expect(done).toEqual({
       id: 7,
       title: "Week 1 slides",
@@ -429,13 +488,12 @@ describe("finishFileUpload", () => {
         code: "BAD_REQUEST",
         message: "UPLOAD_FAILED",
       });
-      expect(payload.update).toHaveBeenCalledWith({
-        collection: "hosted-materials",
-        where: WHILE_UPLOADING,
-        data: { status: "failed", failureReason: "UPLOAD_MISMATCH" },
-      });
+      expect(transition).toHaveBeenCalledWith(
+        payload,
+        whileUploading("failed", "UPLOAD_MISMATCH"),
+      );
       expect(storage.remove).toHaveBeenCalledWith([KEY]);
-      expect(payload.update.mock.invocationCallOrder[0]!).toBeLessThan(
+      expect(transition.mock.invocationCallOrder[0]!).toBeLessThan(
         storage.remove.mock.invocationCallOrder[0]!,
       );
     },
@@ -491,22 +549,21 @@ describe("finishFileUpload", () => {
       "[classroomMaterials.finishFileUpload] removing a bad upload failed",
       expect.objectContaining({ materialId: 7, key: KEY }),
     );
-    expect(payload.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { status: "failed", failureReason: "UPLOAD_MISMATCH" },
-      }),
+    expect(transition).toHaveBeenCalledWith(
+      payload,
+      whileUploading("failed", "UPLOAD_MISMATCH"),
     );
   });
 
   it("returns a ready file unchanged on a second finish", async () => {
-    const { deps, payload, storage } = fakes({
+    const { deps, storage } = fakes({
       material: material({ status: "ready", bytes: 2000 }),
     });
     await expect(
       finishFileUpload(deps, { userId: "u1", materialId: 7 }),
     ).resolves.toMatchObject({ id: 7, status: "ready", bytes: 2000 });
     expect(storage.inspect).not.toHaveBeenCalled();
-    expect(payload.update).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
   });
 
   it("keeps a failed upload failed", async () => {
@@ -531,12 +588,12 @@ describe("finishFileUpload", () => {
       }),
     ],
   ])("answers UPLOAD_EXPIRED for %s and touches nothing", async (_l, m) => {
-    const { deps, payload, getStorage } = fakes({ material: m });
+    const { deps, getStorage } = fakes({ material: m });
     await expect(
       finishFileUpload(deps, { userId: "u1", materialId: 7 }),
     ).rejects.toMatchObject({ code: "NOT_FOUND", message: "UPLOAD_EXPIRED" });
     expect(getStorage).not.toHaveBeenCalled();
-    expect(payload.update).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
   });
 });
 
@@ -550,24 +607,23 @@ describe("discardUpload", () => {
       status: "failed",
       failureReason: "cancelled",
     });
-    expect(payload.update).toHaveBeenCalledWith({
-      collection: "hosted-materials",
-      where: WHILE_UPLOADING,
-      data: { status: "failed", failureReason: "cancelled" },
-    });
+    expect(transition).toHaveBeenCalledWith(
+      payload,
+      whileUploading("failed", "cancelled"),
+    );
     expect(storage.remove).toHaveBeenCalledWith([KEY]);
     expect(payload.delete).not.toHaveBeenCalled();
-    expect(payload.update.mock.invocationCallOrder[0]!).toBeLessThan(
+    expect(transition.mock.invocationCallOrder[0]!).toBeLessThan(
       storage.remove.mock.invocationCallOrder[0]!,
     );
   });
 
   it("keeps the record failed when removing the stored part fails, and logs that", async () => {
-    const { deps, payload, log } = fakes({ removeFails: true });
+    const { deps, log } = fakes({ removeFails: true });
     await expect(
       discardUpload(deps, { userId: "u1", materialId: 7 }),
     ).resolves.toMatchObject({ status: "failed" });
-    expect(payload.update).toHaveBeenCalled();
+    expect(transition).toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith(
       "[classroomMaterials.discardUpload] removing a discarded upload failed",
       expect.objectContaining({ materialId: 7, key: KEY }),
@@ -581,11 +637,11 @@ describe("discardUpload", () => {
       material({ status: "failed", failureReason: "UPLOAD_MISMATCH" }),
     ],
   ])("leaves a %s file as it is", async (status, m) => {
-    const { deps, payload, getStorage } = fakes({ material: m });
+    const { deps, getStorage } = fakes({ material: m });
     await expect(
       discardUpload(deps, { userId: "u1", materialId: 7 }),
     ).resolves.toMatchObject({ id: 7, status });
-    expect(payload.update).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
     expect(getStorage).not.toHaveBeenCalled();
   });
 
@@ -601,12 +657,12 @@ describe("discardUpload", () => {
       }),
     ],
   ])("answers UPLOAD_EXPIRED for %s and touches nothing", async (_l, m) => {
-    const { deps, payload, getStorage } = fakes({ material: m });
+    const { deps, getStorage } = fakes({ material: m });
     await expect(
       discardUpload(deps, { userId: "u1", materialId: 7 }),
     ).rejects.toMatchObject({ code: "NOT_FOUND", message: "UPLOAD_EXPIRED" });
     expect(getStorage).not.toHaveBeenCalled();
-    expect(payload.update).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
   });
 });
 

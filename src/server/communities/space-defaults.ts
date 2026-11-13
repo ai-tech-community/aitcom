@@ -7,6 +7,7 @@
 export const BUILTIN_SURFACES = [
   "forum",
   "events",
+  "gallery",
   "classroom",
   "ideas",
   "members",
@@ -14,6 +15,31 @@ export const BUILTIN_SURFACES = [
 
 /** A surface every new community gets. */
 export type DefaultBuiltinSurface = (typeof BUILTIN_SURFACES)[number];
+
+/**
+ * Default surfaces still behind a rollout flag. Their rows are seeded and
+ * backfilled like any default, but every reader that lists tabs hides them
+ * until the flag is on (the flag lookup lives server-side, in
+ * `space-visibility.ts`). Remove an entry when its flag is deleted.
+ */
+export const ROLLOUT_GATED_SURFACES = [
+  "gallery",
+] as const satisfies readonly DefaultBuiltinSurface[];
+
+export type RolloutGatedSurface = (typeof ROLLOUT_GATED_SURFACES)[number];
+
+export function isRolloutGatedSurface(
+  surface: BuiltinSurface,
+): surface is RolloutGatedSurface {
+  return (ROLLOUT_GATED_SURFACES as readonly string[]).includes(surface);
+}
+
+/**
+ * Tabs the nav falls back to when the spaces list cannot load. The client
+ * cannot read rollout flags, so gated surfaces stay out.
+ */
+export const FALLBACK_NAV_SURFACES: readonly DefaultBuiltinSurface[] =
+  BUILTIN_SURFACES.filter((surface) => !isRolloutGatedSurface(surface));
 
 /**
  * Builtin surfaces a community gains by turning a feature on, never by
@@ -37,7 +63,10 @@ export interface DefaultSpaceRow {
   position: number;
 }
 
-/** The five default builtin spaces for a community, in canonical nav order. */
+/**
+ * The default builtin spaces for a community, in canonical nav order. Gated
+ * surfaces are included: the row exists, the flag only hides it.
+ */
 export function buildDefaultSpaceRows(communityId: string): DefaultSpaceRow[] {
   return BUILTIN_SURFACES.map((surface, position) => ({
     communityId,
@@ -65,6 +94,7 @@ export interface LabelableSpace {
 const DEFAULT_BUILTIN_LABELS: Record<BuiltinSurface, readonly string[]> = {
   forum: ["Forum"],
   events: ["Events", "Événements", "Evenementen"],
+  gallery: ["Gallery", "Galerie", "Galerij"],
   classroom: ["Classrooms", "Espaces de formation", "Klaslokalen"],
   ideas: ["Ideas", "Idées", "Ideeën"],
   members: ["Members", "Membres", "Leden"],

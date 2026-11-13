@@ -8,6 +8,7 @@ import {
 import { getPayloadClient } from "@/server/payload";
 import { and, eq, isNull } from "drizzle-orm";
 import { communities, communityMemberships } from "@/server/db/schema";
+import { releaseDeletedTopic } from "@/server/communities/post-topics";
 import { topicSlugify, isAtTopicCap } from "./topic-helpers";
 
 export const topicsRouter = createTRPCRouter({
@@ -205,7 +206,7 @@ export const topicsRouter = createTRPCRouter({
       return updated;
     }),
 
-  /** ADMIN: delete a topic; refuse default, reassign its posts to 'general'. */
+  /** ADMIN: delete a topic; refuse default, release its content first. */
   remove: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -238,17 +239,8 @@ export const topicsRouter = createTRPCRouter({
         });
       }
 
-      // Reassign this topic's feed posts back to the default 'general' topic.
-      await payload.update({
-        collection: "feed-posts",
-        where: {
-          and: [
-            { communityId: { equals: topic.communityId } },
-            { topicSlug: { equals: topic.slug } },
-          ],
-        },
-        data: { topicSlug: "general" },
-      });
+      // Feed posts move to 'general'; gallery items lose their category.
+      await releaseDeletedTopic(payload, topic);
 
       await payload.delete({
         collection: "community-topics",

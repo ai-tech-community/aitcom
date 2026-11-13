@@ -42,6 +42,8 @@ import { Courses } from "./collections/Courses";
 import { Lessons } from "./collections/Lessons";
 import { Modules } from "./collections/Modules";
 import { HostedMaterials } from "./collections/HostedMaterials";
+import { GalleryBatches } from "./collections/GalleryBatches";
+import { GalleryItems } from "./collections/GalleryItems";
 import { Magazines } from "./collections/Magazines";
 import { MagazineIssues } from "./collections/MagazineIssues";
 import { EmailTemplates } from "./collections/EmailTemplates";
@@ -117,6 +119,8 @@ export default buildConfig({
     Lessons,
     Modules,
     HostedMaterials,
+    GalleryBatches,
+    GalleryItems,
     Magazines,
     MagazineIssues,
     EmailTemplates,
