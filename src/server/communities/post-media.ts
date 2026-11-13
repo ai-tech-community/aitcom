@@ -9,6 +9,8 @@ import type { PostMention } from "@/lib/post-mentions";
 import type { PollChoice } from "@/lib/poll-rules";
 import { mayGoWithoutWords, NEEDS_TEXT_MESSAGE } from "@/lib/feed-post-rules";
 
+import { NO_GIF } from "./post-media-fields";
+
 import {
   claimFeedImages,
   cleanUpPostImages,
@@ -44,16 +46,6 @@ export const NO_VIDEO = {
   width: null,
   height: null,
   bytes: null,
-} as const;
-
-/** A post with no GIF: every field of the `gif` group cleared. */
-export const NO_GIF = {
-  giphyId: null,
-  title: null,
-  mp4Url: null,
-  stillUrl: null,
-  width: null,
-  height: null,
 } as const;
 
 /** The `gif` group a post stores for a GIF looked up from GIPHY. */
@@ -124,6 +116,21 @@ export async function loadPostForMediaEdit(
 }
 
 /**
+ * Refuses to change the media of a gallery post: its media is the gallery
+ * batch it announces, fixed for good (its items are managed in the
+ * gallery). Its words, topic and link preview may still change.
+ */
+export function requireChangeableMedia(post: Pick<FeedPost, "galleryBatch">) {
+  if (post.galleryBatch != null) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "A gallery post keeps its photos and videos. You can change its text.",
+    });
+  }
+}
+
+/**
  * Writes new media onto `post` and then removes the video files, the
  * pictures and the poll votes it no longer points at. The post is first claimed in one
  * statement: its `updatedAt` moves on only while it is exactly as it was
@@ -179,7 +186,8 @@ export async function writePostMedia(
 
 /**
  * Refuses a member's post without words unless it may go without them
- * (`mayGoWithoutWords`: a GIF, or pictures that all have a description).
+ * (`mayGoWithoutWords`: a GIF, pictures that all have a description, or a
+ * gallery batch).
  */
 export function requireWordsUnless(
   content: string,
@@ -234,7 +242,9 @@ export type PostMediaChange =
  * GIF or a poll, never two of them, so the others go; and since only video
  * posts may be public, a public post that loses its video becomes
  * community-only. Taking a poll off, or changing its answers, removes the
- * votes for answers it no longer has. Putting a new video on a post is `replacePostVideo`, which needs a
+ * votes for answers it no longer has. A gallery post's media never changes
+ * (`requireChangeableMedia`), and no change here ever sets a gallery batch.
+ * Putting a new video on a post is `replacePostVideo`, which needs a
  * checked upload.
  */
 export async function setPostMedia(
@@ -251,6 +261,7 @@ export async function setPostMedia(
   },
 ): Promise<void> {
   const post = await loadPostForMediaEdit(deps.payload, input);
+  requireChangeableMedia(post);
   const { media } = input;
   requireWordsUnless(input.content, {
     gif: media.kind === "gif",

@@ -90,6 +90,7 @@ const ITEM = galleryItem({
 });
 
 const onOpenChange = vi.fn();
+const onSaved = vi.fn();
 
 function renderDialog(item = ITEM) {
   return render(
@@ -99,6 +100,7 @@ function renderDialog(item = ITEM) {
         item={item}
         open
         onOpenChange={onOpenChange}
+        onSaved={onSaved}
       />
     </NextIntlClientProvider>,
   );
@@ -146,6 +148,7 @@ describe("GalleryEditDialog", () => {
     expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
     expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
     expect(m.toastSuccess).toHaveBeenCalledWith("Saved");
+    expect(onSaved).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -223,5 +226,6 @@ describe("GalleryEditDialog", () => {
       "Photos can't be linked to that event.",
     );
     expect(onOpenChange).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
   });
 });

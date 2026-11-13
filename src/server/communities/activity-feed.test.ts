@@ -35,6 +35,7 @@ async function feedPostQueries(viewer: FeedViewer) {
     viewerId: viewer.userId ?? "",
     viewer,
     storage: () => storage,
+    galleryStorage: vi.fn(),
     cursor: null,
     limit: 15,
   });
@@ -111,6 +112,7 @@ describe("loadActivityStream across communities", () => {
       scopes,
       viewerId: "u1",
       storage: () => storage,
+      galleryStorage: vi.fn(),
       cursor: null,
       limit: 15,
       pinned,

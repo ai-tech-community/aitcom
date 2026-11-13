@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -33,6 +33,8 @@ import { FeedGif, type FeedGifView } from "./feed-gif";
 import { FeedPoll } from "./feed-poll";
 import { FeedImageGallery, type GalleryImage } from "./feed-image-gallery";
 import { PostEditForm } from "./post-edit-form";
+import { GalleryCollage } from "../gallery/gallery-collage";
+import type { FeedGalleryView } from "@/server/gallery/feed-view";
 
 interface FeedPost {
   id: number;
@@ -74,6 +76,10 @@ interface FeedPost {
   poll?: FeedPollView | null;
   /** When the post's "@everyone" went out to the community. */
   announcedAt?: string | null;
+  /** The post announces a gallery batch (its media is fixed). */
+  isGalleryPost?: boolean;
+  /** The batch's items this viewer may see; null when none (text only). */
+  gallery?: FeedGalleryView | null;
 }
 
 /**
@@ -122,6 +128,28 @@ export function FeedPostCard({
   // menu button the menu would otherwise return focus to.
   const openingEditor = useRef(false);
   const [reportOpen, setReportOpen] = useState(false);
+
+  // A delete in the collage can take the last item this viewer may see:
+  // the collage goes, and the focused tile with it. Focus then moves to the
+  // post's menu (or the card), never down to the page body. The flag lasts
+  // only until the collage reloads: once it comes back with items (after an
+  // edit, or a delete that left some), a later empty collage is not this
+  // change's doing.
+  const collageChanged = useRef(false);
+  const gallery = post.gallery ?? null;
+  useLayoutEffect(() => {
+    if (!collageChanged.current) return;
+    collageChanged.current = false;
+    if (gallery) return;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    if (menuButton.current) {
+      menuButton.current.focus();
+    } else if (cardRef.current) {
+      cardRef.current.setAttribute("tabindex", "-1");
+      cardRef.current.focus();
+    }
+  }, [gallery]);
 
   const isAuthor = !!currentUserId && post.authorId === currentUserId;
   const isPrivileged =
@@ -187,7 +215,8 @@ export function FeedPostCard({
   return (
     <div
       ref={cardRef}
-      className="border-border min-w-0 space-y-3 rounded-lg border p-4 [overflow-wrap:anywhere]"
+      // Focusable only as the fallback above; then it shows the ring.
+      className="border-border focus-visible:border-ring focus-visible:ring-ring/50 min-w-0 space-y-3 rounded-lg border p-4 [overflow-wrap:anywhere] outline-none focus-visible:ring-[3px]"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
@@ -202,6 +231,11 @@ export function FeedPostCard({
             <p className="text-sm leading-tight font-medium">
               {post.authorName ?? "Member"}
             </p>
+            {post.gallery ? (
+              <p className="text-muted-foreground text-xs leading-tight">
+                {t("galleryAdded", { count: post.gallery.total })}
+              </p>
+            ) : null}
             <p className="text-muted-foreground flex items-center gap-1 text-xs">
               {post.isPinned ? (
                 <span className="text-foreground inline-flex items-center gap-0.5">
@@ -324,7 +358,8 @@ export function FeedPostCard({
         />
       )}
 
-      {/* Media (the edit form shows its own while editing) */}
+      {/* Media (the edit form shows its own while editing). A gallery post
+          whose batch the viewer may see none of shows its text only. */}
       {isEditing ? null : post.video ? (
         <FeedVideoPlayer video={post.video} onExpired={refreshVideo} />
       ) : post.gif?.mp4Url ? (
@@ -342,7 +377,19 @@ export function FeedPostCard({
           poll={post.poll}
           viewer={!currentUserId ? "guest" : memberRole ? "member" : "outsider"}
         />
-      ) : link && !isEditing && !post.linkPreview?.hidden ? (
+      ) : post.gallery ? (
+        <GalleryCollage
+          slug={communitySlug}
+          gallery={post.gallery}
+          memberRole={memberRole}
+          onChange={() => {
+            collageChanged.current = true;
+            void onRefresh();
+          }}
+        />
+      ) : post.isGalleryPost ? null : link &&
+        !isEditing &&
+        !post.linkPreview?.hidden ? (
         <LinkPreviewCard href={link} preview={linkPreview} />
       ) : null}
 

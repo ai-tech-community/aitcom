@@ -14,6 +14,7 @@ import { NvidiaGtcEnglishLinks } from "@/components/events/nvidia-gtc-english-li
 import { EventRegisterButton } from "@/components/event-register-button";
 import { OrganizerAttendeesLink } from "@/components/events/organizer-attendees-link";
 import { EventAttendees } from "@/components/event-attendees";
+import { EventGallerySection } from "@/components/events/event-gallery-section";
 import { EventShareRow } from "@/components/event-share-row";
 import { LexicalRenderer } from "@/lib/lexical";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
@@ -68,6 +69,8 @@ import {
   loadHiddenEventCommunityIds,
   viewerMaySeeEvent,
 } from "@/server/events/public-event-access";
+import { loadEventGallerySection } from "@/server/gallery/event-section";
+import { getObjectStorage } from "@/server/media/object-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -257,11 +260,6 @@ export default async function EventDetailPage({
   const heroImage = getMedia(
     (event.coverImage as MediaValue) ?? (event.image as MediaValue),
   );
-  const gallery = Array.isArray(event.gallery)
-    ? event.gallery
-        .map((entry) => getMedia(entry as MediaValue))
-        .filter(Boolean)
-    : [];
   const tags = Array.isArray(event.tags)
     ? event.tags
         .map((entry) =>
@@ -344,7 +342,24 @@ export default async function EventDetailPage({
 
   const now = new Date();
   const session = await getSession();
-  const editHref = await resolveEventEditHref(db, session?.user?.id, event);
+  const [editHref, gallerySection] = await Promise.all([
+    resolveEventEditHref(db, session?.user?.id, event),
+    // Null when the event has no photos section (spec 2026-11-13, Events),
+    // and when loading it failed: the rest of the event page still shows.
+    loadEventGallerySection(
+      { payload, db, storage: getObjectStorage },
+      { event, userId: session?.user?.id ?? null },
+    ).catch((error: unknown) => {
+      console.error("[events] loading the event's photos failed", {
+        eventId: event.id,
+        error,
+      });
+      return null;
+    }),
+  ]);
+  const gallery = gallerySection ? (
+    <EventGallerySection section={gallerySection} />
+  ) : null;
   const editAction = editHref ? (
     <Button asChild variant="outline" size="sm">
       <Link href={editHref}>
@@ -554,32 +569,7 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {gallery.length > 0 && (
-            <div className="border-border border-t pt-8">
-              <SectionLabel>{tEvents("sectionGallery")}</SectionLabel>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {gallery.map((image, index) => (
-                  <div
-                    key={`${image?.url}-${index}`}
-                    className="border-border overflow-hidden rounded-lg border"
-                  >
-                    {image?.url && (
-                      <Image
-                        src={image.url}
-                        alt={
-                          image.alt ??
-                          `${event.title} gallery image ${index + 1}`
-                        }
-                        width={600}
-                        height={400}
-                        className="h-56 w-full object-cover"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {gallery}
 
           <div className="border-border border-t pt-8">
             <SectionLabel>{tEvents("attendees")}</SectionLabel>
@@ -904,32 +894,7 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {gallery.length > 0 && (
-            <div className="border-border border-t pt-8">
-              <SectionLabel>{tEvents("sectionGallery")}</SectionLabel>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {gallery.map((image, index) => (
-                  <div
-                    key={`${image?.url}-${index}`}
-                    className="border-border overflow-hidden rounded-lg border"
-                  >
-                    {image?.url && (
-                      <Image
-                        src={image.url}
-                        alt={
-                          image.alt ??
-                          `${event.title} gallery image ${index + 1}`
-                        }
-                        width={600}
-                        height={400}
-                        className="h-56 w-full object-cover"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {gallery}
 
           <div className="border-border border-t pt-8">
             <SectionLabel>{tEvents("attendees")}</SectionLabel>

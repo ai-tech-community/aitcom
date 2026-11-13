@@ -263,7 +263,6 @@
     "sectionPrizes": "Prix",
     "sectionAbout": "À propos",
     "sectionSpeakers": "Intervenants",
-    "sectionGallery": "Galerie",
     "sectionRelated": "Événements associés",
     "location": {
       "toastUnsupported": "La géolocalisation n’est pas prise en charge par ce navigateur.",
@@ -3428,7 +3427,9 @@
       "keepCurrentVideo": "Conserver la vidéo actuelle",
       "mediaChangesOnSave": "L’image ou la vidéo sera modifiée lorsque vous appuierez sur Enregistrer.",
       "mediaLockedWhileReviewed": "Cette publication est en cours d’examen. Vous pourrez modifier son image ou sa vidéo après qu’un modérateur l’aura examinée.",
+      "galleryMediaFixed": "Les photos et vidéos restent telles quelles. Vous pouvez les gérer dans la galerie.",
       "discardChanges": "Abandonner les modifications",
+      "galleryAdded": "{count, plural, one {a ajouté une photo ou une vidéo à la galerie} other {a ajouté # photos et vidéos à la galerie}}",
       "postActions": "Actions de la publication",
       "poll": {
         "label": "Sondage",
@@ -6488,6 +6489,17 @@
       "filteredEmptyBody": "Essayez un autre événement ou une autre catégorie.",
       "showEverything": "Tout afficher",
       "loadMore": "Afficher plus"
+    },
+    "collage": {
+      "label": "{count, plural, one {Une photo ou vidéo de la galerie} other {# photos et vidéos de la galerie}}"
+    },
+    "event": {
+      "title": "Photos et vidéos",
+      "count": "{count, plural, one {# élément} other {# éléments}}",
+      "seeAll": "Voir les {count} dans la galerie",
+      "add": "Ajoutez les vôtres",
+      "signInToAdd": "Connectez-vous pour ajouter vos photos et vidéos",
+      "empty": "Ajoutez les premières photos de cet événement."
     },
     "tile": {
       "video": "Vidéo, {duration}",

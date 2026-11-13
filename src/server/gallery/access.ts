@@ -8,7 +8,11 @@ import {
   canReadContent,
   type CommunityVisibility,
 } from "@/server/communities/content-visibility";
-import { activeCommunityRole } from "@/server/communities/content-visibility-queries";
+import { communityStanding } from "@/server/communities/content-visibility-queries";
+import type {
+  JoinPolicy,
+  MembershipStatus,
+} from "@/server/communities/invite-policy";
 import { DEFAULT_TOPIC } from "@/server/communities/post-topics";
 import { communities } from "@/server/db/schema";
 import { canReadPaidCommunity } from "@/server/payments/access";
@@ -37,11 +41,26 @@ export type GalleryViewer = {
 /** What the access rules need to know about a community. */
 export type GalleryCommunity = CommunityVisibility & { id: string };
 
+/**
+ * A viewer as the loaders give it: with the community (its slug, for links
+ * from outside it, and its join policy) and the viewer's membership row
+ * status, so a page can offer the community's way in without reading them
+ * again (`viewerJoinAction`).
+ */
+export type LoadedGalleryViewer = GalleryViewer & {
+  community: GalleryCommunity & { joinPolicy: JoinPolicy };
+  /** The membership row's status; null without one, or signed out. */
+  membershipStatus: MembershipStatus | null;
+};
+
 const VIEWER_COMMUNITY_COLUMNS = {
   id: true,
   slug: true,
   isListedInDirectory: true,
+  joinPolicy: true,
 } as const;
+
+type ViewerCommunityRow = GalleryCommunity & { joinPolicy: JoinPolicy };
 
 /**
  * Whether someone who is not an active member may read the community's
@@ -59,20 +78,34 @@ async function outsidersMayRead(
   );
 }
 
-/** The viewer behind a user (or a signed-out visitor) in a live community. */
+/**
+ * The viewer behind a user (or a signed-out visitor) in a live community,
+ * from one membership read.
+ */
 async function viewerIn(
   deps: Pick<GalleryDeps, "db">,
-  community: GalleryCommunity,
+  community: ViewerCommunityRow,
   userId: string | null,
-): Promise<GalleryViewer> {
-  const role = await activeCommunityRole(deps.db, community.id, userId);
-  const isMember = role !== null;
+): Promise<LoadedGalleryViewer> {
+  const { status, activeRole } = await communityStanding(
+    deps.db,
+    community.id,
+    userId,
+  );
+  const isMember = activeRole !== null;
   return {
     userId,
     communityId: community.id,
     isMember,
-    isModerator: isModeratorRole(role),
+    isModerator: isModeratorRole(activeRole),
     canSeePublic: isMember || (await outsidersMayRead(deps, community, userId)),
+    community: {
+      id: community.id,
+      slug: community.slug,
+      isListedInDirectory: community.isListedInDirectory,
+      joinPolicy: community.joinPolicy,
+    },
+    membershipStatus: status,
   };
 }
 
@@ -83,20 +116,13 @@ async function viewerIn(
 export async function loadGalleryViewer(
   deps: Pick<GalleryDeps, "db">,
   input: { slug: string; userId: string | null },
-): Promise<GalleryViewer & { community: GalleryCommunity }> {
+): Promise<LoadedGalleryViewer> {
   const community = await deps.db.query.communities.findFirst({
     where: and(eq(communities.slug, input.slug), isNull(communities.deletedAt)),
     columns: VIEWER_COMMUNITY_COLUMNS,
   });
   if (!community) throw new TRPCError({ code: "NOT_FOUND" });
-  return {
-    ...(await viewerIn(deps, community, input.userId)),
-    community: {
-      id: community.id,
-      slug: community.slug,
-      isListedInDirectory: community.isListedInDirectory,
-    },
-  };
+  return viewerIn(deps, community, input.userId);
 }
 
 /**
@@ -114,13 +140,13 @@ export async function publicItemsReachOutsiders(
 
 /**
  * The viewer of a gallery reached through one of its records (a batch, an
- * item), which hold the community's id. Null when the community was deleted:
- * callers answer that as they answer an unknown record.
+ * item, an event), which hold the community's id. Null when the community
+ * was deleted: callers answer that as they answer an unknown record.
  */
 export async function loadGalleryViewerById(
   deps: Pick<GalleryDeps, "db">,
   input: { communityId: string; userId: string | null },
-): Promise<GalleryViewer | null> {
+): Promise<LoadedGalleryViewer | null> {
   const community = await deps.db.query.communities.findFirst({
     where: and(
       eq(communities.id, input.communityId),

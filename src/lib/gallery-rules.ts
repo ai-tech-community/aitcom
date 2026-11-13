@@ -24,6 +24,10 @@ export const GALLERY_CAPTION_MAX = 280;
 export const GALLERY_ALT_MAX = 500;
 export const GALLERY_BATCH_TEXT_MAX = 500;
 export const GALLERY_PAGE_SIZE = 40;
+/** Items a batch's feed post shows in its collage; "+N" counts the rest. */
+export const GALLERY_COLLAGE_SIZE = 3;
+/** Items an event page shows; "See all N in the gallery" leads to the rest. */
+export const GALLERY_EVENT_PREVIEW_SIZE = 6;
 /**
  * Batches a member may have open at once, across all communities: each one
  * reserves its plan against the daily quotas until it is finished or its

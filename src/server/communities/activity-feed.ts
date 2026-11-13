@@ -26,6 +26,7 @@ import {
   postVisibilityWhere,
   type FeedViewer,
 } from "@/server/communities/post-visibility";
+import type { ObjectStorageSource } from "@/server/media/object-storage";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 
 type Database = typeof Db;
@@ -149,6 +150,7 @@ export async function loadActivityStream({
   scopes,
   viewerId,
   storage,
+  galleryStorage,
   cursor,
   limit,
   pinned,
@@ -158,6 +160,8 @@ export async function loadActivityStream({
   scopes: readonly ActivityScope[];
   viewerId: string;
   storage: VideoStorageSource;
+  /** Makes the links of gallery posts' items. */
+  galleryStorage: ObjectStorageSource;
   cursor: ActivityCursor | null;
   limit: number;
   /**
@@ -330,7 +334,11 @@ export async function loadActivityStream({
     .filter((entry) => entry.kind === "post")
     .map((entry) => entry.data as (typeof posts.docs)[number]);
   const [decorated, authorImages] = await Promise.all([
-    decorateFeedPosts(database, payload, pagePosts, viewerId, storage),
+    decorateFeedPosts(
+      { database, payload, videoStorage: storage, galleryStorage },
+      pagePosts,
+      viewerId,
+    ),
     loadUserImages(
       database,
       entries.flatMap((entry) =>
@@ -429,6 +437,7 @@ async function loadPinnedPosts({
   viewerId,
   viewer,
   storage,
+  galleryStorage,
 }: {
   database: Database;
   payload: Payload;
@@ -436,6 +445,8 @@ async function loadPinnedPosts({
   viewerId: string;
   viewer: FeedViewer;
   storage: VideoStorageSource;
+  /** Makes the links of gallery posts' items. */
+  galleryStorage: ObjectStorageSource;
 }): Promise<FeedPostView[]> {
   const { docs } = await payload.find({
     collection: "feed-posts",
@@ -452,7 +463,11 @@ async function loadPinnedPosts({
     pagination: false,
     depth: 0,
   });
-  return decorateFeedPosts(database, payload, docs, viewerId, storage);
+  return decorateFeedPosts(
+    { database, payload, videoStorage: storage, galleryStorage },
+    docs,
+    viewerId,
+  );
 }
 
 /**
@@ -467,6 +482,7 @@ export async function loadCommunityActivity({
   viewerId,
   viewer,
   storage,
+  galleryStorage,
   cursor,
   limit,
 }: {
@@ -477,6 +493,8 @@ export async function loadCommunityActivity({
   /** Who is looking; decides which posts (hidden, community-only) show. */
   viewer: FeedViewer;
   storage: VideoStorageSource;
+  /** Makes the links of gallery posts' items. */
+  galleryStorage: ObjectStorageSource;
   cursor: ActivityCursor | null;
   limit: number;
 }): Promise<CommunityActivityPage> {
@@ -487,6 +505,7 @@ export async function loadCommunityActivity({
       scopes: [{ id: community.id, slug: community.slug, viewer }],
       viewerId,
       storage,
+      galleryStorage,
       cursor,
       limit,
       pinned: "apart",
@@ -500,6 +519,7 @@ export async function loadCommunityActivity({
           viewerId,
           viewer,
           storage,
+          galleryStorage,
         }),
   ]);
   return { pinned, items: stream.items, nextCursor: stream.nextCursor };

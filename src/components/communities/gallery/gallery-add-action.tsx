@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import type { CommunityRole } from "@/server/communities/role-utils";
 import {
+  offersMembership,
   viewerJoinAction,
   type JoinPolicy,
   type MembershipStatus,
@@ -85,11 +86,7 @@ export function GalleryAddAction({
     case "outsider": {
       if (!joinPolicy) return null;
       const action = viewerJoinAction({ joinPolicy, status: viewer.status });
-      const canJoin =
-        action.kind === "join" ||
-        action.kind === "request" ||
-        action.kind === "invited";
-      if (!canJoin) return null;
+      if (!offersMembership(action)) return null;
       return (
         <>
           {button("ink", () => setJoinOpen(true))}

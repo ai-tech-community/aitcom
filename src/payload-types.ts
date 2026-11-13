@@ -351,7 +351,6 @@ export interface Event {
    * Primary hero image for the event page.
    */
   coverImage?: (number | null) | Media;
-  gallery?: (number | Media)[] | null;
   videoUrl?: string | null;
   speakers?: (number | Speaker)[] | null;
   status: 'draft' | 'published' | 'cancelled' | 'completed' | 'rejected';
@@ -1096,6 +1095,10 @@ export interface FeedPost {
     bytes?: number | null;
   };
   /**
+   * The upload batch this post announces. Its pictures and videos live in the community gallery.
+   */
+  galleryBatch?: (number | null) | GalleryBatch;
+  /**
    * When the post's @everyone went out to the whole community (once; owners, admins and moderators only).
    */
   announcedAt?: string | null;
@@ -1124,6 +1127,53 @@ export interface FeedPost {
    */
   hiddenAt?: string | null;
   reportCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * One upload of photos and videos to a community gallery. Batches left open are closed by the daily cleanup.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gallery-batches".
+ */
+export interface GalleryBatch {
+  id: number;
+  communityId: string;
+  /**
+   * Better Auth user ID.
+   */
+  uploaderId: string;
+  /**
+   * The community event these photos are from, if any. Every item in the batch starts with this event.
+   */
+  event?: (number | null) | Event;
+  /**
+   * Category for every item in the batch: a community-topics slug.
+   */
+  topicSlug?: string | null;
+  visibility: 'community' | 'public';
+  /**
+   * The uploader let the community use these in its magazine.
+   */
+  magazineConsent?: boolean | null;
+  magazineConsentAt?: string | null;
+  /**
+   * What the uploader said about these. It goes on the feed post only, not on the items.
+   */
+  caption?: string | null;
+  /**
+   * How many files the uploader chose. No more are accepted.
+   */
+  plannedFiles: number;
+  /**
+   * How many of those files are videos. No more videos are accepted.
+   */
+  plannedVideos: number;
+  status: 'open' | 'finished';
+  /**
+   * feed-posts.id of the post that announced this batch, if one was made.
+   */
+  feedPostId?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1903,53 +1953,6 @@ export interface HostedMaterial {
   createdAt: string;
 }
 /**
- * One upload of photos and videos to a community gallery. Batches left open are closed by the daily cleanup.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "gallery-batches".
- */
-export interface GalleryBatch {
-  id: number;
-  communityId: string;
-  /**
-   * Better Auth user ID.
-   */
-  uploaderId: string;
-  /**
-   * The community event these photos are from, if any. Every item in the batch starts with this event.
-   */
-  event?: (number | null) | Event;
-  /**
-   * Category for every item in the batch: a community-topics slug.
-   */
-  topicSlug?: string | null;
-  visibility: 'community' | 'public';
-  /**
-   * The uploader let the community use these in its magazine.
-   */
-  magazineConsent?: boolean | null;
-  magazineConsentAt?: string | null;
-  /**
-   * What the uploader said about these. It goes on the feed post only, not on the items.
-   */
-  caption?: string | null;
-  /**
-   * How many files the uploader chose. No more are accepted.
-   */
-  plannedFiles: number;
-  /**
-   * How many of those files are videos. No more videos are accepted.
-   */
-  plannedVideos: number;
-  status: 'open' | 'finished';
-  /**
-   * feed-posts.id of the post that announced this batch, if one was made.
-   */
-  feedPostId?: number | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * Photos and videos in community galleries. Unfinished uploads are cleaned up daily.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2403,7 +2406,6 @@ export interface EventsSelect<T extends boolean = true> {
   reviewStatus?: T;
   image?: T;
   coverImage?: T;
-  gallery?: T;
   videoUrl?: T;
   speakers?: T;
   status?: T;
@@ -2631,6 +2633,7 @@ export interface FeedPostsSelect<T extends boolean = true> {
         height?: T;
         bytes?: T;
       };
+  galleryBatch?: T;
   announcedAt?: T;
   mentions?: T;
   linkPreview?:

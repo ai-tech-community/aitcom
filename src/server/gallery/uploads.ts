@@ -45,8 +45,10 @@ import {
 } from "./access";
 import { nowOf, type GalleryDeps } from "./deps";
 import { galleryError } from "./errors";
+import { releaseEmptyGalleryPost } from "./feed-post-link";
 import { galleryEnabled } from "./flag";
 import { removeItemFiles } from "./item-files";
+import { relationId } from "./relation-id";
 
 export type { GalleryDeps } from "./deps";
 
@@ -70,8 +72,8 @@ export type GalleryItemOwnView = {
 
 /**
  * Makes the feed post for a batch that was just finished with ready items,
- * returning its id (or null when none is made). The slice-2 seam: slice 1
- * passes none.
+ * returning its id (or null when none is made). `galleryAnnouncer`
+ * (`./announce`) is the one the router and the cleanup pass.
  */
 export type AnnounceBatch = (
   batch: GalleryBatch,
@@ -430,7 +432,7 @@ export async function startItem(
     collection: "gallery-items",
     data: {
       communityId: batch.communityId,
-      event: idOf(batch.event),
+      event: relationId(batch.event),
       topicSlug: batch.topicSlug ?? null,
       mediaType: input.mediaType,
       status: "uploading",
@@ -451,11 +453,6 @@ export async function startItem(
     },
   });
   return { itemId: item.id, file, thumbnail };
-}
-
-function idOf(relation: number | { id: number } | null | undefined) {
-  if (relation === null || relation === undefined) return null;
-  return typeof relation === "number" ? relation : relation.id;
 }
 
 /**
@@ -627,12 +624,16 @@ async function readyItemsOf(
  * statement, so of a user's finish, a second finish and the daily cleanup
  * exactly one closes it. The call that closes it, and only that one,
  * announces it (when it has ready items and `announce` is given) and stores
- * the announcement's post; a failed announcement is logged and the batch
- * stays finished. The one rule for finishing a batch: `finishBatch` and the
- * cleanup both go through here, so the announcement is wired in one place.
+ * the announcement's post; a failed announcement, or a failure to store its
+ * post on the batch, is logged and the batch stays finished. The one rule
+ * for finishing a batch: `finishBatch` and the cleanup both go through
+ * here, so the announcement is wired in one place.
  *
  * `readyItems` are read after the move, so no item that became ready before
- * it is missed. `feedPostId` is the post this call stored, if any.
+ * it is missed. `feedPostId` is the post this call's announcement made, if
+ * any (stored on the batch unless that save failed), and null again when
+ * that post was removed at once because the batch's last ready item was
+ * deleted while it was being made (`releaseEmptyGalleryPost`).
  */
 export async function closeBatch(
   deps: Pick<GalleryDeps, "payload" | "log">,
@@ -656,6 +657,7 @@ export async function closeBatch(
     return { closed, readyItems, feedPostId: null };
   }
 
+  const log = deps.log ?? console.error;
   let feedPostId: number | null = null;
   try {
     feedPostId = await options.announce(
@@ -663,17 +665,38 @@ export async function closeBatch(
       readyItems,
     );
   } catch (error) {
-    (deps.log ?? console.error)(
-      `[gallery.${options.context}] announcing a finished batch failed`,
-      { batchId: batch.id, error },
-    );
+    log(`[gallery.${options.context}] announcing a finished batch failed`, {
+      batchId: batch.id,
+      error,
+    });
   }
   if (feedPostId !== null) {
-    await deps.payload.update({
-      collection: "gallery-batches",
-      id: batch.id,
-      data: { feedPostId },
-    });
+    try {
+      await deps.payload.update({
+        collection: "gallery-batches",
+        id: batch.id,
+        data: { feedPostId },
+      });
+    } catch (error) {
+      // The post exists and points at the batch (`galleryBatch`), which
+      // keeps the batch from the empty-batch cleanup; only the batch's own
+      // link is missing.
+      log(
+        `[gallery.${options.context}] storing a finished batch's feed post failed`,
+        { batchId: batch.id, feedPostId, error },
+      );
+    }
+    // The batch's last ready item may have been deleted after it was read
+    // above but before the post existed, so that delete found no post to
+    // remove: check again now that the post is there.
+    try {
+      if (await releaseEmptyGalleryPost(deps, batch.id)) feedPostId = null;
+    } catch (error) {
+      log(
+        `[gallery.${options.context}] removing an empty gallery post failed`,
+        { batchId: batch.id, feedPostId, error },
+      );
+    }
   }
   return { closed, readyItems, feedPostId };
 }

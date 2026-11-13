@@ -4,6 +4,7 @@ import { cleanupAbandonedMaterialUploads } from "@/server/classroom/material-upl
 import { sweepUnusedFeedImages } from "@/server/communities/unused-feed-images-sweep";
 import { sweepUnusedVideoFiles } from "@/server/communities/unused-video-files-sweep";
 import { cleanupAbandonedUploads } from "@/server/communities/video-uploads-cleanup";
+import { db } from "@/server/db";
 import { cleanupAbandonedGalleryUploads } from "@/server/gallery/cleanup";
 import { galleryEnabled } from "@/server/gallery/flag";
 import { sweepUnusedGalleryFiles } from "@/server/gallery/unused-files-sweep";
@@ -43,9 +44,10 @@ async function runSweep<T extends SweepResult>(
  * Cron job: runs daily to delete the files and records of uploads nobody
  * finished within ABANDONED_UPLOAD_HOURS — Reels video grants, classroom
  * file uploads and gallery uploads (closing gallery batches left open and
- * deleting empty ones) — and then the Reels video files no live post or
- * open grant points at any more, the feed post images no post links, and
- * the gallery files no gallery item points at. Protected by CRON_SECRET
+ * announcing them in the feed, and deleting empty ones) — and then the
+ * Reels video files no live post or open grant points at any more, the feed
+ * post images no post links, and the gallery files no gallery item points
+ * at. Protected by CRON_SECRET
  * header. The path keeps its old name so the Vercel cron schedule is
  * unchanged.
  *
@@ -77,7 +79,11 @@ export async function GET(request: Request) {
   const galleryOn = galleryEnabled();
   const gallery = galleryOn
     ? await runSweep("gallery", () =>
-        cleanupAbandonedGalleryUploads({ payload, storage: getObjectStorage }),
+        cleanupAbandonedGalleryUploads({
+          payload,
+          db,
+          storage: getObjectStorage,
+        }),
       )
     : GALLERY_DISABLED;
   // After the abandoned grants are gone, so their files are not counted

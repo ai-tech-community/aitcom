@@ -1,6 +1,8 @@
 import { ABANDONED_UPLOAD_HOURS } from "@/lib/video-rules";
+import type { db } from "@/server/db";
 import type { ObjectStorageSource } from "@/server/media/object-storage";
 
+import { galleryAnnouncer } from "./announce";
 import type { Payload } from "./deps";
 import { deleteEmptyFinishedBatches } from "./empty-batches";
 import { removeItemFiles } from "./item-files";
@@ -25,8 +27,9 @@ const CLEANUP_PAGE_SIZE = 200;
  *    leaves objects no row points at.
  * 2. Batches still `open` after ABANDONED_UPLOAD_HOURS: the uploader never
  *    finished them. Each is closed through `closeBatch`, the same move
- *    `finishBatch` makes, so a late finish and this cleanup never both act
- *    on it.
+ *    `finishBatch` makes, with the same feed announcement
+ *    (`galleryAnnouncer`), so a late finish and this cleanup never both act
+ *    on it and a batch with ready items is announced once either way.
  * 3. Finished batches older than ABANDONED_UPLOAD_HOURS with no items and no
  *    feed post are deleted (`deleteEmptyFinishedBatches`): batches whose
  *    every item failed or was discarded, including those pass 2 just
@@ -39,6 +42,7 @@ const CLEANUP_PAGE_SIZE = 200;
  */
 export async function cleanupAbandonedGalleryUploads(deps: {
   payload: Payload;
+  db: typeof db;
   storage: ObjectStorageSource;
   now?: () => Date;
   warn?: (message: string, detail: unknown) => void;
@@ -111,10 +115,15 @@ export async function cleanupAbandonedGalleryUploads(deps: {
 
   let batchesClosed = 0;
   const closeDeps = { payload: deps.payload, log };
+  const announce = galleryAnnouncer({
+    payload: deps.payload,
+    db: deps.db,
+    log,
+  });
   for (const batch of batches) {
     try {
-      // Slice 2 passes the feed announcement here, as finishBatch does.
       const { closed } = await closeBatch(closeDeps, batch, {
+        announce,
         context: "cleanup",
       });
       if (closed) batchesClosed++;

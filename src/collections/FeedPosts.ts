@@ -17,8 +17,8 @@ import { linkPreviewBeforeChange } from "@/server/link-preview/link-preview-hook
 
 /**
  * A post's text is required, except on a deleted or moderator-removed post
- * (emptied on purpose) and on a post that carries a picture, GIF or video:
- * the data rule every writer meets. Members meet the stricter
+ * (emptied on purpose) and on a post that carries a picture, GIF, video or
+ * gallery batch: the data rule every writer meets. Members meet the stricter
  * `mayGoWithoutWords` in the router (descriptions, no bare video).
  */
 const validateContent: TextFieldSingleValidation = (value, args) => {
@@ -225,6 +225,20 @@ export const FeedPosts: CollectionConfig = {
         { name: "height", type: "number" },
         { name: "bytes", type: "number" },
       ],
+    },
+    {
+      // Unique: one batch is announced by one post, however often the
+      // announcement is retried. Postgres UNIQUE allows many NULLs.
+      name: "galleryBatch",
+      type: "relationship",
+      relationTo: "gallery-batches",
+      unique: true,
+      index: true,
+      admin: {
+        readOnly: true,
+        description:
+          "The upload batch this post announces. Its pictures and videos live in the community gallery.",
+      },
     },
     {
       name: "announcedAt",

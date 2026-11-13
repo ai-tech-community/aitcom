@@ -4,6 +4,7 @@ import type { ActivityCursor } from "@/lib/community-activity";
 import type { db as Db } from "@/server/db";
 import { communities, communityMemberships } from "@/server/db/schema";
 import type { getPayloadClient } from "@/server/payload";
+import type { ObjectStorageSource } from "@/server/media/object-storage";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 
 import { loadActivityStream, type CommunityFeedItem } from "./activity-feed";
@@ -103,6 +104,7 @@ export async function loadHomeActivity({
   payload,
   userId,
   storage,
+  galleryStorage,
   cursor,
   limit,
 }: {
@@ -110,6 +112,7 @@ export async function loadHomeActivity({
   payload: Payload;
   userId: string;
   storage: VideoStorageSource;
+  galleryStorage: ObjectStorageSource;
   cursor: ActivityCursor | null;
   limit: number;
 }): Promise<HomeActivityPage> {
@@ -133,6 +136,7 @@ export async function loadHomeActivity({
     })),
     viewerId: userId,
     storage,
+    galleryStorage,
     cursor,
     limit,
     pinned: "inStream",

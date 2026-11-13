@@ -300,12 +300,23 @@ describe("unlinkFeedPostsBeforeMediaDelete", () => {
     expect(update).toHaveBeenCalledWith({
       collection: "feed-posts",
       id: 7,
+      // Removed like any other post (`removedPostData`).
       data: {
-        images: [],
-        imageUrl: null,
-        image: null,
         isDeleted: true,
         content: "",
+        authorName: "",
+        images: [],
+        image: null,
+        imageUrl: null,
+        gif: {
+          giphyId: null,
+          title: null,
+          mp4Url: null,
+          stillUrl: null,
+          width: null,
+          height: null,
+        },
+        galleryBatch: null,
       },
       depth: 0,
       req,

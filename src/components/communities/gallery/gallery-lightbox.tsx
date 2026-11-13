@@ -36,11 +36,11 @@ import type { LoadMoreQuery } from "@/components/ui/load-more";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Link } from "@/i18n/navigation";
 import { getInitials } from "@/lib/avatar";
-import { topicText } from "@/lib/communities/topic-label";
 import { cn } from "@/lib/utils";
 import type { GalleryItemView } from "@/server/gallery/items";
 import { api } from "@/trpc/react";
 
+import { GalleryCategoryBadge } from "./gallery-category-badge";
 import { useGalleryErrorText } from "./gallery-error-text";
 import {
   formatClipLength,
@@ -51,8 +51,16 @@ import {
 /** Keys that belong to the focused control, not to the lightbox. */
 const OWNS_ARROW_KEYS = "video, audio, input, textarea, select, [role=slider]";
 
-function tileFor(itemId: number): HTMLElement | null {
-  return document.querySelector<HTMLElement>(
+/**
+ * The tile of an item: inside `scope` when one is given (the same item can
+ * be on the page twice, as a pinned post and in the stream), else anywhere
+ * in the page.
+ */
+function tileFor(
+  itemId: number,
+  scope: HTMLElement | null | undefined,
+): HTMLElement | null {
+  return (scope ?? document).querySelector<HTMLElement>(
     `[data-gallery-item-id="${itemId}"]`,
   );
 }
@@ -64,7 +72,8 @@ function tileFor(itemId: number): HTMLElement | null {
  * on; at either real end the button stays focusable but does nothing
  * (`aria-disabled`), so keyboard focus never falls out of the dialog.
  * Focus goes to Close on open and, on close, back to the tile of the item
- * last shown (`GalleryTile` marks tiles with `data-gallery-item-id`), else
+ * last shown (`GalleryTile` marks tiles with `data-gallery-item-id`) —
+ * looked for in `focusScope` when given, else in the whole page — or else
  * to `fallbackFocus`. The side panel says who added it, when, its caption,
  * event, category, audience, magazine permission and description.
  *
@@ -85,6 +94,7 @@ export function GalleryLightbox({
   onDeleted,
   canModerate = false,
   fallbackFocus,
+  focusScope,
   more,
 }: {
   slug: string;
@@ -100,6 +110,8 @@ export function GalleryLightbox({
   canModerate?: boolean;
   /** Where focus goes when no tile is left to return to. */
   fallbackFocus?: RefObject<HTMLElement | null>;
+  /** Where the tiles to return focus to are; the whole page without it. */
+  focusScope?: RefObject<HTMLElement | null>;
   /** The wall's paging, so Next can go past the last loaded item. */
   more?: LoadMoreQuery;
 }) {
@@ -239,13 +251,14 @@ export function GalleryLightbox({
         onCloseAutoFocus={(event) => {
           const deleted = afterDelete.current;
           afterDelete.current = null;
+          const scope = focusScope?.current;
           const target = deleted
             ? ((deleted.neighbour === null
                 ? null
-                : tileFor(deleted.neighbour)) ??
+                : tileFor(deleted.neighbour, scope)) ??
               fallbackFocus?.current ??
               null)
-            : (tileFor(item.id) ?? fallbackFocus?.current ?? null);
+            : (tileFor(item.id, scope) ?? fallbackFocus?.current ?? null);
           if (!target) return;
           event.preventDefault();
           target.focus();
@@ -353,7 +366,7 @@ export function GalleryLightbox({
             </Fact>
             <Fact term={t("category")}>
               {item.topicSlug ? (
-                <CategoryBadge slug={slug} topicSlug={item.topicSlug} />
+                <GalleryCategoryBadge slug={slug} topicSlug={item.topicSlug} />
               ) : (
                 <span className="text-muted-foreground">{t("noCategory")}</span>
               )}
@@ -426,19 +439,6 @@ function Fact({ term, children }: { term: string; children: ReactNode }) {
       <dt className="text-muted-foreground">{term}</dt>
       <dd className="min-w-0">{children}</dd>
     </div>
-  );
-}
-
-function CategoryBadge({
-  slug,
-  topicSlug,
-}: {
-  slug: string;
-  topicSlug: string;
-}) {
-  const { data: topics } = api.topics.list.useQuery({ communitySlug: slug });
-  return (
-    <Badge variant="secondary">{topicText(topicSlug, topics ?? [])}</Badge>
   );
 }
 

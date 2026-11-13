@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   act,
   fireEvent,
@@ -336,6 +336,44 @@ describe("GalleryLightbox", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Demo time" })).toHaveFocus(),
+    );
+  });
+
+  it("returns focus to the tile in its own scope when the item is shown twice", async () => {
+    // The same post can be on a page twice (pinned and in the stream): focus
+    // goes back to the copy that opened it, not the first one in the page.
+    function TwoCopies() {
+      const [openId, setOpenId] = useState<number | null>(null);
+      const second = useRef<HTMLDivElement>(null);
+      return (
+        <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+          <ConfirmProvider>
+            <section aria-label="Pinned">
+              <GalleryWall items={ITEMS} showEvent onOpen={vi.fn()} />
+            </section>
+            <section aria-label="Stream" ref={second}>
+              <GalleryWall items={ITEMS} showEvent onOpen={setOpenId} />
+            </section>
+            <GalleryLightbox
+              slug="mlops"
+              items={ITEMS}
+              openId={openId}
+              onNavigate={setOpenId}
+              onClose={() => setOpenId(null)}
+              focusScope={second}
+            />
+          </ConfirmProvider>
+        </NextIntlClientProvider>
+      );
+    }
+    render(<TwoCopies />);
+    const stream = screen.getByRole("region", { name: "Stream" });
+    fireEvent.click(within(stream).getByRole("button", { name: "Demo time" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() =>
+      expect(
+        within(stream).getByRole("button", { name: "Demo time" }),
+      ).toHaveFocus(),
     );
   });
 

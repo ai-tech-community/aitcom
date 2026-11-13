@@ -29,7 +29,9 @@ import {
 } from "./access";
 import { nowOf, type GalleryDeps } from "./deps";
 import { galleryError } from "./errors";
+import { releaseEmptyGalleryPost } from "./feed-post-link";
 import { itemFileUrls, removeItemFiles } from "./item-files";
+import { relationId } from "./relation-id";
 
 /**
  * Reading, editing and deleting gallery items (spec 2026-11-13, Gallery
@@ -123,11 +125,6 @@ export function galleryReadableWhere(viewer: GalleryViewer): Where {
   return { and: [...base, { id: { exists: false } }] };
 }
 
-function idOf(relation: number | { id: number } | null | undefined) {
-  if (relation === null || relation === undefined) return null;
-  return typeof relation === "number" ? relation : relation.id;
-}
-
 /**
  * Uploader names and photos for a set of user ids, in one query. The id a
  * deleted account leaves behind is no user, so it is not looked up.
@@ -145,8 +142,8 @@ async function loadUploaders(
   return new Map(rows.map((row) => [row.id, row]));
 }
 
-/** Titles and slugs of the events items link to, in one read. */
-async function loadEventRefs(
+/** Titles and slugs of the events items (or batches) link to, in one read. */
+export async function loadEventRefs(
   deps: Pick<GalleryDeps, "payload">,
   eventIds: readonly number[],
 ): Promise<Map<number, { id: number; title: string; slug: string }>> {
@@ -186,14 +183,14 @@ async function toViews(
     ),
     loadEventRefs(
       deps,
-      items.map((item) => idOf(item.event)).filter((id) => id !== null),
+      items.map((item) => relationId(item.event)).filter((id) => id !== null),
     ),
   ]);
   const storage = deps.storage();
   return Promise.all(
     items.map(async (item) => {
       const uploader = uploaders.get(item.uploaderId);
-      const eventId = idOf(item.event);
+      const eventId = relationId(item.event);
       return {
         id: item.id,
         mediaType: item.mediaType,
@@ -216,7 +213,7 @@ async function toViews(
           : null,
         createdAt: item.createdAt,
         isOwn: viewer.userId !== null && item.uploaderId === viewer.userId,
-        batchId: idOf(item.batch)!,
+        batchId: relationId(item.batch)!,
       };
     }),
   );
@@ -287,17 +284,46 @@ function writeFailed(
   return new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 }
 
+/** What a list or a count of the wall is narrowed to. */
+type GalleryItemFilters = {
+  /** An event's items, or `"none"` for items that link to no event. */
+  eventId?: number | "none";
+  /** One upload's items: a feed post's collage and its lightbox. */
+  batchId?: number;
+  topicSlug?: string;
+  mediaType?: GalleryMediaType;
+};
+
+/** The viewer's readable items, narrowed by the filters given. */
+function readableItemsWhere(
+  viewer: GalleryViewer,
+  filters: GalleryItemFilters,
+): Where[] {
+  const where: Where[] = [galleryReadableWhere(viewer)];
+  if (filters.eventId === "none") where.push({ event: { exists: false } });
+  else if (filters.eventId !== undefined) {
+    where.push({ event: { equals: filters.eventId } });
+  }
+  if (filters.batchId !== undefined) {
+    where.push({ batch: { equals: filters.batchId } });
+  }
+  if (filters.topicSlug !== undefined) {
+    where.push({ topicSlug: { equals: filters.topicSlug } });
+  }
+  if (filters.mediaType !== undefined) {
+    where.push({ mediaType: { equals: filters.mediaType } });
+  }
+  return where;
+}
+
 /**
  * A page of the wall, newest first. `cursor` is the last id of the previous
  * page; `eventId: "none"` keeps items that link to no event.
  */
 export async function listItems(
   deps: GalleryDeps,
-  input: {
+  input: GalleryItemFilters & {
     viewer: GalleryViewer;
-    eventId?: number | "none";
-    topicSlug?: string;
-    mediaType?: GalleryMediaType;
     cursor?: number;
     limit?: number;
   },
@@ -306,17 +332,7 @@ export async function listItems(
     Math.max(1, Math.floor(input.limit ?? GALLERY_PAGE_SIZE)),
     GALLERY_PAGE_SIZE,
   );
-  const filters: Where[] = [galleryReadableWhere(input.viewer)];
-  if (input.eventId === "none") filters.push({ event: { exists: false } });
-  else if (input.eventId !== undefined) {
-    filters.push({ event: { equals: input.eventId } });
-  }
-  if (input.topicSlug !== undefined) {
-    filters.push({ topicSlug: { equals: input.topicSlug } });
-  }
-  if (input.mediaType !== undefined) {
-    filters.push({ mediaType: { equals: input.mediaType } });
-  }
+  const filters = readableItemsWhere(input.viewer, input);
   if (input.cursor !== undefined) {
     filters.push({ id: { less_than: input.cursor } });
   }
@@ -334,6 +350,88 @@ export async function listItems(
     items: await toViews(deps, input.viewer, page),
     nextCursor: docs.length > limit ? page[page.length - 1]!.id : null,
   };
+}
+
+/** How many items of an event or a batch this viewer may see. */
+export async function countItems(
+  deps: GalleryDeps,
+  input: Pick<GalleryItemFilters, "eventId" | "batchId"> & {
+    viewer: GalleryViewer;
+  },
+): Promise<number> {
+  const { totalDocs } = await deps.payload.count({
+    collection: "gallery-items",
+    where: { and: readableItemsWhere(input.viewer, input) },
+  });
+  return totalDocs;
+}
+
+/** What a feed post shows of its batch to one viewer. */
+export type GalleryBatchPreview = {
+  /** The batch's newest readable items, newest first. */
+  items: GalleryItemView[];
+  /** How many of the batch's items this viewer may see. */
+  total: number;
+};
+
+/**
+ * For each batch, its first `perBatch` readable items and how many readable
+ * items it has — for any number of batches of the viewer's community in two
+ * reads: the ids and batches of every readable item (which give the counts
+ * and the picks), then the full rows of the picked ones only. Batches the
+ * viewer may see nothing of are left out.
+ */
+export async function previewBatches(
+  deps: GalleryDeps,
+  input: {
+    viewer: GalleryViewer;
+    batchIds: readonly number[];
+    perBatch: number;
+  },
+): Promise<Map<number, GalleryBatchPreview>> {
+  const previews = new Map<number, GalleryBatchPreview>();
+  const batchIds = [...new Set(input.batchIds)];
+  if (batchIds.length === 0) return previews;
+  const readable = galleryReadableWhere(input.viewer);
+  // A batch holds at most GALLERY_MAX_FILES_PER_BATCH items, so this scan is
+  // bounded by the posts on the page.
+  const { docs: rows } = await deps.payload.find({
+    collection: "gallery-items",
+    where: { and: [readable, { batch: { in: batchIds } }] },
+    select: { batch: true },
+    sort: "-id",
+    pagination: false,
+    depth: 0,
+  });
+  const totals = new Map<number, number>();
+  const picked: number[] = [];
+  for (const row of rows) {
+    const batchId = relationId(row.batch)!;
+    const seen = totals.get(batchId) ?? 0;
+    if (seen < input.perBatch) picked.push(row.id);
+    totals.set(batchId, seen + 1);
+  }
+  if (picked.length === 0) return previews;
+  // Read again under the same rule: an item hidden or deleted in between
+  // stays out, and out of its batch's total, so "+N" never over-counts.
+  const { docs } = await deps.payload.find({
+    collection: "gallery-items",
+    where: { and: [readable, { id: { in: picked } }] },
+    sort: "-id",
+    pagination: false,
+    depth: 0,
+  });
+  for (const view of await toViews(deps, input.viewer, docs)) {
+    const preview = previews.get(view.batchId);
+    if (preview) preview.items.push(view);
+    else previews.set(view.batchId, { items: [view], total: 0 });
+  }
+  for (const [batchId, preview] of previews) {
+    const total = totals.get(batchId)!;
+    const gone = Math.min(total, input.perBatch) - preview.items.length;
+    preview.total = total - gone;
+  }
+  return previews;
 }
 
 /** The wall's filter choices: only those that readable items have. */
@@ -356,7 +454,7 @@ export async function listFacets(
     }),
   ]);
   const eventIds = byEvent.values
-    .map((value) => idOf(value.event))
+    .map((value) => relationId(value.event))
     .filter((id) => id !== null);
   const topics = byTopic.values
     .map((value) => value.topicSlug)
@@ -383,7 +481,9 @@ export async function listFacets(
   return {
     events,
     topics,
-    hasUnlinked: byEvent.values.some((value) => idOf(value.event) === null),
+    hasUnlinked: byEvent.values.some(
+      (value) => relationId(value.event) === null,
+    ),
   };
 }
 
@@ -505,7 +605,7 @@ export async function updateItem(
     }
     data.topicSlug = input.topicSlug;
   }
-  if (input.eventId !== undefined && input.eventId !== idOf(item.event)) {
+  if (input.eventId !== undefined && input.eventId !== relationId(item.event)) {
     if (input.eventId !== null) {
       await assertLinkableEvent(
         deps.payload,
@@ -550,6 +650,8 @@ export async function updateItem(
  * net). The uploader may always delete their own item — hidden, members-only,
  * or after leaving the community or letting a paid membership lapse. The
  * item's batch stays, even when it is now empty: the cleanup owns batches.
+ * The batch's feed post goes when it has no ready item and no words left
+ * (`releaseEmptyGalleryPost`).
  * Anyone else is refused NOT_ALLOWED; an item they cannot see is NOT_FOUND.
  * A row Payload could not delete is a server error, and its files are kept.
  */
@@ -581,4 +683,14 @@ export async function deleteItem(
   // A concurrent delete removed the row first; it removes the files too.
   if (docs.length === 0) return;
   await removeItemFiles(deps, item, "deleteItem");
+  const batchId = relationId(item.batch)!;
+  // The item is gone either way: a post left showing nothing is logged.
+  try {
+    await releaseEmptyGalleryPost(deps, batchId);
+  } catch (error) {
+    (deps.log ?? console.error)(
+      "[gallery.deleteItem] removing the batch's empty feed post failed",
+      { itemId: item.id, batchId, error },
+    );
+  }
 }

@@ -264,7 +264,6 @@
     "sectionPrizes": "Prijzen",
     "sectionAbout": "Over",
     "sectionSpeakers": "Sprekers",
-    "sectionGallery": "Galerij",
     "sectionRelated": "Gerelateerde evenementen",
     "location": {
       "toastUnsupported": "Geolocatie wordt niet ondersteund in deze browser.",
@@ -3428,7 +3427,9 @@
       "keepCurrentVideo": "Huidige video houden",
       "mediaChangesOnSave": "De afbeelding of video verandert pas als je op Opslaan drukt.",
       "mediaLockedWhileReviewed": "Dit bericht wordt beoordeeld. Je kunt de afbeelding of video wijzigen zodra een moderator ernaar heeft gekeken.",
+      "galleryMediaFixed": "De foto's en video's blijven zoals ze zijn. Je kunt ze beheren in de galerij.",
       "discardChanges": "Wijzigingen weggooien",
+      "galleryAdded": "{count, plural, one {heeft één foto of video aan de galerij toegevoegd} other {heeft # foto's en video's aan de galerij toegevoegd}}",
       "postActions": "Berichtacties",
       "poll": {
         "label": "Poll",
@@ -6488,6 +6489,17 @@
       "filteredEmptyBody": "Probeer een ander event of een andere categorie.",
       "showEverything": "Alles tonen",
       "loadMore": "Meer tonen"
+    },
+    "collage": {
+      "label": "{count, plural, one {Eén foto of video uit de galerij} other {# foto's en video's uit de galerij}}"
+    },
+    "event": {
+      "title": "Foto's en video's",
+      "count": "{count, plural, one {# item} other {# items}}",
+      "seeAll": "Bekijk alle {count} in de galerij",
+      "add": "Voeg de jouwe toe",
+      "signInToAdd": "Log in om je foto's en video's toe te voegen",
+      "empty": "Voeg als eerste foto's van dit event toe."
     },
     "tile": {
       "video": "Video, {duration}",

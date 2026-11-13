@@ -37,6 +37,7 @@ import {
 } from "@/server/communities/feed-post-counters";
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import { getVideoStorage } from "@/server/media/video-storage";
+import { getObjectStorage } from "@/server/media/object-storage";
 import { isModeratorRole } from "@/lib/communities/moderator-roles";
 import {
   feedViewerFor,
@@ -96,7 +97,6 @@ const imageChoices = z
   .min(1)
   .max(MAX_POST_IMAGES);
 import {
-  NO_GIF,
   gifFields,
   lookUpGif,
   loadPostForMediaEdit,
@@ -104,6 +104,12 @@ import {
   requireWordsUnless,
   setPostMedia,
 } from "@/server/communities/post-media";
+import { removedPostData } from "@/server/communities/post-media-fields";
+import {
+  releaseBatchLink,
+  releaseEmptyGalleryPost,
+} from "@/server/gallery/feed-post-link";
+import { relationId } from "@/server/gallery/relation-id";
 import { resolvePostTopic } from "@/server/communities/post-topics";
 import { canBroadcast } from "@/server/communities/role-utils";
 import {
@@ -285,11 +291,14 @@ export const feedRouter = createTRPCRouter({
       const hasMore = docs.length > input.limit;
       const page = hasMore ? docs.slice(0, input.limit) : docs;
       const posts = await decorateFeedPosts(
-        ctx.db,
-        payload,
+        {
+          database: ctx.db,
+          payload,
+          videoStorage: getVideoStorage,
+          galleryStorage: getObjectStorage,
+        },
         page,
         ctx.session.user.id,
-        getVideoStorage,
       );
       const last = page.at(-1);
       const nextCursor =
@@ -330,6 +339,7 @@ export const feedRouter = createTRPCRouter({
           isModerator: isModeratorRole(community.role),
         },
         storage: getVideoStorage,
+        galleryStorage: getObjectStorage,
         cursor: input.cursor ?? null,
         limit: input.limit,
       });
@@ -354,6 +364,7 @@ export const feedRouter = createTRPCRouter({
         payload: await getPayloadClient(),
         userId: ctx.session.user.id,
         storage: getVideoStorage,
+        galleryStorage: getObjectStorage,
         cursor: input.cursor ?? null,
         limit: input.limit,
       }),
@@ -404,6 +415,7 @@ export const feedRouter = createTRPCRouter({
           database: ctx.db,
           payload: await getPayloadClient(),
           storage: getVideoStorage,
+          galleryStorage: getObjectStorage,
         },
         {
           community,
@@ -664,7 +676,8 @@ export const feedRouter = createTRPCRouter({
    * remove it, or set an image (which replaces a video). Changing media is
    * posting new content, so it needs the same right as posting; the media
    * rules live in `setPostMedia`. Putting a new video on the post is
-   * `replacePostVideo`.
+   * `replacePostVideo`. A gallery post's media never changes; its text may
+   * be emptied.
    */
   editPost: protectedProcedure
     .input(
@@ -753,10 +766,12 @@ export const feedRouter = createTRPCRouter({
       if (post.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      // Without words, the post's own GIF or described pictures must say it.
+      // Without words, the post's own GIF, described pictures or gallery
+      // batch must say it.
       if (!input.content.trim()) {
         requireWordsUnless(input.content, {
           gif: Boolean(post.gif?.giphyId),
+          gallery: post.galleryBatch != null,
           pictureAlts: await loadImageAlts(payload, post),
         });
       }
@@ -805,6 +820,21 @@ export const feedRouter = createTRPCRouter({
           editedAt: new Date().toISOString(),
         },
       });
+      // A gallery post left without words shows only its batch: once the
+      // batch has no ready item left it would be an empty card, so it goes
+      // (its claim re-checks the stored text and items at write time).
+      const batchId = relationId(post.galleryBatch);
+      if (batchId !== null && !input.content.trim()) {
+        try {
+          await releaseEmptyGalleryPost({ payload }, batchId);
+        } catch (error) {
+          // The edit is saved; a card left showing nothing is logged.
+          console.error(
+            "[feed.editPost] removing an emptied gallery post failed",
+            { postId: post.id, batchId, error },
+          );
+        }
+      }
       return { id: post.id };
     }),
 
@@ -912,19 +942,17 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      // A gallery post lets go of its batch, and the batch of the post; the
+      // items stay in the gallery.
+      const batchId = relationId(post.galleryBatch);
       await payload.update({
         collection: "feed-posts",
         id: input.postId,
-        data: {
-          isDeleted: true,
-          content: "",
-          authorName: "",
-          images: [],
-          image: null,
-          imageUrl: null,
-          gif: NO_GIF,
-        },
+        data: removedPostData(),
       });
+      if (batchId !== null) {
+        await releaseBatchLink({ payload }, { batchId, postId: post.id });
+      }
       // Best effort: the post is already gone, so a storage failure is logged
       // rather than surfaced.
       await cleanUpPostVideoFiles(getVideoStorage, post, {
@@ -1314,6 +1342,7 @@ export const feedRouter = createTRPCRouter({
         {
           payload,
           storage: getVideoStorage,
+          galleryStorage: getObjectStorage,
           notifyModerators: async () => undefined,
         },
         input,

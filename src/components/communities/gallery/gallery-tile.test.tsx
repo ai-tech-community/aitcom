@@ -10,7 +10,11 @@ const EVENT = { id: 4, title: "Autumn hack night", slug: "autumn-hack" };
 
 function renderTile(
   item: ReturnType<typeof galleryItem>,
-  props: { showEvent?: boolean; onOpen?: (id: number) => void } = {},
+  props: {
+    showEvent?: boolean;
+    onOpen?: (id: number) => void;
+    fill?: boolean;
+  } = {},
 ) {
   return render(
     <NextIntlClientProvider locale="en" messages={en}>
@@ -18,6 +22,7 @@ function renderTile(
         item={item}
         showEvent={props.showEvent ?? true}
         onOpen={props.onOpen ?? vi.fn()}
+        fill={props.fill}
       />
     </NextIntlClientProvider>,
   );
@@ -100,5 +105,20 @@ describe("GalleryTile", () => {
     renderTile(galleryItem({ id: 7 }), { onOpen });
     fireEvent.click(screen.getByRole("button"));
     expect(onOpen).toHaveBeenCalledWith(7);
+  });
+
+  it("keeps the item's shape on a wall", () => {
+    renderTile(galleryItem({ width: 1200, height: 800 }));
+    const tile = screen.getByRole("button");
+    expect(tile.style.getPropertyValue("--tile-ratio")).toBe("1.5");
+    expect(tile).toHaveClass("aspect-[var(--tile-ratio)]");
+  });
+
+  it("fills the room its parent gives it, with no shape of its own", () => {
+    renderTile(galleryItem({ width: 1200, height: 800 }), { fill: true });
+    const tile = screen.getByRole("button");
+    expect(tile.style.getPropertyValue("--tile-ratio")).toBe("");
+    expect(tile).not.toHaveClass("aspect-[var(--tile-ratio)]");
+    expect(tile).toHaveClass("h-full");
   });
 });

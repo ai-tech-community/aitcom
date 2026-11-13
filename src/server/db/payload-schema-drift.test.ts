@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { findMissingColumns } from "./payload-schema-drift";
+import {
+  findMissingColumns,
+  GUARDED_PAYLOAD_TABLES,
+} from "./payload-schema-drift";
+
+describe("GUARDED_PAYLOAD_TABLES", () => {
+  it("checks the feed post and gallery tables", () => {
+    expect(GUARDED_PAYLOAD_TABLES).toEqual(
+      expect.arrayContaining([
+        "feed_posts",
+        "gallery_items",
+        "gallery_batches",
+      ]),
+    );
+  });
+});
 
 describe("findMissingColumns", () => {
   it("names each expected column the database lacks", () => {

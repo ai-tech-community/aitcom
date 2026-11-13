@@ -1,6 +1,8 @@
 // Router-level tests for the report/moderation gates in the feed router.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as ObjectStorage from "@/server/media/object-storage";
+
 const hooks = {
   membership: undefined as { role: string } | undefined,
   post: null as Record<string, unknown> | null,
@@ -45,6 +47,11 @@ vi.mock("@/server/better-auth", () => ({
   auth: { api: { getSession: async () => null } },
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
+const galleryStorage = vi.hoisted(() => ({ remove: vi.fn() }));
+vi.mock("@/server/media/object-storage", async (importOriginal) => ({
+  ...(await importOriginal<typeof ObjectStorage>()),
+  getObjectStorage: () => galleryStorage,
+}));
 
 import { createCaller } from "@/server/api/root";
 import { db as mockedDb } from "@/server/db";
@@ -112,6 +119,51 @@ describe("feed.reviewReport", () => {
       id: 5,
       data: { hiddenAt: null, reportCount: 0 },
     });
+  });
+});
+
+describe("feed.reviewReport on a gallery post", () => {
+  it("removing it removes the batch's items from the gallery, files included", async () => {
+    hooks.membership = { role: "moderator" };
+    hooks.post = communityPost({ content: "", galleryBatch: 9 });
+    payload.delete.mockImplementation(
+      async ({ collection }: { collection: string }) =>
+        collection === "gallery-items"
+          ? {
+              docs: [
+                {
+                  id: 1,
+                  fileKey: "private/gallery/c-1/u1.jpg",
+                  thumbnailKey: "private/gallery/c-1/u1-thumb.jpg",
+                },
+              ],
+              errors: [],
+            }
+          : {},
+    );
+    galleryStorage.remove.mockResolvedValue(undefined);
+    payload.update.mockResolvedValue({ docs: [], errors: [] });
+
+    await expect(
+      caller().feed.reviewReport({ postId: 5, action: "remove" }),
+    ).resolves.toEqual({ ok: true });
+
+    expect(galleryStorage.remove).toHaveBeenCalledWith([
+      "private/gallery/c-1/u1.jpg",
+      "private/gallery/c-1/u1-thumb.jpg",
+    ]);
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "feed-posts",
+        data: expect.objectContaining({ isDeleted: true, galleryBatch: null }),
+      }),
+    );
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "gallery-batches",
+        data: { feedPostId: null },
+      }),
+    );
   });
 });
 

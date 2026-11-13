@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  eventGalleryPath,
   galleryListInput,
   hasGalleryFilters,
   parseGalleryParams,
@@ -135,5 +136,21 @@ describe("the upload link", () => {
         upload: null,
       }).toString(),
     ).toBe("event=4");
+  });
+});
+
+describe("an event's links into the gallery", () => {
+  it("opens the wall filtered to the event", () => {
+    expect(eventGalleryPath("mlops", 4)).toBe(
+      "/communities/mlops/gallery?event=4",
+    );
+  });
+
+  it("opens the upload with the event chosen, which the gallery reads back", () => {
+    const path = eventGalleryPath("mlops", 4, { upload: true });
+    expect(path).toBe("/communities/mlops/gallery?upload=1&event=4");
+    const search = new URLSearchParams(path.split("?")[1]);
+    expect(readUploadLink(search)).toEqual({ eventId: 4 });
+    expect(parseGalleryParams(search).event).toBe(4);
   });
 });

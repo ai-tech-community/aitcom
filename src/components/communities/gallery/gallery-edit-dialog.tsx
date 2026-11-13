@@ -83,11 +83,17 @@ export function GalleryEditDialog({
   item,
   open,
   onOpenChange,
+  onSaved,
 }: {
   slug: string;
   item: GalleryItemView;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Called once a save went through, for a page that shows the item from
+   * a list other than the gallery's own (a feed post's collage).
+   */
+  onSaved?: () => void;
 }) {
   const t = useTranslations("gallery.edit");
   const errorText = useGalleryErrorText();
@@ -108,6 +114,7 @@ export function GalleryEditDialog({
       void utils.gallery.facets.invalidate({ slug });
       void utils.gallery.item.invalidate({ slug, itemId: item.id });
       toast.success(t("saved"));
+      onSaved?.();
       onOpenChange(false);
     },
     onError: (error) => setFailure(errorText(error, "saveFailed")),

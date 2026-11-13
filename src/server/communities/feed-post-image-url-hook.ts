@@ -8,6 +8,7 @@ import type { FeedPost } from "@/payload-types";
 import { carriesMedia } from "@/lib/feed-post-rules";
 
 import { imageIdsOf } from "./feed-images";
+import { removedPostData } from "./post-media-fields";
 
 /**
  * Keeps a post's `imageUrl` (and the deprecated `image` field) in step with
@@ -75,7 +76,7 @@ export function unlinkFeedPostsBeforeMediaDelete(): CollectionBeforeDeleteHook {
     for (const post of docs) {
       const images = imageIdsOf(post).filter((other) => other !== mediaId);
       // A post that was only this picture would be left saying nothing:
-      // it is removed the way a moderator removes a post.
+      // it is removed the way a moderator removes a post (`removedPostData`).
       const leftEmpty =
         images.length === 0 &&
         !post.content?.trim() &&
@@ -83,15 +84,7 @@ export function unlinkFeedPostsBeforeMediaDelete(): CollectionBeforeDeleteHook {
       await req.payload.update({
         collection: "feed-posts",
         id: post.id,
-        data: leftEmpty
-          ? {
-              images,
-              imageUrl: null,
-              image: null,
-              isDeleted: true,
-              content: "",
-            }
-          : { images },
+        data: leftEmpty ? removedPostData() : { images },
         depth: 0,
         req,
       });

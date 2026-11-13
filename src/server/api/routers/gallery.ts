@@ -17,6 +17,7 @@ import {
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import type { db } from "@/server/db";
 import { loadGalleryViewer } from "@/server/gallery/access";
+import { galleryAnnouncer } from "@/server/gallery/announce";
 import type { GalleryDeps } from "@/server/gallery/deps";
 import { galleryError } from "@/server/gallery/errors";
 import { galleryEnabled } from "@/server/gallery/flag";
@@ -100,11 +101,15 @@ const itemInCommunity = z.object({ slug, itemId: recordId });
  * see, upload, edit or delete what — lives in `src/server/gallery/`.
  */
 export const galleryRouter = createTRPCRouter({
-  /** A page of the wall. Signed-out visitors see what outsiders may see. */
+  /**
+   * A page of the wall, or of one upload's items (a feed post's lightbox).
+   * Signed-out visitors see what outsiders may see.
+   */
   list: galleryPublicProcedure
     .input(
       inCommunity.extend({
         eventId: z.union([recordId, z.literal("none")]).optional(),
+        batchId: recordId.optional(),
         topicSlug: topicSlug.optional(),
         mediaType: z.enum(GALLERY_MEDIA_TYPES).optional(),
         cursor: recordId.optional(),
@@ -203,15 +208,17 @@ export const galleryRouter = createTRPCRouter({
       }),
     ),
 
-  /** Slice 1 passes no feed announcement; slice 2 adds it here. */
+  /** Finishes the batch and announces it in the community feed. */
   finishBatch: galleryProtectedProcedure
     .input(z.object({ batchId: recordId }))
-    .mutation(async ({ ctx, input }) =>
-      finishBatch(await depsFor(ctx.db), {
-        userId: ctx.session.user.id,
-        batchId: input.batchId,
-      }),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const deps = await depsFor(ctx.db);
+      return finishBatch(
+        deps,
+        { userId: ctx.session.user.id, batchId: input.batchId },
+        galleryAnnouncer({ payload: deps.payload, db: deps.db }),
+      );
+    }),
 
   /** Null clears a field; a missing field is left as it is. */
   updateItem: galleryProtectedProcedure

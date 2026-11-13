@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./feed-posts", () => ({
-  decorateFeedPosts: vi.fn((_db, _p, posts: object[]) =>
+  decorateFeedPosts: vi.fn((_deps, posts: object[]) =>
     Promise.resolve(posts.map((p) => ({ ...p }))),
   ),
 }));
@@ -39,13 +39,16 @@ function deps(docs: unknown[], byId: Record<number, unknown> = {}) {
       ),
   };
   const storage = vi.fn();
+  const galleryStorage = vi.fn();
   return {
     payload,
     storage,
+    galleryStorage,
     deps: {
       database: {} as never,
       payload: payload as never,
       storage: storage as never,
+      galleryStorage: galleryStorage as never,
     },
   };
 }
@@ -69,8 +72,8 @@ describe("listReels", () => {
     expect(page.notice).toBeNull();
   });
 
-  it("passes the viewer and the lazy storage source to decoration", async () => {
-    const { deps: d, storage } = deps([video(2)]);
+  it("passes the viewer and the lazy storage sources to decoration", async () => {
+    const { deps: d, storage, galleryStorage } = deps([video(2)]);
     await listReels(d, {
       community: { id: "c1" },
       viewer: member,
@@ -78,10 +81,14 @@ describe("listReels", () => {
       startAtPostId: null,
       limit: 5,
     });
-    const call = vi.mocked(decorateFeedPosts).mock.calls.at(-1)!;
-    expect(call[3]).toBe("m");
-    expect(call[4]).toBe(storage);
+    const [decorationDeps, , viewerId] = vi
+      .mocked(decorateFeedPosts)
+      .mock.calls.at(-1)!;
+    expect(viewerId).toBe("m");
+    expect(decorationDeps.videoStorage).toBe(storage);
+    expect(decorationDeps.galleryStorage).toBe(galleryStorage);
     expect(storage).not.toHaveBeenCalled();
+    expect(galleryStorage).not.toHaveBeenCalled();
   });
 
   it("continues after the cursor", async () => {

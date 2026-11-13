@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GALLERY_CAPTION_MAX, GALLERY_PAGE_SIZE } from "@/lib/gallery-rules";
 import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
+import {
+  matchesWhere,
+  selectFields,
+  sortDocs,
+} from "@/test/fake-payload-query";
 
 import {
   loadGalleryViewer,
@@ -9,11 +14,13 @@ import {
   type GalleryViewer,
 } from "./access";
 import {
+  countItems,
   deleteItem,
   getItem,
   galleryReadableWhere,
   listFacets,
   listItems,
+  previewBatches,
   updateItem,
   uploadChoices,
 } from "./items";
@@ -31,53 +38,7 @@ afterEach(() => {
 
 type Doc = Record<string, unknown>;
 type Where = Record<string, unknown>;
-
-/**
- * Just enough of Payload's `where` to run the gallery's queries in memory,
- * so the tests check which rows a viewer's query really matches rather than
- * the query's shape.
- */
-function matches(doc: Doc, where: Where | undefined): boolean {
-  if (!where) return true;
-  return Object.entries(where).every(([key, condition]) => {
-    if (key === "and") {
-      return (condition as Where[]).every((w) => matches(doc, w));
-    }
-    if (key === "or")
-      return (condition as Where[]).some((w) => matches(doc, w));
-    const value = doc[key];
-    return Object.entries(condition as Record<string, unknown>).every(
-      ([op, operand]) => {
-        switch (op) {
-          case "equals":
-            return value === operand;
-          case "in":
-            return (operand as unknown[]).includes(value);
-          case "exists":
-            return (value !== null && value !== undefined) === operand;
-          case "less_than":
-            return (value as number | string) < (operand as number | string);
-          case "less_than_equal":
-            return (value as number | string) <= (operand as number | string);
-          default:
-            throw new Error(`fake payload: unsupported operator ${op}`);
-        }
-      },
-    );
-  });
-}
-
-function sortDocs(docs: Doc[], sort: string | undefined): Doc[] {
-  if (!sort) return docs;
-  const desc = sort.startsWith("-");
-  const field = desc ? sort.slice(1) : sort;
-  return [...docs].sort((a, b) => {
-    const x = a[field] as number | string;
-    const y = b[field] as number | string;
-    const order = x < y ? -1 : x > y ? 1 : 0;
-    return desc ? -order : order;
-  });
-}
+type CountArgs = { collection: string; where: Where };
 
 const COMMUNITY_FILE = (id: number) => `private/gallery/c1/u${id}.jpg`;
 
@@ -138,10 +99,16 @@ const USERS = [
 ];
 
 function fakes(
-  seed: { items?: Doc[]; events?: Doc[]; topics?: string[] } = {},
+  seed: {
+    items?: Doc[];
+    events?: Doc[];
+    topics?: string[];
+    posts?: Doc[];
+  } = {},
 ) {
   const store: Record<string, Doc[]> = {
     "gallery-items": seed.items ?? [],
+    "feed-posts": seed.posts ?? [],
     "gallery-batches": [{ id: 3, communityId: "c1", uploaderId: "u1" }],
     events: seed.events ?? [event(5), event(6)],
   };
@@ -154,11 +121,12 @@ function fakes(
         where?: Where;
         sort?: string;
         limit?: number;
+        select?: Doc;
       }) => {
         const found = sortDocs(
-          rows(args.collection).filter((doc) => matches(doc, args.where)),
+          rows(args.collection).filter((doc) => matchesWhere(doc, args.where)),
           args.sort,
-        );
+        ).map((doc) => selectFields(doc, args.select));
         return {
           docs: args.limit ? found.slice(0, args.limit) : found,
         };
@@ -173,14 +141,20 @@ function fakes(
         const values = [
           ...new Set(
             rows(args.collection)
-              .filter((doc) => matches(doc, args.where))
+              .filter((doc) => matchesWhere(doc, args.where))
               .map((doc) => doc[args.field] ?? null),
           ),
         ];
         return { values: values.map((value) => ({ [args.field]: value })) };
       },
     ),
-    count: vi.fn(async ({ where }: { where: Where }) => {
+    count: vi.fn(async ({ collection, where }: CountArgs) => {
+      if (collection !== "community-topics") {
+        return {
+          totalDocs: rows(collection).filter((doc) => matchesWhere(doc, where))
+            .length,
+        };
+      }
       const slug = (
         (where.and as Where[]).find((w) => "slug" in w) as {
           slug: { equals: string };
@@ -189,20 +163,38 @@ function fakes(
       return { totalDocs: topics.includes(slug) ? 1 : 0 };
     }),
     update: vi.fn(
-      async (args: { collection: string; where: Where; data: Doc }) => {
+      async (args: {
+        collection: string;
+        id?: number;
+        where?: Where;
+        data: Doc;
+      }) => {
         const list = rows(args.collection);
         const docs: Doc[] = [];
         list.forEach((doc, index) => {
-          if (!matches(doc, args.where)) return;
+          const hit =
+            args.id === undefined
+              ? matchesWhere(doc, args.where)
+              : doc.id === args.id;
+          if (!hit) return;
           list[index] = { ...doc, ...args.data };
           docs.push(list[index]);
         });
         return { docs, errors: [] as unknown[] };
       },
     ),
+    // The empty-post claim is one SQL statement; it answers with the post
+    // it claimed (none: the post changed under it).
+    db: {
+      drizzle: {
+        execute: vi.fn(async (_claim: unknown) => ({
+          rows: [{ id: 40 }] as { id: number }[],
+        })),
+      },
+    },
     delete: vi.fn(async (args: { collection: string; where: Where }) => {
       const gone = rows(args.collection).filter((doc) =>
-        matches(doc, args.where),
+        matchesWhere(doc, args.where),
       );
       store[args.collection] = rows(args.collection).filter(
         (doc) => !gone.includes(doc),
@@ -250,11 +242,12 @@ async function viewerFor(input: {
           id: "c1",
           slug: "town",
           isListedInDirectory: input.listed ?? true,
+          joinPolicy: "open",
         })),
       },
       communityMemberships: {
         findFirst: vi.fn(async () =>
-          input.role ? { role: input.role } : undefined,
+          input.role ? { role: input.role, status: "active" } : undefined,
         ),
       },
     },
@@ -533,6 +526,202 @@ describe("listItems", () => {
     });
     expect(storageSource).not.toHaveBeenCalled();
     expect(db.select).not.toHaveBeenCalled();
+  });
+});
+
+describe("listItems for one batch", () => {
+  it("keeps only the batch's readable items, newest first, paging like the wall", async () => {
+    const { deps } = fakes({
+      items: [
+        item(1),
+        item(2, { batch: 4 }),
+        item(3),
+        item(4, { hiddenAt: ago(HOUR) }),
+        item(5, { status: "uploading" }),
+      ],
+    });
+    const viewer = await member();
+
+    const first = await listItems(deps, { viewer, batchId: 3, limit: 1 });
+    expect(ids(first.items)).toEqual([3]);
+    const rest = await listItems(deps, {
+      viewer,
+      batchId: 3,
+      cursor: first.nextCursor!,
+    });
+    expect(ids(rest.items)).toEqual([1]);
+    expect(rest.nextCursor).toBeNull();
+  });
+});
+
+describe("countItems", () => {
+  const items = () => [
+    item(1),
+    item(2, { visibility: "public" }),
+    item(3, { visibility: "public", hiddenAt: ago(HOUR), uploaderId: "u5" }),
+    item(4, { hiddenAt: ago(HOUR), uploaderId: "u2" }),
+    item(5, { status: "uploading" }),
+    item(6, { communityId: "c2", visibility: "public" }),
+  ];
+
+  it("counts only the items this viewer may read", async () => {
+    const { deps } = fakes({ items: items() });
+    const count = async (viewer: GalleryViewer) => countItems(deps, { viewer });
+
+    expect(await count(await outsider())).toBe(1);
+    expect(await count(await outsider(null))).toBe(1);
+    expect(await count(await outsider("u9", false))).toBe(0);
+    // Their own hidden item counts for its uploader, not someone else's.
+    expect(await count(await member("u2"))).toBe(3);
+    expect(await count(await member("u1"))).toBe(2);
+    expect(await count(await moderator())).toBe(4);
+  });
+
+  it("narrows the count to an event, a batch, or both", async () => {
+    const { deps } = fakes({
+      items: [
+        item(1, { event: 5, batch: 3 }),
+        item(2, { event: 6, batch: 3 }),
+        item(3, { event: 5, batch: 4 }),
+        item(4, { event: 5, batch: 3, hiddenAt: ago(HOUR) }),
+      ],
+    });
+    const viewer = await member();
+    const count = (filters: object) => countItems(deps, { viewer, ...filters });
+
+    expect(await count({ eventId: 5 })).toBe(2);
+    expect(await count({ batchId: 3 })).toBe(2);
+    expect(await count({ eventId: 5, batchId: 3 })).toBe(1);
+  });
+});
+
+describe("previewBatches", () => {
+  it("gives each batch its newest readable items and how many it has", async () => {
+    const { deps } = fakes({
+      items: [
+        item(1),
+        item(2),
+        item(3),
+        item(4),
+        item(5, { hiddenAt: ago(HOUR) }),
+        item(6, { batch: 4, visibility: "public" }),
+        item(7, { batch: 4 }),
+        item(8, { batch: 9, hiddenAt: ago(HOUR) }),
+        item(10, { batch: 11 }),
+      ],
+    });
+
+    const previews = await previewBatches(deps, {
+      viewer: await member(),
+      batchIds: [3, 4, 9],
+      perBatch: 3,
+    });
+
+    expect([...previews.keys()].sort()).toEqual([3, 4]);
+    expect(ids(previews.get(3)!.items)).toEqual([4, 3, 2]);
+    expect(previews.get(3)!.total).toBe(4);
+    expect(ids(previews.get(4)!.items)).toEqual([7, 6]);
+    expect(previews.get(4)!.total).toBe(2);
+    expect(previews.get(3)!.items[0]).toMatchObject({
+      batchId: 3,
+      url: "https://signed.test/private/gallery/c1/u4.jpg",
+    });
+  });
+
+  it("shows an outsider only a batch's public items, and counts only those", async () => {
+    const { deps, storage } = fakes({
+      items: [
+        item(1, { visibility: "public" }),
+        item(2),
+        item(3, { visibility: "public", hiddenAt: ago(HOUR) }),
+      ],
+    });
+
+    const previews = await previewBatches(deps, {
+      viewer: await outsider(),
+      batchIds: [3],
+      perBatch: 3,
+    });
+
+    expect(ids(previews.get(3)!.items)).toEqual([1]);
+    expect(previews.get(3)!.total).toBe(1);
+    expect(storage.signedGetUrl).not.toHaveBeenCalled();
+  });
+
+  it("leaves an item hidden between the two reads out of the items and the total", async () => {
+    const { deps, payload, store } = fakes({
+      items: [item(1), item(2), item(3), item(4)],
+    });
+    const find = payload.find.getMockImplementation()!;
+    payload.find.mockImplementationOnce(async (args) => {
+      const scanned = await find(args);
+      store["gallery-items"]!.find((doc) => doc.id === 4)!.hiddenAt = ago(HOUR);
+      return scanned;
+    });
+
+    const previews = await previewBatches(deps, {
+      viewer: await member(),
+      batchIds: [3],
+      perBatch: 3,
+    });
+
+    expect(ids(previews.get(3)!.items)).toEqual([3, 2]);
+    expect(previews.get(3)!.total).toBe(3);
+  });
+
+  it("reads any number of batches in two queries and looks people and events up once", async () => {
+    const { deps, payload, db } = fakes({
+      items: Array.from({ length: 40 }, (_, i) =>
+        item(i + 1, {
+          batch: 100 + (i % 10),
+          uploaderId: USERS[i % 3]!.id,
+          event: i % 2 ? 5 : 6,
+        }),
+      ),
+    });
+
+    const previews = await previewBatches(deps, {
+      viewer: await member(),
+      batchIds: Array.from({ length: 10 }, (_, i) => 100 + i),
+      perBatch: 3,
+    });
+
+    expect(previews.size).toBe(10);
+    const finds = (collection: string) =>
+      payload.find.mock.calls.filter(([a]) => a.collection === collection);
+    expect(finds("gallery-items")).toHaveLength(2);
+    expect(finds("events")).toHaveLength(1);
+    expect(db.select).toHaveBeenCalledTimes(1);
+    // The scan reads ids and batches only; full rows only for what shows.
+    expect(finds("gallery-items")[0]![0]).toMatchObject({
+      select: { batch: true },
+    });
+  });
+
+  it("stops after one query, without storage or lookups, when nothing is readable", async () => {
+    const { deps, payload, db, storageSource } = fakes({ items: [item(1)] });
+
+    const previews = await previewBatches(deps, {
+      viewer: await outsider("u9", false),
+      batchIds: [3],
+      perBatch: 3,
+    });
+
+    expect(previews.size).toBe(0);
+    expect(payload.find).toHaveBeenCalledTimes(1);
+    expect(db.select).not.toHaveBeenCalled();
+    expect(storageSource).not.toHaveBeenCalled();
+  });
+
+  it("asks nothing for no batches", async () => {
+    const { deps, payload } = fakes({ items: [item(1)] });
+    const previews = await previewBatches(deps, {
+      viewer: await member(),
+      batchIds: [],
+      perBatch: 3,
+    });
+    expect(previews.size).toBe(0);
+    expect(payload.find).not.toHaveBeenCalled();
   });
 });
 
@@ -961,6 +1150,95 @@ describe("deleteItem", () => {
       deleteItem(deps, { viewer: await moderator(), itemId: 1 }),
     ).resolves.toBeUndefined();
     expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  describe("the batch's feed post", () => {
+    const galleryPost = (over: Doc = {}): Doc => ({
+      id: 40,
+      content: "",
+      authorName: "Dana",
+      communityId: "c1",
+      isDeleted: false,
+      galleryBatch: 3,
+      updatedAt: ago(HOUR),
+      ...over,
+    });
+
+    it("removes a post with no words when its last ready item is deleted, and the batch lets go of it", async () => {
+      const { deps, store } = fakes({
+        items: [item(1), item(2, { status: "failed" })],
+        posts: [galleryPost()],
+      });
+      store["gallery-batches"]![0] = {
+        ...store["gallery-batches"]![0],
+        feedPostId: 40,
+      };
+
+      await deleteItem(deps, { viewer: await member("u1"), itemId: 1 });
+
+      expect(store["feed-posts"]![0]).toMatchObject({
+        isDeleted: true,
+        content: "",
+        authorName: "",
+        galleryBatch: null,
+      });
+      expect(store["gallery-batches"]![0]).toMatchObject({ feedPostId: null });
+    });
+
+    it("keeps the post while another item of the batch is ready", async () => {
+      const { deps, store } = fakes({
+        items: [item(1), item(2)],
+        posts: [galleryPost()],
+      });
+      await deleteItem(deps, { viewer: await member("u1"), itemId: 1 });
+      expect(store["feed-posts"]![0]).toMatchObject({
+        isDeleted: false,
+        galleryBatch: 3,
+      });
+    });
+
+    it("keeps a post that has words, and the post of another batch", async () => {
+      const { deps, store } = fakes({
+        items: [item(1)],
+        posts: [
+          galleryPost({ content: "Our picnic" }),
+          galleryPost({ id: 41, galleryBatch: 8 }),
+        ],
+      });
+      await deleteItem(deps, { viewer: await moderator(), itemId: 1 });
+      expect(store["feed-posts"]!.map((p) => p.isDeleted)).toEqual([
+        false,
+        false,
+      ]);
+    });
+
+    it("keeps the item's deletion when the post could not be removed, and logs it", async () => {
+      const { deps, payload, store, log } = fakes({
+        items: [item(1)],
+        posts: [galleryPost()],
+      });
+      payload.update.mockRejectedValueOnce(new Error("db down"));
+
+      await expect(
+        deleteItem(deps, { viewer: await moderator(), itemId: 1 }),
+      ).resolves.toBeUndefined();
+
+      expect(store["gallery-items"]).toEqual([]);
+      expect(log).toHaveBeenCalledWith(
+        "[gallery.deleteItem] removing the batch's empty feed post failed",
+        expect.objectContaining({ itemId: 1, batchId: 3 }),
+      );
+    });
+
+    it("leaves the post alone when the delete lost a race", async () => {
+      const { deps, payload } = fakes({
+        items: [item(1)],
+        posts: [galleryPost()],
+      });
+      payload.delete.mockResolvedValueOnce({ docs: [], errors: [] });
+      await deleteItem(deps, { viewer: await moderator(), itemId: 1 });
+      expect(payload.update).not.toHaveBeenCalled();
+    });
   });
 
   it("answers a second delete of the same item with NOT_FOUND", async () => {

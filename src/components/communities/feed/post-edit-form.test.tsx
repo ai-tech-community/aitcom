@@ -355,6 +355,30 @@ describe("PostEditForm", () => {
     expect(screen.queryByRole("button", { name: "removeImage" })).toBeNull();
   });
 
+  it("keeps a gallery post's photos and videos, and lets its text be emptied", () => {
+    renderForm({ ...textPost, content: "Our picnic", isGalleryPost: true });
+    expect(screen.getByText("galleryMediaFixed")).toBeVisible();
+    for (const name of [
+      "addImage",
+      "replaceWithImage",
+      "add",
+      "replaceWithVideo",
+      "gif",
+      "replaceWithGif",
+      "addPoll",
+      "replaceWithPoll",
+    ]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "" } });
+    const save = screen.getByRole("button", { name: "save" });
+    expect(save).toBeEnabled();
+    fireEvent.click(save);
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "", media: { kind: "keep" } }),
+    );
+  });
+
   it("does not save while the video is still working", () => {
     m.videoState = { step: "uploading" };
     renderForm();

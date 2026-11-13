@@ -264,7 +264,6 @@
     "sectionPrizes": "Prizes",
     "sectionAbout": "About",
     "sectionSpeakers": "Speakers",
-    "sectionGallery": "Gallery",
     "sectionRelated": "Related Events",
     "location": {
       "toastUnsupported": "Geolocation not supported in this browser.",
@@ -3428,7 +3427,9 @@
       "keepCurrentVideo": "Keep current video",
       "mediaChangesOnSave": "The picture or video changes when you press Save.",
       "mediaLockedWhileReviewed": "This post is being reviewed. You can change its picture or video once a moderator has looked at it.",
+      "galleryMediaFixed": "The photos and videos stay as they are. You can manage them in the gallery.",
       "discardChanges": "Discard changes",
+      "galleryAdded": "{count, plural, one {added one photo or video to the gallery} other {added # photos and videos to the gallery}}",
       "postActions": "Post actions",
       "poll": {
         "label": "Poll",
@@ -6488,6 +6489,17 @@
       "filteredEmptyBody": "Try another event or category.",
       "showEverything": "Show everything",
       "loadMore": "Show more"
+    },
+    "collage": {
+      "label": "{count, plural, one {One photo or video from the gallery} other {# photos and videos from the gallery}}"
+    },
+    "event": {
+      "title": "Photos and videos",
+      "count": "{count, plural, one {# item} other {# items}}",
+      "seeAll": "See all {count} in the gallery",
+      "add": "Add yours",
+      "signInToAdd": "Sign in to add your photos and videos",
+      "empty": "Be the first to add photos from this event."
     },
     "tile": {
       "video": "Video, {duration}",

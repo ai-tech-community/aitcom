@@ -90,6 +90,11 @@ export type EditablePost = {
   poll?: FeedPollView | null;
   /** When the post's "@everyone" went out (it goes out only when shared). */
   announcedAt?: string | null;
+  /**
+   * The post announces a gallery batch: its photos and videos stay as they
+   * are (they are managed in the gallery), and its text may be emptied.
+   */
+  isGalleryPost?: boolean;
 };
 
 /**
@@ -97,7 +102,8 @@ export type EditablePost = {
  * A post carries pictures (up to 4), a video or a GIF, never two kinds. Its audience is fixed
  * after posting, so a new video goes to the same audience; a public post
  * whose video is removed becomes community-only (only video posts may be
- * public), and the form says so before saving. Nothing changes until Save.
+ * public), and the form says so before saving. A gallery post's media is
+ * fixed: only its text, topic and preview change. Nothing changes until Save.
  */
 export function PostEditForm({
   post,
@@ -174,9 +180,20 @@ export function PostEditForm({
   const pollVotes = post.poll?.totalVotes ?? 0;
   // Votes were cast for the poll's words: they stay until it is taken off.
   const pollAnswersFixed = pollVotes > 0 || Boolean(post.poll?.closed);
+  const isGalleryPost = Boolean(post.isGalleryPost);
   const hadMedia =
-    hadPictures || hadLegacyImage || Boolean(post.video) || hadGif || hadPoll;
-  const mediaLocked = Boolean(post.hiddenAt);
+    isGalleryPost ||
+    hadPictures ||
+    hadLegacyImage ||
+    Boolean(post.video) ||
+    hadGif ||
+    hadPoll;
+  // A gallery post's media never changes; a reported post's waits for a
+  // moderator.
+  const mediaLocked = isGalleryPost || Boolean(post.hiddenAt);
+  const mediaLockedNote = isGalleryPost
+    ? t("galleryMediaFixed")
+    : t("mediaLockedWhileReviewed");
 
   // Free the device previews of picked pictures when the form goes away.
   useEffect(() => {
@@ -254,10 +271,11 @@ export function PostEditForm({
         : [];
   const pictureRoom = MAX_PICTURES - pictures.length;
   // Words are optional while the post keeps or gets a GIF or described
-  // pictures (`mayGoWithoutWords`); a video, a legacy picture and a poll
-  // need them.
+  // pictures, or is a gallery post (`mayGoWithoutWords`); a video, a legacy
+  // picture and a poll need them.
   const noWords = content.trim() === "";
   const willCarryMedia = mayGoWithoutWords({
+    gallery: isGalleryPost,
     gif: media.kind === "gif" || (media.kind === "keep" && hadGif),
     pictureAlts:
       media.kind === "keep" && hadLegacyImage
@@ -444,7 +462,7 @@ export function PostEditForm({
         }
         imageRefusal={
           mediaLocked
-            ? t("mediaLockedWhileReviewed")
+            ? mediaLockedNote
             : pictureRoom <= 0
               ? te("tooManyPictures")
               : te("waitForUpload")
@@ -568,9 +586,7 @@ export function PostEditForm({
               </Button>
             ) : null}
             {mediaLocked ? (
-              <p className="text-muted-foreground text-sm">
-                {t("mediaLockedWhileReviewed")}
-              </p>
+              <p className="text-muted-foreground text-sm">{mediaLockedNote}</p>
             ) : null}
             {hasPreview ? (
               <div className="border-border flex items-center gap-2 rounded-md border px-3 py-2 text-sm">

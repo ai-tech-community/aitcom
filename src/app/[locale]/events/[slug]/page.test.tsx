@@ -1,6 +1,7 @@
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as PublicEventAccess from "@/server/events/public-event-access";
+import type { EventGallerySection as Section } from "@/server/gallery/event-section";
 
 /**
  * Invite-only communities stay off the public event page for signed-out
@@ -12,6 +13,9 @@ const state = vi.hoisted(() => ({
   member: false,
   role: "member",
   coverImage: null as { id: number; url: string } | null,
+  /** Set to render the hackathon overview instead of the standard layout. */
+  challengeId: null as number | null,
+  gallerySection: null as Section | null,
   community: {
     id: "runners",
     slug: "sunday-runners-demo",
@@ -61,8 +65,14 @@ vi.mock("@/server/better-auth/server", () => ({
     state.userId ? { user: { id: state.userId } } : null,
 }));
 
+const loadGallery = vi.hoisted(() => vi.fn());
+vi.mock("@/server/gallery/event-section", () => ({
+  loadEventGallerySection: loadGallery,
+}));
+
 vi.mock("@/server/payload", () => ({
   getPayloadClient: async () => ({
+    findByID: async () => ({ id: state.challengeId, rewards: {} }),
     find: async () => ({
       docs: [
         {
@@ -77,6 +87,7 @@ vi.mock("@/server/payload", () => ({
           description: null,
           summary: null,
           coverImage: state.coverImage,
+          challengeId: state.challengeId,
         },
       ],
     }),
@@ -108,6 +119,7 @@ vi.mock("@/server/events/public-event-access", async (importOriginal) => ({
   loadHiddenEventCommunityIds: async () => [],
 }));
 
+import { EventGallerySection } from "@/components/events/event-gallery-section";
 import EventDetailPage, { generateMetadata } from "./page";
 
 const params = () =>
@@ -118,6 +130,10 @@ beforeEach(() => {
   state.member = false;
   state.role = "member";
   state.coverImage = null;
+  state.challengeId = null;
+  state.gallerySection = null;
+  loadGallery.mockReset();
+  loadGallery.mockImplementation(async () => state.gallerySection);
   state.community = {
     id: "runners",
     slug: "sunday-runners-demo",
@@ -188,5 +204,87 @@ describe("invite-only community event page", () => {
     const meta = await generateMetadata({ params: params() });
     expect(meta).not.toEqual({});
     expect(meta.title).toBe("Sunday 10K Social Run (demo)");
+  });
+});
+
+describe("the event's photos and videos", () => {
+  const section: Section = {
+    communitySlug: "sunday-runners-demo",
+    eventId: 85,
+    items: [],
+    total: 0,
+    viewer: { kind: "member", canModerate: false },
+  };
+
+  /** Positions in the page's elements, in render order (-1: absent). */
+  const sectionIndex = (tree: ReactElement<Record<string, unknown>>[]) =>
+    tree.findIndex((node) => node.type === EventGallerySection);
+  const attendeesIndex = (tree: ReactElement<Record<string, unknown>>[]) =>
+    tree.findIndex((node) => node.props.children === "attendees");
+
+  beforeEach(() => {
+    state.userId = "member-1";
+    state.member = true;
+  });
+
+  it("asks for the section as this viewer, for this event", async () => {
+    await EventDetailPage({ params: params() });
+    expect(loadGallery).toHaveBeenCalledTimes(1);
+    const [deps, input] = loadGallery.mock.calls[0]! as [
+      Record<string, unknown>,
+      { event: { id: number; communityId: string }; userId: string },
+    ];
+    expect(deps).toEqual(
+      expect.objectContaining({
+        payload: expect.anything(),
+        db: expect.anything(),
+        storage: expect.any(Function),
+      }),
+    );
+    expect(input.event).toMatchObject({ id: 85, communityId: "runners" });
+    expect(input.userId).toBe("member-1");
+  });
+
+  it.each([
+    ["the standard layout", null],
+    ["the hackathon layout", 7],
+  ])("renders it in %s, before the attendees", async (_label, challengeId) => {
+    state.challengeId = challengeId;
+    state.gallerySection = section;
+    const tree = elements(await EventDetailPage({ params: params() }));
+    const at = sectionIndex(tree);
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(tree[at]!.props.section).toBe(section);
+    expect(at).toBeLessThan(attendeesIndex(tree));
+    // The hackathon overview has no hero; the standard page does.
+    expect(tree.some((node) => "heroImageUrl" in node.props)).toBe(
+      challengeId === null,
+    );
+  });
+
+  it("still shows the event when its photos fail to load", async () => {
+    const failure = new Error("storage down");
+    loadGallery.mockRejectedValue(failure);
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const tree = elements(await EventDetailPage({ params: params() }));
+      expect(sectionIndex(tree)).toBe(-1);
+      expect(attendeesIndex(tree)).toBeGreaterThanOrEqual(0);
+      expect(log).toHaveBeenCalledWith(
+        "[events] loading the event's photos failed",
+        { eventId: 85, error: failure },
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it.each([
+    ["the standard layout", null],
+    ["the hackathon layout", 7],
+  ])("renders nothing in %s when there is no section", async (_l, id) => {
+    state.challengeId = id;
+    const tree = elements(await EventDetailPage({ params: params() }));
+    expect(sectionIndex(tree)).toBe(-1);
   });
 });

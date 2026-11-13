@@ -41,17 +41,20 @@ function fakeDb(
                 id: "c1",
                 slug: "town",
                 isListedInDirectory: over.listed ?? true,
+                joinPolicy: "open",
               },
         ),
       },
       communityMemberships: {
-        findFirst: vi
-          .fn()
-          .mockResolvedValue(
-            over.role === null
-              ? undefined
-              : { communityId: "c1", role: over.role ?? "member" },
-          ),
+        findFirst: vi.fn().mockResolvedValue(
+          over.role === null
+            ? undefined
+            : {
+                communityId: "c1",
+                role: over.role ?? "member",
+                status: "active",
+              },
+        ),
       },
     },
   } as never;
@@ -77,7 +80,13 @@ describe("loadGalleryViewer", () => {
       isMember: false,
       isModerator: false,
       canSeePublic: true,
-      community: { id: "c1", slug: "town", isListedInDirectory: true },
+      community: {
+        id: "c1",
+        slug: "town",
+        isListedInDirectory: true,
+        joinPolicy: "open",
+      },
+      membershipStatus: null,
     });
     expect(
       (db as { query: { communityMemberships: { findFirst: unknown } } }).query
@@ -224,7 +233,7 @@ describe("loadGalleryViewerById", () => {
     ).resolves.toBeNull();
   });
 
-  it("reads the membership once", async () => {
+  it("reads the membership once, and names the community and its join policy", async () => {
     const db = fakeDb({ role: "admin" });
     await expect(
       loadGalleryViewerById({ db }, { communityId: "c1", userId: "u1" }),
@@ -234,11 +243,42 @@ describe("loadGalleryViewerById", () => {
       isMember: true,
       isModerator: true,
       canSeePublic: true,
+      community: {
+        id: "c1",
+        slug: "town",
+        isListedInDirectory: true,
+        joinPolicy: "open",
+      },
+      membershipStatus: "active",
     });
     expect(
       (db as { query: { communityMemberships: { findFirst: unknown } } }).query
         .communityMemberships.findFirst,
     ).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives a non-member's membership row status, from the same read", async () => {
+    const db = fakeDb();
+    const memberships = (
+      db as {
+        query: {
+          communityMemberships: { findFirst: ReturnType<typeof vi.fn> };
+        };
+      }
+    ).query.communityMemberships;
+    memberships.findFirst.mockResolvedValue({
+      communityId: "c1",
+      role: "member",
+      status: "pending_approval",
+    });
+    await expect(
+      loadGalleryViewerById({ db }, { communityId: "c1", userId: "u1" }),
+    ).resolves.toMatchObject({
+      isMember: false,
+      isModerator: false,
+      membershipStatus: "pending_approval",
+    });
+    expect(memberships.findFirst).toHaveBeenCalledTimes(1);
   });
 });
 

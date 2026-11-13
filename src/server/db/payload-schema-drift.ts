@@ -25,6 +25,9 @@ export const GUARDED_PAYLOAD_TABLES = [
   "magazine_issues_blocks_event",
   "magazine_issues_blocks_forum_thread",
   "magazine_issues_blocks_launchpad_project",
+  "feed_posts",
+  "gallery_items",
+  "gallery_batches",
 ];
 
 /** "table.column" for each expected column the database does not have. */
