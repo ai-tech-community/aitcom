@@ -58,11 +58,11 @@ export type GalleryItemView = {
 
 export type GalleryFacets = {
   /**
-   * Events that readable items link to, newest first. `label` is the event's
+   * Events that readable items link to, newest first. `day` is the event's
    * own calendar day (`YYYY-MM-DD`, event-local), for the UI to format in the
    * reader's language and tell same-named events apart.
    */
-  events: { id: number; title: string; label: string }[];
+  events: { id: number; title: string; day: string }[];
   /** Topic slugs that readable items carry, alphabetical. */
   topics: string[];
   /** Whether any readable item links to no event. */
@@ -197,31 +197,69 @@ async function toViews(
   );
 }
 
-/** The item, when this viewer may read it; null otherwise. */
-async function findReadableItem(
+/**
+ * The items a viewer may ask to delete: those they may read, plus their own
+ * ready items in the community whatever their visibility or hidden state and
+ * whether or not they are still a member — an uploader can always take
+ * their own photos down.
+ */
+function galleryDeletableWhere(viewer: GalleryViewer): Where {
+  const readable = galleryReadableWhere(viewer);
+  if (!viewer.userId) return readable;
+  return {
+    or: [
+      readable,
+      {
+        and: [
+          { communityId: { equals: viewer.communityId } },
+          { status: { equals: "ready" } },
+          { uploaderId: { equals: viewer.userId } },
+        ],
+      },
+    ],
+  };
+}
+
+/** The item among those `where` matches; NOT_FOUND otherwise. */
+async function requireItemIn(
   deps: GalleryDeps,
-  viewer: GalleryViewer,
+  where: Where,
   itemId: number,
-): Promise<GalleryItem | null> {
+): Promise<GalleryItem> {
   const { docs } = await deps.payload.find({
     collection: "gallery-items",
-    where: { and: [galleryReadableWhere(viewer), { id: { equals: itemId } }] },
+    where: { and: [where, { id: { equals: itemId } }] },
     limit: 1,
     pagination: false,
     depth: 0,
   });
-  return docs[0] ?? null;
+  const item = docs[0];
+  if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+  return item;
 }
 
-/** As `findReadableItem`, answering an unreadable item as an unknown one. */
-async function requireReadableItem(
+/** The item, when this viewer may read it; an unreadable one is NOT_FOUND. */
+function requireReadableItem(
   deps: GalleryDeps,
   viewer: GalleryViewer,
   itemId: number,
 ): Promise<GalleryItem> {
-  const item = await findReadableItem(deps, viewer, itemId);
-  if (!item) throw new TRPCError({ code: "NOT_FOUND" });
-  return item;
+  return requireItemIn(deps, galleryReadableWhere(viewer), itemId);
+}
+
+/**
+ * A write Payload caught and did not apply (bulk operations report per-row
+ * failures instead of throwing): logged, and answered as a server error so
+ * the member is never told it worked.
+ */
+function writeFailed(
+  deps: Pick<GalleryDeps, "log">,
+  message: string,
+  itemId: number,
+  errors: unknown[],
+): TRPCError {
+  (deps.log ?? console.error)(message, { itemId, errors });
+  return new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 }
 
 /**
@@ -314,7 +352,7 @@ export async function listFacets(
     events = docs.map((doc) => ({
       id: doc.id,
       title: doc.title,
-      label: eventDayParts(doc.date, "en")?.iso ?? doc.date,
+      day: eventDayParts(doc.date, "en")?.iso ?? doc.date,
     }));
   }
   return {
@@ -445,12 +483,23 @@ export async function updateItem(
     data.magazineConsent = false;
     data.magazineConsentAt = null;
   }
-  const updated = await deps.payload.update({
+  // By `where`, so an item deleted meanwhile is "no row", not a throw.
+  const { docs, errors } = await deps.payload.update({
     collection: "gallery-items",
-    id: item.id,
+    where: { id: { equals: item.id } },
     data,
     depth: 0,
   });
+  if (errors.length > 0) {
+    throw writeFailed(
+      deps,
+      "[gallery.updateItem] saving an item failed",
+      item.id,
+      errors,
+    );
+  }
+  const updated = docs[0];
+  if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
   const [view] = await toViews(deps, viewer, [updated]);
   return view!;
 }
@@ -458,23 +507,37 @@ export async function updateItem(
 /**
  * The uploader or a moderator deletes an item: the row goes first, then its
  * two files, best effort (failures are logged; the unused-files sweep is the
- * net). The item's batch stays, even when it is now empty: the cleanup owns
- * batches. Anyone else is refused NOT_ALLOWED; an item the viewer cannot see
- * is NOT_FOUND.
+ * net). The uploader may always delete their own item — hidden, members-only,
+ * or after leaving the community or letting a paid membership lapse. The
+ * item's batch stays, even when it is now empty: the cleanup owns batches.
+ * Anyone else is refused NOT_ALLOWED; an item they cannot see is NOT_FOUND.
+ * A row Payload could not delete is a server error, and its files are kept.
  */
 export async function deleteItem(
   deps: GalleryDeps,
   input: { viewer: GalleryViewer; itemId: number },
 ): Promise<void> {
   const { viewer } = input;
-  const item = await requireReadableItem(deps, viewer, input.itemId);
+  const item = await requireItemIn(
+    deps,
+    galleryDeletableWhere(viewer),
+    input.itemId,
+  );
   const isOwn = viewer.userId !== null && item.uploaderId === viewer.userId;
   if (!isOwn && !viewer.isModerator) throw galleryError("NOT_ALLOWED");
-  const { docs } = await deps.payload.delete({
+  const { docs, errors } = await deps.payload.delete({
     collection: "gallery-items",
     where: { id: { equals: item.id } },
     depth: 0,
   });
+  if (errors.length > 0) {
+    throw writeFailed(
+      deps,
+      "[gallery.deleteItem] deleting an item failed",
+      item.id,
+      errors,
+    );
+  }
   // A concurrent delete removed the row first; it removes the files too.
   if (docs.length === 0) return;
   await removeItemFiles(deps, item, "deleteItem");

@@ -184,11 +184,15 @@ function fakes(
       return { totalDocs: topics.includes(slug) ? 1 : 0 };
     }),
     update: vi.fn(
-      async (args: { collection: string; id: number; data: Doc }) => {
+      async (args: { collection: string; where: Where; data: Doc }) => {
         const list = rows(args.collection);
-        const index = list.findIndex((doc) => doc.id === args.id);
-        list[index] = { ...list[index], ...args.data };
-        return list[index];
+        const docs: Doc[] = [];
+        list.forEach((doc, index) => {
+          if (!matches(doc, args.where)) return;
+          list[index] = { ...doc, ...args.data };
+          docs.push(list[index]);
+        });
+        return { docs, errors: [] as unknown[] };
       },
     ),
     delete: vi.fn(async (args: { collection: string; where: Where }) => {
@@ -198,7 +202,7 @@ function fakes(
       store[args.collection] = rows(args.collection).filter(
         (doc) => !gone.includes(doc),
       );
-      return { docs: gone, errors: [] };
+      return { docs: gone, errors: [] as unknown[] };
     }),
   };
   const storage = {
@@ -541,8 +545,8 @@ describe("listFacets", () => {
     await expect(listFacets(deps, { viewer: await member() })).resolves.toEqual(
       {
         events: [
-          { id: 6, title: "Event 6", label: "2026-11-07" },
-          { id: 5, title: "Event 5", label: "2026-10-18" },
+          { id: 6, title: "Event 6", day: "2026-11-07" },
+          { id: 5, title: "Event 5", day: "2026-10-18" },
         ],
         topics: ["demos", "talks"],
         hasUnlinked: true,
@@ -637,7 +641,7 @@ describe("updateItem", () => {
     });
     expect(payload.update).toHaveBeenCalledWith({
       collection: "gallery-items",
-      id: 1,
+      where: { id: { equals: 1 } },
       data: {
         caption: "Opening talk",
         alt: "Dana on stage",
@@ -720,6 +724,30 @@ describe("updateItem", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
+  it("answers NOT_FOUND when the item is deleted while being edited", async () => {
+    const { deps, payload, storage } = fakes({ items: [item(1)] });
+    payload.update.mockResolvedValueOnce({ docs: [], errors: [] });
+    await expect(
+      updateItem(deps, { viewer: await member("u1"), itemId: 1, caption: "x" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(storage.signedGetUrl).not.toHaveBeenCalled();
+  });
+
+  it("fails loudly when the edit could not be saved", async () => {
+    const { deps, payload, log } = fakes({ items: [item(1)] });
+    payload.update.mockResolvedValueOnce({
+      docs: [],
+      errors: [{ id: 1, message: "x" }],
+    });
+    await expect(
+      updateItem(deps, { viewer: await member("u1"), itemId: 1, caption: "x" }),
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+    expect(log).toHaveBeenCalledWith(
+      "[gallery.updateItem] saving an item failed",
+      expect.objectContaining({ itemId: 1 }),
+    );
+  });
+
   it.each([
     ["of another community", event(8, { communityId: "c2" })],
     ["of the Hub, with no community", event(8, { communityId: null })],
@@ -790,6 +818,58 @@ describe("deleteItem", () => {
     await deleteItem(deps, { viewer: await member("u1"), itemId: 1 });
     expect(store["gallery-items"]).toEqual([]);
     expect(storage.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["a members-only item, after leaving", {}, true],
+    ["a hidden item, after leaving", { hiddenAt: ago(HOUR) }, true],
+    [
+      "an item in a members-only community, after leaving",
+      { visibility: "public" },
+      false,
+    ],
+  ])(
+    "lets the uploader always delete %s, and removes its files",
+    async (_label, over, listed) => {
+      const { deps, storage, store } = fakes({
+        items: [item(1, over), item(2)],
+      });
+      await deleteItem(deps, {
+        viewer: await outsider("u1", listed),
+        itemId: 1,
+      });
+      expect(ids(store["gallery-items"] as { id: number }[])).toEqual([2]);
+      expect(storage.remove).toHaveBeenCalledWith([
+        (item(1, over) as { fileKey: string }).fileKey,
+        (item(1, over) as { thumbnailKey: string }).thumbnailKey,
+      ]);
+    },
+  );
+
+  it("refuses a signed-out visitor with NOT_ALLOWED", async () => {
+    const { deps, storage } = fakes({
+      items: [item(1, { visibility: "public" })],
+    });
+    await expect(
+      deleteItem(deps, { viewer: await outsider(null), itemId: 1 }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "NOT_ALLOWED" });
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("fails loudly and keeps the files when the row could not be deleted", async () => {
+    const { deps, payload, storage, log } = fakes({ items: [item(1)] });
+    payload.delete.mockResolvedValueOnce({
+      docs: [],
+      errors: [{ id: 1, message: "x" }],
+    });
+    await expect(
+      deleteItem(deps, { viewer: await moderator(), itemId: 1 }),
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+    expect(storage.remove).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      "[gallery.deleteItem] deleting an item failed",
+      expect.objectContaining({ itemId: 1 }),
+    );
   });
 
   it("refuses another member with NOT_ALLOWED and keeps everything", async () => {

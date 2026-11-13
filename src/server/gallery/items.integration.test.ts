@@ -24,6 +24,7 @@ import type { eq as Eq, inArray as InArray } from "drizzle-orm";
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
 import type { getPayloadClient as GetPayloadClient } from "@/server/payload";
+import type { plainTextToLexical as PlainTextToLexical } from "@/server/challenge-engine/lexical";
 
 import type * as Access from "./access";
 import type * as Items from "./items";
@@ -50,6 +51,7 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
     items: typeof Items;
     eq: typeof Eq;
     inArray: typeof InArray;
+    plainTextToLexical: typeof PlainTextToLexical;
   };
   let m: Mods;
   let fx: {
@@ -58,21 +60,30 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
     outsiderId: string;
     communityId: string;
     slug: string;
+    eventIds: number[];
   };
 
   beforeAll(async () => {
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
       throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
     }
-    const [{ db }, schema, { getPayloadClient }, access, items, drizzle] =
-      await Promise.all([
-        import("@/server/db"),
-        import("@/server/db/schema"),
-        import("@/server/payload"),
-        import("./access"),
-        import("./items"),
-        import("drizzle-orm"),
-      ]);
+    const [
+      { db },
+      schema,
+      { getPayloadClient },
+      access,
+      items,
+      drizzle,
+      lexical,
+    ] = await Promise.all([
+      import("@/server/db"),
+      import("@/server/db/schema"),
+      import("@/server/payload"),
+      import("./access"),
+      import("./items"),
+      import("drizzle-orm"),
+      import("@/server/challenge-engine/lexical"),
+    ]);
     m = {
       db,
       schema,
@@ -81,6 +92,7 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
       items,
       eq: drizzle.eq,
       inArray: drizzle.inArray,
+      plainTextToLexical: lexical.plainTextToLexical,
     };
   });
 
@@ -114,7 +126,14 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
         role: "member" as const,
       })),
     );
-    fx = { uploaderId, memberId, outsiderId, communityId: community!.id, slug };
+    fx = {
+      uploaderId,
+      memberId,
+      outsiderId,
+      communityId: community!.id,
+      slug,
+      eventIds: [],
+    };
   });
 
   afterEach(async () => {
@@ -128,6 +147,12 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
       collection: "gallery-batches",
       where: { communityId: { equals: fx.communityId } },
     });
+    if (fx.eventIds.length > 0) {
+      await payload.delete({
+        collection: "events",
+        where: { id: { in: fx.eventIds } },
+      });
+    }
     await m.db
       .delete(m.schema.communityMemberships)
       .where(m.eq(m.schema.communityMemberships.communityId, fx.communityId));
@@ -169,8 +194,27 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
       },
     });
     let n = 0;
+    async function pastEvent(title: string) {
+      const event = await payload.create({
+        collection: "events",
+        data: {
+          title,
+          slug: `${fx.slug}-${fx.eventIds.length + 1}`,
+          description: m.plainTextToLexical("Meet together"),
+          type: "meetup",
+          status: "published",
+          date: "2026-10-18T00:00:00Z",
+          communityId: fx.communityId,
+          location: "Test Lab",
+        },
+        context: { skipGeocode: true },
+      });
+      fx.eventIds.push(event.id);
+      return event.id;
+    }
     async function readyItem(over: {
       visibility: "community" | "public";
+      eventId?: number;
       topicSlug?: string | null;
       hiddenAt?: string | null;
       status?: "ready" | "uploading";
@@ -185,7 +229,7 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
         collection: "gallery-items",
         data: {
           communityId: fx.communityId,
-          event: null,
+          event: over.eventId ?? null,
           topicSlug: over.topicSlug ?? null,
           mediaType: "photo",
           status: over.status ?? "ready",
@@ -206,7 +250,7 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
     }
     const viewer = (userId: string | null) =>
       m.access.loadGalleryViewer(deps, { slug: fx.slug, userId });
-    return { payload, storage, deps, readyItem, viewer };
+    return { payload, storage, deps, readyItem, pastEvent, viewer };
   }
 
   it("shows outsiders only public, unhidden items, without signing any link", async () => {
@@ -277,6 +321,64 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
     await expect(
       m.items.listFacets(deps, { viewer: outsider }),
     ).resolves.toEqual({ events: [], topics: [], hasUnlinked: false });
+  });
+
+  it("offers the events readable items link to, and filters by them", async () => {
+    const { deps, readyItem, pastEvent, viewer } = await setup();
+    const meetup = await pastEvent("Meetup");
+    const workshop = await pastEvent("Workshop");
+    const fromMeetup = await readyItem({
+      visibility: "public",
+      eventId: meetup,
+    });
+    // Members-only: an outsider must not be offered its event.
+    await readyItem({ visibility: "community", eventId: workshop });
+
+    await expect(
+      m.items.listFacets(deps, { viewer: await viewer(null) }),
+    ).resolves.toEqual({
+      events: [{ id: meetup, title: "Meetup", day: "2026-10-18" }],
+      topics: [],
+      hasUnlinked: false,
+    });
+    const forMember = await m.items.listFacets(deps, {
+      viewer: await viewer(fx.memberId),
+    });
+    expect(forMember.events.map((e) => e.id).sort()).toEqual(
+      [meetup, workshop].sort(),
+    );
+    const page = await m.items.listItems(deps, {
+      viewer: await viewer(fx.memberId),
+      eventId: meetup,
+    });
+    expect(page.items.map((i) => i.id)).toEqual([fromMeetup]);
+    expect(page.items[0]!.event).toMatchObject({ id: meetup, title: "Meetup" });
+  });
+
+  it("lets the uploader delete their hidden members-only item after leaving", async () => {
+    const { deps, storage, readyItem, viewer, payload } = await setup();
+    const id = await readyItem({
+      visibility: "community",
+      hiddenAt: new Date().toISOString(),
+    });
+    await m.db
+      .delete(m.schema.communityMemberships)
+      .where(m.eq(m.schema.communityMemberships.userId, fx.uploaderId));
+
+    await m.items.deleteItem(deps, {
+      viewer: await viewer(fx.uploaderId),
+      itemId: id,
+    });
+
+    await expect(
+      payload.findByID({
+        collection: "gallery-items",
+        id,
+        depth: 0,
+        disableErrors: true,
+      }),
+    ).resolves.toBeNull();
+    expect(storage.remove).toHaveBeenCalledTimes(1);
   });
 
   it("lets the uploader delete an item and removes its files", async () => {

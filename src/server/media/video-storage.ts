@@ -4,6 +4,7 @@ import type { VideoStorageClass } from "@/lib/video-rules";
 import {
   createObjectStorage,
   getObjectStorage,
+  objectUrl,
   type ObjectStorage,
   type PresignedUpload,
   type StoredObject,
@@ -40,11 +41,7 @@ export function videoStorageOver(objects: ObjectStorage): VideoStorage {
   return {
     presignUpload: (input) => objects.presignUpload(input),
     inspect: (key) => objects.inspect(key),
-    async playbackUrl(key, storage) {
-      return storage === "public"
-        ? objects.publicUrl(key)
-        : objects.signedGetUrl(key);
-    },
+    playbackUrl: (key, storage) => objectUrl(objects, key, storage),
     remove: (keys) => objects.remove(keys),
   };
 }
