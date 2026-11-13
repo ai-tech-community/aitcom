@@ -7,10 +7,10 @@ import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { ReportReason } from "@/lib/post-report-reasons";
 import {
-  galleryBatchIdOf,
   releaseBatchLink,
   removeBatchItems,
 } from "@/server/gallery/feed-post-link";
+import { relationId } from "@/server/gallery/relation-id";
 import { canViewPost, type FeedViewer } from "./post-visibility";
 import { cleanUpPostImages } from "./feed-images";
 import { removedPostData } from "./post-media-fields";
@@ -213,7 +213,7 @@ export async function reviewReport(
     });
     return;
   }
-  const batchId = galleryBatchIdOf(post);
+  const batchId = relationId(post.galleryBatch);
   if (batchId !== null) {
     await removeBatchItems(
       { payload: deps.payload, storage: deps.galleryStorage, log: deps.log },

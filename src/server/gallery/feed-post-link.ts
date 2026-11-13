@@ -1,7 +1,6 @@
 import { sql } from "@payloadcms/db-postgres";
 import { TRPCError } from "@trpc/server";
 
-import type { FeedPost } from "@/payload-types";
 import { removedPostData } from "@/server/communities/post-media-fields";
 
 import type { GalleryDeps } from "./deps";
@@ -19,7 +18,9 @@ import { removeItemFiles } from "./item-files";
  *   has no words left (`releaseEmptyGalleryPost`, called by `deleteItem`;
  *   every other way an item is removed, such as a moderator removing a
  *   reported item, must call it too), the way a feed post that showed only a
- *   deleted picture is removed.
+ *   deleted picture is removed. `editPost` calls it when an edit empties the
+ *   post's text, and `closeBatch` right after announcing, for an item
+ *   deleted while the post was being made.
  * - Whenever a post lets go of its batch (`deletePost`, `reviewReport`,
  *   `releaseEmptyGalleryPost`), the batch lets go of the post
  *   (`releaseBatchLink`), so its `feedPostId` always names the live post:
@@ -29,15 +30,6 @@ import { removeItemFiles } from "./item-files";
  * written with the post (the batch's own `feedPostId` may have failed to
  * save).
  */
-
-/** The id of the gallery batch a post announces, if it is a gallery post. */
-export function galleryBatchIdOf(
-  post: Pick<FeedPost, "galleryBatch">,
-): number | null {
-  const batch = post.galleryBatch;
-  if (batch == null) return null;
-  return typeof batch === "object" ? batch.id : batch;
-}
 
 /**
  * Clears the batch's `feedPostId` once its post was removed, only while it
@@ -120,11 +112,13 @@ export async function removeBatchItems(
  * rest of the removed shape through Payload, and the batch lets go of it
  * (`releaseBatchLink`). A failed Payload write is logged and thrown after
  * the batch link is released (the claim already removed the post).
+ *
+ * True when this call removed the post.
  */
 export async function releaseEmptyGalleryPost(
   deps: Pick<GalleryDeps, "payload" | "log">,
   batchId: number,
-): Promise<void> {
+): Promise<boolean> {
   const {
     docs: [post],
   } = await deps.payload.find({
@@ -133,7 +127,7 @@ export async function releaseEmptyGalleryPost(
     limit: 1,
     depth: 0,
   });
-  if (!post || post.isDeleted || post.content?.trim()) return;
+  if (!post || post.isDeleted || post.content?.trim()) return false;
   const { docs: ready } = await deps.payload.find({
     collection: "gallery-items",
     where: {
@@ -142,9 +136,9 @@ export async function releaseEmptyGalleryPost(
     limit: 1,
     depth: 0,
   });
-  if (ready.length > 0) return;
+  if (ready.length > 0) return false;
   if (!(await claimEmptyGalleryPost(deps, { postId: post.id, batchId }))) {
-    return;
+    return false;
   }
   let failure: unknown = null;
   try {
@@ -163,6 +157,7 @@ export async function releaseEmptyGalleryPost(
   }
   await releaseBatchLink(deps, { batchId, postId: post.id });
   if (failure !== null) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  return true;
 }
 
 /**

@@ -683,7 +683,7 @@ export async function deleteItem(
   // A concurrent delete removed the row first; it removes the files too.
   if (docs.length === 0) return;
   await removeItemFiles(deps, item, "deleteItem");
-  const batchId = typeof item.batch === "object" ? item.batch.id : item.batch;
+  const batchId = relationId(item.batch)!;
   // The item is gone either way: a post left showing nothing is logged.
   try {
     await releaseEmptyGalleryPost(deps, batchId);

@@ -2,6 +2,8 @@
 // document (which carries the video's storage keys).
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as FeedPostLink from "@/server/gallery/feed-post-link";
+
 const hooks = {
   membership: undefined as { role: string } | undefined,
   poster: { id: "c-1" } as { id: string } | Error,
@@ -108,6 +110,12 @@ vi.mock("@/server/communities/feed-posts", async (importOriginal) => ({
   }),
 }));
 
+const releaseEmptyGalleryPost = vi.hoisted(() => vi.fn());
+vi.mock("@/server/gallery/feed-post-link", async (importOriginal) => ({
+  ...(await importOriginal<typeof FeedPostLink>()),
+  releaseEmptyGalleryPost,
+}));
+
 import { createCaller } from "@/server/api/root";
 import { db as mockedDb } from "@/server/db";
 
@@ -153,6 +161,7 @@ beforeEach(() => {
         : { ...post, ...data },
   );
   storage.remove.mockResolvedValue(undefined);
+  releaseEmptyGalleryPost.mockResolvedValue(false);
 });
 
 describe("feed post writes", () => {
@@ -624,6 +633,63 @@ describe("feed post writes", () => {
       >;
       expect(data).toMatchObject({ content: "", isEdited: true });
       expect(data).not.toHaveProperty("galleryBatch");
+    });
+
+    it("editPost that empties the text removes the post once its batch shows nothing", async () => {
+      storedPost = { ...galleryPost, content: "Our picnic" };
+      await caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "  ",
+      });
+      expect(releaseEmptyGalleryPost).toHaveBeenCalledWith({ payload }, 9);
+      // Only after the edit is saved: the release reads the stored text.
+      expect(
+        releaseEmptyGalleryPost.mock.invocationCallOrder[0],
+      ).toBeGreaterThan(payload.update.mock.invocationCallOrder[0]!);
+    });
+
+    it("editPost that keeps words leaves the post alone", async () => {
+      storedPost = galleryPost;
+      await caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "Our picnic",
+      });
+      expect(releaseEmptyGalleryPost).not.toHaveBeenCalled();
+    });
+
+    it("editPost that empties a post without a batch has nothing to release", async () => {
+      storedPost = {
+        ...post,
+        content: "Look",
+        video: null,
+        gif: { giphyId: "abc123" },
+      };
+      await caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "",
+      });
+      expect(payload.update).toHaveBeenCalled();
+      expect(releaseEmptyGalleryPost).not.toHaveBeenCalled();
+    });
+
+    it("editPost still answers when removing the emptied post fails: the edit is saved", async () => {
+      storedPost = { ...galleryPost, content: "Our picnic" };
+      const error = new Error("db down");
+      releaseEmptyGalleryPost.mockRejectedValueOnce(error);
+      const log = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      await expect(
+        caller().feed.editPost({ postId: 5, communitySlug: "c", content: "" }),
+      ).resolves.toEqual({ id: 5 });
+      expect(log).toHaveBeenCalledWith(
+        "[feed.editPost] removing an emptied gallery post failed",
+        { postId: 5, batchId: 9, error },
+      );
+      log.mockRestore();
     });
 
     it("replacePostVideo refuses it before opening the upload", async () => {

@@ -106,9 +106,10 @@ import {
 } from "@/server/communities/post-media";
 import { removedPostData } from "@/server/communities/post-media-fields";
 import {
-  galleryBatchIdOf,
   releaseBatchLink,
+  releaseEmptyGalleryPost,
 } from "@/server/gallery/feed-post-link";
+import { relationId } from "@/server/gallery/relation-id";
 import { resolvePostTopic } from "@/server/communities/post-topics";
 import { canBroadcast } from "@/server/communities/role-utils";
 import {
@@ -819,6 +820,21 @@ export const feedRouter = createTRPCRouter({
           editedAt: new Date().toISOString(),
         },
       });
+      // A gallery post left without words shows only its batch: once the
+      // batch has no ready item left it would be an empty card, so it goes
+      // (its claim re-checks the stored text and items at write time).
+      const batchId = relationId(post.galleryBatch);
+      if (batchId !== null && !input.content.trim()) {
+        try {
+          await releaseEmptyGalleryPost({ payload }, batchId);
+        } catch (error) {
+          // The edit is saved; a card left showing nothing is logged.
+          console.error(
+            "[feed.editPost] removing an emptied gallery post failed",
+            { postId: post.id, batchId, error },
+          );
+        }
+      }
       return { id: post.id };
     }),
 
@@ -928,7 +944,7 @@ export const feedRouter = createTRPCRouter({
 
       // A gallery post lets go of its batch, and the batch of the post; the
       // items stay in the gallery.
-      const batchId = galleryBatchIdOf(post);
+      const batchId = relationId(post.galleryBatch);
       await payload.update({
         collection: "feed-posts",
         id: input.postId,

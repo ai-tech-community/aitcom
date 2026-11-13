@@ -13,6 +13,8 @@ import {
 
 import type * as PaymentsAccess from "@/server/payments/access";
 
+import type * as FeedPostLink from "./feed-post-link";
+
 const payments = vi.hoisted(() => ({
   membershipPaymentAllowed: vi.fn(),
 }));
@@ -26,6 +28,14 @@ vi.mock("@/server/payload-status-transition", () => ({
   transitionStatus: transition,
 }));
 
+const feedPostLink = vi.hoisted(() => ({
+  releaseEmptyGalleryPost: vi.fn(),
+}));
+vi.mock("./feed-post-link", async (importOriginal) => ({
+  ...(await importOriginal<typeof FeedPostLink>()),
+  releaseEmptyGalleryPost: feedPostLink.releaseEmptyGalleryPost,
+}));
+
 import {
   discardItem,
   finishBatch,
@@ -37,6 +47,7 @@ import {
 beforeEach(() => {
   vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
   payments.membershipPaymentAllowed.mockReset().mockResolvedValue(true);
+  feedPostLink.releaseEmptyGalleryPost.mockReset().mockResolvedValue(false);
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -1087,6 +1098,48 @@ describe("finishBatch", () => {
       id: 3,
       data: { feedPostId: 91 },
     });
+  });
+
+  it("removes the new post when the batch's last item went while it was made", async () => {
+    // closeBatch saw ready items, but the last one was deleted before the
+    // post existed, so the delete had no post to remove yet.
+    const { deps, payload } = fakes({ ready: READY });
+    feedPostLink.releaseEmptyGalleryPost.mockResolvedValue(true);
+    await expect(
+      finishBatch(deps, { userId: "u1", batchId: 3 }, async () => 91),
+    ).resolves.toEqual({ readyCount: 2, feedPostId: null });
+    expect(feedPostLink.releaseEmptyGalleryPost).toHaveBeenCalledWith(deps, 3);
+    // After the batch names its post, so the release clears that link.
+    expect(
+      feedPostLink.releaseEmptyGalleryPost.mock.invocationCallOrder[0],
+    ).toBeGreaterThan(payload.update.mock.invocationCallOrder[0]!);
+  });
+
+  it("keeps the post, and its id, when the release finds it still shows something", async () => {
+    const { deps } = fakes({ ready: READY });
+    await expect(
+      finishBatch(deps, { userId: "u1", batchId: 3 }, async () => 91),
+    ).resolves.toEqual({ readyCount: 2, feedPostId: 91 });
+    expect(feedPostLink.releaseEmptyGalleryPost).toHaveBeenCalledWith(deps, 3);
+  });
+
+  it("keeps the post, and logs, when the release fails", async () => {
+    const { deps, log } = fakes({ ready: READY });
+    const error = new Error("db down");
+    feedPostLink.releaseEmptyGalleryPost.mockRejectedValue(error);
+    await expect(
+      finishBatch(deps, { userId: "u1", batchId: 3 }, async () => 91),
+    ).resolves.toEqual({ readyCount: 2, feedPostId: 91 });
+    expect(log).toHaveBeenCalledWith(
+      "[gallery.finishBatch] removing an empty gallery post failed",
+      { batchId: 3, feedPostId: 91, error },
+    );
+  });
+
+  it("releases nothing when the announcement makes no post", async () => {
+    const { deps } = fakes({ ready: READY });
+    await finishBatch(deps, { userId: "u1", batchId: 3 }, async () => null);
+    expect(feedPostLink.releaseEmptyGalleryPost).not.toHaveBeenCalled();
   });
 
   it("does not announce a batch with nothing ready", async () => {

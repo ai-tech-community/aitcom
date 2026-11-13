@@ -312,6 +312,26 @@ export type FeedPostDecorationDeps = {
 };
 
 /**
+ * The posts' collages (`galleryViewsForPosts`), or none when reading them
+ * fails: the gallery is decoration, so the feed still shows every post,
+ * a gallery post with its text only, as for a viewer who may see none of
+ * its items. The failure is logged.
+ */
+async function galleryViewsOrNone(
+  ...args: Parameters<typeof galleryViewsForPosts>
+): ReturnType<typeof galleryViewsForPosts> {
+  try {
+    return await galleryViewsForPosts(...args);
+  } catch (error) {
+    console.error("[feed] reading the posts' gallery collages failed", {
+      postIds: args[1].map((post) => post.id),
+      error,
+    });
+    return new Map();
+  }
+}
+
+/**
  * Adds the author photo, whether the viewer liked each post, playback
  * links for a post's video (the raw storage keys never leave the server),
  * its pictures with their descriptions (never who uploaded them), whom
@@ -333,7 +353,7 @@ export async function decorateFeedPosts(
     loadImageViews(payload, posts),
     loadMentionViews(database, posts),
     loadPollViews(database, posts, viewerId),
-    galleryViewsForPosts(
+    galleryViewsOrNone(
       { db: database, payload, storage: galleryStorage },
       posts,
       viewerId ?? null,

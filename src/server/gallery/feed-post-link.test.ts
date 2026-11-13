@@ -2,7 +2,6 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  galleryBatchIdOf,
   releaseBatchLink,
   releaseEmptyGalleryPost,
   removeBatchItems,
@@ -207,7 +206,7 @@ describe("releaseEmptyGalleryPost", () => {
       posts: [post()],
     });
 
-    await releaseEmptyGalleryPost(deps, 3);
+    await expect(releaseEmptyGalleryPost(deps, 3)).resolves.toBe(true);
 
     expect(store["feed-posts"]![0]).toMatchObject(REMOVED);
   });
@@ -222,7 +221,7 @@ describe("releaseEmptyGalleryPost", () => {
     const { deps, payload, store } = fakes({
       posts: [post({ content: "Our summer picnic" })],
     });
-    await releaseEmptyGalleryPost(deps, 3);
+    await expect(releaseEmptyGalleryPost(deps, 3)).resolves.toBe(false);
     expect(store["feed-posts"]![0]).toMatchObject({
       isDeleted: false,
       galleryBatch: 3,
@@ -284,7 +283,7 @@ describe("releaseEmptyGalleryPost", () => {
     // Words were saved (or the post deleted) after it was read.
     payload.db.drizzle.execute.mockResolvedValueOnce({ rows: [] });
 
-    await releaseEmptyGalleryPost(deps, 3);
+    await expect(releaseEmptyGalleryPost(deps, 3)).resolves.toBe(false);
 
     expect(payload.update).not.toHaveBeenCalled();
     expect(store["feed-posts"]![0]).toMatchObject({ isDeleted: false });
@@ -348,14 +347,5 @@ describe("releaseBatchLink", () => {
       "[gallery.releaseBatchLink] clearing a batch's feed post failed",
       expect.objectContaining({ batchId: 3, postId: 40 }),
     );
-  });
-});
-
-describe("galleryBatchIdOf", () => {
-  it("reads the batch id, stored or populated, and null for other posts", () => {
-    expect(galleryBatchIdOf({ galleryBatch: 3 })).toBe(3);
-    expect(galleryBatchIdOf({ galleryBatch: { id: 3 } as never })).toBe(3);
-    expect(galleryBatchIdOf({ galleryBatch: null })).toBeNull();
-    expect(galleryBatchIdOf({})).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const galleryViewsForPosts = vi.hoisted(() => vi.fn());
 vi.mock("@/server/gallery/feed-view", () => ({ galleryViewsForPosts }));
@@ -113,6 +113,40 @@ describe("decorateFeedPosts gallery posts", () => {
     expect(plain!.gallery).toBeNull();
     expect(galleryStorage).not.toHaveBeenCalled();
     expect(videoStorage).not.toHaveBeenCalled();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("still shows the feed, without collages, when the gallery read fails", async () => {
+    const error = new Error("gallery down");
+    galleryViewsForPosts.mockRejectedValue(error);
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const [gallery, plain] = await decorateFeedPosts(
+      {
+        database: {} as never,
+        payload: {} as never,
+        videoStorage: vi.fn(),
+        galleryStorage: vi.fn(),
+      },
+      [
+        { ...base, content: "Our picnic", galleryBatch: 9 },
+        { ...base, id: 2, content: "hi", galleryBatch: null },
+      ] as never,
+      null,
+    );
+    expect(gallery).toMatchObject({
+      id: 1,
+      content: "Our picnic",
+      isGalleryPost: true,
+      gallery: null,
+    });
+    expect(plain).toMatchObject({ id: 2, gallery: null });
+    expect(log).toHaveBeenCalledWith(
+      "[feed] reading the posts' gallery collages failed",
+      { postIds: [1, 2], error },
+    );
   });
 
   it("reads the batches as a signed-out visitor when no one is signed in", async () => {

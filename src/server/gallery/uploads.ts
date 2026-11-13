@@ -45,6 +45,7 @@ import {
 } from "./access";
 import { nowOf, type GalleryDeps } from "./deps";
 import { galleryError } from "./errors";
+import { releaseEmptyGalleryPost } from "./feed-post-link";
 import { galleryEnabled } from "./flag";
 import { removeItemFiles } from "./item-files";
 import { relationId } from "./relation-id";
@@ -630,7 +631,9 @@ async function readyItemsOf(
  *
  * `readyItems` are read after the move, so no item that became ready before
  * it is missed. `feedPostId` is the post this call's announcement made, if
- * any (stored on the batch unless that save failed).
+ * any (stored on the batch unless that save failed), and null again when
+ * that post was removed at once because the batch's last ready item was
+ * deleted while it was being made (`releaseEmptyGalleryPost`).
  */
 export async function closeBatch(
   deps: Pick<GalleryDeps, "payload" | "log">,
@@ -680,6 +683,17 @@ export async function closeBatch(
       // link is missing.
       log(
         `[gallery.${options.context}] storing a finished batch's feed post failed`,
+        { batchId: batch.id, feedPostId, error },
+      );
+    }
+    // The batch's last ready item may have been deleted after it was read
+    // above but before the post existed, so that delete found no post to
+    // remove: check again now that the post is there.
+    try {
+      if (await releaseEmptyGalleryPost(deps, batch.id)) feedPostId = null;
+    } catch (error) {
+      log(
+        `[gallery.${options.context}] removing an empty gallery post failed`,
         { batchId: batch.id, feedPostId, error },
       );
     }
