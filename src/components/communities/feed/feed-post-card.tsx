@@ -382,6 +382,7 @@ export function FeedPostCard({
           slug={communitySlug}
           gallery={post.gallery}
           memberRole={memberRole}
+          signedIn={!!currentUserId}
           onChange={() => {
             collageChanged.current = true;
             void onRefresh();

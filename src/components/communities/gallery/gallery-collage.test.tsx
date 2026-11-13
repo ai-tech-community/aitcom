@@ -26,6 +26,7 @@ const m = vi.hoisted(() => ({
   deleteCalls: [] as unknown[],
   invalidateList: vi.fn(),
   invalidateFacets: vi.fn(),
+  invalidateItem: vi.fn(),
   editProps: vi.fn(),
 }));
 
@@ -35,6 +36,7 @@ vi.mock("@/trpc/react", () => ({
       gallery: {
         list: { invalidate: m.invalidateList },
         facets: { invalidate: m.invalidateFacets },
+        item: { invalidate: m.invalidateItem },
       },
     }),
     topics: {
@@ -82,6 +84,24 @@ vi.mock("@/i18n/navigation", () => ({
       {children}
     </a>
   ),
+}));
+vi.mock("./gallery-report-dialog", () => ({
+  GalleryReportDialog: (props: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onReported: () => void;
+  }) =>
+    props.open ? (
+      <button
+        type="button"
+        onClick={() => {
+          props.onReported();
+          props.onOpenChange(false);
+        }}
+      >
+        Reported
+      </button>
+    ) : null,
 }));
 vi.mock("./gallery-edit-dialog", () => ({
   GalleryEditDialog: (props: { item: GalleryItemView }) => {
@@ -344,6 +364,33 @@ describe("GalleryCollage", () => {
     expect(props.slug).toBe("mlops");
     props.onSaved();
     expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets someone signed in report an item, then reloads the post", async () => {
+    render(<Collage memberRole={null} signedIn />);
+    fireEvent.click(screen.getByRole("button", { name: "Photo 9" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Report",
+      }),
+    );
+    // A stand-in outside the modal lightbox: found by its text.
+    fireEvent.click(screen.getByText("Reported"));
+    expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 9 });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("offers no Report to someone signed out", () => {
+    render(<Collage memberRole={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Photo 9" }));
+    expect(
+      within(screen.getByRole("dialog")).queryByRole("button", {
+        name: "Report",
+      }),
+    ).toBeNull();
   });
 
   it("offers neither edit nor delete to someone who is not a member", () => {

@@ -6503,7 +6503,8 @@
     },
     "tile": {
       "video": "Vidéo, {duration}",
-      "videoNoLength": "Vidéo"
+      "videoNoLength": "Vidéo",
+      "hidden": "Masquée"
     },
     "lightbox": {
       "previous": "Précédent",
@@ -6529,7 +6530,29 @@
       "deleteBody": "Elle disparaîtra de la galerie pour tout le monde. Cette action est définitive.",
       "deleteConfirm": "Supprimer",
       "deleting": "Suppression…",
-      "deleted": "Supprimé"
+      "deleted": "Supprimé",
+      "report": "Signaler"
+    },
+    "report": {
+      "photoTitle": "Signaler cette photo",
+      "videoTitle": "Signaler cette vidéo",
+      "description": "Dites aux modérateurs de la communauté ce qui ne va pas. Elle est masquée pour les autres pendant qu’ils l’examinent.",
+      "this_is_me": "C’est moi, merci de la retirer",
+      "sent": "Merci. Elle est masquée le temps qu’un modérateur l’examine.",
+      "done": "Terminé"
+    },
+    "review": {
+      "hiddenForModerator": "Masquée après un signalement",
+      "hiddenForUploader": "Masquée le temps qu’un modérateur l’examine.",
+      "reasons": "Motifs des signalements",
+      "retry": "Réessayer",
+      "restore": "Restaurer",
+      "remove": "Supprimer",
+      "removePhotoTitle": "Supprimer cette photo ?",
+      "removeVideoTitle": "Supprimer cette vidéo ?",
+      "removeBody": "Elle sera supprimée pour tout le monde, avec ses signalements. Cette action est définitive.",
+      "restored": "Restaurée",
+      "removed": "Supprimée"
     },
     "upload": {
       "title": "Ajouter des photos et vidéos",
@@ -6625,7 +6648,10 @@
       "PUBLIC_NOT_AVAILABLE": "Seuls les membres peuvent voir le contenu de cette communauté : ces fichiers ne peuvent donc pas être partagés avec tout le monde. Choisissez Membres.",
       "OWN_ITEM": "Vous ne pouvez pas signaler votre propre photo ou vidéo. Vous pouvez la supprimer.",
       "ALREADY_REPORTED": "Vous avez déjà signalé ceci.",
-      "saveFailed": "Nous n’avons pas pu enregistrer vos modifications. Veuillez réessayer."
+      "saveFailed": "Nous n’avons pas pu enregistrer vos modifications. Veuillez réessayer.",
+      "reportFailed": "Votre signalement n’a pas pu être envoyé. Veuillez réessayer.",
+      "reportsLoadFailed": "Impossible de charger les motifs du signalement.",
+      "reviewFailed": "L’examen n’a pas abouti. Veuillez réessayer."
     }
   }
 }

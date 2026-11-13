@@ -55,6 +55,7 @@ const m = vi.hoisted(() => ({
   editProps: [] as EditStandInProps[],
   invalidateList: vi.fn(),
   invalidateFacets: vi.fn(),
+  invalidateItem: vi.fn(),
   deleteFails: false,
   toastError: vi.fn(),
 }));
@@ -77,6 +78,7 @@ vi.mock("@/trpc/react", () => ({
       gallery: {
         list: { invalidate: m.invalidateList },
         facets: { invalidate: m.invalidateFacets },
+        item: { invalidate: m.invalidateItem },
       },
     }),
     gallery: {
@@ -197,6 +199,33 @@ vi.mock("./gallery-edit-dialog", () => ({
       </div>
     ) : null;
   },
+}));
+vi.mock("./gallery-report-dialog", () => ({
+  GalleryReportDialog: (props: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onReported: () => void;
+  }) =>
+    props.open ? (
+      <div role="dialog" aria-label="Report stand-in">
+        <button
+          type="button"
+          onClick={() => {
+            props.onReported();
+            props.onOpenChange(false);
+          }}
+        >
+          Reported
+        </button>
+      </div>
+    ) : null,
+}));
+vi.mock("./gallery-review-banner", () => ({
+  GalleryReviewBanner: (props: { onRestored: () => void }) => (
+    <button type="button" onClick={props.onRestored}>
+      Restored
+    </button>
+  ),
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: m.toastError },
@@ -608,6 +637,52 @@ describe("GalleryPage", () => {
         screen.getByRole("heading", { name: "Photos and videos" }),
       ).toHaveFocus(),
     );
+  });
+
+  it("lets someone signed in report an item, then closes it and refreshes", async () => {
+    // Signed in, not a member: anyone who may see an item may report it.
+    m.signedIn = true;
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Report",
+      }),
+    );
+    // A stand-in, not a Radix dialog: the modal lightbox hides it from the
+    // accessibility tree, so it is found by its text.
+    fireEvent.click(screen.getByText("Reported"));
+    expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 1 });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.search).toBe("");
+    // The reporter no longer sees it: no "gone" error for the closed item.
+    expect(m.toastError).not.toHaveBeenCalled();
+  });
+
+  it("offers a guest no Report", () => {
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    expect(
+      within(screen.getByRole("dialog")).queryByRole("button", {
+        name: "Report",
+      }),
+    ).toBeNull();
+  });
+
+  it("refreshes a hidden item a moderator restored, and stays on it", () => {
+    asMember("moderator");
+    m.list.items = [galleryItem({ id: 1, caption: "One", hidden: true })];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restored" }));
+    expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 1 });
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("One");
   });
 
   it("gives a plain member no Delete on someone else's item", () => {

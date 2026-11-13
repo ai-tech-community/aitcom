@@ -4,18 +4,23 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import {
+  ReportForm,
+  type ReportDraft,
+} from "@/components/moderation/report-form";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { REPORT_REASONS, type ReportReason } from "@/lib/post-report-reasons";
 import { api } from "@/trpc/react";
+
+/** The longest note a reporter may add; the feed router allows the same. */
+const NOTE_MAX = 500;
+
+const FRESH: ReportDraft<ReportReason> = { reason: "spam", note: "" };
 
 /**
  * Lets a member report a post with a reason and an optional note. The first
@@ -32,35 +37,8 @@ export function ReportDialog({
 }) {
   const t = useTranslations("communities.report");
   const utils = api.useUtils();
-  const [reason, setReason] = useState<ReportReason>("spam");
-  const [note, setNote] = useState("");
+  const [draft, setDraft] = useState(FRESH);
   const report = api.feed.reportPost.useMutation();
-  const noteId = `report-note-${postId}`;
-
-  function submit() {
-    const trimmed = note.trim();
-    report.mutate(
-      { postId, reason, ...(trimmed ? { note: trimmed } : {}) },
-      {
-        onSuccess: () => {
-          toast.success(t("sent"));
-          setReason("spam");
-          setNote("");
-          onOpenChange(false);
-          void utils.feed.getActivity.invalidate();
-          void utils.feed.getHomeActivity.invalidate();
-          void utils.feed.getFeed.invalidate();
-          void utils.feed.getReels.invalidate();
-        },
-        onError: (error) =>
-          toast.error(
-            error.data?.code === "CONFLICT"
-              ? t("alreadyReported")
-              : t("failed"),
-          ),
-      },
-    );
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -68,40 +46,42 @@ export function ReportDialog({
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">
-            {t("reasonLabel")}
-          </legend>
-          {REPORT_REASONS.map((id) => (
-            <label key={id} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name={`report-reason-${postId}`}
-                value={id}
-                checked={reason === id}
-                onChange={() => setReason(id)}
-                className="focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-              />
-              {t(id)}
-            </label>
-          ))}
-        </fieldset>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={noteId}>{t("noteLabel")}</Label>
-          <Textarea
-            id={noteId}
-            maxLength={500}
-            rows={3}
-            className="resize-none"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </div>
-        <DialogFooter>
-          <Button type="button" disabled={report.isPending} onClick={submit}>
-            {t("submit")}
-          </Button>
-        </DialogFooter>
+        <ReportForm
+          name={`report-${postId}`}
+          reasons={REPORT_REASONS}
+          reasonLabel={(id) => t(id)}
+          draft={draft}
+          onDraftChange={setDraft}
+          noteMax={NOTE_MAX}
+          labels={{
+            reasons: t("reasonLabel"),
+            note: t("noteLabel"),
+            submit: t("submit"),
+          }}
+          pending={report.isPending}
+          onSubmit={(input) =>
+            report.mutate(
+              { postId, ...input },
+              {
+                onSuccess: () => {
+                  toast.success(t("sent"));
+                  setDraft(FRESH);
+                  onOpenChange(false);
+                  void utils.feed.getActivity.invalidate();
+                  void utils.feed.getHomeActivity.invalidate();
+                  void utils.feed.getFeed.invalidate();
+                  void utils.feed.getReels.invalidate();
+                },
+                onError: (error) =>
+                  toast.error(
+                    error.data?.code === "CONFLICT"
+                      ? t("alreadyReported")
+                      : t("failed"),
+                  ),
+              },
+            )
+          }
+        />
       </DialogContent>
     </Dialog>
   );

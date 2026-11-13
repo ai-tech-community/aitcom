@@ -22,10 +22,26 @@ const m = vi.hoisted(() => ({
   deleteFails: null as null | { message: string; data?: { code: string } },
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  reportCalls: [] as unknown[],
+  reviewCalls: [] as unknown[],
 }));
+
+/** A mutation that succeeds at once, recording what it was sent. */
+function instantMutation(calls: unknown[]) {
+  return (opts: { onSuccess?: (data: unknown, input: unknown) => void }) => ({
+    isPending: false,
+    mutate: (input: unknown) => {
+      calls.push(input);
+      opts.onSuccess?.(undefined, input);
+    },
+  });
+}
 
 vi.mock("@/trpc/react", () => ({
   api: {
+    useUtils: () => ({
+      gallery: { itemReports: { invalidate: vi.fn() } },
+    }),
     topics: {
       list: {
         useQuery: () => ({
@@ -47,6 +63,28 @@ vi.mock("@/trpc/react", () => ({
           },
         }),
       },
+      reportItem: { useMutation: instantMutation(m.reportCalls) },
+      itemReports: {
+        useQuery: (_input: unknown, options: { enabled: boolean }) => ({
+          data: options.enabled
+            ? {
+                reports: [
+                  {
+                    id: 41,
+                    reason: "spam",
+                    note: null,
+                    createdAt: "2026-11-13T09:00:00.000Z",
+                  },
+                ],
+              }
+            : undefined,
+          isError: false,
+          isFetching: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
+      },
+      reviewItemReports: { useMutation: instantMutation(m.reviewCalls) },
     },
   },
 }));
@@ -95,6 +133,7 @@ type HarnessProps = Partial<React.ComponentProps<typeof GalleryLightbox>> & {
 const spies = {
   onClose: vi.fn(),
   onDeleted: vi.fn(),
+  onChanged: vi.fn(),
   onEdit: vi.fn(),
   fetchNextPage: vi.fn(),
 };
@@ -138,6 +177,9 @@ function open(name: string) {
 beforeEach(() => {
   m.deleteCalls = [];
   m.deleteFails = null;
+  // Emptied in place: the mutations hold on to these arrays.
+  m.reportCalls.length = 0;
+  m.reviewCalls.length = 0;
   vi.clearAllMocks();
 });
 
@@ -525,5 +567,187 @@ describe("GalleryLightbox", () => {
         "We couldn't delete it. Please try again.",
       ),
     );
+  });
+});
+
+describe("GalleryLightbox reports", () => {
+  const report = (dialog: HTMLElement) =>
+    within(dialog).queryByRole("button", { name: "Report" });
+
+  /** Sends a Spam report from the open lightbox and closes the thank-you. */
+  async function reportAsSpam() {
+    fireEvent.click(screen.getByRole("button", { name: "Report" }));
+    const form = screen.getByRole("dialog", { name: "Report this photo" });
+    fireEvent.click(within(form).getByRole("radio", { name: "Spam" }));
+    fireEvent.click(within(form).getByRole("button", { name: "Send report" }));
+    expect(within(form).getByRole("status")).toHaveTextContent(
+      "Thanks. It's hidden while a moderator reviews it.",
+    );
+    fireEvent.click(within(form).getByRole("button", { name: "Done" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Report this photo" }),
+      ).toBeNull(),
+    );
+  }
+
+  it("offers Report to someone signed in, on an item they did not add", () => {
+    render(<Harness signedIn />);
+    expect(report(open("Opening talk"))).toBeVisible();
+  });
+
+  it("offers no Report to a guest", () => {
+    render(<Harness />);
+    expect(report(open("Opening talk"))).toBeNull();
+  });
+
+  it("offers no Report on your own item", () => {
+    const own = [galleryItem({ id: 5, caption: "Mine", isOwn: true })];
+    render(<Harness signedIn items={own} />);
+    expect(report(open("Mine"))).toBeNull();
+  });
+
+  it("offers no Report on a hidden item", () => {
+    const hidden = [galleryItem({ id: 5, caption: "Hid", hidden: true })];
+    render(<Harness signedIn canModerate items={hidden} />);
+    expect(report(open("Hid"))).toBeNull();
+  });
+
+  it("after a report, closes on an item the reporter can no longer see", async () => {
+    render(<Harness signedIn onChanged={spies.onChanged} />);
+    open("Opening talk");
+    await reportAsSpam();
+    expect(m.reportCalls).toEqual([
+      { slug: "mlops", itemId: 1, reason: "spam" },
+    ]);
+    expect(spies.onChanged).toHaveBeenCalledWith(1, { gone: true });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Demo time" })).toHaveFocus(),
+    );
+  });
+
+  it("stays open for a moderator who reported, who still sees the item", async () => {
+    render(<Harness signedIn canModerate onChanged={spies.onChanged} />);
+    open("Opening talk");
+    await reportAsSpam();
+    expect(spies.onChanged).toHaveBeenCalledWith(1, { gone: false });
+    expect(spies.onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Opening talk");
+  });
+
+  it("tells the caller nothing when the report is closed unsent", async () => {
+    render(<Harness signedIn onChanged={spies.onChanged} />);
+    open("Opening talk");
+    fireEvent.click(screen.getByRole("button", { name: "Report" }));
+    fireEvent.keyDown(
+      screen.getByRole("dialog", { name: "Report this photo" }),
+      { key: "Escape" },
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Report this photo" }),
+      ).toBeNull(),
+    );
+    expect(spies.onChanged).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Opening talk");
+  });
+
+  describe("on a hidden item", () => {
+    const HIDDEN = [
+      galleryItem({ id: 5, caption: "Hid", hidden: true }),
+      galleryItem({ id: 6, caption: "Next one" }),
+    ];
+
+    it("shows a moderator the review, with Remove in place of Delete", () => {
+      render(<Harness signedIn canModerate items={HIDDEN} />);
+      const dialog = open("Hid");
+      expect(within(dialog).getByText("Hidden after a report")).toBeVisible();
+      expect(
+        within(dialog).getByRole("list", { name: "Why it was reported" }),
+      ).toHaveTextContent("Spam");
+      expect(
+        within(dialog).getByRole("button", { name: "Restore" }),
+      ).toBeVisible();
+      expect(
+        within(dialog).getByRole("button", { name: "Remove" }),
+      ).toBeVisible();
+      expect(
+        within(dialog).queryByRole("button", { name: "Delete" }),
+      ).toBeNull();
+    });
+
+    it("restores with the reports shown and stays on the item", () => {
+      render(
+        <Harness
+          signedIn
+          canModerate
+          items={HIDDEN}
+          onChanged={spies.onChanged}
+        />,
+      );
+      open("Hid");
+      fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+      expect(m.reviewCalls).toEqual([
+        {
+          slug: "mlops",
+          itemId: 5,
+          action: "restore",
+          reviewedReportIds: [41],
+        },
+      ]);
+      expect(spies.onChanged).toHaveBeenCalledWith(5, { gone: false });
+      expect(screen.getByRole("dialog")).toHaveAccessibleName("Hid");
+    });
+
+    it("removes like a delete: tells the caller, closes, focuses a neighbour", async () => {
+      render(
+        <Harness
+          signedIn
+          canModerate
+          items={HIDDEN}
+          onDeleted={spies.onDeleted}
+          onChanged={spies.onChanged}
+        />,
+      );
+      open("Hid");
+      fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+      fireEvent.click(
+        within(
+          screen.getByRole("alertdialog", { name: "Remove this photo?" }),
+        ).getByRole("button", { name: "Remove" }),
+      );
+      await waitFor(() =>
+        expect(m.reviewCalls).toEqual([
+          { slug: "mlops", itemId: 5, action: "remove" },
+        ]),
+      );
+      expect(spies.onDeleted).toHaveBeenCalledWith(5);
+      expect(spies.onChanged).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Next one" })).toHaveFocus(),
+      );
+    });
+
+    it("tells its uploader why it is hidden, and keeps Edit and Delete", () => {
+      const own = [
+        galleryItem({ id: 5, caption: "Mine", isOwn: true, hidden: true }),
+      ];
+      render(<Harness signedIn items={own} onEdit={spies.onEdit} />);
+      const dialog = open("Mine");
+      expect(
+        within(dialog).getByText("Hidden while a moderator reviews it."),
+      ).toBeVisible();
+      expect(
+        within(dialog).queryByRole("button", { name: "Restore" }),
+      ).toBeNull();
+      expect(
+        within(dialog).getByRole("button", { name: "Edit details" }),
+      ).toBeVisible();
+      expect(
+        within(dialog).getByRole("button", { name: "Delete" }),
+      ).toBeVisible();
+    });
   });
 });

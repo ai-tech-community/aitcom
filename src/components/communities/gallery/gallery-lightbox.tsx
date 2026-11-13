@@ -12,6 +12,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Flag,
   Globe,
   Lock,
   Pencil,
@@ -47,6 +48,15 @@ import {
   useGalleryItemLabel,
   useGalleryUploaderName,
 } from "./gallery-item-text";
+import { GalleryReportDialog } from "./gallery-report-dialog";
+import { GalleryReviewBanner } from "./gallery-review-banner";
+import { useOpening } from "./use-opening";
+
+/** What a report or a restore changed for the viewer of the lightbox. */
+export type GalleryItemChange = {
+  /** The viewer may no longer see the item; the lightbox closes. */
+  gone: boolean;
+};
 
 /** Keys that belong to the focused control, not to the lightbox. */
 const OWNS_ARROW_KEYS = "video, audio, input, textarea, select, [role=slider]";
@@ -78,8 +88,17 @@ function tileFor(
  * event, category, audience, magazine permission and description.
  *
  * Actions: the uploader may edit (when `onEdit` is given) and delete;
- * moderators (`canModerate`) may delete anyone's item. The server decides
- * again on every call.
+ * moderators (`canModerate`) may delete anyone's item. Anyone signed in
+ * (`signedIn`) may report an item they did not add that is not hidden;
+ * guests are not offered Report at all, as on feed posts. A hidden item
+ * shows its uploader why, and shows moderators the review (Restore or
+ * Remove, which takes Delete's place). The server decides again on every
+ * call.
+ *
+ * After a report, the reporter may no longer see the item unless they are
+ * a moderator: the lightbox then closes as after a delete. A report or a
+ * restore calls `onChanged`, a Remove calls `onDeleted`, so the caller
+ * refreshes what it shows.
  *
  * Signed links change every window: images skip the optimizer and nothing
  * is keyed by URL.
@@ -92,7 +111,9 @@ export function GalleryLightbox({
   onNavigate,
   onEdit,
   onDeleted,
+  onChanged,
   canModerate = false,
+  signedIn = false,
   fallbackFocus,
   focusScope,
   more,
@@ -105,9 +126,16 @@ export function GalleryLightbox({
   onClose: () => void;
   onNavigate: (itemId: number) => void;
   onEdit?: (item: GalleryItemView) => void;
-  /** Called after a delete succeeded, before the lightbox closes. */
+  /**
+   * Called after a delete or a moderator's Remove succeeded, before the
+   * lightbox closes.
+   */
   onDeleted?: (itemId: number) => void;
+  /** Called after a report or a restore went through. */
+  onChanged?: (itemId: number, change: GalleryItemChange) => void;
   canModerate?: boolean;
+  /** Whether the viewer is signed in, and so may report. */
+  signedIn?: boolean;
   /** Where focus goes when no tile is left to return to. */
   fallbackFocus?: RefObject<HTMLElement | null>;
   /** Where the tiles to return focus to are; the whole page without it. */
@@ -184,16 +212,33 @@ export function GalleryLightbox({
     if (!more.isFetchingNextPage) void more.fetchNextPage();
   };
 
-  // After a delete, focus goes to a neighbour's tile instead of the
-  // removed one (or to `fallbackFocus` when it was the last).
-  const afterDelete = useRef<{ neighbour: number | null } | null>(null);
+  // After the item left the viewer's sight (deleted, removed, reported),
+  // focus goes to a neighbour's tile instead of its own (or to
+  // `fallbackFocus` when it was the last).
+  const afterGone = useRef<{ neighbour: number | null } | null>(null);
+  const markGone = () => {
+    afterGone.current = { neighbour: (next ?? previous)?.id ?? null };
+  };
+  const deleted = (itemId: number) => {
+    markGone();
+    onDeleted?.(itemId);
+    onClose();
+  };
+  const reported = (itemId: number) => {
+    const gone = !canModerate;
+    if (gone) markGone();
+    onChanged?.(itemId, { gone });
+    if (gone) onClose();
+  };
+
+  const [reporting, openReport, closeReport] = useOpening<{
+    item: GalleryItemView;
+  }>();
 
   const remove = api.gallery.deleteItem.useMutation({
     onSuccess: (_data, input) => {
       toast.success(t("deleted"));
-      afterDelete.current = { neighbour: (next ?? previous)?.id ?? null };
-      onDeleted?.(input.itemId);
-      onClose();
+      deleted(input.itemId);
     },
     onError: (error) => toast.error(errorText(error, "deleteFailed")),
   });
@@ -207,7 +252,10 @@ export function GalleryLightbox({
       ? formatClipLength(item.durationSeconds)
       : null;
   const canEdit = item.isOwn && onEdit !== undefined;
-  const canDelete = item.isOwn || canModerate;
+  // On a hidden item a moderator has the review's Remove instead.
+  const canDelete = item.isOwn || (canModerate && !item.hidden);
+  const canReport = signedIn && !item.isOwn && !item.hidden;
+  const showReview = item.hidden && (canModerate || item.isOwn);
   const caption = item.caption?.trim();
   const alt = item.alt?.trim() ?? "";
 
@@ -234,202 +282,255 @@ export function GalleryLightbox({
   };
 
   return (
-    <Dialog
-      open={current !== undefined}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent
-        showCloseButton={false}
-        aria-describedby={undefined}
-        onKeyDown={onKeyDown}
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          closeRef.current?.focus();
+    <>
+      <Dialog
+        open={current !== undefined}
+        onOpenChange={(open) => {
+          if (!open) onClose();
         }}
-        onCloseAutoFocus={(event) => {
-          const deleted = afterDelete.current;
-          afterDelete.current = null;
-          const scope = focusScope?.current;
-          const target = deleted
-            ? ((deleted.neighbour === null
-                ? null
-                : tileFor(deleted.neighbour, scope)) ??
-              fallbackFocus?.current ??
-              null)
-            : (tileFor(item.id, scope) ?? fallbackFocus?.current ?? null);
-          if (!target) return;
-          event.preventDefault();
-          target.focus();
-        }}
-        className="top-0 left-0 grid h-dvh w-full max-w-none translate-x-0 translate-y-0 grid-rows-[minmax(0,1fr)_auto] gap-0 rounded-none border-0 bg-black/90 p-0 shadow-none sm:max-w-none lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:grid-rows-1"
       >
-        <DialogTitle className="sr-only">{label}</DialogTitle>
-
-        <div className="relative flex min-h-0 items-center justify-center px-14 pt-14 pb-6 lg:py-12">
-          {isVideo ? (
-            <video
-              key={item.id}
-              src={item.url}
-              poster={item.thumbnailUrl}
-              controls
-              playsInline
-              preload="metadata"
-              aria-label={label}
-              className="max-h-full max-w-full rounded-md"
-            />
-          ) : (
-            <Image
-              key={item.id}
-              src={item.url}
-              alt={alt !== "" ? alt : label}
-              width={item.width}
-              height={item.height}
-              unoptimized
-              className="h-auto max-h-full w-auto max-w-full rounded-md object-contain"
-            />
-          )}
-
-          <StageButton
-            label={t("previous")}
-            unavailable={!previous}
-            onClick={() => goTo(previous)}
-            className="left-2"
-          >
-            <ChevronLeft />
-          </StageButton>
-          <StageButton
-            label={t("next")}
-            unavailable={!next && !canLoadMore}
-            busy={advanceFrom !== null}
-            onClick={goNext}
-            className="right-2"
-          >
-            <ChevronRight />
-          </StageButton>
-          <DialogClose asChild>
-            <Button
-              ref={closeRef}
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={t("close")}
-              className="absolute top-2 right-2 text-white hover:bg-white/15 hover:text-white"
-            >
-              <X className="size-5" />
-            </Button>
-          </DialogClose>
-        </div>
-
-        <aside
-          aria-label={t("details")}
-          className="bg-background text-foreground flex max-h-[45dvh] flex-col gap-4 overflow-y-auto p-5 lg:max-h-none lg:border-l"
+        <DialogContent
+          showCloseButton={false}
+          aria-describedby={undefined}
+          onKeyDown={onKeyDown}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            closeRef.current?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            const gone = afterGone.current;
+            afterGone.current = null;
+            const scope = focusScope?.current;
+            const target = gone
+              ? ((gone.neighbour === null
+                  ? null
+                  : tileFor(gone.neighbour, scope)) ??
+                fallbackFocus?.current ??
+                null)
+              : (tileFor(item.id, scope) ?? fallbackFocus?.current ?? null);
+            if (!target) return;
+            event.preventDefault();
+            target.focus();
+          }}
+          className="top-0 left-0 grid h-dvh w-full max-w-none translate-x-0 translate-y-0 grid-rows-[minmax(0,1fr)_auto] gap-0 rounded-none border-0 bg-black/90 p-0 shadow-none sm:max-w-none lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:grid-rows-1"
         >
-          <div className="flex items-center gap-3">
-            <Avatar>
-              {item.uploader?.image ? (
-                <AvatarImage src={item.uploader.image} alt="" />
-              ) : null}
-              <AvatarFallback>
-                {item.uploader ? (
-                  getInitials(item.uploader.name)
-                ) : (
-                  // A deleted member: no initials of a person.
-                  <UserRound aria-hidden="true" className="size-4" />
-                )}
-              </AvatarFallback>
-            </Avatar>
-            <div className="grid min-w-0 gap-0.5">
-              <span className="truncate font-medium">{uploaderName(item)}</span>
-              <span className="text-muted-foreground font-mono text-xs">
-                <RelativeTime date={item.createdAt} />
-                {length ? ` · ${t("video", { duration: length })}` : null}
-              </span>
-            </div>
+          <DialogTitle className="sr-only">{label}</DialogTitle>
+
+          <div className="relative flex min-h-0 items-center justify-center px-14 pt-14 pb-6 lg:py-12">
+            {isVideo ? (
+              <video
+                key={item.id}
+                src={item.url}
+                poster={item.thumbnailUrl}
+                controls
+                playsInline
+                preload="metadata"
+                aria-label={label}
+                className="max-h-full max-w-full rounded-md"
+              />
+            ) : (
+              <Image
+                key={item.id}
+                src={item.url}
+                alt={alt !== "" ? alt : label}
+                width={item.width}
+                height={item.height}
+                unoptimized
+                className="h-auto max-h-full w-auto max-w-full rounded-md object-contain"
+              />
+            )}
+
+            <StageButton
+              label={t("previous")}
+              unavailable={!previous}
+              onClick={() => goTo(previous)}
+              className="left-2"
+            >
+              <ChevronLeft />
+            </StageButton>
+            <StageButton
+              label={t("next")}
+              unavailable={!next && !canLoadMore}
+              busy={advanceFrom !== null}
+              onClick={goNext}
+              className="right-2"
+            >
+              <ChevronRight />
+            </StageButton>
+            <DialogClose asChild>
+              <Button
+                ref={closeRef}
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t("close")}
+                className="absolute top-2 right-2 text-white hover:bg-white/15 hover:text-white"
+              >
+                <X className="size-5" />
+              </Button>
+            </DialogClose>
           </div>
 
-          {caption ? <p className="text-base break-words">{caption}</p> : null}
-
-          <dl className="grid gap-2 text-sm">
-            <Fact term={t("event")}>
-              {item.event ? (
-                <Link
-                  href={`/events/${item.event.slug}`}
-                  className="font-medium underline underline-offset-4"
-                >
-                  {item.event.title}
-                </Link>
-              ) : (
-                <span className="text-muted-foreground">{t("noEvent")}</span>
-              )}
-            </Fact>
-            <Fact term={t("category")}>
-              {item.topicSlug ? (
-                <GalleryCategoryBadge slug={slug} topicSlug={item.topicSlug} />
-              ) : (
-                <span className="text-muted-foreground">{t("noCategory")}</span>
-              )}
-            </Fact>
-            <Fact term={t("whoCanSee")}>
-              <Badge variant="outline">
-                {item.visibility === "public" ? (
-                  <Globe aria-hidden="true" />
-                ) : (
-                  <Lock aria-hidden="true" />
-                )}
-                {item.visibility === "public"
-                  ? t("everyone")
-                  : t("membersOnly")}
-              </Badge>
-            </Fact>
-            <Fact term={t("magazine")}>
-              {item.magazineConsent ? (
-                <Badge variant="success">
-                  <Check aria-hidden="true" />
-                  {t("magazineYes")}
-                </Badge>
-              ) : (
-                <span className="text-muted-foreground">{t("magazineNo")}</span>
-              )}
-            </Fact>
-            {alt !== "" ? (
-              <Fact term={t("description")}>
-                <span className="text-muted-foreground break-words">{alt}</span>
-              </Fact>
+          <aside
+            aria-label={t("details")}
+            className="bg-background text-foreground flex max-h-[45dvh] flex-col gap-4 overflow-y-auto p-5 lg:max-h-none lg:border-l"
+          >
+            {showReview ? (
+              <GalleryReviewBanner
+                key={item.id}
+                slug={slug}
+                item={item}
+                canReview={canModerate}
+                onRestored={() => onChanged?.(item.id, { gone: false })}
+                onRemoved={() => deleted(item.id)}
+              />
             ) : null}
-          </dl>
 
-          {canEdit || canDelete ? (
-            <div className="flex flex-wrap gap-2 border-t pt-4">
-              {canEdit ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEdit?.(item)}
-                >
-                  <Pencil aria-hidden="true" />
-                  {t("edit")}
-                </Button>
-              ) : null}
-              {canDelete ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={remove.isPending}
-                  onClick={() => void askToDelete()}
-                >
-                  <Trash2 aria-hidden="true" />
-                  {remove.isPending ? t("deleting") : t("delete")}
-                </Button>
-              ) : null}
+            <div className="flex items-center gap-3">
+              <Avatar>
+                {item.uploader?.image ? (
+                  <AvatarImage src={item.uploader.image} alt="" />
+                ) : null}
+                <AvatarFallback>
+                  {item.uploader ? (
+                    getInitials(item.uploader.name)
+                  ) : (
+                    // A deleted member: no initials of a person.
+                    <UserRound aria-hidden="true" className="size-4" />
+                  )}
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid min-w-0 gap-0.5">
+                <span className="truncate font-medium">
+                  {uploaderName(item)}
+                </span>
+                <span className="text-muted-foreground font-mono text-xs">
+                  <RelativeTime date={item.createdAt} />
+                  {length ? ` · ${t("video", { duration: length })}` : null}
+                </span>
+              </div>
             </div>
-          ) : null}
-        </aside>
-      </DialogContent>
-    </Dialog>
+
+            {caption ? (
+              <p className="text-base break-words">{caption}</p>
+            ) : null}
+
+            <dl className="grid gap-2 text-sm">
+              <Fact term={t("event")}>
+                {item.event ? (
+                  <Link
+                    href={`/events/${item.event.slug}`}
+                    className="font-medium underline underline-offset-4"
+                  >
+                    {item.event.title}
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">{t("noEvent")}</span>
+                )}
+              </Fact>
+              <Fact term={t("category")}>
+                {item.topicSlug ? (
+                  <GalleryCategoryBadge
+                    slug={slug}
+                    topicSlug={item.topicSlug}
+                  />
+                ) : (
+                  <span className="text-muted-foreground">
+                    {t("noCategory")}
+                  </span>
+                )}
+              </Fact>
+              <Fact term={t("whoCanSee")}>
+                <Badge variant="outline">
+                  {item.visibility === "public" ? (
+                    <Globe aria-hidden="true" />
+                  ) : (
+                    <Lock aria-hidden="true" />
+                  )}
+                  {item.visibility === "public"
+                    ? t("everyone")
+                    : t("membersOnly")}
+                </Badge>
+              </Fact>
+              <Fact term={t("magazine")}>
+                {item.magazineConsent ? (
+                  <Badge variant="success">
+                    <Check aria-hidden="true" />
+                    {t("magazineYes")}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {t("magazineNo")}
+                  </span>
+                )}
+              </Fact>
+              {alt !== "" ? (
+                <Fact term={t("description")}>
+                  <span className="text-muted-foreground break-words">
+                    {alt}
+                  </span>
+                </Fact>
+              ) : null}
+            </dl>
+
+            {canEdit || canDelete || canReport ? (
+              <div className="flex flex-wrap gap-2 border-t pt-4">
+                {canEdit ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit?.(item)}
+                  >
+                    <Pencil aria-hidden="true" />
+                    {t("edit")}
+                  </Button>
+                ) : null}
+                {canDelete ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={remove.isPending}
+                    onClick={() => void askToDelete()}
+                  >
+                    <Trash2 aria-hidden="true" />
+                    {remove.isPending ? t("deleting") : t("delete")}
+                  </Button>
+                ) : null}
+                {canReport ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openReport({ item })}
+                  >
+                    <Flag aria-hidden="true" />
+                    {t("report")}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </aside>
+        </DialogContent>
+      </Dialog>
+      {/*
+        Beside the lightbox, not inside it: React events bubble through
+        portals, so key presses here would reach the lightbox's arrow keys.
+      */}
+      {reporting ? (
+        <GalleryReportDialog
+          key={reporting.key}
+          slug={slug}
+          item={reporting.item}
+          open={reporting.open}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) closeReport();
+          }}
+          onReported={() => reported(reporting.item.id)}
+        />
+      ) : null}
+    </>
   );
 }
 

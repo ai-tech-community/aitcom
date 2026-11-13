@@ -272,6 +272,23 @@ describe("EventGallerySection", () => {
     expect(m.refresh).toHaveBeenCalledTimes(1);
   });
 
+  it("offers Report to a signed-in non-member, but not to a guest", () => {
+    const report = { name: "Report" };
+    const { unmount } = renderSection({
+      viewer: { kind: "outsider", canJoin: true },
+    });
+    fireEvent.click(within(region()).getByRole("button", { name: "Photo 20" }));
+    expect(
+      within(screen.getByRole("dialog")).getByRole("button", report),
+    ).toBeVisible();
+    unmount();
+    renderSection({ viewer: { kind: "guest", canJoin: true } });
+    fireEvent.click(within(region()).getByRole("button", { name: "Photo 20" }));
+    expect(
+      within(screen.getByRole("dialog")).queryByRole("button", report),
+    ).toBeNull();
+  });
+
   it("offers no edit to someone who is not a member", () => {
     const own = galleryItem({ id: 30, caption: "Mine", isOwn: true });
     renderSection({

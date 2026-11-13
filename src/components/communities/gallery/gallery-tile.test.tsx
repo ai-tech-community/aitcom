@@ -100,6 +100,35 @@ describe("GalleryTile", () => {
     );
   });
 
+  it("marks a hidden item in words, not colour alone", () => {
+    renderTile(galleryItem({ caption: "Demo time", hidden: true }));
+    const tile = screen.getByRole("button", { name: "Demo time" });
+    expect(screen.getByText("Hidden")).toBeVisible();
+    expect(tile).toHaveAccessibleDescription("Hidden");
+  });
+
+  it("says both when a hidden item is a video", () => {
+    renderTile(
+      galleryItem({
+        caption: "Group song",
+        mediaType: "video",
+        durationSeconds: 42,
+        hidden: true,
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Group song" }),
+    ).toHaveAccessibleDescription("Video, 0:42 Hidden");
+  });
+
+  it("carries no hidden mark on an item that is not hidden", () => {
+    renderTile(galleryItem({ caption: "Demo time" }));
+    expect(screen.queryByText("Hidden")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Demo time" }),
+    ).not.toHaveAccessibleDescription();
+  });
+
   it("opens its item", () => {
     const onOpen = vi.fn();
     renderTile(galleryItem({ id: 7 }), { onOpen });
