@@ -138,7 +138,7 @@ All reads and writes go through tRPC and the gallery service.
   stays off until this is done.
 - **Media allowance:** gallery files count toward the same per-community
   allowance as classroom materials (`src/server/classroom/media-allowance.ts`).
-  `usageFor` sums both sources. The allowance module moves out of `classroom/`
+  `usageFor` sums both sources in one SQL `SUM`. The allowance module moves out of `classroom/`
   to `src/server/media/` because it is now shared.
 
 ### Upload flow
@@ -154,8 +154,12 @@ A batch is a record, `gallery-batches` (new collection): `communityId`,
 
 1. `gallery.startBatch({ slug, eventId?, topicSlug?, visibility, magazineConsent, caption?, plannedFiles, plannedVideos })`
    checks: active member (paid where required); event and topic valid for the
-   community; `plannedFiles` ≤ 30 and `plannedVideos` ≤ 10; the daily quotas
-   leave room for the whole batch. Creates the batch (`open`).
+   community; `plannedFiles` ≤ 30 and `plannedVideos` ≤ 10; `public` only
+   where it reaches outsiders (otherwise refused `PUBLIC_NOT_AVAILABLE`, never
+   quietly kept to members); fewer than `GALLERY_MAX_OPEN_BATCHES` (3) of the
+   member's batches still open in their finish window, in any community, and
+   the daily quotas leave room for the whole batch (both `UPLOAD_LIMIT`).
+   Creates the batch (`open`).
 2. For each file, once the browser has shrunk or converted it:
    `gallery.startItem({ batchId, mediaType, contentType, bytes, thumbnailBytes, width, height, durationSeconds? })`
    checks the batch is the caller's, `open`, not past `FINISH_WINDOW_HOURS`,
@@ -198,7 +202,13 @@ route next to the feed sweeps:
 - **Unused files sweep (production only, `ownsStorageContents`):** list both
   gallery prefixes; delete objects older than 7 days that no gallery item row
   references. Same safety rules as #388.
+- Both gallery passes run only while `COMMUNITY_GALLERY_ENABLED` is on (the S3
+  permissions for the gallery prefixes arrive with the flag) and report
+  themselves skipped otherwise.
 - Deleting an item removes its files best effort; the sweep is the safety net.
+- When a member deletes their account (#568), their items and batches stay:
+  `uploaderId` becomes the deleted-author marker, and the gallery shows the
+  uploader as "Deleted member" with no photo.
 
 ### Categories
 
