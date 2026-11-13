@@ -1,6 +1,8 @@
 // Router-level tests for the report/moderation gates in the feed router.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as ObjectStorage from "@/server/media/object-storage";
+
 const hooks = {
   membership: undefined as { role: string } | undefined,
   post: null as Record<string, unknown> | null,
@@ -47,7 +49,7 @@ vi.mock("@/server/better-auth", () => ({
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
 const galleryStorage = vi.hoisted(() => ({ remove: vi.fn() }));
 vi.mock("@/server/media/object-storage", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/server/media/object-storage")>()),
+  ...(await importOriginal<typeof ObjectStorage>()),
   getObjectStorage: () => galleryStorage,
 }));
 
@@ -140,6 +142,7 @@ describe("feed.reviewReport on a gallery post", () => {
           : {},
     );
     galleryStorage.remove.mockResolvedValue(undefined);
+    payload.update.mockResolvedValue({ docs: [], errors: [] });
 
     await expect(
       caller().feed.reviewReport({ postId: 5, action: "remove" }),
@@ -153,6 +156,12 @@ describe("feed.reviewReport on a gallery post", () => {
       expect.objectContaining({
         collection: "feed-posts",
         data: expect.objectContaining({ isDeleted: true, galleryBatch: null }),
+      }),
+    );
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "gallery-batches",
+        data: { feedPostId: null },
       }),
     );
   });

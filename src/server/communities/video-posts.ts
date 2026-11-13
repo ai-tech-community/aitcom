@@ -22,8 +22,8 @@ import type { getPayloadClient } from "@/server/payload";
 import type { PostMention } from "@/lib/post-mentions";
 import { hasPoll, noPoll } from "./post-polls";
 
+import { NO_GIF } from "./post-media-fields";
 import {
-  NO_GIF,
   loadPostForMediaEdit,
   postDetailsUpdate,
   requireChangeableMedia,

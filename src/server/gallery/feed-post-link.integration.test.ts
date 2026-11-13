@@ -32,6 +32,7 @@ import type * as PostReports from "@/server/communities/post-reports";
 import type * as PostTopics from "@/server/communities/post-topics";
 
 import type * as Access from "./access";
+import type * as EmptyBatches from "./empty-batches";
 import type * as Items from "./items";
 
 function looksLikeCloudNeon(url: string): boolean {
@@ -56,6 +57,7 @@ describe.skipIf(!RUN_DB)(
       createCaller: typeof CreateCaller;
       getPayloadClient: typeof GetPayloadClient;
       access: typeof Access;
+      emptyBatches: typeof EmptyBatches;
       items: typeof Items;
       postReports: typeof PostReports;
       postTopics: typeof PostTopics;
@@ -82,6 +84,7 @@ describe.skipIf(!RUN_DB)(
         { createCaller },
         { getPayloadClient },
         access,
+        emptyBatches,
         items,
         postReports,
         postTopics,
@@ -92,6 +95,7 @@ describe.skipIf(!RUN_DB)(
         import("@/server/api/root"),
         import("@/server/payload"),
         import("./access"),
+        import("./empty-batches"),
         import("./items"),
         import("@/server/communities/post-reports"),
         import("@/server/communities/post-topics"),
@@ -103,6 +107,7 @@ describe.skipIf(!RUN_DB)(
         createCaller,
         getPayloadClient,
         access,
+        emptyBatches,
         items,
         postReports,
         postTopics,
@@ -277,6 +282,18 @@ describe.skipIf(!RUN_DB)(
       });
     }
 
+    /** The batch's `feedPostId`, or "gone" once the batch was deleted. */
+    async function batchLink(batchId: number) {
+      const payload = await m.getPayloadClient();
+      const batch = await payload.findByID({
+        collection: "gallery-batches",
+        id: batchId,
+        depth: 0,
+        disableErrors: true,
+      });
+      return batch ? (batch.feedPostId ?? null) : "gone";
+    }
+
     async function itemsOf(batchId: number) {
       const payload = await m.getPayloadClient();
       const { docs } = await payload.find({
@@ -360,6 +377,7 @@ describe.skipIf(!RUN_DB)(
         galleryBatch: null,
       });
       expect((await itemsOf(batchId)).sort()).toEqual([...itemIds].sort());
+      expect(await batchLink(batchId)).toBeNull();
     });
 
     it("a moderator removing a reported gallery post removes its items and their files", async () => {
@@ -394,6 +412,14 @@ describe.skipIf(!RUN_DB)(
       });
       expect(totalDocs).toBe(0);
       expect(video).not.toHaveBeenCalled();
+      // The batch let go of the post, so the cleanup can take the empty batch.
+      expect(await batchLink(batchId)).toBeNull();
+      const removed = await m.emptyBatches.deleteEmptyFinishedBatches(payload, {
+        createdBefore: new Date(Date.now() + 60_000).toISOString(),
+        limit: 1000,
+      });
+      expect(removed).toContain(batchId);
+      expect(await batchLink(batchId)).toBe("gone");
     });
 
     it("deleting the last ready item removes a caption-less post, but not one with words", async () => {
@@ -411,6 +437,7 @@ describe.skipIf(!RUN_DB)(
         isDeleted: false,
         galleryBatch: bare.batchId,
       });
+      expect(await batchLink(bare.batchId)).toBe(bare.postId);
 
       await m.items.deleteItem(deps, { viewer, itemId: bare.itemIds[1]! });
       expect(await saved(bare.postId)).toMatchObject({
@@ -418,6 +445,7 @@ describe.skipIf(!RUN_DB)(
         content: "",
         galleryBatch: null,
       });
+      expect(await batchLink(bare.batchId)).toBeNull();
 
       await m.items.deleteItem(deps, { viewer, itemId: worded.itemIds[0]! });
       expect(await saved(worded.postId)).toMatchObject({
@@ -425,6 +453,7 @@ describe.skipIf(!RUN_DB)(
         content: "Our picnic",
         galleryBatch: worded.batchId,
       });
+      expect(await batchLink(worded.batchId)).toBe(worded.postId);
     });
   },
 );

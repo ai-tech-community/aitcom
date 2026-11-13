@@ -101,10 +101,14 @@ import {
   lookUpGif,
   loadPostForMediaEdit,
   postDetailsUpdate,
-  removedPostData,
   requireWordsUnless,
   setPostMedia,
 } from "@/server/communities/post-media";
+import { removedPostData } from "@/server/communities/post-media-fields";
+import {
+  galleryBatchIdOf,
+  releaseBatchLink,
+} from "@/server/gallery/feed-post-link";
 import { resolvePostTopic } from "@/server/communities/post-topics";
 import { canBroadcast } from "@/server/communities/role-utils";
 import {
@@ -916,12 +920,17 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      // A gallery post lets go of its batch; the items stay in the gallery.
+      // A gallery post lets go of its batch, and the batch of the post; the
+      // items stay in the gallery.
+      const batchId = galleryBatchIdOf(post);
       await payload.update({
         collection: "feed-posts",
         id: input.postId,
         data: removedPostData(),
       });
+      if (batchId !== null) {
+        await releaseBatchLink({ payload }, { batchId, postId: post.id });
+      }
       // Best effort: the post is already gone, so a storage failure is logged
       // rather than surfaced.
       await cleanUpPostVideoFiles(getVideoStorage, post, {

@@ -9,6 +9,8 @@ import type { PostMention } from "@/lib/post-mentions";
 import type { PollChoice } from "@/lib/poll-rules";
 import { mayGoWithoutWords, NEEDS_TEXT_MESSAGE } from "@/lib/feed-post-rules";
 
+import { NO_GIF } from "./post-media-fields";
+
 import {
   claimFeedImages,
   cleanUpPostImages,
@@ -45,36 +47,6 @@ export const NO_VIDEO = {
   height: null,
   bytes: null,
 } as const;
-
-/** A post with no GIF: every field of the `gif` group cleared. */
-export const NO_GIF = {
-  giphyId: null,
-  title: null,
-  mp4Url: null,
-  stillUrl: null,
-  width: null,
-  height: null,
-} as const;
-
-/**
- * What a removed post is saved as: the row stays (its comments and likes
- * point at it), marked deleted, without its words, its author's name or its
- * links to pictures, a GIF or a gallery batch. Letting go of the batch frees
- * it (`galleryBatch` is unique) and leaves its items in the gallery. The
- * caller removes the files the post owned. Every remover writes this shape.
- */
-export function removedPostData() {
-  return {
-    isDeleted: true,
-    content: "",
-    authorName: "",
-    images: [],
-    image: null,
-    imageUrl: null,
-    gif: NO_GIF,
-    galleryBatch: null,
-  } satisfies Partial<FeedPost>;
-}
 
 /** The `gif` group a post stores for a GIF looked up from GIPHY. */
 export function gifFields(gif: Gif) {

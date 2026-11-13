@@ -6,10 +6,14 @@ import type { ObjectStorageSource } from "@/server/media/object-storage";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { ReportReason } from "@/lib/post-report-reasons";
-import { removeBatchItems } from "@/server/gallery/feed-post-link";
+import {
+  galleryBatchIdOf,
+  releaseBatchLink,
+  removeBatchItems,
+} from "@/server/gallery/feed-post-link";
 import { canViewPost, type FeedViewer } from "./post-visibility";
 import { cleanUpPostImages } from "./feed-images";
-import { removedPostData } from "./post-media";
+import { removedPostData } from "./post-media-fields";
 import { cleanUpPostVideoFiles } from "./post-video-files";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -209,11 +213,11 @@ export async function reviewReport(
     });
     return;
   }
-  const batch = post.galleryBatch;
-  if (batch != null) {
+  const batchId = galleryBatchIdOf(post);
+  if (batchId !== null) {
     await removeBatchItems(
       { payload: deps.payload, storage: deps.galleryStorage, log: deps.log },
-      typeof batch === "object" ? batch.id : batch,
+      batchId,
     );
   }
   await deps.payload.update({
@@ -221,6 +225,9 @@ export async function reviewReport(
     id: post.id,
     data: removedPostData(),
   });
+  if (batchId !== null) {
+    await releaseBatchLink(deps, { batchId, postId: post.id });
+  }
   // Best effort: the post is already removed, so a storage failure is
   // logged rather than failing the moderator's action.
   await cleanUpPostVideoFiles(deps.storage, post, {

@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 
-import { removedPostData } from "@/server/communities/post-media";
+import type { FeedPost } from "@/payload-types";
+import { removedPostData } from "@/server/communities/post-media-fields";
 
 import type { GalleryDeps } from "./deps";
 import { removeItemFiles } from "./item-files";
@@ -8,18 +9,71 @@ import { removeItemFiles } from "./item-files";
 /**
  * The gallery's side of a gallery feed post (spec 2026-11-13, Feed post
  * (collage)). The items belong to the gallery, not to the post: deleting the
- * post leaves them. Two things cross over, and they live here:
+ * post leaves them. What crosses over lives here:
  *
  * - A moderator removing a reported gallery post removes the batch's items
- *   too (`removeBatchItems`): the report is about that content.
+ *   too (`removeBatchItems`, called by `reviewReport`): the report is about
+ *   that content.
  * - Deleting the last ready item of a batch removes its post when the post
- *   has no words left (`releaseEmptyGalleryPost`), the way a feed post that
- *   showed only a deleted picture is removed.
+ *   has no words left (`releaseEmptyGalleryPost`, called by `deleteItem`;
+ *   every other way an item is removed, such as a moderator removing a
+ *   reported item, must call it too), the way a feed post that showed only a
+ *   deleted picture is removed.
+ * - Whenever a post lets go of its batch (`deletePost`, `reviewReport`,
+ *   `releaseEmptyGalleryPost`), the batch lets go of the post
+ *   (`releaseBatchLink`), so its `feedPostId` always names the live post:
+ *   the empty-batch cleanup can then remove a batch whose post is gone.
  *
  * The post is found by its `galleryBatch`, the one link that is always
  * written with the post (the batch's own `feedPostId` may have failed to
  * save).
  */
+
+/** The id of the gallery batch a post announces, if it is a gallery post. */
+export function galleryBatchIdOf(
+  post: Pick<FeedPost, "galleryBatch">,
+): number | null {
+  const batch = post.galleryBatch;
+  if (batch == null) return null;
+  return typeof batch === "object" ? batch.id : batch;
+}
+
+/**
+ * Clears the batch's `feedPostId` once its post was removed, only while it
+ * still names that post, so it never clears another post's link. Best
+ * effort, since the post is already removed: a failure is logged, and the
+ * batch then only waits longer for the cleanup.
+ */
+export async function releaseBatchLink(
+  deps: Pick<GalleryDeps, "payload" | "log">,
+  link: { batchId: number; postId: number },
+): Promise<void> {
+  const log = deps.log ?? console.error;
+  try {
+    const { errors } = await deps.payload.update({
+      collection: "gallery-batches",
+      where: {
+        and: [
+          { id: { equals: link.batchId } },
+          { feedPostId: { equals: link.postId } },
+        ],
+      },
+      data: { feedPostId: null },
+      depth: 0,
+    });
+    if (errors.length > 0) {
+      log("[gallery.releaseBatchLink] clearing a batch's feed post failed", {
+        ...link,
+        errors,
+      });
+    }
+  } catch (error) {
+    log("[gallery.releaseBatchLink] clearing a batch's feed post failed", {
+      ...link,
+      error,
+    });
+  }
+}
 
 /**
  * Deletes every item of the batch (whatever its state) and then their files,
@@ -53,9 +107,11 @@ export async function removeBatchItems(
  * Removes the batch's live feed post (`removedPostData`, as a member or a
  * moderator removes one) once the batch has no ready item left and the post
  * has no words: such a post would show nothing. A hidden item still counts,
- * since a moderator may restore it. The write only matches while the post
- * still announces this batch, so a post deleted meanwhile is left alone.
- * A failed write is logged and thrown.
+ * since a moderator may restore it. The write only matches while the post is
+ * exactly as it was read (its `updatedAt`, as `writePostMedia` claims a
+ * post), so a post edited meanwhile — words added, or deleted — is left
+ * alone. Then the batch lets go of the post (`releaseBatchLink`). A failed
+ * write is logged and thrown.
  */
 export async function releaseEmptyGalleryPost(
   deps: Pick<GalleryDeps, "payload" | "log">,
@@ -79,10 +135,13 @@ export async function releaseEmptyGalleryPost(
     depth: 0,
   });
   if (ready.length > 0) return;
-  const { errors } = await deps.payload.update({
+  const { docs: removed, errors } = await deps.payload.update({
     collection: "feed-posts",
     where: {
-      and: [{ id: { equals: post.id } }, { galleryBatch: { equals: batchId } }],
+      and: [
+        { id: { equals: post.id } },
+        { updatedAt: { equals: post.updatedAt } },
+      ],
     },
     data: removedPostData(),
     depth: 0,
@@ -94,4 +153,6 @@ export async function releaseEmptyGalleryPost(
     );
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   }
+  if (removed.length === 0) return;
+  await releaseBatchLink(deps, { batchId, postId: post.id });
 }

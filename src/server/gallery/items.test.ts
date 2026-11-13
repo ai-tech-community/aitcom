@@ -977,14 +977,19 @@ describe("deleteItem", () => {
       communityId: "c1",
       isDeleted: false,
       galleryBatch: 3,
+      updatedAt: ago(HOUR),
       ...over,
     });
 
-    it("removes a post with no words when its last ready item is deleted", async () => {
+    it("removes a post with no words when its last ready item is deleted, and the batch lets go of it", async () => {
       const { deps, store } = fakes({
         items: [item(1), item(2, { status: "failed" })],
         posts: [galleryPost()],
       });
+      store["gallery-batches"]![0] = {
+        ...store["gallery-batches"]![0],
+        feedPostId: 40,
+      };
 
       await deleteItem(deps, { viewer: await member("u1"), itemId: 1 });
 
@@ -994,6 +999,7 @@ describe("deleteItem", () => {
         authorName: "",
         galleryBatch: null,
       });
+      expect(store["gallery-batches"]![0]).toMatchObject({ feedPostId: null });
     });
 
     it("keeps the post while another item of the batch is ready", async () => {

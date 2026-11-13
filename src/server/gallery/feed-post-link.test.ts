@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { releaseEmptyGalleryPost, removeBatchItems } from "./feed-post-link";
+import {
+  galleryBatchIdOf,
+  releaseBatchLink,
+  releaseEmptyGalleryPost,
+  removeBatchItems,
+} from "./feed-post-link";
 
 type Doc = Record<string, unknown>;
 type Where = Record<string, unknown>;
@@ -40,14 +45,20 @@ function post(over: Doc = {}): Doc {
     communityId: "c1",
     isDeleted: false,
     galleryBatch: 3,
+    updatedAt: "2026-11-13T10:00:00.000Z",
     ...over,
   };
 }
 
-function fakes(seed: { items?: Doc[]; posts?: Doc[] } = {}) {
+function batch(over: Doc = {}): Doc {
+  return { id: 3, status: "finished", feedPostId: 40, ...over };
+}
+
+function fakes(seed: { items?: Doc[]; posts?: Doc[]; batches?: Doc[] } = {}) {
   const store: Record<string, Doc[]> = {
     "gallery-items": seed.items ?? [],
     "feed-posts": seed.posts ?? [],
+    "gallery-batches": seed.batches ?? [batch()],
   };
   const rows = (collection: string) => store[collection] ?? [];
   const payload = {
@@ -217,17 +228,35 @@ describe("releaseEmptyGalleryPost", () => {
     expect(payload.update).not.toHaveBeenCalled();
   });
 
-  it("writes only while the post still announces this batch", async () => {
-    const { deps, payload } = fakes({ posts: [post()] });
+  it("clears the batch's link to the removed post, so the cleanup can take the batch", async () => {
+    const { deps, store } = fakes({ posts: [post()] });
     await releaseEmptyGalleryPost(deps, 3);
-    expect(payload.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: "feed-posts",
-        where: {
-          and: [{ id: { equals: 40 } }, { galleryBatch: { equals: 3 } }],
-        },
-      }),
-    );
+    expect(store["gallery-batches"]![0]).toMatchObject({ feedPostId: null });
+  });
+
+  it("leaves a post that gained words between the read and the write, and its batch link", async () => {
+    const { deps, payload, store } = fakes({ posts: [post()] });
+    const read = payload.find.getMockImplementation()!;
+    payload.find.mockImplementation(async (args) => {
+      const result = await read(args);
+      // The author saves words while the last item is being deleted.
+      if (args.collection === "gallery-items") {
+        store["feed-posts"]![0] = post({
+          content: "Our picnic",
+          updatedAt: "2026-11-13T10:00:05.000Z",
+        });
+      }
+      return result;
+    });
+
+    await releaseEmptyGalleryPost(deps, 3);
+
+    expect(store["feed-posts"]![0]).toMatchObject({
+      isDeleted: false,
+      content: "Our picnic",
+      galleryBatch: 3,
+    });
+    expect(store["gallery-batches"]![0]).toMatchObject({ feedPostId: 40 });
   });
 
   it("fails loudly when the post could not be saved", async () => {
@@ -239,9 +268,53 @@ describe("releaseEmptyGalleryPost", () => {
     await expect(releaseEmptyGalleryPost(deps, 3)).rejects.toMatchObject({
       code: "INTERNAL_SERVER_ERROR",
     });
+    expect(payload.update).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledWith(
       "[gallery.releaseEmptyGalleryPost] removing an empty gallery post failed",
       expect.objectContaining({ batchId: 3, postId: 40 }),
     );
+  });
+});
+
+describe("releaseBatchLink", () => {
+  it("clears the batch's feed post while it names the removed post", async () => {
+    const { deps, store } = fakes();
+    await releaseBatchLink(deps, { batchId: 3, postId: 40 });
+    expect(store["gallery-batches"]![0]).toMatchObject({ feedPostId: null });
+  });
+
+  it("never clears a link to another post", async () => {
+    const { deps, store } = fakes({ batches: [batch({ feedPostId: 41 })] });
+    await releaseBatchLink(deps, { batchId: 3, postId: 40 });
+    expect(store["gallery-batches"]![0]).toMatchObject({ feedPostId: 41 });
+  });
+
+  it("logs a failed write without throwing: the post is already removed", async () => {
+    const { deps, payload, log } = fakes();
+    payload.update.mockResolvedValueOnce({
+      docs: [],
+      errors: [{ id: 3, message: "x" }],
+    });
+    await expect(
+      releaseBatchLink(deps, { batchId: 3, postId: 40 }),
+    ).resolves.toBeUndefined();
+    payload.update.mockRejectedValueOnce(new Error("db down"));
+    await expect(
+      releaseBatchLink(deps, { batchId: 3, postId: 40 }),
+    ).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledWith(
+      "[gallery.releaseBatchLink] clearing a batch's feed post failed",
+      expect.objectContaining({ batchId: 3, postId: 40 }),
+    );
+  });
+});
+
+describe("galleryBatchIdOf", () => {
+  it("reads the batch id, stored or populated, and null for other posts", () => {
+    expect(galleryBatchIdOf({ galleryBatch: 3 })).toBe(3);
+    expect(galleryBatchIdOf({ galleryBatch: { id: 3 } as never })).toBe(3);
+    expect(galleryBatchIdOf({ galleryBatch: null })).toBeNull();
+    expect(galleryBatchIdOf({})).toBeNull();
   });
 });

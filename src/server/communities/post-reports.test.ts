@@ -30,7 +30,7 @@ function fakes(
     find: vi.fn().mockResolvedValue({ docs: over.existing ?? [] }),
     count: vi.fn().mockResolvedValue({ totalDocs: over.reportTotal ?? 1 }),
     create: vi.fn().mockResolvedValue({}),
-    update: vi.fn().mockResolvedValue({}),
+    update: vi.fn().mockResolvedValue({ docs: [], errors: [] }),
     delete: vi
       .fn()
       .mockImplementation(({ collection }: { collection: string }) =>
@@ -443,6 +443,19 @@ describe("reviewReport", () => {
         data: expect.objectContaining({ isDeleted: true, galleryBatch: null }),
       }),
     );
+    // Then the batch lets go of the post, only while it still names it.
+    const collections = payload.update.mock.calls.map(
+      ([args]) => (args as { collection: string }).collection,
+    );
+    expect(collections).toEqual(["feed-posts", "gallery-batches"]);
+    expect(payload.update).toHaveBeenCalledWith({
+      collection: "gallery-batches",
+      where: {
+        and: [{ id: { equals: 9 } }, { feedPostId: { equals: 5 } }],
+      },
+      data: { feedPostId: null },
+      depth: 0,
+    });
     expect(getStorage).not.toHaveBeenCalled();
   });
 
@@ -485,6 +498,9 @@ describe("reviewReport", () => {
     });
     expect(payload.delete).not.toHaveBeenCalled();
     expect(getGalleryStorage).not.toHaveBeenCalled();
+    expect(payload.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "gallery-batches" }),
+    );
   });
 
   it("remove on any other post never reaches gallery storage", async () => {
@@ -496,6 +512,9 @@ describe("reviewReport", () => {
     expect(getGalleryStorage).not.toHaveBeenCalled();
     expect(payload.delete).not.toHaveBeenCalledWith(
       expect.objectContaining({ collection: "gallery-items" }),
+    );
+    expect(payload.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "gallery-batches" }),
     );
   });
 

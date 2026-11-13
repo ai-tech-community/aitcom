@@ -147,7 +147,10 @@ beforeEach(() => {
     }: {
       data: Record<string, unknown>;
       where?: unknown;
-    }) => (where ? { docs: [{ ...post, ...data }] } : { ...post, ...data }),
+    }) =>
+      where
+        ? { docs: [{ ...post, ...data }], errors: [] }
+        : { ...post, ...data },
   );
   storage.remove.mockResolvedValue(undefined);
 });
@@ -652,6 +655,15 @@ describe("feed post writes", () => {
         content: "",
         galleryBatch: null,
       });
+      // The batch lets go of the post too, only while it still names it.
+      expect(payload.update).toHaveBeenCalledWith({
+        collection: "gallery-batches",
+        where: {
+          and: [{ id: { equals: 9 } }, { feedPostId: { equals: 5 } }],
+        },
+        data: { feedPostId: null },
+        depth: 0,
+      });
       expect(payload.delete).not.toHaveBeenCalledWith(
         expect.objectContaining({ collection: "gallery-items" }),
       );
@@ -697,6 +709,10 @@ describe("feed post writes", () => {
 
   it("deletePost answers with the id only", async () => {
     const result = await caller().feed.deletePost({ postId: 5 });
+    // Not a gallery post: no batch to let go of.
+    expect(payload.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "gallery-batches" }),
+    );
     expect(result).toEqual({ id: 5 });
     expect(JSON.stringify(result)).not.toMatch(/key|thumbnailKey/);
     expect(storage.remove).toHaveBeenCalledWith([
