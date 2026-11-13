@@ -110,14 +110,17 @@ describe("migration 20261113b_gallery_feed_posts", () => {
     );
   });
 
-  it("refuses to drop a non-empty event gallery before dropping it", () => {
-    const guard = migration().indexOf(
-      "RAISE EXCEPTION 'events gallery not empty",
-    );
-    const drop = migration().indexOf('DROP COLUMN IF EXISTS "media_id"');
-    expect(guard).toBeGreaterThan(-1);
-    expect(drop).toBeGreaterThan(guard);
+  it("checks the event gallery is empty, reading both rels tables", () => {
+    expect(migration()).toContain("RAISE EXCEPTION 'events gallery not empty");
     expect(migration()).toContain("'version.gallery'");
     expect(migration()).not.toContain("'version_gallery'");
+  });
+
+  it("only adds: the old deployment still reads media_id during the build", () => {
+    expect(migration()).not.toMatch(/DROP COLUMN IF EXISTS "media_id"/);
+    expect(migration()).not.toMatch(/_media_fk"?;/);
+    expect(migration()).not.toMatch(
+      /DROP INDEX IF EXISTS "_?events(_v)?_rels_media_id_idx"/,
+    );
   });
 });

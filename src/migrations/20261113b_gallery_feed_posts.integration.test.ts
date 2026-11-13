@@ -60,11 +60,34 @@ describe.skipIf(!isLocalDbConfigured())(
       return res.rows;
     }
 
+    /**
+     * The schema production has before this migration: no feed post link,
+     * and `media_id` (with its index and foreign key) on both events rels
+     * tables. `down` no longer touches `media_id`, and a test database that
+     * ran an earlier draft of this migration may lack it, so put it back.
+     */
+    async function beforeMigration(tx: Tx) {
+      await migration.down({ db: tx } as never);
+      await tx.execute(sql`
+        ALTER TABLE "events_rels" ADD COLUMN IF NOT EXISTS "media_id" integer;
+        CREATE INDEX IF NOT EXISTS "events_rels_media_id_idx" ON "events_rels" USING btree ("media_id");
+        DO $$ BEGIN
+          ALTER TABLE "events_rels" ADD CONSTRAINT "events_rels_media_fk"
+            FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade;
+        EXCEPTION WHEN duplicate_object THEN null; END $$;
+        ALTER TABLE "_events_v_rels" ADD COLUMN IF NOT EXISTS "media_id" integer;
+        CREATE INDEX IF NOT EXISTS "_events_v_rels_media_id_idx" ON "_events_v_rels" USING btree ("media_id");
+        DO $$ BEGIN
+          ALTER TABLE "_events_v_rels" ADD CONSTRAINT "_events_v_rels_media_fk"
+            FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade;
+        EXCEPTION WHEN duplicate_object THEN null; END $$;
+      `);
+    }
+
     it("refuses to drop an event gallery that still has pictures", async () => {
       await expect(
         db.transaction(async (tx) => {
-          // The state before this migration: media_id still exists.
-          await migration.down({ db: tx } as never);
+          await beforeMigration(tx);
           const eventId = await insertEvent(tx);
           await tx.execute(sql`
             INSERT INTO "events_rels" ("order", "parent_id", "path")
@@ -81,7 +104,7 @@ describe.skipIf(!isLocalDbConfigured())(
     it("refuses when only a saved version still has pictures", async () => {
       await expect(
         db.transaction(async (tx) => {
-          await migration.down({ db: tx } as never);
+          await beforeMigration(tx);
           const eventId = await insertEvent(tx);
           const version = await tx.execute(sql`
             INSERT INTO "_events_v" ("parent_id") VALUES (${eventId})
@@ -95,21 +118,33 @@ describe.skipIf(!isLocalDbConfigured())(
       ).rejects.toThrow(/events gallery not empty: _events_v_rels/);
     });
 
-    it("adds the feed post link, drops media_id, and can run again", async () => {
+    it("adds the feed post link, keeps media_id for the old deploy, and can run again", async () => {
       const rollback = new Error("rollback migration exercise");
       await expect(
         db.transaction(async (tx) => {
-          await migration.down({ db: tx } as never);
+          await beforeMigration(tx);
           expect(await columns(tx)).toEqual([
             { table_name: "_events_v_rels", column_name: "media_id" },
             { table_name: "events_rels", column_name: "media_id" },
           ]);
 
           await migration.up({ db: tx } as never);
-          // A failed deploy re-runs it, with media_id already gone.
+          // A failed deploy re-runs it.
           await migration.up({ db: tx } as never);
+          // The old deployment still serves during the build and reads
+          // media_id: this deploy only adds. A follow-up drops it.
           expect(await columns(tx)).toEqual([
+            { table_name: "_events_v_rels", column_name: "media_id" },
+            { table_name: "events_rels", column_name: "media_id" },
             { table_name: "feed_posts", column_name: "gallery_batch_id" },
+          ]);
+          const mediaFks = await tx.execute(sql`
+            SELECT conname FROM pg_constraint
+            WHERE conname IN ('events_rels_media_fk', '_events_v_rels_media_fk')
+            ORDER BY conname`);
+          expect(mediaFks.rows).toEqual([
+            { conname: "_events_v_rels_media_fk" },
+            { conname: "events_rels_media_fk" },
           ]);
 
           const indexes = await tx.execute(sql`

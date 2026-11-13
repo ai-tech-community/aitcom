@@ -234,11 +234,15 @@ their category (set to empty), the same moment feed posts move to `general`.
   items the viewer may see. Shown for events that have started. For a viewer who
   isn't a member, only public items show, and "Add yours" leads to joining.
 - `Events.gallery` is removed. Production has 0 rows using it (checked
-  13 Nov 2026). The migration drops it only if it's still empty — in both
+  13 Nov 2026). The migration first checks it is still empty — in both
   `events_rels` (path `gallery`) and the versions table `_events_v_rels` (path
   `version.gallery`; any non-null `media_id`) — and fails loudly otherwise.
-  `gallery` is Events' only hasMany media relation, so the now-unused
-  `media_id` column, index and foreign key go from both rels tables.
+  `gallery` is Events' only hasMany media relation, so `media_id` on both
+  rels tables is no longer used. It is **not** dropped in this deploy:
+  production applies migrations during the build while the old deployment
+  still serves, and the old code reads `media_id`. The new code ignores the
+  leftover nullable column. A follow-up migration drops the column, index and
+  foreign key once this deploy is live.
 - The section is not shown for Hub events (no community), for events that
   can't be linked (draft, cancelled, rejected) or haven't started, or while
   the flag is off.

@@ -6,13 +6,20 @@
 // relationship (FK ON DELETE set null, unique index `<table>_<field>_idx`):
 // one batch is announced by at most one post.
 //
-// Events.gallery was the only hasMany media relation on events, so Payload
-// no longer expects `media_id` on events_rels or _events_v_rels. Production
-// auto-applies migrations on deploy, so the drop is guarded: if either table
-// still holds a gallery row (`gallery` on the live table, `version.gallery`
-// on the versions table) or any media link, the migration raises and
-// changes nothing instead of deleting pictures. The guard reads `media_id`
-// only while the column exists, so a re-run after success is a no-op.
+// This migration only adds. Events.gallery was the only hasMany media
+// relation on events, so the new code no longer reads `media_id` on
+// events_rels or _events_v_rels, but production applies migrations during
+// the build while the old deployment still serves, and the old code selects
+// `media_id` by name. The column, its index and its foreign key therefore
+// stay until a follow-up migration drops them once this deploy is live; a
+// leftover nullable column is harmless (the deploy's schema check only
+// reports missing columns).
+//
+// The empty-gallery guard still runs: if either table holds a gallery row
+// (`gallery` on the live table, `version.gallery` on the versions table) or
+// any media link, the migration raises and changes nothing. That signals
+// data nobody expected and protects the follow-up drop. The guard reads
+// `media_id` only while the column exists, so it also holds after the drop.
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 import { sql } from "@payloadcms/db-postgres";
 
@@ -57,37 +64,11 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
         ON DELETE set null ON UPDATE no action;
     EXCEPTION WHEN duplicate_object THEN null; END $$;
     CREATE UNIQUE INDEX IF NOT EXISTS "feed_posts_gallery_batch_idx" ON "feed_posts" USING btree ("gallery_batch_id");
-
-    ALTER TABLE "events_rels" DROP CONSTRAINT IF EXISTS "events_rels_media_fk";
-    DROP INDEX IF EXISTS "events_rels_media_id_idx";
-    ALTER TABLE "events_rels" DROP COLUMN IF EXISTS "media_id";
-
-    ALTER TABLE "_events_v_rels" DROP CONSTRAINT IF EXISTS "_events_v_rels_media_fk";
-    DROP INDEX IF EXISTS "_events_v_rels_media_id_idx";
-    ALTER TABLE "_events_v_rels" DROP COLUMN IF EXISTS "media_id";
   `);
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
-    ALTER TABLE "events_rels" ADD COLUMN IF NOT EXISTS "media_id" integer;
-    CREATE INDEX IF NOT EXISTS "events_rels_media_id_idx" ON "events_rels" USING btree ("media_id");
-    DO $$ BEGIN
-      ALTER TABLE "events_rels"
-        ADD CONSTRAINT "events_rels_media_fk"
-        FOREIGN KEY ("media_id") REFERENCES "public"."media"("id")
-        ON DELETE cascade ON UPDATE no action;
-    EXCEPTION WHEN duplicate_object THEN null; END $$;
-
-    ALTER TABLE "_events_v_rels" ADD COLUMN IF NOT EXISTS "media_id" integer;
-    CREATE INDEX IF NOT EXISTS "_events_v_rels_media_id_idx" ON "_events_v_rels" USING btree ("media_id");
-    DO $$ BEGIN
-      ALTER TABLE "_events_v_rels"
-        ADD CONSTRAINT "_events_v_rels_media_fk"
-        FOREIGN KEY ("media_id") REFERENCES "public"."media"("id")
-        ON DELETE cascade ON UPDATE no action;
-    EXCEPTION WHEN duplicate_object THEN null; END $$;
-
     ALTER TABLE "feed_posts" DROP CONSTRAINT IF EXISTS "feed_posts_gallery_batch_id_gallery_batches_id_fk";
     DROP INDEX IF EXISTS "feed_posts_gallery_batch_idx";
     ALTER TABLE "feed_posts" DROP COLUMN IF EXISTS "gallery_batch_id";
