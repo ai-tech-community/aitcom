@@ -62,12 +62,12 @@ Migration `up`:
 - Modify: `src/server/api/routers/gallery.ts` (`finishBatch` passes the announcer), `src/server/gallery/cleanup.ts` (+ test) and `src/app/api/cron/video-uploads-cleanup/route.ts` (+ test) so the cleanup passes it too (cleanup deps gain `db`)
 
 **Interfaces:**
-- Consumes: `closeBatch`/`finishBatch` + `AnnounceBatch = (batch: GalleryBatch, readyItems: GalleryItem[]) => Promise<number | null>` (`src/server/gallery/uploads.ts`); `activeCommunityRole` (`src/server/communities/content-visibility-queries.ts`); `canPostToFeed` (`src/server/communities/feed-posts.ts`); `resolvePostTopic` (`post-topics.ts`); the mention resolver `createPost` uses (find it in `src/server/api/routers/feed.ts`); `awardXp(... FEED_POST_CREATE)` and `logActivity("feed.post_created", …)` as `createPost` calls them.
+- Consumes: `closeBatch`/`finishBatch` + `AnnounceBatch = (batch: GalleryBatch, readyItems: GalleryItem[]) => Promise<number | null>` (`src/server/gallery/uploads.ts`); `activeCommunityRole` (`src/server/communities/content-visibility-queries.ts`); `canPostToFeed` (`src/server/communities/feed-posts.ts`); `resolvePostTopic` (`post-topics.ts`); `awardXp(... FEED_POST_CREATE)` and `logActivity("feed.post_created", …)` as `createPost` calls them.
 - Produces: `galleryAnnouncer(deps: { payload; db; log? }): AnnounceBatch` — a factory, so the router and the cleanup build the same announcer.
 
 Rules (unit tests with fakes for each):
 - Returns `null` and creates nothing when the uploader has no active role in the community (left, banned, unpaid) or `canPostToFeed(community.feedPostPolicy, role)` is false.
-- Otherwise creates one feed post: `communityId`, `authorId = batch.uploaderId`, `authorName` from the user row (same source `createPost` uses), `content = batch.caption ?? ""`, `topicSlug` = the batch's topic if it still exists (`resolvePostTopic`), else `general`; `visibility: "community"`; `galleryBatch: batch.id`; `mentions` resolved from the caption the same way `createPost` does.
+- Otherwise creates one feed post: `communityId`, `authorId = batch.uploaderId`, `authorName` from the user row (same source `createPost` uses), `content = batch.caption ?? ""`, `topicSlug` = the batch's topic if it still exists (`resolvePostTopic`), else `general`; `visibility: "community"`; `galleryBatch: batch.id`; no `mentions` (gallery posts never notify by mention).
 - Awards `FEED_POST_CREATE` XP and logs `feed.post_created` with `{ postId, kind: "gallery" }`, like `createPost`. Failures of XP/log are logged and don't fail the announcement (match `createPost`'s behaviour exactly).
 - Returns the post id.
 - A unique-violation on `gallery_batch_id` (another call already announced) returns the existing post's id instead of throwing.
