@@ -224,7 +224,7 @@ describe("loadGalleryViewerById", () => {
     ).resolves.toBeNull();
   });
 
-  it("reads the membership once", async () => {
+  it("reads the membership once, and names the community", async () => {
     const db = fakeDb({ role: "admin" });
     await expect(
       loadGalleryViewerById({ db }, { communityId: "c1", userId: "u1" }),
@@ -234,6 +234,7 @@ describe("loadGalleryViewerById", () => {
       isMember: true,
       isModerator: true,
       canSeePublic: true,
+      community: { id: "c1", slug: "town", isListedInDirectory: true },
     });
     expect(
       (db as { query: { communityMemberships: { findFirst: unknown } } }).query

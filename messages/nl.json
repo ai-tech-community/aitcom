@@ -6493,6 +6493,14 @@
     "collage": {
       "label": "{count, plural, one {Eén foto of video uit de galerij} other {# foto's en video's uit de galerij}}"
     },
+    "event": {
+      "title": "Foto's en video's",
+      "count": "{count, plural, one {# item} other {# items}}",
+      "seeAll": "Bekijk alle {count} in de galerij",
+      "add": "Voeg de jouwe toe",
+      "signInToAdd": "Log in om je foto's en video's toe te voegen",
+      "empty": "Voeg als eerste foto's van dit event toe."
+    },
     "tile": {
       "video": "Video, {duration}",
       "videoNoLength": "Video"

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  offersMembership,
   viewerJoinAction,
   slugJoinStatus,
   roleFromInvite,
@@ -108,5 +109,19 @@ describe("viewerJoinAction", () => {
     expect(viewerJoinAction({ joinPolicy: "open", status: "banned" })).toEqual({
       kind: "unavailable",
     });
+  });
+});
+
+describe("offersMembership", () => {
+  it.each([
+    [{ kind: "join" }, true],
+    [{ kind: "request" }, true],
+    [{ kind: "invited" }, true],
+    [{ kind: "pending" }, false],
+    [{ kind: "invite_only" }, false],
+    [{ kind: "unavailable" }, false],
+    [{ kind: "member", canLeave: true }, false],
+  ] as const)("%o → %s", (action, offered) => {
+    expect(offersMembership(action)).toBe(offered);
   });
 });

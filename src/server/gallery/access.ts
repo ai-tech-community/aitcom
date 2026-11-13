@@ -114,13 +114,14 @@ export async function publicItemsReachOutsiders(
 
 /**
  * The viewer of a gallery reached through one of its records (a batch, an
- * item), which hold the community's id. Null when the community was deleted:
- * callers answer that as they answer an unknown record.
+ * item, an event), which hold the community's id; with the community, so a
+ * page outside it can link to its gallery. Null when the community was
+ * deleted: callers answer that as they answer an unknown record.
  */
 export async function loadGalleryViewerById(
   deps: Pick<GalleryDeps, "db">,
   input: { communityId: string; userId: string | null },
-): Promise<GalleryViewer | null> {
+): Promise<(GalleryViewer & { community: GalleryCommunity }) | null> {
   const community = await deps.db.query.communities.findFirst({
     where: and(
       eq(communities.id, input.communityId),
@@ -129,7 +130,14 @@ export async function loadGalleryViewerById(
     columns: VIEWER_COMMUNITY_COLUMNS,
   });
   if (!community) return null;
-  return viewerIn(deps, community, input.userId);
+  return {
+    ...(await viewerIn(deps, community, input.userId)),
+    community: {
+      id: community.id,
+      slug: community.slug,
+      isListedInDirectory: community.isListedInDirectory,
+    },
+  };
 }
 
 /**

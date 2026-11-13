@@ -106,3 +106,19 @@ export function uploadLinkPath(location: {
   params.set(UPLOAD_PARAM, "1");
   return `${location.pathname}?${params}`;
 }
+
+/**
+ * An event page's way into its community's gallery (locale-less, for the
+ * app's `Link`): the wall filtered to the event, or with `upload` the
+ * upload dialog opened with the event chosen.
+ */
+export function eventGalleryPath(
+  slug: string,
+  eventId: number,
+  options: { upload?: boolean } = {},
+): string {
+  const params = new URLSearchParams();
+  if (options.upload) params.set(UPLOAD_PARAM, "1");
+  params.set("event", String(eventId));
+  return `/communities/${slug}/gallery?${params}`;
+}

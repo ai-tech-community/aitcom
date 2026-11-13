@@ -14,6 +14,7 @@ import { NvidiaGtcEnglishLinks } from "@/components/events/nvidia-gtc-english-li
 import { EventRegisterButton } from "@/components/event-register-button";
 import { OrganizerAttendeesLink } from "@/components/events/organizer-attendees-link";
 import { EventAttendees } from "@/components/event-attendees";
+import { EventGallerySection } from "@/components/events/event-gallery-section";
 import { EventShareRow } from "@/components/event-share-row";
 import { LexicalRenderer } from "@/lib/lexical";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
@@ -68,6 +69,8 @@ import {
   loadHiddenEventCommunityIds,
   viewerMaySeeEvent,
 } from "@/server/events/public-event-access";
+import { loadEventGallerySection } from "@/server/gallery/event-section";
+import { getObjectStorage } from "@/server/media/object-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -339,7 +342,17 @@ export default async function EventDetailPage({
 
   const now = new Date();
   const session = await getSession();
-  const editHref = await resolveEventEditHref(db, session?.user?.id, event);
+  const [editHref, gallerySection] = await Promise.all([
+    resolveEventEditHref(db, session?.user?.id, event),
+    // Null when the event has no photos section (spec 2026-11-13, Events).
+    loadEventGallerySection(
+      { payload, db, storage: getObjectStorage },
+      { event, userId: session?.user?.id ?? null },
+    ),
+  ]);
+  const gallery = gallerySection ? (
+    <EventGallerySection section={gallerySection} />
+  ) : null;
   const editAction = editHref ? (
     <Button asChild variant="outline" size="sm">
       <Link href={editHref}>
@@ -548,6 +561,8 @@ export default async function EventDetailPage({
               </div>
             </div>
           )}
+
+          {gallery}
 
           <div className="border-border border-t pt-8">
             <SectionLabel>{tEvents("attendees")}</SectionLabel>
@@ -871,6 +886,8 @@ export default async function EventDetailPage({
               </div>
             </div>
           )}
+
+          {gallery}
 
           <div className="border-border border-t pt-8">
             <SectionLabel>{tEvents("attendees")}</SectionLabel>

@@ -92,3 +92,16 @@ export function viewerJoinAction({
       return { kind: "invite_only" };
   }
 }
+
+/**
+ * Whether the community page offers this visitor a way in: join, ask to
+ * join, or accept an invitation. Controls that lead a non-member there
+ * ("join to add photos") are shown only then.
+ */
+export function offersMembership(action: ViewerJoinAction): boolean {
+  return (
+    action.kind === "join" ||
+    action.kind === "request" ||
+    action.kind === "invited"
+  );
+}
