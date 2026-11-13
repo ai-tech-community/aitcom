@@ -36,6 +36,11 @@ import {
   REFRESH_2026_10_BRANDS,
   REFRESH_2026_10_PERMITS,
 } from "./refresh-2026-10";
+import {
+  REFRESH_2026_11_DATACENTERS,
+  REFRESH_2026_11_BRANDS,
+  REFRESH_2026_11_PERMITS,
+} from "./refresh-2026-11";
 import { PERMITS } from "./permits";
 import { SUBSIDIES } from "./subsidies";
 import { CAPEX_UPDATES } from "./capex";
@@ -50,6 +55,7 @@ const SOURCES: Array<{ file: string; records: SeedDatacenter[] }> = [
   { file: "ai-native.ts", records: AI_NATIVE },
   { file: "refresh-2026-07.ts", records: REFRESH_2026_07_DATACENTERS },
   { file: "refresh-2026-10.ts", records: REFRESH_2026_10_DATACENTERS },
+  { file: "refresh-2026-11.ts", records: REFRESH_2026_11_DATACENTERS },
 ];
 
 const ALL_DATACENTERS = SOURCES.flatMap((s) =>
@@ -65,6 +71,7 @@ const ALL_BRAND_SLUGS = new Set(
     AI_NATIVE_BRANDS,
     REFRESH_2026_07_BRANDS,
     REFRESH_2026_10_BRANDS,
+    REFRESH_2026_11_BRANDS,
   ]
     .flat()
     .map((b) => normalize(b.slug)),
@@ -197,6 +204,7 @@ describe("investigation records attach to a real datacenter", () => {
         ...PERMITS,
         ...REFRESH_2026_07_PERMITS,
         ...REFRESH_2026_10_PERMITS,
+        ...REFRESH_2026_11_PERMITS,
       ].map((p) => p.datacenterSlug),
     },
     {
@@ -226,4 +234,49 @@ describe("investigation records attach to a real datacenter", () => {
       expect(unresolved).toEqual([]);
     });
   }
+});
+
+describe("3 Nov 2026 datacenter refresh", () => {
+  const bySlug = new Map(REFRESH_2026_11_DATACENTERS.map((d) => [d.slug, d]));
+
+  it("leaves NAVER Sejong on its existing row", () => {
+    const naver = APAC_ME_AF_LATAM.find((d) => d.slug === "naver-sejong-gak");
+    expect(naver).toMatchObject({
+      status: "operational",
+      capacityMw: 270,
+    });
+    expect(bySlug.has("naver-sejong-gak")).toBe(false);
+  });
+
+  it("keeps Project Dorothy 3 off the Dorothy 1B brand", () => {
+    const dorothy = bySlug.get("project-dorothy-3");
+    expect(dorothy?.operatorSlug).toBe("soluna-applied-dorothy-3");
+    expect(dorothy?.capacityMwPlanned).toBe(50);
+    expect(dorothy?.capacityMw).toBeUndefined();
+    expect(bySlug.has("project-dorothy-1b")).toBe(false);
+  });
+
+  it("does not add an unlocated PowerBank site", () => {
+    const slugs = [
+      ...REFRESH_2026_11_DATACENTERS.map((d) => d.slug),
+      ...REFRESH_2026_11_BRANDS.map((b) => b.slug),
+      ...REFRESH_2026_11_PERMITS.map((p) => p.datacenterSlug),
+    ];
+    expect(slugs.some((slug) => slug.toLowerCase().includes("powerbank"))).toBe(
+      false,
+    );
+  });
+
+  it("uses cancelled for withdrawn and refused facilities, and the permit enum for the decision", () => {
+    expect(bySlug.get("prometheus-casper")?.status).toBe("cancelled");
+    expect(bySlug.get("aws-bridgefield-ashburn")?.status).toBe("cancelled");
+    expect(bySlug.get("pnk-wisconsin-rapids")?.status).toBe("cancelled");
+
+    const permitStatus = new Map(
+      REFRESH_2026_11_PERMITS.map((p) => [p.datacenterSlug, p.status]),
+    );
+    expect(permitStatus.get("aws-bridgefield-ashburn")).toBe("withdrawn");
+    expect(permitStatus.get("pnk-wisconsin-rapids")).toBe("denied");
+    expect(permitStatus.has("prometheus-casper")).toBe(false);
+  });
 });
