@@ -111,6 +111,20 @@ describe("GalleryAddAction", () => {
     expect(screen.queryByRole("button", ADD)).toBeNull();
   });
 
+  it("offers a visitor nothing while the join policy is unknown", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <GalleryAddAction
+          slug="mlops"
+          joinPolicy={undefined}
+          viewer={{ kind: "outsider", status: null }}
+          onUpload={vi.fn()}
+        />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.queryByRole("button", ADD)).toBeNull();
+  });
+
   it("shows nothing to a visitor of an invite-only community", () => {
     render(
       <NextIntlClientProvider locale="en" messages={en}>

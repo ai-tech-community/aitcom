@@ -378,6 +378,7 @@ A reading pattern in `src/components/news/storyline-reader.tsx`, using the exist
 The consistency debt was largely hand-rolled re-implementations. Reach for these:
 
 - **`<SegmentedControl>`** (`ui/segmented-control.tsx`) — accessible radio-backed toggle (keyboard + SR for free). Replaces bespoke pill-button pairs.
+- **`<ChoiceChips>`** (`ui/choice-chips.tsx`) — a wrapping row of radio-backed pill chips for one choice from a data-driven list (feed topics, gallery categories); the chosen chip is ink, never orange. Topic chip labels come from `topicLabel()` / `topicText()` (`lib/communities/topic-label.ts`).
 - **`<RelativeTime date>`** (`ui/relative-time.tsx`) — localized "2 hours ago" via next-intl. Replaces hand-rolled `timeAgo()` (was English-only).
 - **`<Avatar>` + `getInitials()`** (`ui/avatar.tsx`, `lib/avatar.ts`) — never re-derive initials inline.
 - **`<Progress indicatorClassName>`** (`ui/progress.tsx`) — pass `bg-success` for a completed bar; never hand-roll a `<div>` bar.

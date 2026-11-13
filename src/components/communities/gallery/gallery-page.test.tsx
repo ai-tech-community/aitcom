@@ -32,7 +32,7 @@ const m = vi.hoisted(() => ({
   facets: undefined as GalleryFacets | undefined,
   itemInputs: [] as unknown[],
   item: undefined as GalleryItemView | undefined,
-  itemError: false,
+  itemError: null as null | { message: string; data: { code: string } },
   signedIn: false,
   memberships: [] as { slug: string; status: string; role: string }[],
   requireAuth: vi.fn(),
@@ -86,7 +86,8 @@ vi.mock("@/trpc/react", () => ({
           if (opts.enabled) m.itemInputs.push(input);
           return {
             data: opts.enabled ? m.item : undefined,
-            isError: opts.enabled && m.itemError,
+            isError: opts.enabled && m.itemError !== null,
+            error: opts.enabled ? m.itemError : null,
           };
         },
       },
@@ -204,7 +205,7 @@ beforeEach(() => {
   m.list = { isPending: false, isError: false, items: [], hasNextPage: false };
   m.facets = FACETS;
   m.item = undefined;
-  m.itemError = false;
+  m.itemError = null;
   m.signedIn = false;
   m.memberships = [];
   m.deleteFails = false;
@@ -385,13 +386,47 @@ describe("GalleryPage", () => {
   });
 
   it("says so and drops a linked item the viewer cannot open", () => {
-    m.itemError = true;
+    m.itemError = { message: "NOT_FOUND", data: { code: "NOT_FOUND" } };
     setUrl("item=99");
     renderPage();
     expect(m.toastError).toHaveBeenCalledWith(
       "This photo or video is no longer here.",
     );
     expect(window.location.search).toBe("");
+  });
+
+  it("calls a failed load of a linked item a failure, not gone", () => {
+    m.itemError = {
+      message: "INTERNAL_SERVER_ERROR",
+      data: { code: "INTERNAL_SERVER_ERROR" },
+    };
+    setUrl("item=99");
+    renderPage();
+    expect(m.toastError).toHaveBeenCalledWith(
+      "We couldn't open this photo or video. Please try again.",
+    );
+  });
+
+  it("returns focus to the heading after closing a linked item", async () => {
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    m.item = galleryItem({ id: 99, caption: "Linked" });
+    setUrl("item=99");
+    renderPage();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Photos and videos" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("lets the lightbox go on into the next page of the wall", () => {
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    m.list.hasNextPage = true;
+    setUrl("item=1");
+    renderPage();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowRight" });
+    expect(m.fetchNextPage).toHaveBeenCalledTimes(1);
   });
 
   it("lets a moderator delete someone else's item and refreshes the wall", async () => {

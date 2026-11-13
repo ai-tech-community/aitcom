@@ -158,6 +158,36 @@ describe("GalleryToolbar", () => {
     expect(screen.getByRole("radiogroup", { name: "Type" })).toBeVisible();
   });
 
+  it("shows a filter from a link while the choices are still unknown", () => {
+    const { onChange } = renderToolbar({
+      facets: undefined,
+      filters: { ...NONE, event: 4, topic: "meetups" },
+    });
+    expect(screen.getByRole("combobox", { name: "Event" })).toHaveTextContent(
+      "This event",
+    );
+    const group = screen.getByRole("radiogroup", { name: "Category" });
+    expect(
+      within(group).getByRole("radio", { name: "🍕 Meetups" }),
+    ).toBeChecked();
+    fireEvent.click(within(group).getByRole("radio", { name: "All" }));
+    expect(onChange).toHaveBeenLastCalledWith({ topic: null });
+    fireEvent.click(
+      within(openEventSelect()).getByRole("option", { name: "All events" }),
+    );
+    expect(onChange).toHaveBeenLastCalledWith({ event: null });
+  });
+
+  it("shows the no-event filter even when the facets list no events", () => {
+    renderToolbar({
+      facets: { events: [], topics: [], hasUnlinked: false },
+      filters: { ...NONE, event: "none" },
+    });
+    expect(screen.getByRole("combobox", { name: "Event" })).toHaveTextContent(
+      "Not from an event",
+    );
+  });
+
   it("hides choices there is nothing to pick from", () => {
     renderToolbar({ facets: { events: [], topics: [], hasUnlinked: true } });
     expect(screen.queryByRole("combobox", { name: "Event" })).toBeNull();

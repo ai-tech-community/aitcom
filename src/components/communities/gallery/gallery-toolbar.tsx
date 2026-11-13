@@ -1,8 +1,8 @@
 "use client";
 
-import { useId } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 
+import { ChoiceChips } from "@/components/ui/choice-chips";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Select,
@@ -11,17 +11,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  topicText,
+  type TopicLabelSource,
+} from "@/lib/communities/topic-label";
 import { cn } from "@/lib/utils";
 import type { GalleryMediaType } from "@/lib/gallery-rules";
 import type { GalleryFacets } from "@/server/gallery/items";
 
-import { topicText, type GalleryTopic } from "./gallery-item-text";
 import type { GalleryFilters } from "./gallery-params";
 
 type FilterPatch = Partial<Pick<GalleryFilters, "event" | "topic" | "type">>;
 
 const ALL = "all";
 const NO_EVENT = "none";
+/** No topic slug is empty (the API requires at least one character). */
+const ALL_TOPICS = "";
 
 /** "Nov 2, 2026" for the event's own day (`YYYY-MM-DD`, no time zone). */
 function useEventDay() {
@@ -35,10 +40,11 @@ function useEventDay() {
 
 /**
  * The wall's filters: event, category and photos/videos. The event and
- * category choices come from the items the viewer may see (facets); while
- * those are unknown, or there is nothing to choose between, only the type
- * filter shows. A filter from a link that is not among the choices still
- * shows as chosen, so the toolbar never misstates what the wall shows.
+ * category choices come from the items the viewer may see (facets). A
+ * control with nothing to choose between is left out — unless a filter is
+ * set: a filter from a link (an event's "See all in the gallery") always
+ * shows as chosen, with "All" beside it, even while the facets load, fail
+ * or do not list it. So a filtered wall always says so and can be cleared.
  */
 export function GalleryToolbar({
   filters,
@@ -50,7 +56,7 @@ export function GalleryToolbar({
   filters: GalleryFilters;
   facets: GalleryFacets | undefined;
   /** The community's topics, for category labels (slugs otherwise). */
-  topics: readonly GalleryTopic[];
+  topics: readonly TopicLabelSource[];
   onChange: (patch: FilterPatch) => void;
   className?: string;
 }) {
@@ -58,7 +64,7 @@ export function GalleryToolbar({
   const eventDay = useEventDay();
 
   const events = facets?.events ?? [];
-  const showEvents = events.length > 0;
+  const showEvents = events.length > 0 || filters.event !== null;
   const linkedEventMissing =
     typeof filters.event === "number" &&
     !events.some((event) => event.id === filters.event);
@@ -68,7 +74,7 @@ export function GalleryToolbar({
     filters.topic && !topicSlugs.includes(filters.topic)
       ? [...topicSlugs, filters.topic]
       : topicSlugs;
-  const showCategories = facets !== undefined && categoryChoices.length > 0;
+  const showCategories = categoryChoices.length > 0;
 
   const eventValue = filters.event === null ? ALL : String(filters.event);
 
@@ -120,15 +126,19 @@ export function GalleryToolbar({
       ) : null}
 
       {showCategories ? (
-        <CategoryChips
-          label={t("category")}
-          allLabel={t("allCategories")}
-          choices={categoryChoices.map((slug) => ({
-            value: slug,
-            label: topicText(slug, topics),
-          }))}
-          value={filters.topic}
-          onChange={(topic) => onChange({ topic })}
+        <ChoiceChips
+          aria-label={t("category")}
+          value={filters.topic ?? ALL_TOPICS}
+          onValueChange={(value) =>
+            onChange({ topic: value === ALL_TOPICS ? null : value })
+          }
+          options={[
+            { value: ALL_TOPICS, label: t("allCategories") },
+            ...categoryChoices.map((slug) => ({
+              value: slug,
+              label: topicText(slug, topics),
+            })),
+          ]}
         />
       ) : null}
 
@@ -145,61 +155,6 @@ export function GalleryToolbar({
           { value: "video", label: t("videos") },
         ]}
       />
-    </div>
-  );
-}
-
-/**
- * One-of-many category chips on native radios, so arrow keys and screen
- * readers work as they do for any radio group (like `SegmentedControl`).
- */
-function CategoryChips({
-  label,
-  allLabel,
-  choices,
-  value,
-  onChange,
-}: {
-  label: string;
-  allLabel: string;
-  choices: { value: string; label: string }[];
-  value: string | null;
-  onChange: (value: string | null) => void;
-}) {
-  const name = useId();
-  const options = [{ value: null, label: allLabel }, ...choices];
-  return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className="flex flex-wrap gap-1.5"
-    >
-      {options.map((option) => {
-        const checked = option.value === value;
-        return (
-          <label
-            key={option.value ?? ""}
-            data-state={checked ? "active" : "inactive"}
-            className={cn(
-              "inline-flex h-8 cursor-pointer items-center rounded-full border px-3 text-sm transition-colors",
-              "has-[:focus-visible]:ring-ring/50 has-[:focus-visible]:ring-[3px]",
-              checked
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-background hover:bg-accent",
-            )}
-          >
-            <input
-              type="radio"
-              name={name}
-              value={option.value ?? ""}
-              checked={checked}
-              onChange={() => onChange(option.value)}
-              className="sr-only"
-            />
-            {option.label}
-          </label>
-        );
-      })}
     </div>
   );
 }

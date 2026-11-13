@@ -6522,7 +6522,8 @@
       "NOT_ALLOWED": "Vous ne pouvez pas modifier cette photo ou vidéo.",
       "GALLERY_DISABLED": "La galerie est désactivée pour le moment.",
       "NOT_FOUND": "Cette photo ou vidéo n'est plus disponible.",
-      "deleteFailed": "La suppression a échoué. Veuillez réessayer."
+      "deleteFailed": "La suppression a échoué. Veuillez réessayer.",
+      "loadFailed": "Impossible d'ouvrir cette photo ou vidéo. Veuillez réessayer."
     }
   }
 }

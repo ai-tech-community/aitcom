@@ -52,7 +52,8 @@ export function GalleryAddAction({
 }: {
   slug: string;
   communityName?: string;
-  joinPolicy: JoinPolicy;
+  /** Unknown while the community loads: then a visitor is offered nothing. */
+  joinPolicy: JoinPolicy | undefined;
   viewer: GalleryViewerState;
   onUpload: () => void;
 }) {
@@ -75,6 +76,7 @@ export function GalleryAddAction({
     case "guest":
       return button("ink", () => requireAuth(onUpload, t("signInToAdd")));
     case "outsider": {
+      if (!joinPolicy) return null;
       const action = viewerJoinAction({ joinPolicy, status: viewer.status });
       const canJoin =
         action.kind === "join" ||

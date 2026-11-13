@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, type ReactNode, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import Image from "next/image";
 import {
   Check,
@@ -25,19 +31,17 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { LoadMoreQuery } from "@/components/ui/load-more";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Link } from "@/i18n/navigation";
 import { getInitials } from "@/lib/avatar";
+import { topicText } from "@/lib/communities/topic-label";
 import { cn } from "@/lib/utils";
 import type { GalleryItemView } from "@/server/gallery/items";
 import { api } from "@/trpc/react";
 
 import { useGalleryErrorText } from "./gallery-error-text";
-import {
-  formatClipLength,
-  topicText,
-  useGalleryItemLabel,
-} from "./gallery-item-text";
+import { formatClipLength, useGalleryItemLabel } from "./gallery-item-text";
 
 /** Keys that belong to the focused control, not to the lightbox. */
 const OWNS_ARROW_KEYS = "video, audio, input, textarea, select, [role=slider]";
@@ -50,11 +54,14 @@ function tileFor(itemId: number): HTMLElement | null {
 
 /**
  * One gallery item, large, in a modal dialog: the photo or video on a dark
- * stage, previous/next by button and ←/→ (not past the ends of `items`),
- * Esc or Close to leave. Focus goes to Close on open and back to the tile of
- * the item last shown on close (`GalleryTile` marks tiles with
- * `data-gallery-item-id`). The side panel says who added it, when, its
- * caption, event, category, audience, magazine permission and description.
+ * stage, previous/next by button and ←/→, Esc or Close to leave. Past the
+ * last loaded item, Next loads the wall's next page (`more`) and carries
+ * on; at either real end the button stays focusable but does nothing
+ * (`aria-disabled`), so keyboard focus never falls out of the dialog.
+ * Focus goes to Close on open and, on close, back to the tile of the item
+ * last shown (`GalleryTile` marks tiles with `data-gallery-item-id`), else
+ * to `fallbackFocus`. The side panel says who added it, when, its caption,
+ * event, category, audience, magazine permission and description.
  *
  * Actions: the uploader may edit (when `onEdit` is given) and delete;
  * moderators (`canModerate`) may delete anyone's item. The server decides
@@ -73,6 +80,7 @@ export function GalleryLightbox({
   onDeleted,
   canModerate = false,
   fallbackFocus,
+  more,
 }: {
   slug: string;
   /** The items prev/next move through, in wall order. */
@@ -87,6 +95,8 @@ export function GalleryLightbox({
   canModerate?: boolean;
   /** Where focus goes when no tile is left to return to. */
   fallbackFocus?: RefObject<HTMLElement | null>;
+  /** The wall's paging, so Next can go past the last loaded item. */
+  more?: LoadMoreQuery;
 }) {
   const t = useTranslations("gallery.lightbox");
   const labelFor = useGalleryItemLabel();
@@ -97,12 +107,46 @@ export function GalleryLightbox({
   const index =
     openId === null ? -1 : items.findIndex((each) => each.id === openId);
   const current = index >= 0 ? items[index] : undefined;
-  // The dialog animates out after `openId` clears: keep showing the item.
-  const lastShown = useRef<GalleryItemView | undefined>(undefined);
-  if (current) lastShown.current = current;
-  const item = current ?? lastShown.current;
+  // The dialog animates out after `openId` clears: keep showing the item
+  // (state adjusted while rendering, React's "previous render" pattern).
+  const [shown, setShown] = useState(current);
+  if (current !== undefined && current !== shown) setShown(current);
+  const item = current ?? shown;
   const previous = index > 0 ? items[index - 1] : undefined;
   const next = index >= 0 ? items[index + 1] : undefined;
+  const canLoadMore = !next && current !== undefined && !!more?.hasNextPage;
+
+  // Next at the last loaded item asks for the next page, then moves on to
+  // the first new item once it arrives. Moving elsewhere or closing cancels
+  // it, so a late page never reopens or redirects the lightbox.
+  const [advanceFrom, setAdvanceFrom] = useState<number | null>(null);
+  useEffect(() => {
+    if (advanceFrom === null) return;
+    if (openId !== advanceFrom) {
+      setAdvanceFrom(null);
+      return;
+    }
+    const at = items.findIndex((each) => each.id === advanceFrom);
+    const after = at >= 0 ? items[at + 1] : undefined;
+    if (after) {
+      setAdvanceFrom(null);
+      onNavigate(after.id);
+    } else if (at < 0 || !more?.hasNextPage) {
+      setAdvanceFrom(null);
+    }
+  }, [advanceFrom, openId, items, more?.hasNextPage, onNavigate]);
+
+  const goTo = (target: GalleryItemView | undefined) => {
+    if (!target) return;
+    setAdvanceFrom(null);
+    onNavigate(target.id);
+  };
+  const goNext = () => {
+    if (next) return goTo(next);
+    if (!canLoadMore || !current || !more) return;
+    setAdvanceFrom(current.id);
+    if (!more.isFetchingNextPage) void more.fetchNextPage();
+  };
 
   // After a delete, focus goes to a neighbour's tile instead of the
   // removed one (or to `fallbackFocus` when it was the last).
@@ -134,15 +178,13 @@ export function GalleryLightbox({
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.defaultPrevented) return;
     if ((event.target as Element).closest?.(OWNS_ARROW_KEYS)) return;
-    const target =
-      event.key === "ArrowLeft"
-        ? previous
-        : event.key === "ArrowRight"
-          ? next
-          : undefined;
-    if (!target) return;
-    event.preventDefault();
-    onNavigate(target.id);
+    if (event.key === "ArrowLeft" && previous) {
+      event.preventDefault();
+      goTo(previous);
+    } else if (event.key === "ArrowRight" && (next || canLoadMore)) {
+      event.preventDefault();
+      goNext();
+    }
   };
 
   const askToDelete = async () => {
@@ -179,7 +221,7 @@ export function GalleryLightbox({
                 : tileFor(deleted.neighbour)) ??
               fallbackFocus?.current ??
               null)
-            : tileFor(item.id);
+            : (tileFor(item.id) ?? fallbackFocus?.current ?? null);
           if (!target) return;
           event.preventDefault();
           target.focus();
@@ -214,16 +256,17 @@ export function GalleryLightbox({
 
           <StageButton
             label={t("previous")}
-            disabled={!previous}
-            onClick={() => previous && onNavigate(previous.id)}
+            unavailable={!previous}
+            onClick={() => goTo(previous)}
             className="left-2"
           >
             <ChevronLeft />
           </StageButton>
           <StageButton
             label={t("next")}
-            disabled={!next}
-            onClick={() => next && onNavigate(next.id)}
+            unavailable={!next && !canLoadMore}
+            busy={advanceFrom !== null}
+            onClick={goNext}
             className="right-2"
           >
             <ChevronRight />
@@ -368,15 +411,22 @@ function CategoryBadge({
   );
 }
 
+/**
+ * Previous/next on the stage. At an end it is `aria-disabled`, not
+ * `disabled`: a natively disabled button drops keyboard focus to the page
+ * body, out of the dialog, the moment the last item is reached.
+ */
 function StageButton({
   label,
-  disabled,
+  unavailable,
+  busy = false,
   onClick,
   className,
   children,
 }: {
   label: string;
-  disabled: boolean;
+  unavailable: boolean;
+  busy?: boolean;
   onClick: () => void;
   className: string;
   children: ReactNode;
@@ -387,10 +437,12 @@ function StageButton({
       variant="ghost"
       size="icon"
       aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
+      aria-disabled={unavailable || undefined}
+      aria-busy={busy || undefined}
+      onClick={unavailable ? undefined : onClick}
       className={cn(
         "absolute top-1/2 -translate-y-1/2 rounded-full bg-black/55 text-white hover:bg-black/75 hover:text-white",
+        "aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-black/55",
         className,
       )}
     >

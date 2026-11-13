@@ -122,7 +122,8 @@ export function GalleryPage({
   // Gone, hidden or never readable: say so and drop it from the URL.
   useEffect(() => {
     if (!linked.isError) return;
-    toast.error(errorText(linked.error, "NOT_FOUND"));
+    // Only NOT_FOUND means gone; anything else is a failed load.
+    toast.error(errorText(linked.error, "loadFailed"));
     setParams({ item: null });
   }, [linked.isError, linked.error, errorText, setParams]);
 
@@ -130,7 +131,7 @@ export function GalleryPage({
     <GalleryAddAction
       slug={slug}
       communityName={community.data?.name}
-      joinPolicy={community.data?.joinPolicy ?? "open"}
+      joinPolicy={community.data?.joinPolicy}
       viewer={viewer}
       onUpload={onUpload}
     />
@@ -233,6 +234,7 @@ export function GalleryPage({
         }}
         canModerate={canModerate}
         fallbackFocus={headingRef}
+        more={onWall ? list : undefined}
       />
     </div>
   );

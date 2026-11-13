@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { ChoiceChips } from "@/components/ui/choice-chips";
+import { topicLabel } from "@/lib/communities/topic-label";
 import { api } from "@/trpc/react";
 
 export interface TopicChip {
@@ -10,7 +12,7 @@ export interface TopicChip {
   emoji?: string | null;
 }
 
-/** Presentational chip row — pure, easy to test. */
+/** Presentational chip row — pure, easy to test. One topic at a time. */
 export function TopicChipsView({
   topics,
   active,
@@ -21,31 +23,19 @@ export function TopicChipsView({
   onSelect: (slug: string) => void;
 }) {
   const t = useTranslations("communities.feed");
-  const chip = (slug: string, label: string, key: string) => (
-    <button
-      key={key}
-      type="button"
-      onClick={() => onSelect(slug)}
-      className={`shrink-0 rounded-full border px-3 py-1 text-sm transition-colors ${
-        active === slug
-          ? "bg-foreground text-background border-foreground"
-          : "border-border text-muted-foreground hover:bg-secondary/50"
-      }`}
-    >
-      {label}
-    </button>
-  );
   return (
-    <div className="flex flex-wrap gap-2">
-      {chip("all", t("allTopics"), "all")}
-      {topics.map((tp) =>
-        chip(
-          tp.slug,
-          `${tp.emoji ? `${tp.emoji} ` : ""}${tp.label}`,
-          String(tp.id),
-        ),
-      )}
-    </div>
+    <ChoiceChips
+      aria-label={t("selectTopic")}
+      value={active}
+      onValueChange={onSelect}
+      options={[
+        { value: "all", label: t("allTopics") },
+        ...topics.map((topic) => ({
+          value: topic.slug,
+          label: topicLabel(topic),
+        })),
+      ]}
+    />
   );
 }
 

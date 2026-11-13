@@ -91,7 +91,12 @@ type HarnessProps = Partial<React.ComponentProps<typeof GalleryLightbox>> & {
   items?: GalleryItemView[];
 };
 
-const spies = { onClose: vi.fn(), onDeleted: vi.fn(), onEdit: vi.fn() };
+const spies = {
+  onClose: vi.fn(),
+  onDeleted: vi.fn(),
+  onEdit: vi.fn(),
+  fetchNextPage: vi.fn(),
+};
 
 function Harness({ items = ITEMS, ...props }: HarnessProps) {
   const [openId, setOpenId] = useState<number | null>(null);
@@ -160,16 +165,114 @@ describe("GalleryLightbox", () => {
     const dialog = open("Opening talk");
     expect(
       within(dialog).getByRole("button", { name: "Previous" }),
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-disabled", "true");
     fireEvent.keyDown(dialog, { key: "ArrowRight" });
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Demo time");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Group song");
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowRight" });
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Group song");
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowLeft" });
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Demo time");
+  });
+
+  it("keeps keyboard focus in the dialog when Next reaches the end", () => {
+    render(<Harness />);
+    open("Demo time");
+    const nextButton = screen.getByRole("button", { name: "Next" });
+    nextButton.focus();
+    fireEvent.click(nextButton);
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Group song");
+    // At the end the button stays focusable (a natively disabled button
+    // would drop focus to the page body, out of the dialog).
+    expect(nextButton).toHaveAttribute("aria-disabled", "true");
+    expect(nextButton).not.toBeDisabled();
+    expect(nextButton).toHaveFocus();
+    fireEvent.click(nextButton);
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Group song");
+    // The arrow keys still work from there.
+    fireEvent.keyDown(nextButton, { key: "ArrowLeft" });
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Demo time");
+  });
+
+  it("loads the next page past the last loaded item and moves on to it", () => {
+    const fetchNextPage = vi.fn();
+    function Paged() {
+      const [items, setItems] = useState(ITEMS.slice(0, 2));
+      fetchNextPage.mockImplementation(() => setItems(ITEMS));
+      return (
+        <Harness
+          items={items}
+          more={{
+            hasNextPage: items.length < ITEMS.length,
+            isFetchingNextPage: false,
+            fetchNextPage,
+          }}
+        />
+      );
+    }
+    render(<Paged />);
+    const dialog = open("Demo time");
+    const nextButton = within(dialog).getByRole("button", { name: "Next" });
+    expect(nextButton).not.toHaveAttribute("aria-disabled");
+    fireEvent.keyDown(dialog, { key: "ArrowRight" });
+    expect(fetchNextPage).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Group song");
+  });
+
+  it("stops at the last item once there is no next page", () => {
+    render(
+      <Harness
+        more={{
+          hasNextPage: false,
+          isFetchingNextPage: false,
+          fetchNextPage: spies.fetchNextPage,
+        }}
+      />,
+    );
+    open("Group song");
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowRight" });
+    expect(spies.fetchNextPage).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Next" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("returns focus to the fallback when the item has no tile", async () => {
+    const linked = [galleryItem({ id: 42, caption: "Linked" })];
+    function Linked() {
+      const [openId, setOpenId] = useState<number | null>(42);
+      return (
+        <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+          <ConfirmProvider>
+            <h2 tabIndex={-1} ref={fallback}>
+              Photos and videos
+            </h2>
+            <GalleryLightbox
+              slug="mlops"
+              items={linked}
+              openId={openId}
+              onNavigate={setOpenId}
+              onClose={() => setOpenId(null)}
+              fallbackFocus={fallback}
+            />
+          </ConfirmProvider>
+        </NextIntlClientProvider>
+      );
+    }
+    const fallback = { current: null as HTMLHeadingElement | null };
+    render(<Linked />);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Photos and videos" }),
+      ).toHaveFocus(),
+    );
   });
 
   it("leaves the arrow keys to a playing video", () => {
