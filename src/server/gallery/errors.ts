@@ -24,6 +24,7 @@ const GALLERY_ERROR_STATUS = {
   UPLOAD_EXPIRED: "NOT_FOUND",
   UPLOAD_FAILED: "BAD_REQUEST",
   NOT_ALLOWED: "FORBIDDEN",
+  PUBLIC_NOT_AVAILABLE: "BAD_REQUEST",
 } as const satisfies Record<GalleryErrorCode, TRPCError["code"]>;
 
 export function galleryError(code: GalleryErrorCode): TRPCError {

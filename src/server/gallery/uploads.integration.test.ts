@@ -292,4 +292,50 @@ describe.skipIf(!RUN_DB)("gallery uploads [DB integration]", () => {
     });
     expect(batch).toMatchObject({ status: "finished", feedPostId: 4242 });
   });
+
+  it("sums the community's stored gallery bytes in the database, a failed item only while its grant may live", async () => {
+    const { payload, deps } = await setup();
+    const { usageFor } = await import("@/server/media/media-allowance");
+    const { batchId } = await openBatch(deps, 3);
+    const ready = await startPhoto(deps, batchId);
+    await m.uploads.finishItem(deps, {
+      userId: fx.userId,
+      itemId: ready.itemId,
+    });
+    await startPhoto(deps, batchId);
+    const cancelled = await startPhoto(deps, batchId);
+    await m.uploads.discardItem(deps, {
+      userId: fx.userId,
+      itemId: cancelled.itemId,
+    });
+    // A failed item from yesterday: its grant expired long ago.
+    const old = await payload.create({
+      collection: "gallery-items",
+      data: {
+        communityId: fx.communityId,
+        mediaType: "photo",
+        status: "failed",
+        storage: "private",
+        visibility: "community",
+        fileKey: `private/gallery/${fx.communityId}/old-upload.jpg`,
+        thumbnailKey: `private/gallery/${fx.communityId}/old-upload-thumb.jpg`,
+        width: 10,
+        height: 10,
+        bytes: 9_999_999,
+        uploaderId: fx.userId,
+        batch: batchId,
+        uploadId: "old-upload",
+        createdAt: new Date(Date.now() - 24 * 3600_000).toISOString(),
+      },
+    });
+    // Guard the fixture: Payload kept the back-dated creation time.
+    expect(new Date(old.createdAt).getTime()).toBeLessThan(
+      Date.now() - 3600_000,
+    );
+
+    // Ready, uploading and the just-cancelled item: 940 000 bytes each.
+    await expect(usageFor(payload, fx.communityId)).resolves.toEqual({
+      fileBytesStored: 3 * 940_000,
+    });
+  });
 });

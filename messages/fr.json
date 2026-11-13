@@ -6609,6 +6609,7 @@
       "UPLOAD_EXPIRED": "Cet envoi a pris trop de temps. Réessayez.",
       "UPLOAD_FAILED": "L’envoi a échoué. Réessayez.",
       "UNDECODABLE_PHOTO": "Nous ne pouvons pas lire cette photo. Essayez de l’enregistrer d’abord en JPEG.",
+      "PUBLIC_NOT_AVAILABLE": "Seuls les membres peuvent voir le contenu de cette communauté : ces fichiers ne peuvent donc pas être partagés avec tout le monde. Choisissez Membres.",
       "saveFailed": "Nous n’avons pas pu enregistrer vos modifications. Veuillez réessayer."
     }
   }

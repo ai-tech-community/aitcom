@@ -1,13 +1,9 @@
-import { isGalleryKey } from "@/lib/gallery-rules";
 import { ABANDONED_UPLOAD_HOURS } from "@/lib/video-rules";
-import type {
-  ObjectStorage,
-  ObjectStorageSource,
-} from "@/server/media/object-storage";
+import type { ObjectStorageSource } from "@/server/media/object-storage";
 
 import type { Payload } from "./deps";
 import { deleteEmptyFinishedBatches } from "./empty-batches";
-import { itemFileKeys } from "./item-files";
+import { removeItemFiles } from "./item-files";
 import { closeBatch } from "./uploads";
 
 /** Rows handled per run and kind; the oldest go first, the rest wait a day. */
@@ -24,10 +20,9 @@ const CLEANUP_PAGE_SIZE = 200;
  *    they never act on the same item at once, and by now every upload grant
  *    has long expired. A failed item's files were already removed best
  *    effort, but a still-live grant may have stored them after that, so they
- *    are removed again. Files first, then the row: a storage failure never
- *    leaves objects no row points at. Removing a key that holds nothing
- *    succeeds, so that is not a failure. Only gallery keys (`isGalleryKey`)
- *    are ever removed; any other key on a row is logged and left alone.
+ *    are removed again (`removeItemFiles`, which removes only gallery keys).
+ *    Files first, then the row: a storage failure keeps the row, so it never
+ *    leaves objects no row points at.
  * 2. Batches still `open` after ABANDONED_UPLOAD_HOURS: the uploader never
  *    finished them. Each is closed through `closeBatch`, the same move
  *    `finishBatch` makes, so a late finish and this cleanup never both act
@@ -82,26 +77,13 @@ export async function cleanupAbandonedGalleryUploads(deps: {
   });
   warnIfFull(items.length, "items");
 
-  let storage: ObjectStorage | null = null;
   let removed = 0;
   let failed = 0;
   for (const item of items) {
     try {
-      const keys = itemFileKeys(item);
-      const ours = keys.filter(isGalleryKey);
-      if (ours.length < keys.length) {
-        log(
-          "[gallery-uploads-cleanup] left a key outside the gallery folders",
-          {
-            itemId: item.id,
-            keys: keys.filter((key) => !isGalleryKey(key)),
-          },
-        );
-      }
-      if (ours.length > 0) {
-        storage ??= deps.storage();
-        await storage.remove(ours);
-      }
+      await removeItemFiles({ storage: deps.storage, log }, item, "cleanup", {
+        onFailure: "throw",
+      });
       await deps.payload.delete({ collection: "gallery-items", id: item.id });
       removed++;
     } catch (error) {
@@ -128,10 +110,10 @@ export async function cleanupAbandonedGalleryUploads(deps: {
   warnIfFull(batches.length, "batches");
 
   let batchesClosed = 0;
+  const closeDeps = { payload: deps.payload, log };
   for (const batch of batches) {
     try {
       // Slice 2 passes the feed announcement here, as finishBatch does.
-      const closeDeps = { payload: deps.payload, log };
       const { closed } = await closeBatch(closeDeps, batch, {
         context: "cleanup",
       });

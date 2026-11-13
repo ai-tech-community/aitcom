@@ -2,6 +2,10 @@ import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it, vi } from "vitest";
 
+import { GalleryBatches } from "@/collections/GalleryBatches";
+import { GalleryItems } from "@/collections/GalleryItems";
+import { HostedMaterials } from "@/collections/HostedMaterials";
+
 import { transitionStatus } from "./payload-status-transition";
 
 function fakePayload(rows: unknown[]) {
@@ -69,4 +73,25 @@ describe("transitionStatus", () => {
       }),
     ).resolves.toBe(false);
   });
+
+  it.each([GalleryItems, GalleryBatches, HostedMaterials])(
+    "writes $slug to the table Payload made for it, and skips no hooks",
+    async (collection) => {
+      // Payload's table name: `dbName` when set, else the slug in snake case.
+      const table =
+        typeof collection.dbName === "string"
+          ? collection.dbName
+          : collection.slug.replace(/-/g, "_");
+      const { payload, execute } = fakePayload([{ id: 1 }]);
+      await transitionStatus(payload, {
+        collection: collection.slug as "gallery-items",
+        id: 1,
+        from: "uploading",
+        to: "ready",
+      });
+      expect(sent(execute).sql).toContain(`UPDATE "${table}" SET`);
+      // The write bypasses Payload, so a hook added later would never run.
+      expect(collection.hooks ?? {}).toEqual({});
+    },
+  );
 });

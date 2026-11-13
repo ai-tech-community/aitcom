@@ -6609,6 +6609,7 @@
       "UPLOAD_EXPIRED": "This upload took too long. Try again.",
       "UPLOAD_FAILED": "It didn't upload. Try again.",
       "UNDECODABLE_PHOTO": "We can't read this photo. Try saving it as a JPEG first.",
+      "PUBLIC_NOT_AVAILABLE": "Only members can see this community's content, so these can't be shared with everyone. Choose Members instead.",
       "saveFailed": "We couldn't save your changes. Please try again."
     }
   }

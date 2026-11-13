@@ -6609,6 +6609,7 @@
       "UPLOAD_EXPIRED": "Dit uploaden duurde te lang. Probeer het opnieuw.",
       "UPLOAD_FAILED": "Het uploaden is niet gelukt. Probeer het opnieuw.",
       "UNDECODABLE_PHOTO": "We kunnen deze foto niet lezen. Sla hem eerst op als JPEG.",
+      "PUBLIC_NOT_AVAILABLE": "Alleen leden kunnen de inhoud van deze community zien, dus deze kunnen niet met iedereen worden gedeeld. Kies Leden.",
       "saveFailed": "Je wijzigingen konden niet worden opgeslagen. Probeer het opnieuw."
     }
   }

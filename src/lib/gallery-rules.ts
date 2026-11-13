@@ -24,6 +24,12 @@ export const GALLERY_CAPTION_MAX = 280;
 export const GALLERY_ALT_MAX = 500;
 export const GALLERY_BATCH_TEXT_MAX = 500;
 export const GALLERY_PAGE_SIZE = 40;
+/**
+ * Batches a member may have open at once, across all communities: each one
+ * reserves its plan against the daily quotas until it is finished or its
+ * finish window passes.
+ */
+export const GALLERY_MAX_OPEN_BATCHES = 3;
 
 export const GALLERY_MEDIA_TYPES = ["photo", "video"] as const;
 export type GalleryMediaType = (typeof GALLERY_MEDIA_TYPES)[number];
@@ -76,6 +82,8 @@ export const GALLERY_ERROR_CODES = [
   "UPLOAD_EXPIRED",
   "UPLOAD_FAILED",
   "NOT_ALLOWED",
+  /** "Everyone" asked for where outsiders cannot read the community. */
+  "PUBLIC_NOT_AVAILABLE",
 ] as const;
 export type GalleryErrorCode = (typeof GALLERY_ERROR_CODES)[number];
 

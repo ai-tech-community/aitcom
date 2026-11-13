@@ -1,4 +1,4 @@
-import type { Where } from "payload";
+import { sql } from "@payloadcms/db-postgres";
 
 import { UPLOAD_GRANT_SECONDS } from "@/lib/video-rules";
 import type { getPayloadClient } from "@/server/payload";
@@ -52,15 +52,20 @@ export async function allowanceFor(
   return DEFAULT_MEDIA_ALLOWANCE;
 }
 
-/** Collections whose records hold files that count against the allowance. */
-const COUNTED_COLLECTIONS = ["hosted-materials", "gallery-items"] as const;
+/**
+ * Tables whose records hold files that count against the allowance: the
+ * `hosted-materials` and `gallery-items` collections. Neither sets a
+ * `dbName`, so each table is its slug in snake case.
+ */
+const COUNTED_TABLES = ["hosted_materials", "gallery_items"] as const;
 
 /**
  * Current usage, summed from the records (no calls to S3) of classroom hosted
  * materials and gallery items: uploading and ready files, plus failed ones
  * whose upload grant may still be live — the grant could still store a
  * full-size object at their key. A gallery item's `bytes` already holds its
- * file plus its thumbnail.
+ * file plus its thumbnail. The database adds them up in one statement, so a
+ * check costs the same however many files a community has.
  */
 export async function usageFor(
   payload: Payload,
@@ -70,38 +75,22 @@ export async function usageFor(
   const grantLiveSince = new Date(
     now.getTime() - UPLOAD_GRANT_LIVE_SECONDS * 1000,
   ).toISOString();
-  const where: Where = {
-    and: [
-      { communityId: { equals: communityId } },
-      {
-        or: [
-          { status: { in: [...STORAGE_COUNTED_STATUSES] } },
-          {
-            and: [
-              { status: { equals: "failed" } },
-              { createdAt: { greater_than: grantLiveSince } },
-            ],
-          },
-        ],
-      },
-    ],
-  };
-  const results = await Promise.all(
-    COUNTED_COLLECTIONS.map((collection) =>
-      payload.find({
-        collection,
-        where,
-        select: { bytes: true },
-        pagination: false,
-        depth: 0,
-      }),
-    ),
+  const statuses = sql.join(
+    STORAGE_COUNTED_STATUSES.map((status) => sql`${status}`),
+    sql`, `,
   );
-  return {
-    fileBytesStored: results
-      .flatMap(({ docs }) => docs)
-      .reduce((sum, doc) => sum + doc.bytes, 0),
-  };
+  const counted = COUNTED_TABLES.map(
+    (table) => sql`SELECT "bytes" FROM ${sql.identifier(table)}
+        WHERE "community_id" = ${communityId}
+          AND ("status" IN (${statuses})
+            OR ("status" = ${"failed"} AND "created_at" > ${grantLiveSince}))`,
+  );
+  const { rows } = await payload.db.drizzle.execute<{ bytes: string }>(sql`
+    SELECT COALESCE(SUM("bytes"), 0) AS "bytes"
+      FROM (${sql.join(counted, sql` UNION ALL `)}) AS "counted"
+  `);
+  // `bytes` is numeric, so its sum comes back as text.
+  return { fileBytesStored: Number(rows[0]?.bytes ?? 0) };
 }
 
 /** The storage limit is hard: refuse anything that would pass it. */

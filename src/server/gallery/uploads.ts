@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   GALLERY_BATCH_TEXT_MAX,
   GALLERY_MAX_FILES_PER_BATCH,
+  GALLERY_MAX_OPEN_BATCHES,
   GALLERY_MAX_VIDEOS_PER_BATCH,
   GALLERY_PHOTO_CONTENT_TYPES,
   GALLERY_PHOTO_MAX_BYTES,
@@ -40,6 +41,7 @@ import {
   assertLinkableEvent,
   loadGalleryViewer,
   loadGalleryViewerById,
+  publicItemsReachOutsiders,
 } from "./access";
 import { nowOf, type GalleryDeps } from "./deps";
 import { galleryError } from "./errors";
@@ -144,17 +146,48 @@ async function uploadsToday(
   return totalDocs;
 }
 
+/** The moment before which a record is past its finish window. */
+function finishWindowStart(now: Date): Date {
+  return new Date(now.getTime() - FINISH_WINDOW_HOURS * 60 * 60 * 1000);
+}
+
 /** Past the finish window the daily cleanup may already be acting on it. */
 function isPastFinishWindow(createdAt: string, now: Date): boolean {
-  const cutoff = now.getTime() - FINISH_WINDOW_HOURS * 60 * 60 * 1000;
-  return new Date(createdAt).getTime() < cutoff;
+  return new Date(createdAt).getTime() < finishWindowStart(now).getTime();
+}
+
+/**
+ * The user's batches, in any community, still open inside their finish
+ * window: the ones a `startItem` could still add to.
+ */
+async function openBatchesOf(
+  deps: GalleryDeps,
+  userId: string,
+  now: Date,
+): Promise<number> {
+  const { totalDocs } = await deps.payload.count({
+    collection: "gallery-batches",
+    where: {
+      and: [
+        { uploaderId: { equals: userId } },
+        { status: { equals: "open" } },
+        {
+          createdAt: { greater_than: finishWindowStart(now).toISOString() },
+        },
+      ],
+    },
+  });
+  return totalDocs;
 }
 
 /**
  * Checks, in order: the gallery is on; the caller is an active member (paid
- * where required); the plan is 1–30 files, at most 10 of them videos; the
- * event and topic belong to the community; today's quotas leave room for the
- * whole plan. Then opens the batch every item of this upload belongs to.
+ * where required); the plan is 1–30 files, at most 10 of them videos;
+ * "Everyone" is asked for only where it reaches outsiders (never quietly
+ * kept to members instead); the event and topic belong to the community;
+ * the caller has fewer than GALLERY_MAX_OPEN_BATCHES batches open, and
+ * today's quotas leave room for the whole plan. Then opens the batch every
+ * item of this upload belongs to.
  */
 export async function startBatch(
   deps: GalleryDeps,
@@ -184,6 +217,13 @@ export async function startBatch(
     plannedVideos <= Math.min(GALLERY_MAX_VIDEOS_PER_BATCH, plannedFiles);
   if (!planFits) throw galleryError("BATCH_TOO_LARGE");
 
+  if (
+    input.visibility === "public" &&
+    !(await publicItemsReachOutsiders(deps, viewer.community))
+  ) {
+    throw galleryError("PUBLIC_NOT_AVAILABLE");
+  }
+
   const now = nowOf(deps);
   const communityId = viewer.communityId;
   if (input.eventId !== undefined) {
@@ -193,11 +233,13 @@ export async function startBatch(
     await assertCommunityTopic(deps.payload, communityId, input.topicSlug);
   }
 
-  const [photosToday, videosToday] = await Promise.all([
+  const [openBatches, photosToday, videosToday] = await Promise.all([
+    openBatchesOf(deps, input.userId, now),
     uploadsToday(deps, input.userId, "photo", now),
     uploadsToday(deps, input.userId, "video", now),
   ]);
   if (
+    openBatches >= GALLERY_MAX_OPEN_BATCHES ||
     photosToday + (plannedFiles - plannedVideos) > DAILY_LIMIT.photo ||
     videosToday + plannedVideos > DAILY_LIMIT.video
   ) {

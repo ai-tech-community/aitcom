@@ -28,6 +28,11 @@ type Transitions = {
   };
 };
 
+/**
+ * Each collection's table: its slug in snake case, as Payload names it when
+ * a collection sets no `dbName`. Written out because the adapter's own name
+ * lookup is internal; a unit test checks it against the collection configs.
+ */
 const TABLES: Record<keyof Transitions, string> = {
   "gallery-items": "gallery_items",
   "gallery-batches": "gallery_batches",
@@ -49,6 +54,11 @@ const COLUMNS: Record<"failureReason", string> = {
  * Returns whether this call moved the row. The row is written straight to
  * its table: the collections listed here have no hooks to run. Re-read the
  * document with `findByID` when its new state is needed.
+ *
+ * The statement runs on the adapter's own connection, outside any Payload
+ * `req` transaction: it does not join one a caller has open, and commits on
+ * its own even when that transaction rolls back. Call it outside such a
+ * transaction.
  */
 export async function transitionStatus<C extends keyof Transitions>(
   payload: Payload,

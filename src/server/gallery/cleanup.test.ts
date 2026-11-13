@@ -197,7 +197,7 @@ describe("cleanupAbandonedGalleryUploads: items", () => {
     expect(storage.remove).toHaveBeenCalledTimes(1);
     expect(storage.remove).toHaveBeenCalledWith([thumbKeyOf(5)]);
     expect(log).toHaveBeenCalledWith(
-      "[gallery-uploads-cleanup] left a key outside the gallery folders",
+      "[gallery.cleanup] left a key outside the gallery folders",
       { itemId: 5, keys: ["private/videos/c1/x.mp4"] },
     );
     expect(payload.delete).toHaveBeenCalledWith({

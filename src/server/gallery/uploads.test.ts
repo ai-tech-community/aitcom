@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  GALLERY_MAX_OPEN_BATCHES,
   GALLERY_PHOTO_MAX_BYTES,
   GALLERY_THUMB_MAX_BYTES,
 } from "@/lib/gallery-rules";
@@ -113,6 +114,10 @@ const GOOD_THUMB = { contentType: "image/jpeg", bytes: 50_000 };
 
 type Over = {
   community?: boolean;
+  /** Whether the community is listed, so outsiders may read its content. */
+  listed?: boolean;
+  /** The uploader's batches still open in their finish window, anywhere. */
+  openBatches?: number;
   role?: string | null;
   event?: unknown;
   topics?: number;
@@ -179,6 +184,9 @@ function fakes(over: Over = {}) {
         if (collection === "community-topics") {
           return Promise.resolve({ totalDocs: over.topics ?? 1 });
         }
+        if (collection === "gallery-batches") {
+          return Promise.resolve({ totalDocs: over.openBatches ?? 0 });
+        }
         const type = mediaTypeOf(where) as "photo" | "video";
         return Promise.resolve({ totalDocs: over.today?.[type] ?? 0 });
       },
@@ -193,9 +201,6 @@ function fakes(over: Over = {}) {
       }) => {
         if (collection !== "gallery-items")
           return Promise.resolve({ docs: [] });
-        if (select?.bytes) {
-          return Promise.resolve({ docs: [{ bytes: over.usage ?? 0 }] });
-        }
         if (select?.mediaType) {
           return Promise.resolve({ docs: over.inBatch ?? [] });
         }
@@ -215,15 +220,27 @@ function fakes(over: Over = {}) {
       ({ collection, data }: { collection: string; data: object }) =>
         Promise.resolve({ ...(records[collection] as object), ...data }),
     ),
+    // The allowance's usage query: the database sums the stored bytes.
+    db: {
+      drizzle: {
+        execute: vi.fn(async () => ({
+          rows: [{ bytes: String(over.usage ?? 0) }],
+        })),
+      },
+    },
   };
   const db = {
     query: {
       communities: {
-        findFirst: vi
-          .fn()
-          .mockResolvedValue(
-            over.community === false ? undefined : { id: "c1", slug: "town" },
-          ),
+        findFirst: vi.fn().mockResolvedValue(
+          over.community === false
+            ? undefined
+            : {
+                id: "c1",
+                slug: "town",
+                isListedInDirectory: over.listed ?? false,
+              },
+        ),
       },
       communityMemberships: {
         findFirst: vi
@@ -465,6 +482,72 @@ describe("startBatch", () => {
     await expect(
       startBatch(deps, { ...BATCH, plannedFiles: 3, plannedVideos: 3 }),
     ).rejects.toMatchObject({ message: "UPLOAD_LIMIT" });
+  });
+
+  it("shares with everyone where outsiders may read the community", async () => {
+    const { deps, payload } = fakes({ listed: true });
+    await startBatch(deps, { ...BATCH, visibility: "public" });
+    expect(payload.create).toHaveBeenCalledWith({
+      collection: "gallery-batches",
+      data: expect.objectContaining({ visibility: "public" }),
+    });
+  });
+
+  it("refuses everyone in a members-only community, never quietly keeping it to members", async () => {
+    const { deps, payload } = fakes({ listed: false });
+    await expect(
+      startBatch(deps, { ...BATCH, visibility: "public" }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "PUBLIC_NOT_AVAILABLE",
+    });
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses everyone in a paid community", async () => {
+    vi.stubEnv("COMMUNITY_PAYMENTS_ENABLED", "true");
+    const { deps, db, payload } = fakes({ listed: true });
+    // A paid entry policy: signed-out visitors may not read it.
+    Object.assign(db, {
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: async () => [{ paidEntryAt: NOW }] }),
+        }),
+      }),
+    });
+    await expect(
+      startBatch(deps, { ...BATCH, visibility: "public" }),
+    ).rejects.toMatchObject({ message: "PUBLIC_NOT_AVAILABLE" });
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
+  it("does not ask who outsiders are for a members-only batch", async () => {
+    const { deps } = fakes({ listed: false });
+    await expect(startBatch(deps, BATCH)).resolves.toEqual({ batchId: 3 });
+  });
+
+  it("refuses a fourth open batch, counting the member's open batches in every community", async () => {
+    const { deps, payload } = fakes({ openBatches: GALLERY_MAX_OPEN_BATCHES });
+    await expect(startBatch(deps, BATCH)).rejects.toMatchObject({
+      code: "TOO_MANY_REQUESTS",
+      message: "UPLOAD_LIMIT",
+    });
+    expect(payload.count).toHaveBeenCalledWith({
+      collection: "gallery-batches",
+      where: {
+        and: [
+          { uploaderId: { equals: "u1" } },
+          { status: { equals: "open" } },
+          { createdAt: { greater_than: ago(FINISH_WINDOW_HOURS * HOUR) } },
+        ],
+      },
+    });
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts a batch while fewer than the most batches are open", async () => {
+    const { deps } = fakes({ openBatches: GALLERY_MAX_OPEN_BATCHES - 1 });
+    await expect(startBatch(deps, BATCH)).resolves.toEqual({ batchId: 3 });
   });
 });
 

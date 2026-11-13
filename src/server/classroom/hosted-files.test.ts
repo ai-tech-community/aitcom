@@ -85,9 +85,9 @@ type Over = {
   policy?: "all_members" | "admins_only";
   role?: string | null;
   recent?: number;
-  /** hosted-materials rows returned by find. */
+  /** hosted-materials rows: returned by find, and their bytes summed as usage. */
   docs?: unknown[];
-  /** gallery-items rows returned by find (they share the media allowance). */
+  /** gallery-items rows whose bytes count too (they share the allowance). */
   galleryDocs?: unknown[];
   stored?: unknown;
   removeFails?: boolean;
@@ -168,6 +168,24 @@ function fakes(over: Over = {}) {
       },
     ),
     delete: vi.fn().mockResolvedValue({}),
+    // The allowance's usage query: the database sums both tables' bytes.
+    db: {
+      drizzle: {
+        execute: vi.fn(async () => ({
+          rows: [
+            {
+              bytes: String(
+                [...(over.docs ?? []), ...(over.galleryDocs ?? [])].reduce(
+                  (sum: number, doc) =>
+                    sum + ((doc as { bytes?: number }).bytes ?? 0),
+                  0,
+                ),
+              ),
+            },
+          ],
+        })),
+      },
+    },
   };
   const db = {
     query: {

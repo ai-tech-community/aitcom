@@ -5,6 +5,7 @@ import { sweepUnusedFeedImages } from "@/server/communities/unused-feed-images-s
 import { sweepUnusedVideoFiles } from "@/server/communities/unused-video-files-sweep";
 import { cleanupAbandonedUploads } from "@/server/communities/video-uploads-cleanup";
 import { cleanupAbandonedGalleryUploads } from "@/server/gallery/cleanup";
+import { galleryEnabled } from "@/server/gallery/flag";
 import { sweepUnusedGalleryFiles } from "@/server/gallery/unused-files-sweep";
 import { getObjectStorage } from "@/server/media/object-storage";
 import { ownsStorageContents } from "@/server/media/storage-ownership";
@@ -19,6 +20,11 @@ type SweepResult = { removed: number; failed: number };
 type UnusedSweepResult = SweepResult & { scanned: number };
 /** A reachability sweep outside production: it would delete production's files. */
 const NOT_PRODUCTION = { skipped: "not production" } as const;
+/**
+ * A gallery sweep while the gallery is switched off: the S3 permissions for
+ * its folders arrive with the flag, and no gallery rows exist before it.
+ */
+const GALLERY_DISABLED = { skipped: "gallery disabled" } as const;
 
 /** Runs one sweep; a sweep that throws is logged and reported as null. */
 async function runSweep<T extends SweepResult>(
@@ -39,8 +45,9 @@ async function runSweep<T extends SweepResult>(
  * file uploads and gallery uploads (closing gallery batches left open and
  * deleting empty ones) — and then the Reels video files no live post or
  * open grant points at any more, the feed post images no post links, and
- * the gallery files no gallery item points at. Protected by CRON_SECRET header. The path keeps
- * its old name so the Vercel cron schedule is unchanged.
+ * the gallery files no gallery item points at. Protected by CRON_SECRET
+ * header. The path keeps its old name so the Vercel cron schedule is
+ * unchanged.
  *
  * The sweeps are independent: one throwing does not stop the others. The
  * response keeps the video counts at the top level (as before), the
@@ -50,7 +57,8 @@ async function runSweep<T extends SweepResult>(
  * `unusedGalleryFiles`; a sweep that threw reports null and makes the run
  * answer 500 so the cron shows as failed. The three unused-file sweeps run
  * in production only (see `ownsStorageContents`) and report themselves
- * skipped elsewhere.
+ * skipped elsewhere. Both gallery sweeps run only while the gallery is
+ * switched on (`galleryEnabled`) and report themselves skipped otherwise.
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -66,9 +74,12 @@ export async function GET(request: Request) {
   const materials = await runSweep("materials", () =>
     cleanupAbandonedMaterialUploads({ payload, storage: getObjectStorage }),
   );
-  const gallery = await runSweep("gallery", () =>
-    cleanupAbandonedGalleryUploads({ payload, storage: getObjectStorage }),
-  );
+  const galleryOn = galleryEnabled();
+  const gallery = galleryOn
+    ? await runSweep("gallery", () =>
+        cleanupAbandonedGalleryUploads({ payload, storage: getObjectStorage }),
+      )
+    : GALLERY_DISABLED;
   // After the abandoned grants are gone, so their files are not counted
   // twice. Only production's database knows everything in the shared bucket.
   const ownsStorage = ownsStorageContents();
@@ -84,11 +95,13 @@ export async function GET(request: Request) {
         sweepUnusedFeedImages({ payload }),
       )
     : NOT_PRODUCTION;
-  const unusedGalleryFiles = ownsStorage
-    ? await runSweep<UnusedSweepResult>("unused gallery files", () =>
-        sweepUnusedGalleryFiles({ payload, storage: getObjectStorage }),
-      )
-    : NOT_PRODUCTION;
+  const unusedGalleryFiles = !galleryOn
+    ? GALLERY_DISABLED
+    : ownsStorage
+      ? await runSweep<UnusedSweepResult>("unused gallery files", () =>
+          sweepUnusedGalleryFiles({ payload, storage: getObjectStorage }),
+        )
+      : NOT_PRODUCTION;
   const success =
     videos !== null &&
     materials !== null &&
