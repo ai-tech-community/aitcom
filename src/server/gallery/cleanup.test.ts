@@ -8,6 +8,11 @@ const deleteEmpty = vi.hoisted(() => vi.fn());
 vi.mock("./empty-batches", () => ({
   deleteEmptyFinishedBatches: deleteEmpty,
 }));
+const announcer = vi.hoisted(() => ({
+  galleryAnnouncer: vi.fn(),
+  announce: vi.fn(),
+}));
+vi.mock("./announce", () => ({ galleryAnnouncer: announcer.galleryAnnouncer }));
 
 import { cleanupAbandonedGalleryUploads } from "./cleanup";
 
@@ -48,6 +53,8 @@ function fakes(
         return Promise.resolve(!over.lostRace?.includes(t.id));
       },
     );
+  announcer.announce.mockReset().mockResolvedValue(91);
+  announcer.galleryAnnouncer.mockReset().mockReturnValue(announcer.announce);
   deleteEmpty.mockReset().mockImplementation(() => {
     calls.push("deleteEmptyFinishedBatches");
     return Promise.resolve(over.emptyDeleted ?? []);
@@ -90,9 +97,11 @@ function fakes(
     }),
   };
   const getStorage = vi.fn(() => storage);
+  const db = { tag: "db" };
   const warn = vi.fn();
   const log = vi.fn();
   return {
+    db,
     calls,
     payload,
     storage,
@@ -101,6 +110,7 @@ function fakes(
     log,
     deps: {
       payload: payload as never,
+      db: db as never,
       storage: getStorage as never,
       now: () => NOW,
       warn,
@@ -308,6 +318,39 @@ describe("cleanupAbandonedGalleryUploads: open batches", () => {
       docs: unknown[];
     };
     expect(docs).toEqual([item(2, "ready")]);
+  });
+
+  it("announces a closed batch's ready items in the feed, as finishBatch does, and stores the post", async () => {
+    const { deps, payload, db, log } = fakes({
+      items: [item(2, "ready")],
+      batches: [openBatch(3)],
+    });
+    await cleanupAbandonedGalleryUploads(deps);
+    expect(announcer.galleryAnnouncer).toHaveBeenCalledWith({
+      payload,
+      db,
+      log,
+    });
+    expect(announcer.announce).toHaveBeenCalledTimes(1);
+    expect(announcer.announce).toHaveBeenCalledWith(
+      { ...openBatch(3), status: "finished" },
+      [item(2, "ready")],
+    );
+    expect(payload.update).toHaveBeenCalledWith({
+      collection: "gallery-batches",
+      id: 3,
+      data: { feedPostId: 91 },
+    });
+  });
+
+  it("announces nothing for a batch a late finishBatch moved first", async () => {
+    const { deps } = fakes({
+      items: [item(2, "ready")],
+      batches: [openBatch(3)],
+      lostRace: [3],
+    });
+    await cleanupAbandonedGalleryUploads(deps);
+    expect(announcer.announce).not.toHaveBeenCalled();
   });
 
   it("leaves a batch a late finishBatch moved first to that finish", async () => {

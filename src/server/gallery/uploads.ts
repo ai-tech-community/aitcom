@@ -70,8 +70,8 @@ export type GalleryItemOwnView = {
 
 /**
  * Makes the feed post for a batch that was just finished with ready items,
- * returning its id (or null when none is made). The slice-2 seam: slice 1
- * passes none.
+ * returning its id (or null when none is made). `galleryAnnouncer`
+ * (`./announce`) is the one the router and the cleanup pass.
  */
 export type AnnounceBatch = (
   batch: GalleryBatch,

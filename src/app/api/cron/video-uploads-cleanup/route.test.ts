@@ -13,6 +13,7 @@ const m = vi.hoisted(() => ({
   getVideoStorage: vi.fn(),
   getObjectStorage: vi.fn(),
   payload: { name: "payload" },
+  db: { name: "db" },
 }));
 
 vi.mock("@/server/communities/video-uploads-cleanup", () => ({
@@ -45,6 +46,7 @@ vi.mock("@/server/media/video-storage", () => ({
 vi.mock("@/server/media/object-storage", () => ({
   getObjectStorage: m.getObjectStorage,
 }));
+vi.mock("@/server/db", () => ({ db: m.db }));
 vi.mock("@/server/payload", () => ({
   getPayloadClient: async () => m.payload,
 }));
@@ -118,7 +120,7 @@ describe("video-uploads-cleanup cron", () => {
     expect(m.getVideoStorage).not.toHaveBeenCalled();
   });
 
-  it("cleans up abandoned gallery uploads and sweeps unused gallery files", async () => {
+  it("cleans up abandoned gallery uploads, announcing the batches it closes, and sweeps unused gallery files", async () => {
     const res = await GET(authorized());
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({
@@ -128,6 +130,7 @@ describe("video-uploads-cleanup cron", () => {
     });
     expect(m.gallery).toHaveBeenCalledWith({
       payload: m.payload,
+      db: m.db,
       storage: m.getObjectStorage,
     });
     expect(m.unusedGallery).toHaveBeenCalledWith({

@@ -17,6 +17,7 @@ const services = vi.hoisted(() => ({
   loadGalleryViewer: vi.fn(),
   getPayloadClient: vi.fn(),
   getObjectStorage: vi.fn(),
+  galleryAnnouncer: vi.fn(),
 }));
 
 // The real tRPC setup pulls in auth and server env; a minimal stand-in with
@@ -61,6 +62,9 @@ vi.mock("@/server/payload", () => ({
 }));
 vi.mock("@/server/media/object-storage", () => ({
   getObjectStorage: services.getObjectStorage,
+}));
+vi.mock("@/server/gallery/announce", () => ({
+  galleryAnnouncer: services.galleryAnnouncer,
 }));
 
 import { galleryRouter } from "./gallery";
@@ -419,17 +423,23 @@ describe("gallery router — signed-in work", () => {
     });
   });
 
-  it("finishes a batch with no feed announcement (slice 1)", async () => {
-    services.finishBatch.mockResolvedValue({ readyCount: 2, feedPostId: null });
+  it("finishes a batch with the feed announcement", async () => {
+    const announce = vi.fn();
+    services.galleryAnnouncer.mockReturnValue(announce);
+    services.finishBatch.mockResolvedValue({ readyCount: 2, feedPostId: 91 });
     await expect(caller().finishBatch({ batchId: 7 })).resolves.toEqual({
       readyCount: 2,
-      feedPostId: null,
+      feedPostId: 91,
     });
-    expect(services.finishBatch).toHaveBeenCalledWith(expect.anything(), {
-      userId: "user-1",
-      batchId: 7,
+    expect(services.galleryAnnouncer).toHaveBeenCalledWith({
+      payload: PAYLOAD,
+      db: DB,
     });
-    expect(services.finishBatch.mock.calls[0]).toHaveLength(2);
+    expect(services.finishBatch).toHaveBeenCalledWith(
+      expect.anything(),
+      { userId: "user-1", batchId: 7 },
+      announce,
+    );
   });
 
   it("gives the upload choices for the caller's viewer", async () => {

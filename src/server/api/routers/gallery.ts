@@ -17,6 +17,7 @@ import {
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import type { db } from "@/server/db";
 import { loadGalleryViewer } from "@/server/gallery/access";
+import { galleryAnnouncer } from "@/server/gallery/announce";
 import type { GalleryDeps } from "@/server/gallery/deps";
 import { galleryError } from "@/server/gallery/errors";
 import { galleryEnabled } from "@/server/gallery/flag";
@@ -203,15 +204,17 @@ export const galleryRouter = createTRPCRouter({
       }),
     ),
 
-  /** Slice 1 passes no feed announcement; slice 2 adds it here. */
+  /** Finishes the batch and announces it in the community feed. */
   finishBatch: galleryProtectedProcedure
     .input(z.object({ batchId: recordId }))
-    .mutation(async ({ ctx, input }) =>
-      finishBatch(await depsFor(ctx.db), {
-        userId: ctx.session.user.id,
-        batchId: input.batchId,
-      }),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const deps = await depsFor(ctx.db);
+      return finishBatch(
+        deps,
+        { userId: ctx.session.user.id, batchId: input.batchId },
+        galleryAnnouncer({ payload: deps.payload, db: deps.db }),
+      );
+    }),
 
   /** Null clears a field; a missing field is left as it is. */
   updateItem: galleryProtectedProcedure

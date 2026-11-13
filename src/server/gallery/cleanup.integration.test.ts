@@ -115,6 +115,13 @@ describe.skipIf(!RUN_DB)("gallery cleanup [DB integration]", () => {
     vi.unstubAllEnvs();
     const payload = await m.getPayloadClient();
     await payload.delete({
+      collection: "feed-posts",
+      where: { communityId: { equals: fx.communityId } },
+    });
+    await m.db
+      .delete(m.schema.activityEvents)
+      .where(m.eq(m.schema.activityEvents.communityId, fx.communityId));
+    await payload.delete({
       collection: "gallery-items",
       where: { communityId: { equals: fx.communityId } },
     });
@@ -217,6 +224,7 @@ describe.skipIf(!RUN_DB)("gallery cleanup [DB integration]", () => {
 
     await m.cleanup.cleanupAbandonedGalleryUploads({
       payload,
+      db: m.db,
       storage: deps.storage,
     });
 
@@ -249,6 +257,7 @@ describe.skipIf(!RUN_DB)("gallery cleanup [DB integration]", () => {
 
     await m.cleanup.cleanupAbandonedGalleryUploads({
       payload,
+      db: m.db,
       storage: deps.storage,
     });
 
@@ -268,6 +277,7 @@ describe.skipIf(!RUN_DB)("gallery cleanup [DB integration]", () => {
     await ageEverything(payload);
     await m.cleanup.cleanupAbandonedGalleryUploads({
       payload,
+      db: m.db,
       storage: deps.storage,
     });
     const batch = await payload.findByID({
@@ -320,6 +330,71 @@ describe.skipIf(!RUN_DB)("gallery cleanup [DB integration]", () => {
     await expect(batchSurvivesCleanup(deps, batchId)).resolves.toBe(true);
   });
 
+  it("keeps an empty finished batch a feed post points at, even when its feedPostId was never saved", async () => {
+    const { payload, deps } = await setup();
+    const {
+      batchId,
+      itemIds: [itemId],
+    } = await startPhotos(deps, 1);
+    await m.uploads.discardItem(deps, { userId: fx.userId, itemId: itemId! });
+    await m.uploads.finishBatch(deps, { userId: fx.userId, batchId });
+    const post = await payload.create({
+      collection: "feed-posts",
+      data: {
+        content: "",
+        authorId: fx.userId,
+        authorName: fx.userId,
+        communityId: fx.communityId,
+        likeCount: 0,
+        commentCount: 0,
+        topicSlug: "general",
+        visibility: "community",
+        galleryBatch: batchId,
+      },
+    });
+
+    await expect(batchSurvivesCleanup(deps, batchId)).resolves.toBe(true);
+    await expect(
+      payload.findByID({ collection: "feed-posts", id: post.id, depth: 0 }),
+    ).resolves.toMatchObject({ galleryBatch: batchId });
+  });
+
+  it("announces an abandoned batch with a ready item in the feed when it closes it", async () => {
+    const { payload, deps } = await setup();
+    const {
+      batchId,
+      itemIds: [readyId],
+    } = await startPhotos(deps, 1);
+    await m.uploads.finishItem(deps, { userId: fx.userId, itemId: readyId! });
+    await ageEverything(payload);
+
+    await m.cleanup.cleanupAbandonedGalleryUploads({
+      payload,
+      db: m.db,
+      storage: deps.storage,
+    });
+
+    const { docs: posts } = await payload.find({
+      collection: "feed-posts",
+      where: { galleryBatch: { equals: batchId } },
+      depth: 0,
+    });
+    expect(posts).toHaveLength(1);
+    expect(posts[0]).toMatchObject({
+      authorId: fx.userId,
+      communityId: fx.communityId,
+      visibility: "community",
+      topicSlug: "general",
+    });
+    await expect(
+      payload.findByID({
+        collection: "gallery-batches",
+        id: batchId,
+        depth: 0,
+      }),
+    ).resolves.toMatchObject({ status: "finished", feedPostId: posts[0]!.id });
+  });
+
   it("keeps a young empty finished batch", async () => {
     const { payload, deps } = await setup();
     const { batchId } = await startPhotos(deps, 1);
@@ -331,6 +406,7 @@ describe.skipIf(!RUN_DB)("gallery cleanup [DB integration]", () => {
 
     await m.cleanup.cleanupAbandonedGalleryUploads({
       payload,
+      db: m.db,
       storage: deps.storage,
     });
     await expect(
