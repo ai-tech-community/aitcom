@@ -144,47 +144,6 @@ export async function resolveMentions(
 }
 
 /**
- * The members a text names, for text written without the editor's mention
- * picker (a gallery batch's caption): the active members of the community
- * whose "@Name" is in `content` as a whole name, by user id, in the order
- * they are written. The author is left out, and so is a name more than one
- * member goes by, since it could point at either. The ids go through
- * `resolveMentions`, like the editor's picks.
- */
-export async function memberIdsNamedIn(
-  database: Database,
-  input: { communityId: string; authorId: string; content: string },
-): Promise<string[]> {
-  if (!input.content.includes("@")) return [];
-  const name = sql<string>`btrim(coalesce(${memberProfiles.displayName}, ${user.name}))`;
-  const writtenAt = sql`strpos(${input.content}, '@' || ${name})`;
-  const rows = await database
-    .select({ userId: communityMemberships.userId, name })
-    .from(communityMemberships)
-    .innerJoin(user, eq(user.id, communityMemberships.userId))
-    .leftJoin(memberProfiles, eq(memberProfiles.userId, user.id))
-    .where(
-      and(
-        eq(communityMemberships.communityId, input.communityId),
-        eq(communityMemberships.status, "active"),
-        ne(communityMemberships.userId, input.authorId),
-        ne(name, ""),
-        sql`${writtenAt} > 0`,
-      ),
-    )
-    .orderBy(writtenAt);
-  // Members sharing a name all match the same "@Name", so they are all here.
-  const sharing = new Map<string, number>();
-  for (const row of rows) {
-    sharing.set(row.name, (sharing.get(row.name) ?? 0) + 1);
-  }
-  const unambiguous = rows.filter((row) => sharing.get(row.name) === 1);
-  return mentionsIn(input.content, unambiguous).map(
-    (mention) => mention.userId,
-  );
-}
-
-/**
  * Keeps a post's mentions in step with its text on every write path: the
  * mentions already on the post stay while their names are in the text
  * (also after a member renames), new ones come in only checked by

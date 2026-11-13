@@ -1115,6 +1115,19 @@ describe("finishBatch", () => {
     );
   });
 
+  it("keeps the post, and logs, when storing it on the batch fails", async () => {
+    const { deps, payload, log } = fakes({ ready: READY });
+    const error = new Error("db down");
+    payload.update.mockRejectedValueOnce(error);
+    await expect(
+      finishBatch(deps, { userId: "u1", batchId: 3 }, async () => 91),
+    ).resolves.toEqual({ readyCount: 2, feedPostId: 91 });
+    expect(log).toHaveBeenCalledWith(
+      "[gallery.finishBatch] storing a finished batch's feed post failed",
+      { batchId: 3, feedPostId: 91, error },
+    );
+  });
+
   it("returns the stored result on a second finish, without announcing again", async () => {
     const { deps, payload } = fakes({
       batch: batch({ status: "finished", feedPostId: 91 }),

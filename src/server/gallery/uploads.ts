@@ -627,12 +627,14 @@ async function readyItemsOf(
  * statement, so of a user's finish, a second finish and the daily cleanup
  * exactly one closes it. The call that closes it, and only that one,
  * announces it (when it has ready items and `announce` is given) and stores
- * the announcement's post; a failed announcement is logged and the batch
- * stays finished. The one rule for finishing a batch: `finishBatch` and the
- * cleanup both go through here, so the announcement is wired in one place.
+ * the announcement's post; a failed announcement, or a failure to store its
+ * post on the batch, is logged and the batch stays finished. The one rule
+ * for finishing a batch: `finishBatch` and the cleanup both go through
+ * here, so the announcement is wired in one place.
  *
  * `readyItems` are read after the move, so no item that became ready before
- * it is missed. `feedPostId` is the post this call stored, if any.
+ * it is missed. `feedPostId` is the post this call's announcement made, if
+ * any (stored on the batch unless that save failed).
  */
 export async function closeBatch(
   deps: Pick<GalleryDeps, "payload" | "log">,
@@ -656,6 +658,7 @@ export async function closeBatch(
     return { closed, readyItems, feedPostId: null };
   }
 
+  const log = deps.log ?? console.error;
   let feedPostId: number | null = null;
   try {
     feedPostId = await options.announce(
@@ -663,17 +666,27 @@ export async function closeBatch(
       readyItems,
     );
   } catch (error) {
-    (deps.log ?? console.error)(
-      `[gallery.${options.context}] announcing a finished batch failed`,
-      { batchId: batch.id, error },
-    );
+    log(`[gallery.${options.context}] announcing a finished batch failed`, {
+      batchId: batch.id,
+      error,
+    });
   }
   if (feedPostId !== null) {
-    await deps.payload.update({
-      collection: "gallery-batches",
-      id: batch.id,
-      data: { feedPostId },
-    });
+    try {
+      await deps.payload.update({
+        collection: "gallery-batches",
+        id: batch.id,
+        data: { feedPostId },
+      });
+    } catch (error) {
+      // The post exists and points at the batch (`galleryBatch`), which
+      // keeps the batch from the empty-batch cleanup; only the batch's own
+      // link is missing.
+      log(
+        `[gallery.${options.context}] storing a finished batch's feed post failed`,
+        { batchId: batch.id, feedPostId, error },
+      );
+    }
   }
   return { closed, readyItems, feedPostId };
 }

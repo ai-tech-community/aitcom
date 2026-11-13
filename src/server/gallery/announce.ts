@@ -11,10 +11,6 @@ import {
   type FeedMemberRole,
 } from "@/server/communities/feed-posts";
 import {
-  memberIdsNamedIn,
-  resolveMentions,
-} from "@/server/communities/post-mentions";
-import {
   DEFAULT_TOPIC,
   resolvePostTopic,
 } from "@/server/communities/post-topics";
@@ -32,11 +28,13 @@ type AnnounceDeps = Pick<GalleryDeps, "payload" | "db" | "log">;
  * daily cleanup alike — one factory, so both announce the same way.
  *
  * The post is the uploader's, made as `createPost` makes a written one (the
- * same author name, @mentions, topic, XP and activity), but its media is
- * the batch: `galleryBatch`, never pictures, a GIF, a video or a poll, and
- * always community visibility, whatever the batch's own (the collage's
- * items follow the gallery's read rule per viewer). Its text is the batch's
- * caption, which may be empty.
+ * same author name, topic, XP and activity), but its media is the batch:
+ * `galleryBatch`, never pictures, a GIF, a video or a poll, and always
+ * community visibility, whatever the batch's own (the collage's items
+ * follow the gallery's read rule per viewer). Its text is the batch's
+ * caption, which may be empty. It mentions no one: the upload dialog has no
+ * mention picker, and guessing members from "@Name" in the caption could
+ * notify the wrong person (the feed-posts hook stores no mentions).
  *
  * No post is made (null) when the uploader may no longer post to the
  * community's feed: they left, were banned, lost paid access, or are a plain
@@ -57,22 +55,12 @@ export function galleryAnnouncer(deps: AnnounceDeps): AnnounceBatch {
       columns: { name: true },
     });
     const topicSlug = await topicOf(deps.payload, batch);
-    const mentions = await resolveMentions(deps.db, {
-      communityId,
-      content,
-      userIds: await memberIdsNamedIn(deps.db, {
-        communityId,
-        authorId,
-        content,
-      }),
-    });
     let postId: number;
     try {
       const post = await deps.payload.create({
         collection: "feed-posts",
         data: {
           content,
-          mentions,
           authorId,
           authorName: author?.name ?? "member",
           communityId,

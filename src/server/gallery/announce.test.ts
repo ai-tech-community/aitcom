@@ -6,8 +6,6 @@ import type { GalleryBatch } from "@/payload-types";
 
 const m = vi.hoisted(() => ({
   activeCommunityRole: vi.fn(),
-  memberIdsNamedIn: vi.fn(),
-  resolveMentions: vi.fn(),
   resolvePostTopic: vi.fn(),
   awardXp: vi.fn(),
   logActivity: vi.fn(),
@@ -15,10 +13,6 @@ const m = vi.hoisted(() => ({
 
 vi.mock("@/server/communities/content-visibility-queries", () => ({
   activeCommunityRole: m.activeCommunityRole,
-}));
-vi.mock("@/server/communities/post-mentions", () => ({
-  memberIdsNamedIn: m.memberIdsNamedIn,
-  resolveMentions: m.resolveMentions,
 }));
 vi.mock("@/server/communities/post-topics", () => ({
   DEFAULT_TOPIC: "general",
@@ -33,8 +27,6 @@ vi.mock("@/server/agent/activity", () => ({
 }));
 
 import { galleryAnnouncer } from "./announce";
-
-const JANE = { userId: "u-jane", name: "Jane Doe" };
 
 const batch = (over: Partial<GalleryBatch> = {}): GalleryBatch => ({
   id: 3,
@@ -103,8 +95,6 @@ function fakes(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  m.memberIdsNamedIn.mockResolvedValue([JANE.userId]);
-  m.resolveMentions.mockResolvedValue([JANE]);
   m.resolvePostTopic.mockImplementation(
     (_payload: unknown, _communityId: string, slug: string | undefined) =>
       Promise.resolve(slug ?? "general"),
@@ -124,7 +114,6 @@ describe("galleryAnnouncer", () => {
       collection: "feed-posts",
       data: {
         content: "Our meetup with @Jane Doe",
-        mentions: [JANE],
         authorId: "u1",
         authorName: "Uma",
         communityId: "c1",
@@ -140,21 +129,14 @@ describe("galleryAnnouncer", () => {
     expect(m.resolvePostTopic).toHaveBeenCalledWith(payload, "c1", "trips");
   });
 
-  it("resolves the caption's @mentions the way a written post does", async () => {
-    const { db, announce } = fakes();
+  it("mentions no one, even when the caption says @Name", async () => {
+    const { payload, announce } = fakes();
 
     await announce(batch(), []);
 
-    expect(m.memberIdsNamedIn).toHaveBeenCalledWith(db, {
-      communityId: "c1",
-      authorId: "u1",
-      content: "Our meetup with @Jane Doe",
-    });
-    expect(m.resolveMentions).toHaveBeenCalledWith(db, {
-      communityId: "c1",
-      content: "Our meetup with @Jane Doe",
-      userIds: [JANE.userId],
-    });
+    const { data } = payload.create.mock.calls[0]![0];
+    expect(data.content).toBe("Our meetup with @Jane Doe");
+    expect(data).not.toHaveProperty("mentions");
   });
 
   it("awards the post's XP and logs the post like a written one", async () => {

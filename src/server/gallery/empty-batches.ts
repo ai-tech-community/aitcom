@@ -15,8 +15,8 @@ import type { Payload } from "./deps";
  * items) and never reach the empty ones. A finished batch never gains
  * items (`startItem` needs an open batch inside its finish window), and the
  * required `gallery_items.batch_id` foreign key makes the delete fail
- * rather than orphan an item if one appeared anyway. The batch has no hooks to run; its admin-lock rows go
- * with it (ON DELETE cascade).
+ * rather than orphan an item if one appeared anyway. The batch has no
+ * hooks to run; its admin-lock rows go with it (ON DELETE cascade).
  */
 export async function deleteEmptyFinishedBatches(
   payload: Payload,

@@ -232,11 +232,15 @@ describe.skipIf(!RUN_DB)("gallery feed announcement [DB integration]", () => {
           WHERE "id" = ${batchId}
       `);
 
+      // Called only if the member's finish wins the close.
+      const finishAnnounce = vi.fn(
+        m.announce.galleryAnnouncer({ payload, db: m.db }),
+      );
       const [finished] = await Promise.all([
         m.uploads.finishBatch(
           deps,
           { userId: fx.userId, batchId },
-          m.announce.galleryAnnouncer({ payload, db: m.db }),
+          finishAnnounce,
         ),
         m.cleanup.cleanupAbandonedGalleryUploads({
           payload,
@@ -263,11 +267,18 @@ describe.skipIf(!RUN_DB)("gallery feed announcement [DB integration]", () => {
         depth: 0,
       });
       expect(batch).toMatchObject({ status: "finished", feedPostId: post.id });
-      // Whichever side lost, the member's finish answers with the post
-      // once the winner has stored it.
-      if (finished.feedPostId !== null) {
+      if (finishAnnounce.mock.calls.length > 0) {
+        // The member's finish won: it answers with the post it made.
         expect(finished.feedPostId).toBe(post.id);
+      } else {
+        // The cleanup won: the finish answers with what was stored when it
+        // read the batch, the post or (stored later) nothing yet.
+        expect([post.id, null]).toContain(finished.feedPostId);
       }
+      // Once both have settled, the member's finish answers with the post.
+      await expect(
+        m.uploads.finishBatch(deps, { userId: fx.userId, batchId }),
+      ).resolves.toEqual({ readyCount: 1, feedPostId: post.id });
       await expect(activityFor(post.id)).resolves.toHaveLength(1);
     }
   });
