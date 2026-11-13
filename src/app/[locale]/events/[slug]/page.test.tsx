@@ -216,7 +216,7 @@ describe("the event's photos and videos", () => {
     viewer: { kind: "member", canModerate: false },
   };
 
-  /** Each top-level-to-leaf element's type, in render order. */
+  /** Positions in the page's elements, in render order (-1: absent). */
   const sectionIndex = (tree: ReactElement<Record<string, unknown>>[]) =>
     tree.findIndex((node) => node.type === EventGallerySection);
   const attendeesIndex = (tree: ReactElement<Record<string, unknown>>[]) =>
