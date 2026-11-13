@@ -6499,7 +6499,7 @@
       "seeAll": "Voir les {count} dans la galerie",
       "add": "Ajoutez les vôtres",
       "signInToAdd": "Connectez-vous pour ajouter vos photos et vidéos",
-      "empty": "Soyez le premier à ajouter des photos de cet événement."
+      "empty": "Ajoutez les premières photos de cet événement."
     },
     "tile": {
       "video": "Vidéo, {duration}",

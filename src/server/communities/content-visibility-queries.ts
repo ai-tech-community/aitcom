@@ -15,6 +15,7 @@ import {
   type CommunityVisibility,
 } from "./content-visibility";
 import { HUB_SLUG } from "./hub";
+import type { MembershipStatus } from "./invite-policy";
 import {
   canReadPaidCommunity,
   membershipPaymentAllowed,
@@ -45,13 +46,52 @@ export async function activeCommunityRole(
     columns: { role: true },
   });
   if (!membership) return null;
+  return roleInGoodStanding(db, communityId, userId, membership.role);
+}
+
+/** An active member's role, unless their paid membership lapsed. */
+async function roleInGoodStanding(
+  db: DB,
+  communityId: string,
+  userId: string,
+  role: string,
+): Promise<string | null> {
   if (
-    membership.role === "member" &&
+    role === "member" &&
     !(await membershipPaymentAllowed(db, communityId, userId))
   ) {
     return null;
   }
-  return membership.role;
+  return role;
+}
+
+/**
+ * Where a user stands in a community, in one read: their membership row's
+ * `status` (null without a row, or signed out) — what join controls go by
+ * (`viewerJoinAction`) — and their `activeRole` by the same rule as
+ * `activeCommunityRole`.
+ */
+export async function communityStanding(
+  db: DB,
+  communityId: string,
+  userId: string | null | undefined,
+): Promise<{ status: MembershipStatus | null; activeRole: string | null }> {
+  if (!userId) return { status: null, activeRole: null };
+  const membership = await db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, communityId),
+      eq(communityMemberships.userId, userId),
+    ),
+    columns: { role: true, status: true },
+  });
+  if (!membership) return { status: null, activeRole: null };
+  return {
+    status: membership.status,
+    activeRole:
+      membership.status === "active"
+        ? await roleInGoodStanding(db, communityId, userId, membership.role)
+        : null,
+  };
 }
 
 export async function isActiveCommunityMember(

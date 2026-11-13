@@ -1,12 +1,9 @@
-import { and, eq } from "drizzle-orm";
-
 import { GALLERY_EVENT_PREVIEW_SIZE } from "@/lib/gallery-rules";
 import type { Event } from "@/payload-types";
 import {
   offersMembership,
   viewerJoinAction,
 } from "@/server/communities/invite-policy";
-import { communities, communityMemberships } from "@/server/db/schema";
 
 import { isLinkableEvent, loadGalleryViewerById } from "./access";
 import { nowOf, type GalleryDeps } from "./deps";
@@ -41,37 +38,6 @@ type SectionEvent = Pick<
   Event,
   "id" | "communityId" | "status" | "date" | "startTime" | "timezone"
 >;
-
-/**
- * Whether the community page offers this signed-in non-member a way in,
- * by the rule every join control follows (`viewerJoinAction`).
- */
-async function outsiderMayJoin(
-  deps: Pick<GalleryDeps, "db">,
-  communityId: string,
-  userId: string,
-): Promise<boolean> {
-  const [community, membership] = await Promise.all([
-    deps.db.query.communities.findFirst({
-      where: eq(communities.id, communityId),
-      columns: { joinPolicy: true },
-    }),
-    deps.db.query.communityMemberships.findFirst({
-      where: and(
-        eq(communityMemberships.communityId, communityId),
-        eq(communityMemberships.userId, userId),
-      ),
-      columns: { status: true },
-    }),
-  ]);
-  if (!community) return false;
-  return offersMembership(
-    viewerJoinAction({
-      joinPolicy: community.joinPolicy,
-      status: membership?.status ?? null,
-    }),
-  );
-}
 
 /**
  * An event's photos and videos for one viewer: only the items that viewer
@@ -112,10 +78,12 @@ export async function loadEventGallerySection(
   } else if (userId === null) {
     who = { kind: "guest" };
   } else {
-    who = {
-      kind: "outsider",
-      canJoin: await outsiderMayJoin(deps, communityId, userId),
-    };
+    // The rule every join control follows, from what the viewer load read.
+    const action = viewerJoinAction({
+      joinPolicy: viewer.community.joinPolicy,
+      status: viewer.membershipStatus,
+    });
+    who = { kind: "outsider", canJoin: offersMembership(action) };
   }
 
   return {

@@ -14,10 +14,8 @@ import type { GalleryItemView } from "@/server/gallery/items";
 import { api } from "@/trpc/react";
 
 import { GalleryCategoryBadge } from "./gallery-category-badge";
-import { GalleryEditDialog } from "./gallery-edit-dialog";
-import { GalleryLightbox } from "./gallery-lightbox";
 import { GalleryTile } from "./gallery-tile";
-import { useOpening } from "./use-opening";
+import { useGalleryLightboxHost } from "./use-gallery-lightbox-host";
 
 /**
  * Everything the lightbox moves through: the collage's items, then the rest
@@ -89,27 +87,19 @@ export function GalleryCollage({
   onChange?: () => void;
 }) {
   const t = useTranslations("gallery.collage");
-  const utils = api.useUtils();
-  const isMember = !!memberRole;
-  const canModerate = isModeratorRole(memberRole);
   const { items, more } = useBatchItems(slug, gallery);
-  const [openId, setOpenId] = useState<number | null>(null);
-  const [editing, openEdit, closeEdit] = useOpening<{
-    item: GalleryItemView;
-  }>();
   const scope = useRef<HTMLDivElement>(null);
   const group = useRef<HTMLDivElement>(null);
-  // The tile that opened the lightbox: focus goes back to it when the item
-  // shown last has no tile here (it was further in the batch).
-  const opener = useRef<HTMLElement | null>(null);
-
-  const open = (itemId: number) => {
-    opener.current =
-      scope.current?.querySelector<HTMLElement>(
-        `[data-gallery-item-id="${itemId}"]`,
-      ) ?? null;
-    setOpenId(itemId);
-  };
+  const { open, host } = useGalleryLightboxHost({
+    slug,
+    items,
+    scope,
+    deletedFocus: group,
+    isMember: !!memberRole,
+    canModerate: isModeratorRole(memberRole),
+    onChange,
+    more,
+  });
 
   const [first, second, third] = gallery.items;
   if (!first) return null;
@@ -181,38 +171,7 @@ export function GalleryCollage({
         ) : null}
       </div>
 
-      <GalleryLightbox
-        slug={slug}
-        items={items}
-        openId={openId}
-        onNavigate={setOpenId}
-        onClose={() => setOpenId(null)}
-        onEdit={isMember ? (item) => openEdit({ item }) : undefined}
-        onDeleted={(itemId) => {
-          if (opener.current?.dataset.galleryItemId === String(itemId)) {
-            opener.current = group.current;
-          }
-          void utils.gallery.list.invalidate({ slug });
-          void utils.gallery.facets.invalidate({ slug });
-          onChange?.();
-        }}
-        canModerate={canModerate}
-        fallbackFocus={opener}
-        focusScope={scope}
-        more={more}
-      />
-      {editing ? (
-        <GalleryEditDialog
-          key={editing.key}
-          slug={slug}
-          item={editing.item}
-          open={editing.open}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) closeEdit();
-          }}
-          onSaved={onChange}
-        />
-      ) : null}
+      {host}
     </div>
   );
 }

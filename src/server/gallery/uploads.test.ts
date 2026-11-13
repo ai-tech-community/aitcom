@@ -243,13 +243,15 @@ function fakes(over: Over = {}) {
         ),
       },
       communityMemberships: {
-        findFirst: vi
-          .fn()
-          .mockResolvedValue(
-            over.role === null
-              ? undefined
-              : { communityId: "c1", role: over.role ?? "member" },
-          ),
+        findFirst: vi.fn().mockResolvedValue(
+          over.role === null
+            ? undefined
+            : {
+                communityId: "c1",
+                role: over.role ?? "member",
+                status: "active",
+              },
+        ),
       },
     },
   };

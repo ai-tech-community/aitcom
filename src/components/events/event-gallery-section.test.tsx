@@ -22,14 +22,16 @@ const m = vi.hoisted(() => ({
   refresh: vi.fn(),
   deleteCalls: [] as unknown[],
   editProps: vi.fn(),
+  invalidateList: vi.fn(),
+  invalidateFacets: vi.fn(),
 }));
 
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
       gallery: {
-        list: { invalidate: vi.fn() },
-        facets: { invalidate: vi.fn() },
+        list: { invalidate: m.invalidateList },
+        facets: { invalidate: m.invalidateFacets },
       },
     }),
     topics: { list: { useQuery: () => ({ data: [] }) } },
@@ -224,6 +226,27 @@ describe("EventGallerySection", () => {
     await waitFor(() =>
       expect(m.deleteCalls).toEqual([{ slug: "runners", itemId: 19 }]),
     );
+    expect(m.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes the gallery's own lists after a delete, like the feed does", async () => {
+    const own = galleryItem({ id: 30, caption: "Mine", isOwn: true });
+    renderSection({ items: [own], total: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Mine" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+    await waitFor(() =>
+      expect(m.invalidateList).toHaveBeenCalledWith({ slug: "runners" }),
+    );
+    expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "runners" });
     expect(m.refresh).toHaveBeenCalledTimes(1);
   });
 

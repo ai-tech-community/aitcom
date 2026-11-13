@@ -1,20 +1,17 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useRef } from "react";
 import { ImagePlus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
-import { GalleryEditDialog } from "@/components/communities/gallery/gallery-edit-dialog";
-import { GalleryLightbox } from "@/components/communities/gallery/gallery-lightbox";
 import { eventGalleryPath } from "@/components/communities/gallery/gallery-params";
 import { GalleryTile } from "@/components/communities/gallery/gallery-tile";
-import { useOpening } from "@/components/communities/gallery/use-opening";
+import { useGalleryLightboxHost } from "@/components/communities/gallery/use-gallery-lightbox-host";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
 import { getPathname, Link, useRouter } from "@/i18n/navigation";
 import type { EventGallerySection as Section } from "@/server/gallery/event-section";
-import type { GalleryItemView } from "@/server/gallery/items";
 
 /**
  * "Add yours", by who is looking: a member goes to the upload with this
@@ -81,23 +78,16 @@ export function EventGallerySection({ section }: { section: Section }) {
   const router = useRouter();
   const headingId = useId();
   const { communitySlug: slug, items, total, viewer } = section;
-  const isMember = viewer.kind === "member";
-  const [openId, setOpenId] = useState<number | null>(null);
-  const [editing, openEdit, closeEdit] = useOpening<{
-    item: GalleryItemView;
-  }>();
   const grid = useRef<HTMLUListElement>(null);
-  // The tile that opened the lightbox, where focus returns when the item
-  // shown last was deleted.
-  const opener = useRef<HTMLElement | null>(null);
-
-  const open = (itemId: number) => {
-    opener.current =
-      grid.current?.querySelector<HTMLElement>(
-        `[data-gallery-item-id="${itemId}"]`,
-      ) ?? null;
-    setOpenId(itemId);
-  };
+  const { open, host } = useGalleryLightboxHost({
+    slug,
+    items,
+    scope: grid,
+    deletedFocus: grid,
+    isMember: viewer.kind === "member",
+    canModerate: viewer.kind === "member" && viewer.canModerate,
+    onChange: () => router.refresh(),
+  });
 
   return (
     <section
@@ -149,35 +139,7 @@ export function EventGallerySection({ section }: { section: Section }) {
         ) : null}
       </div>
 
-      <GalleryLightbox
-        slug={slug}
-        items={items}
-        openId={openId}
-        onNavigate={setOpenId}
-        onClose={() => setOpenId(null)}
-        onEdit={isMember ? (item) => openEdit({ item }) : undefined}
-        onDeleted={(itemId) => {
-          if (opener.current?.dataset.galleryItemId === String(itemId)) {
-            opener.current = grid.current;
-          }
-          router.refresh();
-        }}
-        canModerate={viewer.kind === "member" && viewer.canModerate}
-        fallbackFocus={opener}
-        focusScope={grid}
-      />
-      {editing ? (
-        <GalleryEditDialog
-          key={editing.key}
-          slug={slug}
-          item={editing.item}
-          open={editing.open}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) closeEdit();
-          }}
-          onSaved={() => router.refresh()}
-        />
-      ) : null}
+      {host}
     </section>
   );
 }

@@ -12,6 +12,7 @@ vi.mock("@/server/payments/access", async (importOriginal) => ({
 
 import {
   activeCommunityRole,
+  communityStanding,
   isActiveCommunityMember,
 } from "./content-visibility-queries";
 
@@ -65,4 +66,61 @@ describe("activeCommunityRole", () => {
     );
     expect(payments.membershipPaymentAllowed).not.toHaveBeenCalled();
   });
+});
+
+describe("communityStanding", () => {
+  function standingDb(row: { role: string; status: string } | null) {
+    const findFirst = vi.fn().mockResolvedValue(row ?? undefined);
+    return {
+      db: { query: { communityMemberships: { findFirst } } } as never,
+      findFirst,
+    };
+  }
+
+  it("is nothing for a signed-out visitor, without a lookup", async () => {
+    const { db, findFirst } = standingDb({ role: "member", status: "active" });
+    await expect(communityStanding(db, "c1", null)).resolves.toEqual({
+      status: null,
+      activeRole: null,
+    });
+    expect(findFirst).not.toHaveBeenCalled();
+  });
+
+  it("is nothing without a membership row", async () => {
+    const { db } = standingDb(null);
+    await expect(communityStanding(db, "c1", "u1")).resolves.toEqual({
+      status: null,
+      activeRole: null,
+    });
+  });
+
+  it("gives an active member's role and status in one read", async () => {
+    const { db, findFirst } = standingDb({ role: "admin", status: "active" });
+    await expect(communityStanding(db, "c1", "u1")).resolves.toEqual({
+      status: "active",
+      activeRole: "admin",
+    });
+    expect(findFirst).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the status but no role for a member whose paid membership lapsed", async () => {
+    payments.membershipPaymentAllowed.mockResolvedValue(false);
+    const { db } = standingDb({ role: "member", status: "active" });
+    await expect(communityStanding(db, "c1", "u1")).resolves.toEqual({
+      status: "active",
+      activeRole: null,
+    });
+  });
+
+  it.each(["pending_approval", "invited", "banned"])(
+    "gives a %s row its status and no role",
+    async (status) => {
+      const { db } = standingDb({ role: "member", status });
+      await expect(communityStanding(db, "c1", "u1")).resolves.toEqual({
+        status,
+        activeRole: null,
+      });
+      expect(payments.membershipPaymentAllowed).not.toHaveBeenCalled();
+    },
+  );
 });

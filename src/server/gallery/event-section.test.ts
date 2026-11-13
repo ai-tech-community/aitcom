@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { isModeratorRole } from "@/lib/communities/moderator-roles";
+import type {
+  JoinPolicy,
+  MembershipStatus,
+} from "@/server/communities/invite-policy";
 import {
   matchesWhere,
   selectFields,
@@ -8,7 +12,7 @@ import {
 } from "@/test/fake-payload-query";
 
 import type * as Access from "./access";
-import type { GalleryCommunity, GalleryViewer } from "./access";
+import type { LoadedGalleryViewer } from "./access";
 import { loadEventGallerySection } from "./event-section";
 
 /**
@@ -22,6 +26,11 @@ const ROLES: Record<string, Record<string, string>> = {
 };
 const OPEN_TO_OUTSIDERS: Record<string, boolean> = { c1: true, c2: false };
 const SLUGS: Record<string, string> = { c1: "runners", c2: "quiet-club" };
+/** The community's join policy and the viewer's membership row, per test. */
+const standing: {
+  joinPolicy: JoinPolicy;
+  membershipStatus: MembershipStatus | null;
+} = { joinPolicy: "open", membershipStatus: null };
 
 const loadViewer = vi.hoisted(() => vi.fn());
 vi.mock("./access", async (importOriginal) => ({
@@ -33,11 +42,13 @@ const NOW = new Date("2026-11-13T12:00:00.000Z");
 
 beforeEach(() => {
   vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
+  standing.joinPolicy = "open";
+  standing.membershipStatus = null;
   loadViewer.mockImplementation(
     async (
       _deps: unknown,
       input: { communityId: string; userId: string | null },
-    ): Promise<(GalleryViewer & { community: GalleryCommunity }) | null> => {
+    ): Promise<LoadedGalleryViewer | null> => {
       const roles = ROLES[input.communityId];
       if (!roles) return null; // deleted community
       const role = input.userId ? (roles[input.userId] ?? null) : null;
@@ -52,7 +63,9 @@ beforeEach(() => {
           id: input.communityId,
           slug: SLUGS[input.communityId]!,
           isListedInDirectory: OPEN_TO_OUTSIDERS[input.communityId] === true,
+          joinPolicy: standing.joinPolicy,
         },
+        membershipStatus: role !== null ? "active" : standing.membershipStatus,
       };
     },
   );
@@ -111,11 +124,7 @@ function event(over: Doc = {}) {
   } as Parameters<typeof loadEventGallerySection>[1]["event"];
 }
 
-function fakes(seed: {
-  items?: Doc[];
-  joinPolicy?: string;
-  membership?: { status: string } | null;
-}) {
+function fakes(seed: { items?: Doc[] }) {
   const store: Record<string, Doc[]> = {
     "gallery-items": seed.items ?? [],
     events: [{ id: 50, title: "Sunday run", slug: "sunday-run" }],
@@ -153,16 +162,15 @@ function fakes(seed: {
         where: async () => [{ id: "u1", name: "Dana", image: null }],
       }),
     })),
-    query: {
-      communities: {
-        findFirst: vi.fn(async () => ({
-          joinPolicy: seed.joinPolicy ?? "open",
-        })),
+    // Who the viewer is comes with the viewer load: nothing is read again.
+    query: new Proxy(
+      {},
+      {
+        get: () => {
+          throw new Error("the community or membership was read again");
+        },
       },
-      communityMemberships: {
-        findFirst: vi.fn(async () => seed.membership ?? null),
-      },
-    },
+    ),
   };
   const deps = {
     payload: payload as never,
@@ -291,7 +299,7 @@ describe("loadEventGallerySection", () => {
 
   describe("who may add, and how", () => {
     it("tells a signed-out visitor to sign in", async () => {
-      const { deps, db } = fakes({
+      const { deps } = fakes({
         items: [item(1, { visibility: "public" })],
       });
       const section = await loadEventGallerySection(deps, {
@@ -299,28 +307,22 @@ describe("loadEventGallerySection", () => {
         userId: null,
       });
       expect(section?.viewer).toEqual({ kind: "guest" });
-      expect(db.query.communityMemberships.findFirst).not.toHaveBeenCalled();
     });
 
     it.each([
       ["an open community", "open", null, true],
       ["a community that asks to approve", "approval_required", null, true],
-      ["an invitation to accept", "invite_only", { status: "invited" }, true],
+      ["an invitation to accept", "invite_only", "invited", true],
       ["an invite-only community", "invite_only", null, false],
-      [
-        "a pending request",
-        "approval_required",
-        { status: "pending_approval" },
-        false,
-      ],
-      ["a ban", "open", { status: "banned" }, false],
-    ])(
+      ["a pending request", "approval_required", "pending_approval", false],
+      ["a ban", "open", "banned", false],
+    ] as const)(
       "offers a non-member joining for %s: %s",
-      async (_label, joinPolicy, membership, canJoin) => {
+      async (_label, joinPolicy, membershipStatus, canJoin) => {
+        standing.joinPolicy = joinPolicy;
+        standing.membershipStatus = membershipStatus;
         const { deps } = fakes({
           items: [item(1, { visibility: "public" })],
-          joinPolicy,
-          membership,
         });
         const section = await loadEventGallerySection(deps, {
           event: event(),

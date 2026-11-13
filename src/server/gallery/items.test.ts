@@ -242,11 +242,12 @@ async function viewerFor(input: {
           id: "c1",
           slug: "town",
           isListedInDirectory: input.listed ?? true,
+          joinPolicy: "open",
         })),
       },
       communityMemberships: {
         findFirst: vi.fn(async () =>
-          input.role ? { role: input.role } : undefined,
+          input.role ? { role: input.role, status: "active" } : undefined,
         ),
       },
     },

@@ -26,6 +26,7 @@ type ParamReader = { get(key: string): string | null };
 export type GalleryParamsPatch = Partial<GalleryFilters> & { upload?: null };
 
 const UPLOAD_PARAM = "upload";
+const EVENT_PARAM = "event";
 
 /** The API's own bound on a topic slug. */
 const TOPIC_MAX = 100;
@@ -42,7 +43,7 @@ function isMediaType(value: string | null): value is GalleryMediaType {
 
 /** Reads the params, dropping any value the API would refuse. */
 export function parseGalleryParams(params: ParamReader): GalleryFilters {
-  const event = params.get("event");
+  const event = params.get(EVENT_PARAM);
   const topic = params.get("topic")?.trim() ?? "";
   const type = params.get("type");
   return {
@@ -91,7 +92,7 @@ export function readUploadLink(
   params: ParamReader,
 ): { eventId: number | null } | null {
   if (params.get(UPLOAD_PARAM) !== "1") return null;
-  return { eventId: recordId(params.get("event")) };
+  return { eventId: recordId(params.get(EVENT_PARAM)) };
 }
 
 /**
@@ -119,6 +120,6 @@ export function eventGalleryPath(
 ): string {
   const params = new URLSearchParams();
   if (options.upload) params.set(UPLOAD_PARAM, "1");
-  params.set("event", String(eventId));
+  params.set(EVENT_PARAM, String(eventId));
   return `/communities/${slug}/gallery?${params}`;
 }

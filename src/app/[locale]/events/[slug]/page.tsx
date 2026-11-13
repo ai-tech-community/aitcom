@@ -344,11 +344,18 @@ export default async function EventDetailPage({
   const session = await getSession();
   const [editHref, gallerySection] = await Promise.all([
     resolveEventEditHref(db, session?.user?.id, event),
-    // Null when the event has no photos section (spec 2026-11-13, Events).
+    // Null when the event has no photos section (spec 2026-11-13, Events),
+    // and when loading it failed: the rest of the event page still shows.
     loadEventGallerySection(
       { payload, db, storage: getObjectStorage },
       { event, userId: session?.user?.id ?? null },
-    ),
+    ).catch((error: unknown) => {
+      console.error("[events] loading the event's photos failed", {
+        eventId: event.id,
+        error,
+      });
+      return null;
+    }),
   ]);
   const gallery = gallerySection ? (
     <EventGallerySection section={gallerySection} />

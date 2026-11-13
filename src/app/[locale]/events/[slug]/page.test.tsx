@@ -262,6 +262,23 @@ describe("the event's photos and videos", () => {
     );
   });
 
+  it("still shows the event when its photos fail to load", async () => {
+    const failure = new Error("storage down");
+    loadGallery.mockRejectedValue(failure);
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const tree = elements(await EventDetailPage({ params: params() }));
+      expect(sectionIndex(tree)).toBe(-1);
+      expect(attendeesIndex(tree)).toBeGreaterThanOrEqual(0);
+      expect(log).toHaveBeenCalledWith(
+        "[events] loading the event's photos failed",
+        { eventId: 85, error: failure },
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it.each([
     ["the standard layout", null],
     ["the hackathon layout", 7],
