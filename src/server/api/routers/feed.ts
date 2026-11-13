@@ -9,7 +9,7 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { db as Db } from "@/server/db";
 import {
   communities,
@@ -51,6 +51,7 @@ import {
   reportPost,
   reviewReport,
 } from "@/server/communities/post-reports";
+import { communityModeratorIds } from "@/server/moderation/report-rules";
 import {
   MAX_IMAGE_ALT_LENGTH,
   MAX_POST_IMAGES,
@@ -199,20 +200,11 @@ async function notifyPostReported(
     columns: { slug: true, name: true },
   });
   if (!community) return;
-  const moderators = await database
-    .select({ userId: communityMemberships.userId })
-    .from(communityMemberships)
-    .where(
-      and(
-        eq(communityMemberships.communityId, input.communityId),
-        eq(communityMemberships.status, "active"),
-        inArray(communityMemberships.role, ["owner", "admin", "moderator"]),
-      ),
-    );
+  const moderators = await communityModeratorIds(database, input.communityId);
   if (moderators.length === 0) return;
   const path = reportedPostPath(community.slug, input);
   await database.insert(notifications).values(
-    moderators.map(({ userId }) => ({
+    moderators.map((userId) => ({
       userId,
       type: "post_reported",
       title: "A post was reported",

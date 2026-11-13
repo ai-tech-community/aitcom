@@ -104,6 +104,7 @@ export interface Config {
     'hosted-materials': HostedMaterial;
     'gallery-batches': GalleryBatch;
     'gallery-items': GalleryItem;
+    'gallery-reports': GalleryReport;
     magazines: Magazine;
     'magazine-issues': MagazineIssue;
     'email-templates': EmailTemplate;
@@ -153,6 +154,7 @@ export interface Config {
     'hosted-materials': HostedMaterialsSelect<false> | HostedMaterialsSelect<true>;
     'gallery-batches': GalleryBatchesSelect<false> | GalleryBatchesSelect<true>;
     'gallery-items': GalleryItemsSelect<false> | GalleryItemsSelect<true>;
+    'gallery-reports': GalleryReportsSelect<false> | GalleryReportsSelect<true>;
     magazines: MagazinesSelect<false> | MagazinesSelect<true>;
     'magazine-issues': MagazineIssuesSelect<false> | MagazineIssuesSelect<true>;
     'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
@@ -2017,6 +2019,22 @@ export interface GalleryItem {
   createdAt: string;
 }
 /**
+ * Reports on community gallery photos and videos. One per reporter per item.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gallery-reports".
+ */
+export interface GalleryReport {
+  id: number;
+  item: number | GalleryItem;
+  reporterId: string;
+  reason: 'spam' | 'inappropriate' | 'copyright' | 'other' | 'this_is_me';
+  note?: string | null;
+  dismissedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Editable email templates. Use {{variable}} placeholders; unknown variables render as empty text. Variables for "event-registration-confirmation": {{name}}, {{eventTitle}}, {{eventDate}}, {{eventTime}}, {{eventLocation}}, {{eventSlug}}, {{eventUrl}}. Note: {{eventTime}} may be empty when the event has no start time set.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2270,6 +2288,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'gallery-items';
         value: number | GalleryItem;
+      } | null)
+    | ({
+        relationTo: 'gallery-reports';
+        value: number | GalleryReport;
       } | null)
     | ({
         relationTo: 'magazines';
@@ -3189,6 +3211,19 @@ export interface GalleryItemsSelect<T extends boolean = true> {
   magazineConsentAt?: T;
   hiddenAt?: T;
   reportCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gallery-reports_select".
+ */
+export interface GalleryReportsSelect<T extends boolean = true> {
+  item?: T;
+  reporterId?: T;
+  reason?: T;
+  note?: T;
+  dismissedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
