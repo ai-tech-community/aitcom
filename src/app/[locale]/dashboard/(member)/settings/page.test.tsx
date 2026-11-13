@@ -16,6 +16,9 @@ vi.mock("@/components/connected-identities", () => ({
 vi.mock("@/components/onboarding/checklist-setting", () => ({
   ChecklistSetting: () => <section data-testid="checklist" />,
 }));
+vi.mock("@/components/dashboard/delete-account-settings", () => ({
+  DeleteAccountSettings: () => <section data-testid="delete-account" />,
+}));
 
 import DashboardSettingsPage from "./page";
 
@@ -31,6 +34,7 @@ describe("Settings tab", () => {
       "notification-prefs",
       "identities",
       "checklist",
+      "delete-account",
     ]);
   });
 });

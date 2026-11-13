@@ -1161,6 +1161,17 @@
     "profile": {
       "title": "Profiel"
     },
+    "deleteAccount": {
+      "title": "Account verwijderen",
+      "description": "Dit verwijdert je login, profiel en persoonsgegevens. Berichten in de community blijven staan onder “Deleted member”. Betalingsgegevens blijven bewaard voor de administratie, zonder je e-mailadres. Dit kan niet ongedaan worden gemaakt.",
+      "action": "Account verwijderen",
+      "confirmTitle": "Je account verwijderen?",
+      "confirmDescription": "Typ {word} om te bevestigen. Je wordt uitgelogd en kunt niet meer inloggen op dit account.",
+      "confirmLabel": "Typ {word} om te bevestigen",
+      "confirm": "Account verwijderen",
+      "cancel": "Annuleren",
+      "error": "Je account kon niet worden verwijderd. Probeer het opnieuw, of mail info@klevox.com."
+    },
     "answers": {
       "title": "Je interesses en doelen",
       "description": "Je antwoorden op de welkomstvragen bepalen je eerste stappen en de mensen die we je voorstellen.",
