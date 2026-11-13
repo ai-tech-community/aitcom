@@ -190,8 +190,11 @@ route next to the feed sweeps:
 
 - **Abandoned uploads:** `uploading` items older than `ABANDONED_UPLOAD_HOURS`
   → delete files and rows.
-- **Failed items:** delete rows once their grant can't be live any more
-  (`mayUploadGrantBeLive`).
+- **Failed items:** delete files and rows after `ABANDONED_UPLOAD_HOURS` (by
+  then every grant has long expired; same rule as classroom uploads).
+- **Batches:** `open` batches older than `ABANDONED_UPLOAD_HOURS` are finished
+  through the same function as `finishBatch` (one place to announce); finished
+  batches older than that with no items and no feed post are deleted.
 - **Unused files sweep (production only, `ownsStorageContents`):** list both
   gallery prefixes; delete objects older than 7 days that no gallery item row
   references. Same safety rules as #388.
