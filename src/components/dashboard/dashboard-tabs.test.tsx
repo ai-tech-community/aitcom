@@ -61,6 +61,7 @@ describe("DashboardTabs", () => {
       [tabs.home, "/dashboard"],
       [tabs.communities, "/dashboard/communities"],
       [tabs.events, "/dashboard/events"],
+      [tabs.payments, "/dashboard/payments"],
       [tabs.jobs, "/dashboard/jobs"],
       [tabs.collectors, "/dashboard/collectors"],
       [tabs.notifications, "/dashboard/notifications"],
@@ -102,6 +103,20 @@ describe("DashboardTabs", () => {
     expect(
       screen.getByRole("link", { name: tabs.notifications }),
     ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("marks My payments current within the dashboard", () => {
+    pathname.current = "/dashboard/payments";
+    renderTabs();
+    expect(screen.getByRole("link", { name: tabs.payments })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen
+        .getAllByRole("link")
+        .filter((link) => link.hasAttribute("aria-current")),
+    ).toHaveLength(1);
   });
   it("always exposes Data collectors and marks nested collector routes current", () => {
     pathname.current = "/dashboard/collectors/runs/example";

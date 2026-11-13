@@ -69,15 +69,6 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
       href: `${basePath}/offers`,
       label: tPayments("offersTitle"),
     },
-    ...(memberRole
-      ? [
-          {
-            key: "my-payments",
-            href: "/my-payments",
-            label: tPayments("myPayments"),
-          },
-        ]
-      : []),
     ...surfaceItems,
     ...roomItems,
     ...(memberRole

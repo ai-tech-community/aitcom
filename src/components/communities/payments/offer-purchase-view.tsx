@@ -73,7 +73,7 @@ export function OfferPurchaseView({
         </Button>
       ) : offer.kind === "membership" && membershipExists ? (
         <Button asChild>
-          <a href={`/${locale}/my-payments`}>{t("myPayments")}</a>
+          <a href={`/${locale}/dashboard/payments`}>{t("myPayments")}</a>
         </Button>
       ) : !admitted && offer.kind !== "donation" ? (
         <p className="text-sm">{t("admissionRequired")}</p>

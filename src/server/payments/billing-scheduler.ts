@@ -164,7 +164,7 @@ export async function recoverAdyenSubscription(
         reservationUntil: new Date(
           prepared.attempt.createdAt.getTime() + 30 * 60000,
         ),
-        returnUrl: `${paymentAppUrl()}/${prepared.root.checkoutLocale}/my-payments`,
+        returnUrl: `${paymentAppUrl()}/${prepared.root.checkoutLocale}/dashboard/payments`,
       },
     );
     await tx

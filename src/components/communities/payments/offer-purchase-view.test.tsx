@@ -88,7 +88,7 @@ describe("member purchase screen", () => {
     );
     expect(screen.getByRole("link", { name: "My payments" })).toHaveAttribute(
       "href",
-      "/en/my-payments",
+      "/en/dashboard/payments",
     );
     expect(
       screen.queryByRole("button", { name: "Continue to secure checkout" }),

@@ -879,7 +879,7 @@ export const communityPaymentsRouter = createTRPCRouter({
       return stripePortal(
         row.connection.accountId,
         row.subscription.customerReference,
-        `${paymentAppUrl()}/${input.locale}/my-payments`,
+        `${paymentAppUrl()}/${input.locale}/dashboard/payments`,
         configurationId,
       );
     }),

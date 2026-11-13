@@ -119,7 +119,9 @@ export function CommunityOffers({
         <a href={`/${locale}/communities/${encodeURIComponent(slug)}`}>
           {t("back")}
         </a>
-        {signedIn && <a href={`/${locale}/my-payments`}>{t("myPayments")}</a>}
+        {signedIn && (
+          <a href={`/${locale}/dashboard/payments`}>{t("myPayments")}</a>
+        )}
       </div>
     </div>
   );

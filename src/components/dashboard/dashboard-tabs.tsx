@@ -11,6 +11,7 @@ export const DASHBOARD_TABS = [
   { href: "/dashboard", labelKey: "home", match: "exact" },
   { href: "/dashboard/communities", labelKey: "communities" },
   { href: "/dashboard/events", labelKey: "events" },
+  { href: "/dashboard/payments", labelKey: "payments" },
   { href: "/dashboard/jobs", labelKey: "jobs" },
   { href: "/dashboard/collectors", labelKey: "collectors" },
   { href: "/dashboard/notifications", labelKey: "notifications" },
