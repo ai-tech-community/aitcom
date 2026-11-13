@@ -278,7 +278,9 @@ their category (set to empty), the same moment feed posts move to `general`.
   others → one **Report** action, whose dialog lists "This is me, please
   remove it" first; moderators → Restore/Remove on reported items.
   Visibility stays fixed.
-- Non-members see only public items and the join prompt.
+- Non-members see only public items (plus any items they uploaded themselves,
+  e.g. after leaving) and the join prompt. An uploader can always open and
+  delete their own items.
 
 ### Upload dialog (variant A)
 
@@ -317,7 +319,8 @@ lets the member retry or drop them.
 - The card renders a collage: first item large, two small, "+N" on the third.
   It shows the event as a link chip and the category badge. Clicking a tile
   opens the gallery lightbox for that batch. Each viewer sees only the batch's
-  items they may read; with none left, the card shows its text only.
+  items they may read; with none left, the card shows its text only, and a
+  post with no text is left out of that viewer's feed.
 - Editing a gallery post can change its text (which may be empty) but never
   its media.
 - Gallery items are owned by the gallery, not by the post:
