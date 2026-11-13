@@ -35,6 +35,11 @@ instead of stock imagery.
   rules: 90 s, converted on the device (ADR-0036).
 - Downloading originals. We store the converted version only.
 - Changing an item's visibility after upload (same as feed video today).
+- Gallery videos in Reels (Reels keeps reading feed video posts only).
+- Gallery photos as magazine issue covers or as another item's image: those
+  are copied URLs owned by the issue and could not honour a withdrawn
+  permission. Editors feature gallery photos as `galleryItem` items only.
+- MCP/agent tools for the gallery.
 
 ## Anti-goals
 
@@ -57,6 +62,15 @@ instead of stock imagery.
    its magazine", **unticked by default**. Editors can only pick items that have
    it.
 5. The old admin-only `Events.gallery` field is replaced by gallery items.
+
+## Calls made by Claude (Greg asked to proceed without more questions)
+
+Grants per file; members may upload where the feed is admins-only (no feed
+post then); Gallery is a default tab appended to existing orders; no Reels;
+optional batch text goes on the feed post only; galleryItem is the only
+magazine use; categories are community topics; only started events of the same
+community can be linked; a moderator removing a gallery post removes its
+items; gallery bytes share the community media allowance.
 
 ## Approaches considered
 
@@ -110,10 +124,16 @@ All reads and writes go through tRPC and the gallery service.
   HEIC that the browser can't decode gets a clear message.
 - **Videos** use the existing on-device conversion (Mediabunny, 720p H.264 MP4 +
   JPEG thumbnail) and the limits in `src/lib/video-rules.ts`.
-- Limits live in one place, `src/lib/gallery-rules.ts`: max 30 files per batch,
-  per-user daily quota of 150 photos and `VIDEO_UPLOADS_PER_DAY` videos
-  (counted from the database, not in memory), and the community's media
+- Limits live in one place, `src/lib/gallery-rules.ts`: max 30 files and 10
+  videos per batch, per-user daily quota of 150 gallery photos and
+  `VIDEO_UPLOADS_PER_DAY` gallery videos (counted from `gallery-items`, separate
+  from the feed's video count, never in memory), and the community's media
   allowance.
+- **Operational prerequisite (Greg):** the app's AWS credentials must be allowed
+  `s3:PutObject`, `GetObject`, `DeleteObject` and `ListBucket` on
+  `media/gallery/*` and `private/gallery/*`, and `media/gallery/public/*` must be
+  publicly readable like `media/videos/public/*`. `COMMUNITY_GALLERY_ENABLED`
+  stays off until this is done.
 - **Media allowance:** gallery files count toward the same per-community
   allowance as classroom materials (`src/server/classroom/media-allowance.ts`).
   `usageFor` sums both sources. The allowance module moves out of `classroom/`
@@ -121,18 +141,42 @@ All reads and writes go through tRPC and the gallery service.
 
 ### Upload flow
 
-1. `gallery.startBatch({ communitySlug, files: [{ mediaType, contentType, bytes, thumbnailBytes }], eventId?, topicSlug?, visibility, magazineConsent, caption? })`
-   checks membership and post policy, the event, the topic, quotas and the
-   allowance, creates one `uploading` item per file, and returns a presigned
-   grant per file and thumbnail.
-2. The browser uploads each file and thumbnail straight to S3, with progress.
-3. `gallery.finishBatch({ batchId, done: [itemId], failed: [itemId] })`
-   verifies each object (exists, type, size within its grant) with
-   `ObjectStorage.inspect`, marks verified items `ready` and the rest `failed`
-   (and removes their files), then creates the batch's feed post if at least one
-   item is ready. Retrying finish is idempotent.
-4. If the browser never calls finish, the cleanup job (below) removes the
-   `uploading` rows and files after `ABANDONED_UPLOAD_HOURS`.
+Grants are issued **one file at a time**, as each file is ready, because a
+grant lives only `UPLOAD_GRANT_SECONDS` (10 min) and a phone converting several
+videos would outlive grants issued up front (builder check, settled 13 Nov).
+
+A batch is a record, `gallery-batches` (new collection): `communityId`,
+`uploaderId`, `event`, `topicSlug`, `visibility`, `magazineConsent`,
+`caption` (max 500, optional; goes on the feed post only), `plannedFiles`,
+`plannedVideos`, `status` (`open` | `finished`), `feedPostId`, timestamps.
+
+1. `gallery.startBatch({ slug, eventId?, topicSlug?, visibility, magazineConsent, caption?, plannedFiles, plannedVideos })`
+   checks: active member (paid where required); event and topic valid for the
+   community; `plannedFiles` ≤ 30 and `plannedVideos` ≤ 10; the daily quotas
+   leave room for the whole batch. Creates the batch (`open`).
+2. For each file, once the browser has shrunk or converted it:
+   `gallery.startItem({ batchId, mediaType, contentType, bytes, thumbnailBytes, width, height, durationSeconds? })`
+   checks the batch is the caller's, `open`, not past `FINISH_WINDOW_HOURS`,
+   and the item fits the batch's plan, the per-file limits and the community
+   allowance. Creates an `uploading` item and returns presigned grants for the
+   file and its thumbnail.
+3. The browser uploads both straight to S3, with progress, then calls
+   `gallery.finishItem({ itemId })`: the server verifies both objects (exist,
+   type, size within the grant) with `ObjectStorage.inspect` → `ready`, else
+   `failed` and the files removed. `gallery.discardItem({ itemId })` covers a
+   cancelled or failed transfer. Both are idempotent and race-safe (conditional
+   update on `status = uploading`, as in `hosted-files.ts`).
+4. `gallery.finishBatch({ batchId })` marks the batch `finished` and, if at
+   least one item is `ready` **and the uploader may post to the feed**
+   (`canPostToFeed`; communities with `feedPostPolicy = admins_only` still let
+   members add to the gallery, just without a feed post), creates the batch's
+   feed post (slice 2). Idempotent.
+5. Abandoned work is cleaned up by the daily job (below): `uploading` items
+   after `ABANDONED_UPLOAD_HOURS`, and `open` batches after the same time are
+   finished as in step 4 (or deleted when they hold no ready item).
+
+The client uploads files one after another (one video conversion at a time) so
+memory stays bounded on phones.
 
 The server never trusts client metadata for access decisions. It verifies every
 object before an item becomes `ready`.
@@ -163,6 +207,8 @@ their category (set to empty), the same moment feed posts move to `general`.
 
 - The upload dialog lists the community's own events that are published or
   completed and **have started** (no future events), newest first.
+- An item's accessible name (tiles, lightbox) is its caption, else its alt,
+  else the generated "Photo from {event} by {name}" / "Video from …".
 - An item can link only to an event whose `communityId` equals the item's
   community. Hub/platform events (no `communityId`) can't be picked. This stops a
   private community's photos leaking onto a public Hub event page.
@@ -173,13 +219,20 @@ their category (set to empty), the same moment feed posts move to `general`.
   items the viewer may see. Shown for events that have started. For a viewer who
   isn't a member, only public items show, and "Add yours" leads to joining.
 - `Events.gallery` is removed. Production has 0 rows using it (checked
-  13 Nov 2026). The migration drops it only if it's still empty and fails
-  loudly otherwise.
+  13 Nov 2026). The migration drops it only if it's still empty — in both
+  `events_rels` and the versions table `_events_v_rels` — and fails loudly
+  otherwise.
 
 ### Gallery tab (variant A · Wall)
 
-- New community tab **Gallery**, after Events, in `CommunityNav`, behind
-  `COMMUNITY_GALLERY_ENABLED` until all slices ship.
+- New community tab **Gallery**: a new default builtin surface `gallery`
+  (`BUILTIN_SURFACES` in `space-defaults.ts`, after `events`), so every
+  community has it and owners can rename, hide and reorder it like the other
+  tabs. New communities get it in canonical order; a backfill migration adds it
+  to existing communities **at the end of their current order** so custom
+  orders are kept (production: 19 communities, no room owns the slug
+  `gallery`, checked 13 Nov). While `COMMUNITY_GALLERY_ENABLED` is off, the
+  spaces list omits it and the route 404s.
 - Header: `/ GALLERY` kicker, "Photos and videos", one line on who can see
   them, and **Add photos and videos** (the page's one orange action; members
   only, guests get the auth gate).
@@ -205,7 +258,9 @@ their category (set to empty), the same moment feed posts move to `general`.
 One dialog: drop zone + "Choose files", thumbnails with remove, **Event**
 select (with "Not from an event"), **Category** chips (single choice, can be
 cleared), **Who can see these** (Members / Everyone, default Members), the
-**magazine checkbox** (unticked) with the hint "Editors can only feature
+an optional **"Say something about these"** text (max 500; it becomes the
+feed post's text, not the items' captions — per-item captions are added with
+Edit details), the **magazine checkbox** (unticked) with the hint "Editors can only feature
 photos with this ticked. People who can't see a members-only photo won't see it
 in the magazine either.", Cancel and **Upload N**. Shows per-file progress;
 conversion progress for video. If some files fail, the dialog says which and
