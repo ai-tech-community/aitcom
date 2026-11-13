@@ -88,7 +88,13 @@ export async function usageFor(
   };
   const results = await Promise.all(
     COUNTED_COLLECTIONS.map((collection) =>
-      payload.find({ collection, where, pagination: false, depth: 0 }),
+      payload.find({
+        collection,
+        where,
+        select: { bytes: true },
+        pagination: false,
+        depth: 0,
+      }),
     ),
   );
   return {

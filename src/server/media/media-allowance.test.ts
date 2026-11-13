@@ -91,12 +91,14 @@ describe("media allowance", () => {
     expect(find).toHaveBeenCalledWith({
       collection: "hosted-materials",
       where,
+      select: { bytes: true },
       pagination: false,
       depth: 0,
     });
     expect(find).toHaveBeenCalledWith({
       collection: "gallery-items",
       where,
+      select: { bytes: true },
       pagination: false,
       depth: 0,
     });
