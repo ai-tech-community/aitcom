@@ -100,7 +100,9 @@ One row per photo or video. Fields:
 | `caption` | text, max 280, optional. |
 | `alt` | text, max 500, optional. When empty, the reader shows a generated description ("Photo from {event} by {name}"). The lightbox owner action "Edit details" can fill it later. |
 | `uploaderId` | Better Auth user id, indexed. |
-| `batchId` | text (uuid), indexed. Groups one upload. |
+| `batch` | relationship → `gallery-batches`, required, indexed. Groups one upload. |
+| `uploadId` | text (server-generated UUID), unique. Names the files. |
+| `failureReason` | text, set when `status = failed`. |
 | `magazineConsent` | checkbox, default false; `magazineConsentAt` date. |
 | `hiddenAt`, `reportCount` | Moderation, same meaning as on feed posts. |
 | timestamps | |
