@@ -37,9 +37,9 @@ import {
 } from "@/server/communities/feed-post-counters";
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import { getVideoStorage } from "@/server/media/video-storage";
+import { isModeratorRole } from "@/lib/communities/moderator-roles";
 import {
   feedViewerFor,
-  isModeratorRole,
   OUTSIDE_VIEWER,
   postVisibilityWhere,
 } from "@/server/communities/post-visibility";

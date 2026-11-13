@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadMore } from "@/components/ui/load-more";
 import { SectionLabel } from "@/components/ui/section-label";
-import { isModeratorRole } from "@/server/communities/post-visibility";
+import { isModeratorRole } from "@/lib/communities/moderator-roles";
 import type { GalleryItemView } from "@/server/gallery/items";
 import { api } from "@/trpc/react";
 

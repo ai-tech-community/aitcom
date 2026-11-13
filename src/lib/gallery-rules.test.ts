@@ -10,6 +10,7 @@ import {
   GALLERY_PHOTOS_PER_DAY,
   GALLERY_VIDEOS_PER_DAY,
   galleryItemLabel,
+  galleryMediaTypeOf,
   galleryObjectKeys,
   isGalleryErrorCode,
   isGalleryKey,
@@ -22,6 +23,20 @@ describe("gallery limits", () => {
     expect(GALLERY_PHOTOS_PER_DAY).toBe(150);
     expect(GALLERY_VIDEOS_PER_DAY).toBe(VIDEO_UPLOADS_PER_DAY);
     expect([...GALLERY_PHOTO_CONTENT_TYPES]).toEqual(["image/jpeg"]);
+  });
+});
+
+describe("galleryMediaTypeOf", () => {
+  it("tells photos and videos apart by their type, whatever the format", () => {
+    expect(galleryMediaTypeOf("image/jpeg")).toBe("photo");
+    expect(galleryMediaTypeOf("image/heic")).toBe("photo");
+    expect(galleryMediaTypeOf("video/quicktime")).toBe("video");
+    expect(galleryMediaTypeOf("video/mp4")).toBe("video");
+  });
+
+  it("is null for anything else, or an unknown type", () => {
+    expect(galleryMediaTypeOf("application/pdf")).toBeNull();
+    expect(galleryMediaTypeOf("")).toBeNull();
   });
 });
 

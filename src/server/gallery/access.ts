@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 
+import { isModeratorRole } from "@/lib/communities/moderator-roles";
 import { eventStartInstant } from "@/lib/event-time";
 import type { Event } from "@/payload-types";
 import {
@@ -9,7 +10,6 @@ import {
 } from "@/server/communities/content-visibility";
 import { activeCommunityRole } from "@/server/communities/content-visibility-queries";
 import { DEFAULT_TOPIC } from "@/server/communities/post-topics";
-import { isModeratorRole } from "@/server/communities/post-visibility";
 import { communities } from "@/server/db/schema";
 import { canReadPaidCommunity } from "@/server/payments/access";
 

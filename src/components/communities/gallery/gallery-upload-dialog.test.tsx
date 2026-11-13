@@ -292,8 +292,12 @@ describe("GalleryUploadDialog: choosing", () => {
 
   it("drops a linked event that photos may not be added to, and says so", async () => {
     renderDialog({ initialEventId: 99 });
-    expect(screen.getByRole("combobox", { name: "Event" })).toHaveTextContent(
-      "Not from an event",
+    const select = screen.getByRole("combobox", { name: "Event" });
+    expect(select).toHaveTextContent("Not from an event");
+    // The note is announced with the control, before its hint.
+    expect(select).toHaveAccessibleDescription(
+      "Photos can't be added to that event yet, so these won't be linked to it. " +
+        en.gallery.upload.eventHint,
     );
     expect(
       screen.getByText(
@@ -540,6 +544,35 @@ describe("GalleryUploadDialog: sending", () => {
         screen.getByRole("list", { name: "Upload progress" }),
       ) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("says a refusal of the batch once, not on every file, and leaves out the limit note", () => {
+    m.state = {
+      phase: "finished",
+      result: null,
+      error: "UPLOAD_LIMIT",
+      refusedAtStart: true,
+      files: [
+        file({ id: "1", phase: "waiting" }),
+        file({ id: "2", mediaType: "video", phase: "waiting" }),
+      ],
+    };
+    renderDialog();
+    const message =
+      "This is more than you can still add today. Close this and choose fewer files, or add them tomorrow.";
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(screen.getAllByText(message)).toHaveLength(1);
+    const rows = within(
+      screen.getByRole("list", { name: "Upload progress" }),
+    ).getAllByRole("listitem");
+    for (const row of rows) expect(row).toHaveTextContent("Not sent");
+    expect(screen.getByText("2 files weren't sent.")).toBeVisible();
+    // No file started, so none can count toward the limit.
+    expect(
+      screen.queryByText(
+        "Files that started uploading but didn't finish count toward today's limit too.",
+      ),
+    ).toBeNull();
   });
 
   it("names files a cancel left unsent and offers to send them", () => {

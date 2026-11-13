@@ -9,7 +9,7 @@ import {
   isGalleryErrorCode,
 } from "@/lib/gallery-rules";
 import type en from "../../../../messages/en.json";
-import type { GalleryUploadErrorCode } from "./use-gallery-upload";
+import type { GalleryUploadErrorCode } from "./gallery-upload-refusals";
 
 /** A key with copy under `gallery.errors`. */
 export type GalleryErrorCopyKey = keyof (typeof en)["gallery"]["errors"];

@@ -7,7 +7,7 @@
 import {
   GALLERY_MAX_FILES_PER_BATCH,
   GALLERY_MAX_VIDEOS_PER_BATCH,
-  type GalleryMediaType,
+  galleryMediaTypeOf,
 } from "@/lib/gallery-rules";
 
 /** Why some picked files were left out. */
@@ -25,13 +25,6 @@ const NOTICE_ORDER: readonly SelectionNotice[] = [
   "tooManyFiles",
 ];
 
-/** A picked file's kind, or null for anything that is not a photo or video. */
-export function pickedMediaType(file: File): GalleryMediaType | null {
-  if (file.type.startsWith("video/")) return "video";
-  if (file.type.startsWith("image/")) return "photo";
-  return null;
-}
-
 export function acceptPickedFiles(
   chosen: { files: number; videos: number },
   picked: readonly File[],
@@ -42,7 +35,7 @@ export function acceptPickedFiles(
   let files = chosen.files;
   let videos = chosen.videos;
   for (const file of picked) {
-    const mediaType = pickedMediaType(file);
+    const mediaType = galleryMediaTypeOf(file.type);
     if (mediaType === null) {
       notices.add("notMedia");
       continue;

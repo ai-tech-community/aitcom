@@ -72,6 +72,7 @@ export function GalleryEventField({
   const t = useTranslations("gallery.upload");
   const format = useFormatter();
   const hintId = useId();
+  const noteId = useId();
   const events = choices.data?.events ?? [];
   const keepCurrent =
     current != null && !events.some((event) => event.id === current.id);
@@ -108,7 +109,7 @@ export function GalleryEventField({
       >
         <SelectTrigger
           aria-label={t("event")}
-          aria-describedby={hintId}
+          aria-describedby={note ? `${noteId} ${hintId}` : hintId}
           className="w-full max-w-sm min-w-0"
         >
           <SelectValue />
@@ -137,7 +138,11 @@ export function GalleryEventField({
     <div className="grid gap-1.5">
       <span className="text-sm font-medium">{t("event")}</span>
       {control}
-      {note ? <p className="text-sm">{note}</p> : null}
+      {note ? (
+        <p id={noteId} className="text-sm">
+          {note}
+        </p>
+      ) : null}
       <p id={hintId} className="text-muted-foreground text-xs">
         {t("eventHint")}
       </p>

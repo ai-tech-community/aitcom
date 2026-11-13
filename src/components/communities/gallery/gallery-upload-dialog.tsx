@@ -14,7 +14,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { GALLERY_BATCH_TEXT_MAX } from "@/lib/gallery-rules";
+import {
+  GALLERY_BATCH_TEXT_MAX,
+  galleryMediaTypeOf,
+} from "@/lib/gallery-rules";
 import { canTranscode } from "@/lib/video-transcode";
 import type { VideoVisibility } from "@/lib/video-rules";
 import { api } from "@/trpc/react";
@@ -26,11 +29,7 @@ import {
   GalleryTextField,
   linkableEvent,
 } from "./gallery-detail-fields";
-import {
-  acceptPickedFiles,
-  pickedMediaType,
-  type SelectionNotice,
-} from "./gallery-selection";
+import { acceptPickedFiles, type SelectionNotice } from "./gallery-selection";
 import { GalleryUploadPicker, type ChosenFile } from "./gallery-upload-picker";
 import {
   GalleryUploadProgress,
@@ -122,7 +121,9 @@ export function GalleryUploadDialog({
 
   async function pick(picked: File[]) {
     // Only a video needs the converter, so only then is the browser asked.
-    const hasVideo = picked.some((file) => pickedMediaType(file) === "video");
+    const hasVideo = picked.some(
+      (file) => galleryMediaTypeOf(file.type) === "video",
+    );
     let canConvertVideo = true;
     if (hasVideo) {
       videoCheck.current ??= canTranscode().catch(() => false);
@@ -146,7 +147,8 @@ export function GalleryUploadDialog({
           ...accepted.map((file) => ({
             id: String(++nextId.current),
             file,
-            mediaType: pickedMediaType(file) ?? "photo",
+            // Accepted files are always a photo or a video.
+            mediaType: galleryMediaTypeOf(file.type) ?? "photo",
           })),
         ],
       };

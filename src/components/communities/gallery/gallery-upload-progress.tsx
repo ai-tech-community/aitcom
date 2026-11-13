@@ -20,9 +20,12 @@ export function uploadOutcome(state: GalleryUploadState) {
     videosAdded: done.filter((file) => file.mediaType === "video").length,
     failed: state.files.filter((file) => file.phase === "failed").length,
     unsent: state.files.filter((file) => file.phase === "waiting").length,
+    // Only files that started can count toward the limit unfinished; a batch
+    // refused at the start sent none.
     hitLimit:
-      state.error === "UPLOAD_LIMIT" ||
-      state.files.some((file) => file.error === "UPLOAD_LIMIT"),
+      !state.refusedAtStart &&
+      (state.error === "UPLOAD_LIMIT" ||
+        state.files.some((file) => file.error === "UPLOAD_LIMIT")),
   };
 }
 

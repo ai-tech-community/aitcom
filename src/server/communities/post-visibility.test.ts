@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   canViewPost,
   feedViewerFor,
-  isModeratorRole,
   postVisibilityWhere,
   type FeedViewer,
 } from "./post-visibility";
@@ -79,12 +78,6 @@ describe("postVisibilityWhere", () => {
         { visibility: { equals: "public" } },
       ],
     });
-  });
-
-  it("knows which roles moderate", () => {
-    expect(["owner", "admin", "moderator"].every(isModeratorRole)).toBe(true);
-    expect(isModeratorRole("member")).toBe(false);
-    expect(isModeratorRole(null)).toBe(false);
   });
 });
 

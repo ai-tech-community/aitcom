@@ -39,6 +39,20 @@ export const GALLERY_MEDIA_TYPE_LABELS: Record<GalleryMediaType, string> = {
   video: "Video",
 };
 
+/**
+ * A file's kind by its MIME type: any image is a photo (the browser
+ * re-encodes it), any video a video (converted on the device); anything
+ * else, or no type, is null. The one rule for which picked files may be
+ * sent and as what.
+ */
+export function galleryMediaTypeOf(
+  contentType: string,
+): GalleryMediaType | null {
+  if (contentType.startsWith("video/")) return "video";
+  if (contentType.startsWith("image/")) return "photo";
+  return null;
+}
+
 export const GALLERY_ITEM_STATUSES = ["uploading", "ready", "failed"] as const;
 export type GalleryItemStatus = (typeof GALLERY_ITEM_STATUSES)[number];
 export const GALLERY_ITEM_STATUS_LABELS: Record<GalleryItemStatus, string> = {

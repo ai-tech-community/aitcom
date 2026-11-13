@@ -8,8 +8,8 @@ import {
   prepareGalleryPhoto,
 } from "@/lib/gallery-photo";
 import {
+  galleryMediaTypeOf,
   isGalleryErrorCode,
-  type GalleryErrorCode,
   type GalleryMediaType,
 } from "@/lib/gallery-rules";
 import { uploadToGrant } from "@/lib/upload-to-grant";
@@ -21,26 +21,19 @@ import {
 } from "@/lib/video-transcode";
 import { api, type RouterInputs, type RouterOutputs } from "@/trpc/react";
 
+import {
+  endsBatch,
+  wouldRepeat,
+  type GalleryUploadErrorCode,
+} from "./gallery-upload-refusals";
+
+export type { GalleryUploadErrorCode } from "./gallery-upload-refusals";
+
 /** What the member chose for the whole batch in the upload dialog. */
 export type GalleryBatchSettings = Omit<
   RouterInputs["gallery"]["startBatch"],
   "slug" | "plannedFiles" | "plannedVideos"
 >;
-
-/**
- * Why a file or the batch did not upload: a server refusal code, or one of
- * the browser's own. Codes only — the UI turns them into translated copy.
- * Anything unrecognised is `UPLOAD_FAILED`.
- */
-export type GalleryUploadErrorCode =
-  | GalleryErrorCode
-  /** The browser cannot read the photo (HEIC in Chrome, a damaged file). */
-  | "UNDECODABLE_PHOTO"
-  | "VIDEO_TOO_LONG"
-  /** The clip cannot be read or has no picture. */
-  | "UNSUPPORTED_VIDEO"
-  /** This browser has no H.264 encoder, so no clip can be converted here. */
-  | "CANNOT_CONVERT_VIDEO";
 
 export type GalleryUploadFilePhase =
   | "waiting"
@@ -68,6 +61,11 @@ export type GalleryUploadState = {
   files: GalleryUploadFile[];
   /** The batch itself failed to start or to finish. */
   error?: GalleryUploadErrorCode;
+  /**
+   * The server refused to open the batch, so no file of this run was tried:
+   * the refusal is `error`, and the files stay waiting with no reason.
+   */
+  refusedAtStart?: boolean;
   /** The server's answer to finishing the latest batch: the authority. */
   result: GalleryBatchResult | null;
 };
@@ -86,7 +84,8 @@ type PreparedFile = {
  * Prepared output kept so a retry skips shrinking or converting again:
  * every photo (at most 4.5 MB each), but at most one clip — a converted clip
  * is up to 40 MB held in memory, and phones must stay within bounds (spec
- * 2026-11-13, Upload flow). Keeping a new clip forgets the previous one.
+ * 2026-11-13, Upload flow). Before a clip is converted, any clip kept
+ * earlier is forgotten, so two never sit in memory at once.
  */
 class PreparedCache {
   private readonly entries = new Map<string, PreparedFile>();
@@ -100,12 +99,15 @@ class PreparedCache {
   }
 
   keep(id: string, output: PreparedFile): void {
-    if (output.mediaType === "video") {
-      for (const [otherId, other] of this.entries) {
-        if (other.mediaType === "video") this.entries.delete(otherId);
-      }
-    }
+    if (output.mediaType === "video") this.forgetClips();
     this.entries.set(id, output);
+  }
+
+  /** Lets every kept clip go, to make room for converting another. */
+  forgetClips(): void {
+    for (const [id, entry] of this.entries) {
+      if (entry.mediaType === "video") this.entries.delete(id);
+    }
   }
 
   forget(id: string): void {
@@ -118,79 +120,22 @@ class PreparedCache {
 }
 
 /**
- * Refusals that hold for every remaining file of the batch: the batch's
- * window closed, the member left, the gallery was switched off, or the
- * community's storage is full. The run stops there: the remaining files are
- * not prepared (converting a clip only to be refused wastes minutes) and
- * stay waiting; the refusal is the batch's error.
- */
-const BATCH_ENDING_CODES: ReadonlySet<GalleryUploadErrorCode> = new Set([
-  "UPLOAD_EXPIRED",
-  "NOT_A_MEMBER",
-  "GALLERY_DISABLED",
-  "STORAGE_FULL",
-]);
-
-/**
- * Refusals a retry of the same prepared file cannot get past, so its
- * prepared output is not kept for one.
- */
-const RETRY_FUTILE_CODES: ReadonlySet<GalleryUploadErrorCode> = new Set([
-  "STORAGE_FULL",
-  "FILE_TOO_LARGE",
-  "FILE_TYPE_NOT_ALLOWED",
-  "NOT_A_MEMBER",
-  "GALLERY_DISABLED",
-]);
-
-/**
- * Refusals a retry today cannot get past, so `retryUnsent` leaves the file
- * out: the file itself is the problem (too large, the wrong kind, a photo
- * or clip the browser cannot read or convert), or the member reached
- * today's limit for its kind.
- */
-const FILE_REFUSAL_CODES: ReadonlySet<GalleryUploadErrorCode> = new Set([
-  "FILE_TOO_LARGE",
-  "FILE_TYPE_NOT_ALLOWED",
-  "UNDECODABLE_PHOTO",
-  "VIDEO_TOO_LONG",
-  "UNSUPPORTED_VIDEO",
-  "CANNOT_CONVERT_VIDEO",
-  "UPLOAD_LIMIT",
-]);
-
-/**
- * Refusals of a whole batch that sending the same files again today cannot
- * get past: they are more than today's limit leaves, or more than a batch
- * may hold.
- */
-const BATCH_REFUSAL_CODES: ReadonlySet<GalleryUploadErrorCode> = new Set([
-  "UPLOAD_LIMIT",
-  "BATCH_TOO_LARGE",
-]);
-
-/**
  * The files `retryUnsent` would send: once a run has finished, every file
  * that did not upload (failed, or left waiting) unless its refusal would
- * only repeat. None after a batch refusal that would repeat.
+ * only repeat (`wouldRepeat`). None after a batch refusal that would repeat.
  */
 export function retryableFiles(state: GalleryUploadState): GalleryUploadFile[] {
   if (state.phase !== "finished") return [];
-  if (state.error && BATCH_REFUSAL_CODES.has(state.error)) return [];
+  if (state.error && wouldRepeat(state.error)) return [];
   return state.files.filter(
     (file) =>
       file.phase === "waiting" ||
-      (file.phase === "failed" &&
-        !(file.error && FILE_REFUSAL_CODES.has(file.error))),
+      (file.phase === "failed" && !wouldRepeat(file.error ?? "UPLOAD_FAILED")),
   );
 }
 
 /** The browser has no H.264 encoder, so nothing was tried. */
 class CannotConvertHereError extends Error {}
-
-export function galleryMediaTypeOf(file: File): GalleryMediaType {
-  return file.type.startsWith("video/") ? "video" : "photo";
-}
 
 function errorCodeFor(error: unknown): GalleryUploadErrorCode {
   if (error instanceof UndecodablePhotoError) return "UNDECODABLE_PHOTO";
@@ -218,10 +163,12 @@ const INITIAL_STATE: GalleryUploadState = {
  * the file and its thumbnail straight to S3 → `finishItem`. A file that
  * fails is discarded on the server (when it got that far) and marked
  * failed; the next file still goes, unless the refusal holds for the whole
- * batch (`BATCH_ENDING_CODES`): then the run stops, the rest stay waiting,
- * and the refusal is `state.error`. Last, the batch is finished — exactly
- * once per run, whatever happened — and the server's answer is kept as
- * `result`.
+ * batch (`endsBatch`): then the run stops, the rest stay waiting (they are
+ * not prepared: converting a clip only to be refused wastes minutes), and
+ * the refusal is `state.error`. A refused batch start tries no file: the
+ * refusal is `state.error` alone and every file stays waiting. Last, the
+ * batch is finished — exactly once per run, whatever happened — and the
+ * server's answer is kept as `result`.
  *
  * `cancel()` (or unmounting) stops the current step, discards that file's
  * item, leaves the files not yet sent `waiting`, and still finishes the
@@ -230,7 +177,9 @@ const INITIAL_STATE: GalleryUploadState = {
  * batch-wide refusal — in one new batch with the same settings, those with
  * prepared output kept (`PreparedCache`) first, so they are not prepared
  * again; files whose refusal would only repeat are left out
- * (`retryableFiles`). `dropFailed()` forgets the failed files. One run at
+ * (`retryableFiles`), and their prepared output is not kept. Which refusal
+ * does what is one table (`gallery-upload-refusals.ts`).
+ * `dropFailed()` forgets the failed files. One run at
  * a time: `start` while running does nothing.
  */
 export function useGalleryUpload(slug: string) {
@@ -295,6 +244,8 @@ export function useGalleryUpload(slug: string) {
     } else {
       if (!(await canTranscode())) throw new CannotConvertHereError();
       signal.throwIfAborted();
+      // A converted clip is up to 40 MB: let any kept one go first.
+      prepared.current.forgetClips();
       const clip = await transcodeForUpload(file, {
         signal,
         onProgress: (share) => updateFile(entry.id, { progress: share }),
@@ -373,6 +324,7 @@ export function useGalleryUpload(slug: string) {
     commit((current) => ({
       phase: "running",
       result: null,
+      refusedAtStart: false,
       files: current.files.map((file) =>
         sending.has(file.id)
           ? { ...file, phase: "waiting", progress: 0, error: undefined }
@@ -390,9 +342,13 @@ export function useGalleryUpload(slug: string) {
             .length,
         }));
       } catch (error) {
-        const code = errorCodeFor(error);
-        updateFiles(ids, { phase: "failed", progress: 0, error: code });
-        commit((current) => ({ ...current, phase: "finished", error: code }));
+        // The refusal is the batch's: said once, not on every file.
+        commit((current) => ({
+          ...current,
+          phase: "finished",
+          error: errorCodeFor(error),
+          refusedAtStart: true,
+        }));
         return;
       }
 
@@ -412,9 +368,9 @@ export function useGalleryUpload(slug: string) {
             break;
           }
           const code = errorCodeFor(error);
-          if (RETRY_FUTILE_CODES.has(code)) prepared.current.forget(entry.id);
+          if (wouldRepeat(code)) prepared.current.forget(entry.id);
           updateFile(entry.id, { phase: "failed", progress: 0, error: code });
-          if (BATCH_ENDING_CODES.has(code)) {
+          if (endsBatch(code)) {
             endedBy = code;
             stoppedAt = index + 1;
             break;
@@ -465,7 +421,9 @@ export function useGalleryUpload(slug: string) {
       return {
         id,
         name: file.name,
-        mediaType: galleryMediaTypeOf(file),
+        // Callers pass the files `acceptPickedFiles` kept, always a photo or
+        // a video; anything else is tried as a photo and fails to decode.
+        mediaType: galleryMediaTypeOf(file.type) ?? "photo",
         phase: "waiting",
         progress: 0,
       };

@@ -453,7 +453,6 @@ describe("useGalleryUpload", () => {
   it.each([
     ["FILE_TYPE_NOT_ALLOWED", "FILE_TYPE_NOT_ALLOWED"],
     ["FILE_TOO_LARGE", "FILE_TOO_LARGE"],
-    ["BATCH_TOO_LARGE", "BATCH_TOO_LARGE"],
     ["upload network error", "UPLOAD_FAILED"],
     ["Internal server error: relation does not exist", "UPLOAD_FAILED"],
   ])(
@@ -477,6 +476,8 @@ describe("useGalleryUpload", () => {
     "NOT_A_MEMBER",
     "GALLERY_DISABLED",
     "STORAGE_FULL",
+    "UPLOAD_LIMIT",
+    "BATCH_TOO_LARGE",
   ])(
     "stops the run once the server answers %s for the whole batch",
     async (code) => {
@@ -524,7 +525,7 @@ describe("useGalleryUpload", () => {
     expect(state.result).toEqual({ readyCount: 1, feedPostId: null });
   });
 
-  it("attempts no file when the batch is refused, and reports the refusal", async () => {
+  it("attempts no file when the batch is refused, and reports the refusal once", async () => {
     m.startBatch.mockRejectedValueOnce(trpcError("UPLOAD_LIMIT"));
     const { result } = renderIt();
     await runToEnd(result, [photoA, clip]);
@@ -534,11 +535,42 @@ describe("useGalleryUpload", () => {
     expect(m.finishBatch).not.toHaveBeenCalled();
     const { state } = result.current;
     expect(state.phase).toBe("finished");
+    // The refusal is the batch's; no file carries it.
     expect(state.error).toBe("UPLOAD_LIMIT");
+    expect(state.refusedAtStart).toBe(true);
     expect(state.files.map((file) => [file.phase, file.error])).toEqual([
-      ["failed", "UPLOAD_LIMIT"],
-      ["failed", "UPLOAD_LIMIT"],
+      ["waiting", undefined],
+      ["waiting", undefined],
     ]);
+  });
+
+  it("a later run that starts its batch is no longer refused at start", async () => {
+    m.startBatch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { result } = renderIt();
+    await runToEnd(result, [photoA]);
+    expect(result.current.state.refusedAtStart).toBe(true);
+    await act(async () => {
+      await result.current.retryUnsent();
+    });
+    expect(result.current.state.refusedAtStart).toBe(false);
+  });
+
+  it("ends the batch when today's limit is reached part-way, and offers nothing to retry", async () => {
+    m.startItem
+      .mockImplementationOnce(async () => grantsFor(nextItemId++))
+      .mockRejectedValueOnce(trpcError("UPLOAD_LIMIT"));
+    const { result } = renderIt();
+    await runToEnd(result, [photoA, photoB, clip]);
+    expect(m.transcodeForUpload).not.toHaveBeenCalled();
+    const { state } = result.current;
+    expect(state.files.map((file) => [file.phase, file.error])).toEqual([
+      ["done", undefined],
+      ["failed", "UPLOAD_LIMIT"],
+      ["waiting", undefined],
+    ]);
+    expect(state.error).toBe("UPLOAD_LIMIT");
+    expect(state.refusedAtStart).toBe(false);
+    expect(result.current.retryable).toEqual([]);
   });
 
   it("reports a failed finish as the batch's error, keeping the files' outcomes", async () => {
@@ -976,12 +1008,12 @@ describe("useGalleryUpload", () => {
     ]);
   });
 
-  it("does not keep a file's prepared output after STORAGE_FULL, which a retry cannot get past", async () => {
+  it("keeps a file's prepared output after STORAGE_FULL, which a retry may get past", async () => {
     m.startItem.mockRejectedValueOnce(trpcError("STORAGE_FULL"));
     const { result } = renderIt();
     await runToEnd(result, [clip]);
     expect(result.current.state.files[0]?.error).toBe("STORAGE_FULL");
-    // Room may be made, so the file can still be sent again.
+    // Room may be made, so the file can still be sent again, as converted.
     expect(result.current.retryable.map((file) => file.name)).toEqual([
       "clip.mov",
     ]);
@@ -990,10 +1022,35 @@ describe("useGalleryUpload", () => {
     await act(async () => {
       await result.current.retryUnsent();
     });
-    expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
+    expect(m.transcodeForUpload).not.toHaveBeenCalled();
+    expect(result.current.state.files[0]?.phase).toBe("done");
   });
 
-  it.each(["FILE_TOO_LARGE", "FILE_TYPE_NOT_ALLOWED", "UPLOAD_LIMIT"])(
+  it("forgets a kept clip before converting another, so two never sit in memory", async () => {
+    const one = new File(["c"], "one.mov", { type: "video/mp4" });
+    const two = new File(["c"], "two.mov", { type: "video/mp4" });
+    // one.mov is converted, then its transfer fails: it is kept for a retry.
+    LoggingXHR.failing = new Set(["https://s3.test/file-1"]);
+    // two.mov is then converted, and that fails: nothing of it is kept.
+    m.transcodeForUpload
+      .mockImplementationOnce(async () => transcoded)
+      .mockRejectedValueOnce(new m.UnsupportedVideoError());
+    const { result } = renderIt();
+    await runToEnd(result, [one, two]);
+
+    LoggingXHR.failing = new Set();
+    m.transcodeForUpload.mockClear();
+    await act(async () => {
+      await result.current.retryUnsent();
+    });
+    // one.mov was let go when two.mov's conversion began, so it is
+    // converted again.
+    expect(
+      m.transcodeForUpload.mock.calls.map((call) => (call[0] as File).name),
+    ).toEqual(["one.mov"]);
+  });
+
+  it.each(["FILE_TOO_LARGE", "FILE_TYPE_NOT_ALLOWED"])(
     "retryUnsent leaves out a file refused with %s, which would fail again",
     async (code) => {
       m.startItem
