@@ -363,6 +363,23 @@ describe("GalleryLightbox", () => {
     expect(within(dialog).getByText("Editors may use it")).toBeVisible();
   });
 
+  it("shows a deleted member as the uploader, with no photo of them", () => {
+    const gone = [
+      galleryItem({
+        id: 9,
+        caption: "Left behind",
+        uploader: null,
+      }),
+    ];
+    render(<Harness items={gone} />);
+    const dialog = open("Left behind");
+    const details = within(dialog).getByRole("complementary", {
+      name: "Details",
+    });
+    expect(within(details).getByText("Deleted member")).toBeVisible();
+    expect(details.querySelector("img")).toBeNull();
+  });
+
   it("says plainly what an item without those has", () => {
     render(<Harness />);
     const dialog = open("Opening talk");

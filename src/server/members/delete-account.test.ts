@@ -1,3 +1,4 @@
+import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/db", () => ({ db: {} }));
@@ -43,6 +44,7 @@ import {
   AUTHORED_CONTENT,
   DELETED_AUTHOR_ID,
   DELETED_MEMBER_NAME,
+  authoredContentStatements,
   deleteMemberAccount,
   deletedAccountEmail,
 } from "@/server/members/delete-account";
@@ -208,6 +210,31 @@ describe("deleteMemberAccount", () => {
     expect(sqlText).not.toContain("SET public.");
     expect(sqlText).toContain(DELETED_AUTHOR_ID);
     expect(sqlText).toContain("user-1");
+  });
+
+  it("keeps the member's gallery photos and batches, pointing them at no account", async () => {
+    const statements = authoredContentStatements("user-1").map((statement) =>
+      new PgDialect().sqlToQuery(statement),
+    );
+    // Gallery rows carry no copied name: only the uploader id changes.
+    for (const table of ["gallery_items", "gallery_batches"]) {
+      expect(statements).toContainEqual(
+        expect.objectContaining({
+          sql: `UPDATE public."${table}" SET "uploader_id" = $1 WHERE "uploader_id" = $2`,
+          params: [DELETED_AUTHOR_ID, "user-1"],
+        }),
+      );
+    }
+  });
+
+  it("still copies the shared label onto content that keeps a name", () => {
+    const [forumThreads] = authoredContentStatements("user-1").map(
+      (statement) => new PgDialect().sqlToQuery(statement),
+    );
+    expect(forumThreads).toMatchObject({
+      sql: 'UPDATE public."forum_threads" SET "author_name" = $1, "author_id" = $2 WHERE "author_id" = $3',
+      params: [DELETED_MEMBER_NAME, DELETED_AUTHOR_ID, "user-1"],
+    });
   });
 
   it("does nothing when the account is already gone", async () => {

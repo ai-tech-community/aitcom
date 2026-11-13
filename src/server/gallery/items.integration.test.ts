@@ -299,7 +299,7 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
       viewer: await viewer(fx.uploaderId),
     });
     expect(forUploader.items.map((i) => i.id)).toEqual([hidden, open, members]);
-    expect(forUploader.items[0]!.uploader.name).toBe(fx.uploaderId);
+    expect(forUploader.items[0]!.uploader?.name).toBe(fx.uploaderId);
 
     await expect(
       m.items.listFacets(deps, { viewer: await viewer(fx.memberId) }),

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GALLERY_CAPTION_MAX, GALLERY_PAGE_SIZE } from "@/lib/gallery-rules";
+import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
 
 import {
   loadGalleryViewer,
@@ -487,17 +488,41 @@ describe("listItems", () => {
     expect(
       payload.find.mock.calls.filter(([a]) => a.collection === "events"),
     ).toHaveLength(1);
-    expect(page.items.find((i) => i.uploader.id === "u2")?.uploader).toEqual({
+    expect(page.items.find((i) => i.uploader?.id === "u2")?.uploader).toEqual({
       id: "u2",
       name: "Ruben",
       image: null,
     });
   });
 
-  it("names an uploader without an account record plainly", async () => {
+  it("shows no one for an item whose uploader deleted their account", async () => {
+    const { deps, db } = fakes({
+      items: [item(1, { uploaderId: DELETED_AUTHOR_ID })],
+    });
+    const [view] = (await listItems(deps, { viewer: await member() })).items;
+    // No name and no photo: the UI says "Deleted member".
+    expect(view!.uploader).toBeNull();
+    expect(view!.isOwn).toBe(false);
+    // Nobody to look up.
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it("shows no one for an uploader whose account record is gone", async () => {
     const { deps } = fakes({ items: [item(1, { uploaderId: "gone" })] });
     const [view] = (await listItems(deps, { viewer: await member() })).items;
-    expect(view!.uploader).toEqual({ id: "gone", name: "Member", image: null });
+    expect(view!.uploader).toBeNull();
+  });
+
+  it("looks up only the uploaders who still have an account", async () => {
+    const { deps, db } = fakes({
+      items: [item(1), item(2, { uploaderId: DELETED_AUTHOR_ID })],
+    });
+    const { items } = await listItems(deps, { viewer: await member() });
+    expect(db.select).toHaveBeenCalledTimes(1);
+    expect(items.map((view) => view.uploader?.name ?? null)).toEqual([
+      null,
+      "Dana",
+    ]);
   });
 
   it("does not reach storage or look up anyone for an empty page", async () => {

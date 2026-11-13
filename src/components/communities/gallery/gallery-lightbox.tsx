@@ -16,6 +16,7 @@ import {
   Lock,
   Pencil,
   Trash2,
+  UserRound,
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -41,7 +42,11 @@ import type { GalleryItemView } from "@/server/gallery/items";
 import { api } from "@/trpc/react";
 
 import { useGalleryErrorText } from "./gallery-error-text";
-import { formatClipLength, useGalleryItemLabel } from "./gallery-item-text";
+import {
+  formatClipLength,
+  useGalleryItemLabel,
+  useGalleryUploaderName,
+} from "./gallery-item-text";
 
 /** Keys that belong to the focused control, not to the lightbox. */
 const OWNS_ARROW_KEYS = "video, audio, input, textarea, select, [role=slider]";
@@ -100,6 +105,7 @@ export function GalleryLightbox({
 }) {
   const t = useTranslations("gallery.lightbox");
   const labelFor = useGalleryItemLabel();
+  const uploaderName = useGalleryUploaderName();
   const errorText = useGalleryErrorText();
   const confirm = useConfirm();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -309,13 +315,20 @@ export function GalleryLightbox({
         >
           <div className="flex items-center gap-3">
             <Avatar>
-              {item.uploader.image ? (
+              {item.uploader?.image ? (
                 <AvatarImage src={item.uploader.image} alt="" />
               ) : null}
-              <AvatarFallback>{getInitials(item.uploader.name)}</AvatarFallback>
+              <AvatarFallback>
+                {item.uploader ? (
+                  getInitials(item.uploader.name)
+                ) : (
+                  // A deleted member: no initials of a person.
+                  <UserRound aria-hidden="true" className="size-4" />
+                )}
+              </AvatarFallback>
             </Avatar>
             <div className="grid min-w-0 gap-0.5">
-              <span className="truncate font-medium">{item.uploader.name}</span>
+              <span className="truncate font-medium">{uploaderName(item)}</span>
               <span className="text-muted-foreground font-mono text-xs">
                 <RelativeTime date={item.createdAt} />
                 {length ? ` · ${t("video", { duration: length })}` : null}

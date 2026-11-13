@@ -1,5 +1,6 @@
 import { eq, or, sql, type SQL } from "drizzle-orm";
 
+import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
 import { type db } from "@/server/db";
 import {
   account,
@@ -39,23 +40,26 @@ import {
  */
 export const DELETED_MEMBER_NAME = "Deleted member";
 
-/**
- * Replaces author ids on Payload content (plain text, no foreign key) so a
- * post no longer points at the member. Not a user id.
- */
-export const DELETED_AUTHOR_ID = "deleted-member";
-
 export { ACCOUNT_DELETION_CONFIRMATION } from "@/lib/account-deletion";
+export { DELETED_AUTHOR_ID };
 
 const REDACTED_EMAIL = "redacted@deleted.invalid";
 const IDENTIFIER = /^[a-z_]+$/;
 
 /**
- * Payload tables that copy the member's id and display name onto content we
- * keep. Author ids here are text, not foreign keys, so they can leave the
- * account entirely.
+ * A Payload table holding content we keep that points at its author by id.
+ * `name` is the column a copied display name lives in, when the table keeps
+ * one; readers of a table without it show the sentinel id as a deleted
+ * member themselves.
  */
-export const AUTHORED_CONTENT = [
+type AuthoredTable = { table: string; id: string; name?: string };
+
+/**
+ * Payload tables that copy the member's id (and, most of them, display name)
+ * onto content we keep. Author ids here are text, not foreign keys, so they
+ * can leave the account entirely.
+ */
+export const AUTHORED_CONTENT: readonly AuthoredTable[] = [
   { table: "forum_threads", id: "author_id", name: "author_name" },
   { table: "forum_replies", id: "author_id", name: "author_name" },
   { table: "community_ideas", id: "author_id", name: "author_name" },
@@ -70,7 +74,10 @@ export const AUTHORED_CONTENT = [
     id: "version_author_id",
     name: "version_author_name",
   },
-] as const;
+  // Gallery photos and videos stay up, by no one (spec 2026-11-13).
+  { table: "gallery_items", id: "uploader_id" },
+  { table: "gallery_batches", id: "uploader_id" },
+];
 
 export class AccountNotFoundError extends Error {
   constructor() {
@@ -96,8 +103,9 @@ type Database = Pick<typeof db, "transaction">;
  *
  * Public posts, replies, and ideas keep their text. Their author id is
  * rewritten to a non-account sentinel and the copied name becomes
- * "Deleted member". Votes stay on the anonymized account id so counts and
- * one-vote rows do not collapse together.
+ * "Deleted member". Gallery photos and videos stay too, their uploader id
+ * rewritten the same way (they copy no name). Votes stay on the anonymized
+ * account id so counts and one-vote rows do not collapse together.
  *
  * Payment orders and subscriptions stay for the Dutch seven-year bookkeeping
  * duty. The buyer link, mandate token, and buyer email are removed. Provider
@@ -253,8 +261,11 @@ export function authoredContentStatements(userId: string): SQL[] {
   return AUTHORED_CONTENT.map((entry) => {
     const table = quoteTable(entry.table);
     const id = quoteColumn(entry.id);
-    const name = quoteColumn(entry.name);
-    return sql`UPDATE ${table} SET ${name} = ${DELETED_MEMBER_NAME}, ${id} = ${DELETED_AUTHOR_ID} WHERE ${id} = ${userId}`;
+    const name =
+      entry.name === undefined
+        ? sql``
+        : sql`${quoteColumn(entry.name)} = ${DELETED_MEMBER_NAME}, `;
+    return sql`UPDATE ${table} SET ${name}${id} = ${DELETED_AUTHOR_ID} WHERE ${id} = ${userId}`;
   });
 }
 

@@ -7,6 +7,15 @@ import { galleryItemLabel } from "@/lib/gallery-rules";
 import type { GalleryItemView } from "@/server/gallery/items";
 
 /**
+ * The name an item's uploader is shown by: theirs, or "Deleted member" once
+ * they deleted their account.
+ */
+export function useGalleryUploaderName(): (item: GalleryItemView) => string {
+  const t = useTranslations("gallery");
+  return useCallback((item) => item.uploader?.name ?? t("deletedMember"), [t]);
+}
+
+/**
  * An item's accessible name (caption, else alt, else "Photo from {event} by
  * {name}"), translated. One rule for the tile, the lightbox and every later
  * place that shows an item.
@@ -14,6 +23,7 @@ import type { GalleryItemView } from "@/server/gallery/items";
 export function useGalleryItemLabel(): (item: GalleryItemView) => string {
   // Root-level: `galleryItemLabel` returns fully qualified keys.
   const t = useTranslations();
+  const uploaderName = useGalleryUploaderName();
   return useCallback(
     (item) => {
       const label = galleryItemLabel({
@@ -21,11 +31,11 @@ export function useGalleryItemLabel(): (item: GalleryItemView) => string {
         alt: item.alt,
         mediaType: item.mediaType,
         eventTitle: item.event?.title,
-        uploaderName: item.uploader.name,
+        uploaderName: uploaderName(item),
       });
       return "text" in label ? label.text : t(label.key, label.values);
     },
-    [t],
+    [t, uploaderName],
   );
 }
 

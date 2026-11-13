@@ -6446,6 +6446,7 @@
     }
   },
   "gallery": {
+    "deletedMember": "Verwijderd lid",
     "label": {
       "photoFromEvent": "Foto van {event} door {name}",
       "photoBy": "Foto door {name}",

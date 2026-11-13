@@ -6446,6 +6446,7 @@
     }
   },
   "gallery": {
+    "deletedMember": "Membre supprimé",
     "label": {
       "photoFromEvent": "Photo de {event} par {name}",
       "photoBy": "Photo par {name}",

@@ -52,6 +52,13 @@ describe("GalleryTile", () => {
     ).toBeVisible();
   });
 
+  it("names a deleted member as the uploader", () => {
+    renderTile(galleryItem({ uploader: null }));
+    expect(
+      screen.getByRole("button", { name: "Photo by Deleted member" }),
+    ).toBeVisible();
+  });
+
   it("marks a video with its length, in words for screen readers", () => {
     renderTile(galleryItem({ mediaType: "video", durationSeconds: 65.4 }));
     const tile = screen.getByRole("button");

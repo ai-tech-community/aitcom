@@ -13,6 +13,7 @@ import {
   eventStartInstant,
   pastEventsQueryCeiling,
 } from "@/lib/event-time";
+import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
 import { clampText } from "@/lib/text-utils";
 import type { GalleryItem } from "@/payload-types";
 import { user } from "@/server/db/schema";
@@ -52,7 +53,11 @@ export type GalleryItemView = {
   topicSlug: string | null;
   visibility: "community" | "public";
   magazineConsent: boolean;
-  uploader: { id: string; name: string; image: string | null };
+  /**
+   * Who added it. Null once they deleted their account (or their account
+   * record is gone): the UI says "Deleted member", with no photo.
+   */
+  uploader: { id: string; name: string; image: string | null } | null;
   createdAt: string;
   isOwn: boolean;
   batchId: number;
@@ -84,8 +89,8 @@ export type GalleryUploadChoices = {
   publicReachesOutsiders: boolean;
 };
 
-/** What an uploader whose account record is gone is called. */
-const UNKNOWN_UPLOADER = "Member";
+/** What an uploader whose account has no name is called. */
+const UNNAMED_UPLOADER = "Member";
 
 /**
  * The items this viewer may see: ready items of the viewer's community, and
@@ -123,15 +128,20 @@ function idOf(relation: number | { id: number } | null | undefined) {
   return typeof relation === "number" ? relation : relation.id;
 }
 
-/** Uploader names and photos for a set of user ids, in one query. */
+/**
+ * Uploader names and photos for a set of user ids, in one query. The id a
+ * deleted account leaves behind is no user, so it is not looked up.
+ */
 async function loadUploaders(
   deps: Pick<GalleryDeps, "db">,
   userIds: readonly string[],
 ): Promise<Map<string, { name: string | null; image: string | null }>> {
+  const ids = [...new Set(userIds)].filter((id) => id !== DELETED_AUTHOR_ID);
+  if (ids.length === 0) return new Map();
   const rows = await deps.db
     .select({ id: user.id, name: user.name, image: user.image })
     .from(user)
-    .where(inArray(user.id, [...new Set(userIds)]));
+    .where(inArray(user.id, ids));
   return new Map(rows.map((row) => [row.id, row]));
 }
 
@@ -197,11 +207,13 @@ async function toViews(
         topicSlug: item.topicSlug ?? null,
         visibility: item.visibility,
         magazineConsent: item.magazineConsent ?? false,
-        uploader: {
-          id: item.uploaderId,
-          name: uploader?.name ?? UNKNOWN_UPLOADER,
-          image: uploader?.image ?? null,
-        },
+        uploader: uploader
+          ? {
+              id: item.uploaderId,
+              name: uploader.name ?? UNNAMED_UPLOADER,
+              image: uploader.image,
+            }
+          : null,
         createdAt: item.createdAt,
         isOwn: viewer.userId !== null && item.uploaderId === viewer.userId,
         batchId: idOf(item.batch)!,
