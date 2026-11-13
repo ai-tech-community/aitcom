@@ -24,6 +24,7 @@ export default async function PrivacyPage() {
     { id: "data-collection", label: t("tocDataCollection") },
     { id: "legal-basis", label: t("tocLegalBasis") },
     { id: "data-sharing", label: t("tocDataSharing") },
+    { id: "ai-processing", label: t("tocAiProcessing") },
     { id: "cookies", label: t("tocCookies") },
     { id: "retention", label: t("tocRetention") },
     { id: "rights", label: t("tocRights") },
@@ -70,6 +71,29 @@ export default async function PrivacyPage() {
 
       <ManPageSection id="data-sharing" title={t("tocDataSharing")}>
         <p className="whitespace-pre-line">{t("dataSharingBody")}</p>
+      </ManPageSection>
+
+      <ManPageSection id="ai-processing" title={t("tocAiProcessing")}>
+        <p className="whitespace-pre-line">
+          {t.rich("aiProcessingBody", {
+            policy: (chunks) => (
+              <a
+                href="https://openrouter.ai/privacy"
+                className="text-primary hover:underline"
+              >
+                {chunks}
+              </a>
+            ),
+            model: (chunks) => (
+              <a
+                href="https://openrouter.ai/qwen/qwen3-8b"
+                className="text-primary hover:underline"
+              >
+                {chunks}
+              </a>
+            ),
+          })}
+        </p>
       </ManPageSection>
 
       <ManPageSection id="cookies" title={t("tocCookies")}>
