@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import Image from "next/image";
 import { Play } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -29,17 +29,23 @@ function tileRatio(item: Pick<GalleryItemView, "width" | "height">): number {
  * is never told by colour) is its description. The caption shows on hover
  * and keyboard focus. `data-gallery-item-id` lets the lightbox hand focus
  * back to the tile of the item it showed last.
+ *
+ * On a wall the tile takes the item's shape; with `fill` it has no shape of
+ * its own and fills the room its parent gives it (a feed post's collage).
  */
 export function GalleryTile({
   item,
   showEvent,
   onOpen,
+  fill = false,
   className,
 }: {
   item: GalleryItemView;
   /** Off where every tile is from the same event (an event filter or page). */
   showEvent: boolean;
   onOpen: (itemId: number) => void;
+  /** Fill the parent's box instead of keeping the item's shape. */
+  fill?: boolean;
   className?: string;
 }) {
   const t = useTranslations("gallery.tile");
@@ -59,9 +65,14 @@ export function GalleryTile({
       aria-label={labelFor(item)}
       aria-describedby={isVideo ? badgeId : undefined}
       onClick={() => onOpen(item.id)}
-      style={{ aspectRatio: tileRatio(item) }}
+      style={
+        fill
+          ? undefined
+          : ({ "--tile-ratio": tileRatio(item) } as CSSProperties)
+      }
       className={cn(
         "group/tile bg-muted relative block w-full cursor-zoom-in overflow-hidden rounded-lg outline-none",
+        fill ? "h-full" : "aspect-[var(--tile-ratio)]",
         "focus-visible:ring-ring/50 focus-visible:ring-[3px]",
         className,
       )}

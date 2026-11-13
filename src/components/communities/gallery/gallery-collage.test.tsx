@@ -177,6 +177,21 @@ describe("GalleryCollage", () => {
     expect(tiles[1]!.parentElement).toHaveClass("grid-rows-1");
   });
 
+  it("fills the collage's cells instead of keeping each item's shape", () => {
+    render(<Collage />);
+    for (const tile of within(collage()).getAllByRole("button")) {
+      expect(tile.style.getPropertyValue("--tile-ratio")).toBe("");
+      expect(tile).toHaveClass("h-full");
+    }
+  });
+
+  it("shows where focus is when it falls back to the collage itself", () => {
+    render(<Collage />);
+    const group = collage();
+    expect(group).toHaveAttribute("tabindex", "-1");
+    expect(group).toHaveClass("focus-visible:ring-[3px]");
+  });
+
   it("shows three items as one large and two small, with no count", () => {
     render(<Collage />);
     const group = collage("3 photos and videos from the gallery");
@@ -316,8 +331,8 @@ describe("GalleryCollage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mine" }));
     const dialog = screen.getByRole("dialog");
     expect(
-      within(dialog).queryByRole("button", { name: "Delete" }),
-    ).toBeVisible();
+      within(dialog).getByRole("button", { name: "Delete" }),
+    ).toBeInTheDocument();
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Edit details" }),
     );

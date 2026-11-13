@@ -3429,6 +3429,7 @@
       "mediaLockedWhileReviewed": "Cette publication est en cours d’examen. Vous pourrez modifier son image ou sa vidéo après qu’un modérateur l’aura examinée.",
       "galleryMediaFixed": "Les photos et vidéos restent telles quelles. Vous pouvez les gérer dans la galerie.",
       "discardChanges": "Abandonner les modifications",
+      "galleryAdded": "{count, plural, one {a ajouté une photo ou une vidéo à la galerie} other {a ajouté # photos et vidéos à la galerie}}",
       "postActions": "Actions de la publication",
       "poll": {
         "label": "Sondage",

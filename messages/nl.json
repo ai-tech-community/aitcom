@@ -3429,6 +3429,7 @@
       "mediaLockedWhileReviewed": "Dit bericht wordt beoordeeld. Je kunt de afbeelding of video wijzigen zodra een moderator ernaar heeft gekeken.",
       "galleryMediaFixed": "De foto's en video's blijven zoals ze zijn. Je kunt ze beheren in de galerij.",
       "discardChanges": "Wijzigingen weggooien",
+      "galleryAdded": "{count, plural, one {heeft één foto of video aan de galerij toegevoegd} other {heeft # foto's en video's aan de galerij toegevoegd}}",
       "postActions": "Berichtacties",
       "poll": {
         "label": "Poll",

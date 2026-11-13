@@ -3429,6 +3429,7 @@
       "mediaLockedWhileReviewed": "This post is being reviewed. You can change its picture or video once a moderator has looked at it.",
       "galleryMediaFixed": "The photos and videos stay as they are. You can manage them in the gallery.",
       "discardChanges": "Discard changes",
+      "galleryAdded": "{count, plural, one {added one photo or video to the gallery} other {added # photos and videos to the gallery}}",
       "postActions": "Post actions",
       "poll": {
         "label": "Poll",

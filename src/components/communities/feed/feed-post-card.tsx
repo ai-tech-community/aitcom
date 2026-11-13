@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -129,6 +129,24 @@ export function FeedPostCard({
   const openingEditor = useRef(false);
   const [reportOpen, setReportOpen] = useState(false);
 
+  // A delete in the collage can take the last item this viewer may see:
+  // the collage goes, and the focused tile with it. Focus then moves to the
+  // post's menu (or the card), never down to the page body.
+  const collageChanged = useRef(false);
+  const showsGallery = !!post.gallery;
+  useLayoutEffect(() => {
+    if (showsGallery || !collageChanged.current) return;
+    collageChanged.current = false;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    if (menuButton.current) {
+      menuButton.current.focus();
+    } else if (cardRef.current) {
+      cardRef.current.setAttribute("tabindex", "-1");
+      cardRef.current.focus();
+    }
+  }, [showsGallery]);
+
   const isAuthor = !!currentUserId && post.authorId === currentUserId;
   const isPrivileged =
     memberRole === "owner" ||
@@ -208,6 +226,11 @@ export function FeedPostCard({
             <p className="text-sm leading-tight font-medium">
               {post.authorName ?? "Member"}
             </p>
+            {post.gallery ? (
+              <p className="text-muted-foreground text-xs leading-tight">
+                {t("galleryAdded", { count: post.gallery.total })}
+              </p>
+            ) : null}
             <p className="text-muted-foreground flex items-center gap-1 text-xs">
               {post.isPinned ? (
                 <span className="text-foreground inline-flex items-center gap-0.5">
@@ -354,7 +377,10 @@ export function FeedPostCard({
           slug={communitySlug}
           gallery={post.gallery}
           memberRole={memberRole}
-          onChange={() => void onRefresh()}
+          onChange={() => {
+            collageChanged.current = true;
+            void onRefresh();
+          }}
         />
       ) : post.isGalleryPost ? null : link &&
         !isEditing &&

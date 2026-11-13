@@ -56,7 +56,11 @@ const collageProps = vi.fn();
 vi.mock("../gallery/gallery-collage", () => ({
   GalleryCollage: (props: unknown) => {
     collageProps(props);
-    return <div data-testid="collage" />;
+    return (
+      <div data-testid="collage">
+        <button type="button">Photo in collage</button>
+      </div>
+    );
   },
 }));
 vi.mock("./report-dialog", () => ({
@@ -367,6 +371,72 @@ describe("FeedPostCard gallery post", () => {
     expect(screen.queryByTestId("collage")).toBeNull();
     expect(screen.getByText(/Our evening/)).toBeInTheDocument();
     expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("says how many photos and videos the author added", () => {
+    renderCard({ isGalleryPost: true, gallery });
+    expect(
+      screen.getByText("added one photo or video to the gallery"),
+    ).toBeInTheDocument();
+  });
+
+  it("counts every item of the batch the viewer may see", () => {
+    renderCard({ isGalleryPost: true, gallery: { ...gallery, total: 12 } });
+    expect(
+      screen.getByText("added 12 photos and videos to the gallery"),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing about the batch when the viewer may see none of it", () => {
+    renderCard({ isGalleryPost: true, gallery: null });
+    expect(screen.queryByText(/to the gallery/)).toBeNull();
+  });
+
+  it("keeps focus in the card when a delete empties the collage", async () => {
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    const card = (shown: typeof gallery | null) => (
+      <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+        <FeedPostCard
+          post={{ ...basePost, isGalleryPost: true, gallery: shown }}
+          currentUserId="author-1"
+          memberRole="member"
+          communitySlug="town"
+          onRefresh={onRefresh}
+          onToggleComments={vi.fn()}
+          showComments={false}
+        />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(card(gallery));
+    screen.getByRole("button", { name: "Photo in collage" }).focus();
+    const props = collageProps.mock.calls.at(-1)![0] as {
+      onChange: () => void;
+    };
+    props.onChange();
+    rerender(card(null));
+    expect(screen.queryByTestId("collage")).toBeNull();
+    expect(screen.getByRole("button", { name: "Post actions" })).toHaveFocus();
+  });
+
+  it("leaves focus alone when the collage goes for another reason", () => {
+    const card = (shown: typeof gallery | null) => (
+      <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+        <FeedPostCard
+          post={{ ...basePost, isGalleryPost: true, gallery: shown }}
+          currentUserId="author-1"
+          memberRole="member"
+          communitySlug="town"
+          onRefresh={vi.fn().mockResolvedValue(undefined)}
+          onToggleComments={vi.fn()}
+          showComments={false}
+        />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(card(gallery));
+    rerender(card(null));
+    expect(
+      screen.getByRole("button", { name: "Post actions" }),
+    ).not.toHaveFocus();
   });
 
   it("has no Public badge, even when its items are open to everyone", () => {

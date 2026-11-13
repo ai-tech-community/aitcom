@@ -19,9 +19,6 @@ import { GalleryLightbox } from "./gallery-lightbox";
 import { GalleryTile } from "./gallery-tile";
 import { useOpening } from "./use-opening";
 
-/** Collage tiles fill their cell; the collage's own corners are rounded. */
-const FILL = "h-full min-h-0 rounded-none";
-
 /**
  * Everything the lightbox moves through: the collage's items, then the rest
  * of the batch, page by page, starting after the collage's last item (the
@@ -123,7 +120,9 @@ export function GalleryCollage({
       // Every item of a batch is from the batch's event, shown above.
       showEvent={false}
       onOpen={open}
-      className={cn(FILL, className)}
+      fill
+      // Only the collage's outer corners are rounded.
+      className={cn("rounded-none", className)}
     />
   );
 
@@ -151,7 +150,7 @@ export function GalleryCollage({
         aria-label={t("label", { count: gallery.total })}
         // Focus lands here when the item it would go back to was deleted.
         tabIndex={-1}
-        className="grid aspect-[3/2] grid-cols-[2fr_1fr] gap-1 outline-none"
+        className="focus-visible:ring-ring/50 grid aspect-[3/2] grid-cols-[2fr_1fr] gap-1 rounded-lg outline-none focus-visible:ring-[3px]"
       >
         {second
           ? tile(first, "rounded-l-lg")
