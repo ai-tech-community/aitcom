@@ -131,12 +131,16 @@ export function FeedPostCard({
 
   // A delete in the collage can take the last item this viewer may see:
   // the collage goes, and the focused tile with it. Focus then moves to the
-  // post's menu (or the card), never down to the page body.
+  // post's menu (or the card), never down to the page body. The flag lasts
+  // only until the collage reloads: once it comes back with items (after an
+  // edit, or a delete that left some), a later empty collage is not this
+  // change's doing.
   const collageChanged = useRef(false);
-  const showsGallery = !!post.gallery;
+  const gallery = post.gallery ?? null;
   useLayoutEffect(() => {
-    if (showsGallery || !collageChanged.current) return;
+    if (!collageChanged.current) return;
     collageChanged.current = false;
+    if (gallery) return;
     const active = document.activeElement;
     if (active && active !== document.body && active.isConnected) return;
     if (menuButton.current) {
@@ -145,7 +149,7 @@ export function FeedPostCard({
       cardRef.current.setAttribute("tabindex", "-1");
       cardRef.current.focus();
     }
-  }, [showsGallery]);
+  }, [gallery]);
 
   const isAuthor = !!currentUserId && post.authorId === currentUserId;
   const isPrivileged =
@@ -211,7 +215,8 @@ export function FeedPostCard({
   return (
     <div
       ref={cardRef}
-      className="border-border min-w-0 space-y-3 rounded-lg border p-4 [overflow-wrap:anywhere]"
+      // Focusable only as the fallback above; then it shows the ring.
+      className="border-border focus-visible:border-ring focus-visible:ring-ring/50 min-w-0 space-y-3 rounded-lg border p-4 [overflow-wrap:anywhere] outline-none focus-visible:ring-[3px]"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">

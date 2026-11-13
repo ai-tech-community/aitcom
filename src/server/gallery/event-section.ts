@@ -15,12 +15,14 @@ import { countItems, listItems, type GalleryItemView } from "./items";
  * - a member uploads (a moderator may also remove anyone's item);
  * - a signed-in non-member is led to the community page when it offers
  *   them a way in (`canJoin`);
- * - a signed-out visitor is asked to sign in first.
+ * - a signed-out visitor is asked to sign in first, under the same rule:
+ *   only when the community lets someone new in (`canJoin`; never for an
+ *   invite-only one).
  */
 export type EventGalleryViewer =
   | { kind: "member"; canModerate: boolean }
   | { kind: "outsider"; canJoin: boolean }
-  | { kind: "guest" };
+  | { kind: "guest"; canJoin: boolean };
 
 /** The "Photos and videos" section of an event page (spec 2026-11-13, Events). */
 export type EventGallerySection = {
@@ -75,15 +77,16 @@ export async function loadEventGallerySection(
     who = { kind: "member", canModerate: viewer.isModerator };
   } else if (items.length === 0) {
     return null;
-  } else if (userId === null) {
-    who = { kind: "guest" };
   } else {
-    // The rule every join control follows, from what the viewer load read.
-    const action = viewerJoinAction({
-      joinPolicy: viewer.community.joinPolicy,
-      status: viewer.membershipStatus,
-    });
-    who = { kind: "outsider", canJoin: offersMembership(action) };
+    // The rule every join control follows, from what the viewer load read;
+    // a signed-out visitor has no membership row.
+    const canJoin = offersMembership(
+      viewerJoinAction({
+        joinPolicy: viewer.community.joinPolicy,
+        status: userId === null ? null : viewer.membershipStatus,
+      }),
+    );
+    who = { kind: userId === null ? "guest" : "outsider", canJoin };
   }
 
   return {

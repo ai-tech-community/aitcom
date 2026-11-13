@@ -418,6 +418,72 @@ describe("FeedPostCard gallery post", () => {
     expect(screen.getByRole("button", { name: "Post actions" })).toHaveFocus();
   });
 
+  it("forgets an edit once the collage reloads, so a later empty collage moves no focus", () => {
+    const card = (shown: typeof gallery | null) => (
+      <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+        <FeedPostCard
+          post={{ ...basePost, isGalleryPost: true, gallery: shown }}
+          currentUserId="author-1"
+          memberRole="member"
+          communitySlug="town"
+          onRefresh={vi.fn().mockResolvedValue(undefined)}
+          onToggleComments={vi.fn()}
+          showComments={false}
+        />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(card(gallery));
+    const props = collageProps.mock.calls.at(-1)![0] as {
+      onChange: () => void;
+    };
+    // An edit: the collage reloads with its items still there.
+    props.onChange();
+    rerender(
+      card({
+        ...gallery,
+        items: [{ ...gallery.items[0]!, caption: "Edited caption" }],
+      }),
+    );
+    // Later the collage goes for another reason, with focus elsewhere.
+    rerender(card(null));
+    expect(
+      screen.getByRole("button", { name: "Post actions" }),
+    ).not.toHaveFocus();
+  });
+
+  it("falls back to the card, with the design system's focus ring, when there is no menu", () => {
+    const card = (shown: typeof gallery | null) => (
+      <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+        <FeedPostCard
+          post={{ ...basePost, isGalleryPost: true, gallery: shown }}
+          currentUserId="viewer-1"
+          memberRole="member"
+          communitySlug="town"
+          onRefresh={vi.fn().mockResolvedValue(undefined)}
+          onToggleComments={vi.fn()}
+          showComments={false}
+        />
+      </NextIntlClientProvider>
+    );
+    const { container, rerender } = render(card(gallery));
+    expect(screen.queryByRole("button", { name: "Post actions" })).toBeNull();
+    screen.getByRole("button", { name: "Photo in collage" }).focus();
+    const props = collageProps.mock.calls.at(-1)![0] as {
+      onChange: () => void;
+    };
+    props.onChange();
+    rerender(card(null));
+    const cardElement = container.firstElementChild as HTMLElement;
+    expect(cardElement).toHaveFocus();
+    expect(cardElement).toHaveAttribute("tabindex", "-1");
+    expect(cardElement).toHaveClass(
+      "outline-none",
+      "focus-visible:border-ring",
+      "focus-visible:ring-ring/50",
+      "focus-visible:ring-[3px]",
+    );
+  });
+
   it("leaves focus alone when the collage goes for another reason", () => {
     const card = (shown: typeof gallery | null) => (
       <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">

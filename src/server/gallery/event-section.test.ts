@@ -298,16 +298,24 @@ describe("loadEventGallerySection", () => {
   });
 
   describe("who may add, and how", () => {
-    it("tells a signed-out visitor to sign in", async () => {
-      const { deps } = fakes({
-        items: [item(1, { visibility: "public" })],
-      });
-      const section = await loadEventGallerySection(deps, {
-        event: event(),
-        userId: null,
-      });
-      expect(section?.viewer).toEqual({ kind: "guest" });
-    });
+    it.each([
+      ["an open community", "open", true],
+      ["a community that asks to approve", "approval_required", true],
+      ["an invite-only community", "invite_only", false],
+    ] as const)(
+      "asks a signed-out visitor to sign in, to add, for %s: %s",
+      async (_label, joinPolicy, canJoin) => {
+        standing.joinPolicy = joinPolicy;
+        const { deps } = fakes({
+          items: [item(1, { visibility: "public" })],
+        });
+        const section = await loadEventGallerySection(deps, {
+          event: event(),
+          userId: null,
+        });
+        expect(section?.viewer).toEqual({ kind: "guest", canJoin });
+      },
+    );
 
     it.each([
       ["an open community", "open", null, true],

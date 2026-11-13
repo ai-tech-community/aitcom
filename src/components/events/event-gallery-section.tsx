@@ -16,8 +16,10 @@ import type { EventGallerySection as Section } from "@/server/gallery/event-sect
 /**
  * "Add yours", by who is looking: a member goes to the upload with this
  * event chosen; a guest signs in first and comes back to it; a non-member
- * who may join goes to the community page, where joining lives. Ink, never
- * orange: the event page's Register keeps the one orange (One Voice Rule).
+ * who may join goes to the community page, where joining lives. Guests and
+ * non-members see it only when the community lets someone new in
+ * (`canJoin`, decided by the server). Ink, never orange: the event page's
+ * Register keeps the one orange (One Voice Rule).
  */
 function AddYours({ section }: { section: Section }) {
   const t = useTranslations("gallery.event");
@@ -42,6 +44,7 @@ function AddYours({ section }: { section: Section }) {
         </Button>
       );
     case "guest":
+      if (!section.viewer.canJoin) return null;
       return (
         <Button
           type="button"

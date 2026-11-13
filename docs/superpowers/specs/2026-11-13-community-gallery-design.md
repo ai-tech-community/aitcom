@@ -232,7 +232,9 @@ their category (set to empty), the same moment feed posts move to `general`.
   "See all N in the gallery" (opens the gallery filtered to that event), and
   **Add yours** (opens the upload dialog with that event chosen). It shows only
   items the viewer may see. Shown for events that have started. For a viewer who
-  isn't a member, only public items show, and "Add yours" leads to joining.
+  isn't a member, only public items show, and "Add yours" leads to joining
+  (signing in first for a signed-out visitor), shown only when the community
+  lets someone new in — never for an invite-only one.
 - `Events.gallery` is removed. Production has 0 rows using it (checked
   13 Nov 2026). The migration first checks it is still empty — in both
   `events_rels` (path `gallery`) and the versions table `_events_v_rels` (path

@@ -171,7 +171,7 @@ describe("EventGallerySection", () => {
     });
 
     it("asks a guest to sign in, coming back to the upload for this event", () => {
-      renderSection({ viewer: { kind: "guest" } });
+      renderSection({ viewer: { kind: "guest", canJoin: true } });
       const add = within(region()).getByRole("button", ADD);
       expect(add).toHaveAttribute("data-variant", "ink");
       fireEvent.click(add);
@@ -198,6 +198,13 @@ describe("EventGallerySection", () => {
       renderSection({ viewer: { kind: "outsider", canJoin: false } });
       expect(within(region()).queryByRole("link", ADD)).toBeNull();
       expect(within(region()).queryByRole("button", ADD)).toBeNull();
+    });
+
+    it("is absent for a guest the community would not let in (invite-only)", () => {
+      renderSection({ viewer: { kind: "guest", canJoin: false } });
+      expect(within(region()).queryByRole("link", ADD)).toBeNull();
+      expect(within(region()).queryByRole("button", ADD)).toBeNull();
+      expect(m.requireAuth).not.toHaveBeenCalled();
     });
   });
 
