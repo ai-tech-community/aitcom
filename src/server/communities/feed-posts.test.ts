@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
+const galleryViewsForPosts = vi.hoisted(() => vi.fn());
+vi.mock("@/server/gallery/feed-view", () => ({ galleryViewsForPosts }));
+
 import {
   canPostToFeed,
   decorateFeedPosts,
@@ -53,6 +56,7 @@ describe("decorateFeedPosts gallery posts", () => {
   };
 
   it("says which posts are gallery posts, without sending the batch id", async () => {
+    galleryViewsForPosts.mockResolvedValue(new Map());
     const [gallery, plain] = await decorateFeedPosts(
       {} as never,
       {} as never,
@@ -62,10 +66,63 @@ describe("decorateFeedPosts gallery posts", () => {
       ] as never,
       null,
       vi.fn(),
+      vi.fn(),
     );
     expect(gallery).toMatchObject({ id: 1, isGalleryPost: true });
     expect(plain).toMatchObject({ id: 2, isGalleryPost: false });
     expect(gallery).not.toHaveProperty("galleryBatch");
     expect(plain).not.toHaveProperty("galleryBatch");
+  });
+
+  it("adds what the viewer may see of each batch, read with the gallery's storage", async () => {
+    const database = { tag: "db" };
+    const payload = { find: vi.fn(async () => ({ docs: [] })) };
+    const videoStorage = vi.fn();
+    const galleryStorage = vi.fn();
+    const collage = { batchId: 9, items: [], total: 4 };
+    galleryViewsForPosts.mockResolvedValue(
+      new Map([
+        [1, collage],
+        [2, null],
+      ]),
+    );
+    const posts = [
+      { ...base, galleryBatch: 9 },
+      { ...base, id: 2, content: "hi", galleryBatch: null },
+    ];
+
+    const [gallery, plain] = await decorateFeedPosts(
+      database as never,
+      payload as never,
+      posts as never,
+      "u2",
+      videoStorage,
+      galleryStorage,
+    );
+
+    expect(galleryViewsForPosts).toHaveBeenLastCalledWith(
+      { db: database, payload, storage: galleryStorage },
+      posts,
+      "u2",
+    );
+    expect(gallery!.gallery).toBe(collage);
+    expect(plain!.gallery).toBeNull();
+    expect(galleryStorage).not.toHaveBeenCalled();
+    expect(videoStorage).not.toHaveBeenCalled();
+  });
+
+  it("reads the batches as a signed-out visitor when no one is signed in", async () => {
+    galleryViewsForPosts.mockResolvedValue(new Map());
+    const [view] = await decorateFeedPosts(
+      {} as never,
+      {} as never,
+      [{ ...base, galleryBatch: 9 }] as never,
+      undefined,
+      vi.fn(),
+      vi.fn(),
+    );
+    expect(galleryViewsForPosts.mock.lastCall![2]).toBeNull();
+    // A post the gallery read left out still says it has no collage.
+    expect(view!.gallery).toBeNull();
   });
 });

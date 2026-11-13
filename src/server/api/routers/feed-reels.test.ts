@@ -49,6 +49,7 @@ vi.mock("@/server/communities/feed-posts", async (importOriginal) => ({
 import { createCaller } from "@/server/api/root";
 import { db as mockedDb } from "@/server/db";
 import { decorateFeedPosts } from "@/server/communities/feed-posts";
+import { getObjectStorage } from "@/server/media/object-storage";
 import { getVideoStorage } from "@/server/media/video-storage";
 
 function caller(userId: string | null) {
@@ -118,6 +119,7 @@ describe("feed.getReels", () => {
     expect(call[3]).toBe("mod-1");
     // Storage is handed over lazily, not reached for up front.
     expect(call[4]).toBe(getVideoStorage);
+    expect(call[5]).toBe(getObjectStorage);
   });
 
   it("gives a signed-in non-member the visitor's view", async () => {

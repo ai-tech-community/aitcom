@@ -47,6 +47,7 @@ import { nowOf, type GalleryDeps } from "./deps";
 import { galleryError } from "./errors";
 import { galleryEnabled } from "./flag";
 import { removeItemFiles } from "./item-files";
+import { relationId } from "./relation-id";
 
 export type { GalleryDeps } from "./deps";
 
@@ -430,7 +431,7 @@ export async function startItem(
     collection: "gallery-items",
     data: {
       communityId: batch.communityId,
-      event: idOf(batch.event),
+      event: relationId(batch.event),
       topicSlug: batch.topicSlug ?? null,
       mediaType: input.mediaType,
       status: "uploading",
@@ -451,11 +452,6 @@ export async function startItem(
     },
   });
   return { itemId: item.id, file, thumbnail };
-}
-
-function idOf(relation: number | { id: number } | null | undefined) {
-  if (relation === null || relation === undefined) return null;
-  return typeof relation === "number" ? relation : relation.id;
 }
 
 /**

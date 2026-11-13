@@ -45,6 +45,7 @@ describe("decorateFeedPosts video view", () => {
       ] as never,
       null,
       () => storage,
+      vi.fn(),
     );
     expect(withVideo!.video).toEqual({
       url: "private:private/videos/c1/u.mp4",
@@ -67,6 +68,7 @@ describe("decorateFeedPosts video view", () => {
       ] as never,
       null,
       vi.fn(),
+      vi.fn(),
     );
     expect(view).not.toHaveProperty("reportCount");
     expect(view).toHaveProperty("hiddenAt", "2026-09-24T00:00:00.000Z");
@@ -82,6 +84,7 @@ describe("decorateFeedPosts video view", () => {
       [base, { ...base, id: 2 }] as never,
       null,
       storage,
+      vi.fn(),
     );
     expect(storage).not.toHaveBeenCalled();
     expect(views.map((view) => view.video)).toEqual([null, null]);

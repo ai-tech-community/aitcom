@@ -243,6 +243,8 @@ describe("gallery router — input validation", () => {
     ["limit 41", (c) => c.list({ slug: "alpha", limit: 41 })],
     ["limit 0", (c) => c.list({ slug: "alpha", limit: 0 })],
     ["cursor 0", (c) => c.list({ slug: "alpha", cursor: 0 })],
+    ["batchId 0", (c) => c.list({ slug: "alpha", batchId: 0 })],
+    ["batchId 2.5", (c) => c.list({ slug: "alpha", batchId: 2.5 })],
     [
       "an event filter that is neither an id nor none",
       (c) => c.list({ slug: "alpha", eventId: "all" as "none" }),
@@ -348,6 +350,16 @@ describe("gallery router — public reads", () => {
     expect(services.listItems).toHaveBeenCalledWith(expect.anything(), {
       viewer: viewerFor("user-1"),
       eventId: 12,
+    });
+  });
+
+  it("lists one batch's items, for a feed post's lightbox", async () => {
+    services.listItems.mockResolvedValue({ items: [], nextCursor: null });
+    await caller().list({ slug: "alpha", batchId: 7, cursor: 40 });
+    expect(services.listItems).toHaveBeenCalledWith(expect.anything(), {
+      viewer: viewerFor("user-1"),
+      batchId: 7,
+      cursor: 40,
     });
   });
 

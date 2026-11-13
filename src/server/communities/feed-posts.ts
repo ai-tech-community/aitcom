@@ -6,7 +6,12 @@ import { communities, communityMemberships, user } from "@/server/db/schema";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { CommunityRole } from "@/server/communities/role-utils";
+import type { ObjectStorageSource } from "@/server/media/object-storage";
 import type { VideoStorageSource } from "@/server/media/video-storage";
+import {
+  galleryViewsForPosts,
+  type FeedGalleryView,
+} from "@/server/gallery/feed-view";
 import {
   canViewPost,
   feedViewerFor,
@@ -203,9 +208,15 @@ export type FeedPostView = Omit<
   /**
    * The post announces a gallery batch: its media is fixed (the editor
    * offers no media change) and its text may be empty. The batch id itself
-   * stays on the server.
+   * is sent only inside `gallery`, to a viewer who may see some of it.
    */
   isGalleryPost: boolean;
+  /**
+   * The batch's items this viewer may see (the gallery's read rule, never
+   * the post's visibility). Null for a post without a batch, and for one
+   * whose items the viewer may see none of: the card shows its text only.
+   */
+  gallery: FeedGalleryView | null;
   authorImage: string | null;
   hasLiked: boolean;
   video: FeedVideoView | null;
@@ -294,7 +305,9 @@ export async function loadUserImages(
  * Adds the author photo, whether the viewer liked each post, playback
  * links for a post's video (the raw storage keys never leave the server),
  * its pictures with their descriptions (never who uploaded them), whom
- * it mentions, and its poll's counts (never who voted for what).
+ * it mentions, its poll's counts (never who voted for what), and the
+ * gallery items of its batch the viewer may see. `galleryStorage` makes
+ * the gallery's links; it is opened only when there is an item to show.
  */
 export async function decorateFeedPosts(
   database: Database,
@@ -302,9 +315,10 @@ export async function decorateFeedPosts(
   posts: readonly FeedPost[],
   viewerId: string | null | undefined,
   storage: VideoStorageSource,
+  galleryStorage: ObjectStorageSource,
 ): Promise<FeedPostView[]> {
   if (posts.length === 0) return [];
-  const [images, pictures, mentionsOf, pollOf] = await Promise.all([
+  const [images, pictures, mentionsOf, pollOf, galleries] = await Promise.all([
     loadUserImages(
       database,
       posts.map((post) => post.authorId),
@@ -312,6 +326,11 @@ export async function decorateFeedPosts(
     loadImageViews(payload, posts),
     loadMentionViews(database, posts),
     loadPollViews(database, posts, viewerId),
+    galleryViewsForPosts(
+      { db: database, payload, storage: galleryStorage },
+      posts,
+      viewerId ?? null,
+    ),
   ]);
   let liked = new Set<number>();
   if (viewerId) {
@@ -337,6 +356,7 @@ export async function decorateFeedPosts(
     posts.map(async ({ reportCount: _reportCount, galleryBatch, ...post }) => ({
       ...post,
       isGalleryPost: galleryBatch != null,
+      gallery: galleries.get(post.id) ?? null,
       authorImage: images.get(post.authorId) ?? null,
       hasLiked: liked.has(post.id),
       video: await videoView(post, storage),

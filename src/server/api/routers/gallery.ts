@@ -101,11 +101,15 @@ const itemInCommunity = z.object({ slug, itemId: recordId });
  * see, upload, edit or delete what — lives in `src/server/gallery/`.
  */
 export const galleryRouter = createTRPCRouter({
-  /** A page of the wall. Signed-out visitors see what outsiders may see. */
+  /**
+   * A page of the wall, or of one upload's items (a feed post's lightbox).
+   * Signed-out visitors see what outsiders may see.
+   */
   list: galleryPublicProcedure
     .input(
       inCommunity.extend({
         eventId: z.union([recordId, z.literal("none")]).optional(),
+        batchId: recordId.optional(),
         topicSlug: topicSlug.optional(),
         mediaType: z.enum(GALLERY_MEDIA_TYPES).optional(),
         cursor: recordId.optional(),

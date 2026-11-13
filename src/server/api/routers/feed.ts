@@ -295,6 +295,7 @@ export const feedRouter = createTRPCRouter({
         page,
         ctx.session.user.id,
         getVideoStorage,
+        getObjectStorage,
       );
       const last = page.at(-1);
       const nextCursor =
@@ -335,6 +336,7 @@ export const feedRouter = createTRPCRouter({
           isModerator: isModeratorRole(community.role),
         },
         storage: getVideoStorage,
+        galleryStorage: getObjectStorage,
         cursor: input.cursor ?? null,
         limit: input.limit,
       });
@@ -359,6 +361,7 @@ export const feedRouter = createTRPCRouter({
         payload: await getPayloadClient(),
         userId: ctx.session.user.id,
         storage: getVideoStorage,
+        galleryStorage: getObjectStorage,
         cursor: input.cursor ?? null,
         limit: input.limit,
       }),
@@ -409,6 +412,7 @@ export const feedRouter = createTRPCRouter({
           database: ctx.db,
           payload: await getPayloadClient(),
           storage: getVideoStorage,
+          galleryStorage: getObjectStorage,
         },
         {
           community,

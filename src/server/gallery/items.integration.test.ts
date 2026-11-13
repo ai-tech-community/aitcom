@@ -355,6 +355,52 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
     expect(page.items[0]!.event).toMatchObject({ id: meetup, title: "Meetup" });
   });
 
+  it("counts and lists an event's readable items, and one batch's", async () => {
+    const { deps, readyItem, pastEvent, viewer } = await setup();
+    const meetup = await pastEvent("Meetup");
+    const members = await readyItem({
+      visibility: "community",
+      eventId: meetup,
+    });
+    const open = await readyItem({ visibility: "public", eventId: meetup });
+    await readyItem({
+      visibility: "public",
+      eventId: meetup,
+      hiddenAt: new Date().toISOString(),
+    });
+    const batchId = (
+      await m.items.listItems(deps, { viewer: await viewer(fx.memberId) })
+    ).items[0]!.batchId;
+
+    const outsider = await viewer(null);
+    const member = await viewer(fx.memberId);
+    await expect(
+      m.items.countItems(deps, { viewer: outsider, eventId: meetup }),
+    ).resolves.toBe(1);
+    await expect(
+      m.items.countItems(deps, { viewer: member, eventId: meetup }),
+    ).resolves.toBe(2);
+    await expect(
+      m.items.countItems(deps, { viewer: member, batchId }),
+    ).resolves.toBe(2);
+    await expect(
+      m.items.countItems(deps, { viewer: member, batchId: batchId + 100_000 }),
+    ).resolves.toBe(0);
+
+    const page = await m.items.listItems(deps, {
+      viewer: member,
+      batchId,
+      limit: 1,
+    });
+    expect(page.items.map((i) => i.id)).toEqual([open]);
+    const rest = await m.items.listItems(deps, {
+      viewer: member,
+      batchId,
+      cursor: page.nextCursor!,
+    });
+    expect(rest.items.map((i) => i.id)).toEqual([members]);
+  });
+
   it("lets the uploader delete their hidden members-only item after leaving", async () => {
     const { deps, storage, readyItem, viewer, payload } = await setup();
     const id = await readyItem({

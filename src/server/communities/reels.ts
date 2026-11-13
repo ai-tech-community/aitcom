@@ -2,6 +2,7 @@ import type { Where } from "payload";
 
 import type { FeedPost } from "@/payload-types";
 import type { db as Db } from "@/server/db";
+import type { ObjectStorageSource } from "@/server/media/object-storage";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import { decorateFeedPosts, type FeedPostView } from "./feed-posts";
@@ -68,7 +69,12 @@ async function resolveDeepLink(
  * may see it, and returns a notice instead of the video when not.
  */
 export async function listReels(
-  deps: { database: typeof Db; payload: Payload; storage: VideoStorageSource },
+  deps: {
+    database: typeof Db;
+    payload: Payload;
+    storage: VideoStorageSource;
+    galleryStorage: ObjectStorageSource;
+  },
   input: {
     community: { id: string };
     viewer: FeedViewer;
@@ -131,6 +137,7 @@ export async function listReels(
     page,
     input.viewer.userId,
     deps.storage,
+    deps.galleryStorage,
   );
   const last = page.at(-1);
   return {
