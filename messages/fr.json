@@ -6623,6 +6623,8 @@
       "UPLOAD_FAILED": "L’envoi a échoué. Réessayez.",
       "UNDECODABLE_PHOTO": "Nous ne pouvons pas lire cette photo. Essayez de l’enregistrer d’abord en JPEG.",
       "PUBLIC_NOT_AVAILABLE": "Seuls les membres peuvent voir le contenu de cette communauté : ces fichiers ne peuvent donc pas être partagés avec tout le monde. Choisissez Membres.",
+      "OWN_ITEM": "Vous ne pouvez pas signaler votre propre photo ou vidéo. Vous pouvez la supprimer.",
+      "ALREADY_REPORTED": "Vous avez déjà signalé ceci.",
       "saveFailed": "Nous n’avons pas pu enregistrer vos modifications. Veuillez réessayer."
     }
   }

@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 
 import {
+  GALLERY_REPORT_NOTE_MAX,
   GALLERY_REPORT_REASON_LABELS,
   GALLERY_REPORT_REASONS,
 } from "@/lib/gallery-report-reasons";
@@ -47,7 +48,7 @@ export const GalleryReports: CollectionConfig = {
         value,
       })),
     },
-    { name: "note", type: "text", maxLength: 500 },
+    { name: "note", type: "text", maxLength: GALLERY_REPORT_NOTE_MAX },
     {
       // Set when a moderator restores the item. The row stays, so the same
       // reporter can't report it again; only open reports count and show.

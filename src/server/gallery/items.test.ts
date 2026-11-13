@@ -388,7 +388,27 @@ describe("listItems", () => {
       createdAt: ago(HOUR),
       isOwn: true,
       batchId: 3,
+      hidden: false,
     });
+  });
+
+  it("tells the uploader and moderators that an item is hidden", async () => {
+    const hidden = { hiddenAt: ago(HOUR), uploaderId: "u1" };
+    const { deps } = fakes({ items: [item(1, hidden), item(2)] });
+
+    for (const viewer of [await member("u1"), await moderator()]) {
+      const page = await listItems(deps, { viewer });
+      expect(
+        page.items.map((view) => [view.id, view.hidden]),
+        String(viewer.userId),
+      ).toEqual([
+        [2, false],
+        [1, true],
+      ]);
+      await expect(getItem(deps, { viewer, itemId: 1 })).resolves.toMatchObject(
+        { hidden: true },
+      );
+    }
   });
 
   it("shows a hidden item only to its uploader and to moderators", async () => {

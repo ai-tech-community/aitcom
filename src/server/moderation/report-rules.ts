@@ -1,5 +1,10 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { ValidationError, type Where } from "payload";
+import {
+  ValidationError,
+  type CollectionSlug,
+  type DataFromCollectionSlug,
+  type Where,
+} from "payload";
 
 import type { db } from "@/server/db";
 import { communityMemberships } from "@/server/db/schema";
@@ -17,20 +22,42 @@ type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 type Database = typeof db;
 
 /** The Payload collections that store member reports. */
-export type ReportCollection = "post-reports" | "gallery-reports";
+export type ReportCollection = Extract<
+  CollectionSlug,
+  "post-reports" | "gallery-reports"
+>;
+
+/**
+ * Each report collection's relationship to what it reports. Keyed by the
+ * collection, so a caller names only the collection and can never pair it
+ * with another collection's field; each value must be a field of that
+ * collection's documents.
+ */
+export const REPORT_TARGET_FIELD = Object.freeze({
+  "post-reports": "post",
+  "gallery-reports": "item",
+} as const) satisfies {
+  readonly [C in ReportCollection]: keyof DataFromCollectionSlug<C> & string;
+};
 
 /** Community roles that review reports and get the "reported" notice. */
 const MODERATOR_ROLES = ["owner", "admin", "moderator"] as const;
 
 /**
- * Reports a moderator hasn't dismissed yet. A restore dismisses reports
- * instead of deleting them, so the one-report-per-person rule still holds
- * for them; only open reports count toward hiding and show to moderators.
- * `field` is the report's relationship to its target (`post`, `item`).
+ * The reports in `collection` of target `id` that a moderator hasn't
+ * dismissed yet. A restore dismisses reports instead of deleting them, so
+ * the one-report-per-person rule still holds for them; only open reports
+ * count toward hiding and show to moderators.
  */
-export function openReportsWhere(field: string, id: number): Where {
+export function openReportsWhere(
+  collection: ReportCollection,
+  id: number,
+): Where {
   return {
-    and: [{ [field]: { equals: id } }, { dismissedAt: { exists: false } }],
+    and: [
+      { [REPORT_TARGET_FIELD[collection]]: { equals: id } },
+      { dismissedAt: { exists: false } },
+    ],
   };
 }
 
@@ -66,12 +93,11 @@ export const RESTORE_PATCH = Object.freeze({
 export async function countOpenReports(
   payload: Payload,
   collection: ReportCollection,
-  field: string,
   id: number,
 ): Promise<number> {
   const { totalDocs } = await payload.count({
     collection,
-    where: openReportsWhere(field, id),
+    where: openReportsWhere(collection, id),
   });
   return totalDocs;
 }

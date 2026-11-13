@@ -62,6 +62,11 @@ const REFUSALS: Record<GalleryUploadErrorCode, Refusal> = {
   STORAGE_FULL: { scope: "batch", repeats: false },
   // A transfer or check that failed this time.
   UPLOAD_FAILED: { scope: "file", repeats: false },
+  // Report refusals: no upload call gives them. Classified only because
+  // every server code must be; were one to arrive, it would hold for the
+  // whole batch, every time.
+  OWN_ITEM: SAME_SETTINGS,
+  ALREADY_REPORTED: SAME_SETTINGS,
 };
 
 /** Whether the refusal holds for every remaining file of the batch. */

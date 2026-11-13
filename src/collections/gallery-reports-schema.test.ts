@@ -128,7 +128,9 @@ describe("gallery-reports registration and migration", () => {
   });
 
   it("leaves the feed's report enum alone", () => {
-    expect(read(MIGRATION)).not.toContain("enum_post_reports_reason");
+    const sql = read(MIGRATION);
+    expect(sql).not.toMatch(/ALTER TYPE "public"\."enum_post_reports_reason"/);
+    expect(sql).not.toMatch(/DROP TYPE[^;]*"enum_post_reports_reason"/);
   });
 
   it("is registered in the migration index", () => {

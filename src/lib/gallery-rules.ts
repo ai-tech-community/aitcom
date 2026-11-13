@@ -102,6 +102,10 @@ export const GALLERY_ERROR_CODES = [
   "NOT_ALLOWED",
   /** "Everyone" asked for where outsiders cannot read the community. */
   "PUBLIC_NOT_AVAILABLE",
+  /** The uploader reporting their own item (they delete it instead). */
+  "OWN_ITEM",
+  /** A second report of the same item by the same person. */
+  "ALREADY_REPORTED",
 ] as const;
 export type GalleryErrorCode = (typeof GALLERY_ERROR_CODES)[number];
 

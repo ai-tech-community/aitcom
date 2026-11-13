@@ -58,7 +58,8 @@ export type PostReportView = {
 const ALREADY_REPORTED = "You already reported this post.";
 
 /** A post's open reports (see `openReportsWhere`). */
-const openReportsOf = (postId: number) => openReportsWhere("post", postId);
+const openReportsOf = (postId: number) =>
+  openReportsWhere("post-reports", postId);
 
 async function loadPost(payload: Payload, postId: number) {
   try {
@@ -126,7 +127,6 @@ export async function reportPost(
   const reportCount = await countOpenReports(
     deps.payload,
     "post-reports",
-    "post",
     post.id,
   );
   const firstReport = !post.hiddenAt;

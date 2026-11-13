@@ -8,15 +8,26 @@ import {
   countOpenReports,
   isDuplicateReportError,
   openReportsWhere,
+  REPORT_TARGET_FIELD,
   RESTORE_PATCH,
 } from "./report-rules";
 
+describe("REPORT_TARGET_FIELD", () => {
+  it("names each report collection's link to what it reports", () => {
+    expect(REPORT_TARGET_FIELD).toEqual({
+      "post-reports": "post",
+      "gallery-reports": "item",
+    });
+    expect(Object.isFrozen(REPORT_TARGET_FIELD)).toBe(true);
+  });
+});
+
 describe("openReportsWhere", () => {
   it("matches the target's reports a moderator hasn't dismissed", () => {
-    expect(openReportsWhere("post", 5)).toEqual({
+    expect(openReportsWhere("post-reports", 5)).toEqual({
       and: [{ post: { equals: 5 } }, { dismissedAt: { exists: false } }],
     });
-    expect(openReportsWhere("item", 7)).toEqual({
+    expect(openReportsWhere("gallery-reports", 7)).toEqual({
       and: [{ item: { equals: 7 } }, { dismissedAt: { exists: false } }],
     });
   });
@@ -75,11 +86,13 @@ describe("countOpenReports", () => {
   it("counts the stored open reports of one target", async () => {
     const payload = { count: vi.fn().mockResolvedValue({ totalDocs: 3 }) };
     await expect(
-      countOpenReports(payload as never, "gallery-reports", "item", 7),
+      countOpenReports(payload as never, "gallery-reports", 7),
     ).resolves.toBe(3);
     expect(payload.count).toHaveBeenCalledWith({
       collection: "gallery-reports",
-      where: openReportsWhere("item", 7),
+      where: {
+        and: [{ item: { equals: 7 } }, { dismissedAt: { exists: false } }],
+      },
     });
   });
 });

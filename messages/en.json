@@ -6623,6 +6623,8 @@
       "UPLOAD_FAILED": "It didn't upload. Try again.",
       "UNDECODABLE_PHOTO": "We can't read this photo. Try saving it as a JPEG first.",
       "PUBLIC_NOT_AVAILABLE": "Only members can see this community's content, so these can't be shared with everyone. Choose Members instead.",
+      "OWN_ITEM": "You can't report your own photo or video. You can delete it instead.",
+      "ALREADY_REPORTED": "You already reported this.",
       "saveFailed": "We couldn't save your changes. Please try again."
     }
   }
