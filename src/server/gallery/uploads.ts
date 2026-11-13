@@ -565,7 +565,7 @@ export async function discardItem(
 
 /** The batch's ready items, oldest first. */
 async function readyItemsOf(
-  deps: GalleryDeps,
+  deps: Pick<GalleryDeps, "payload">,
   batchId: number,
 ): Promise<GalleryItem[]> {
   const { docs } = await deps.payload.find({
@@ -581,20 +581,27 @@ async function readyItemsOf(
 }
 
 /**
- * Marks the caller's batch finished — only if it is still open, in one
- * statement, so a second call, or the daily cleanup, can never finish it
- * twice. The request that finishes it, and only that one, announces it (when
- * it has ready items and `announce` is given) and stores the announcement's
- * post. Any other call returns what is stored. A failed announcement is
- * logged; the uploads stand.
+ * Moves a batch from open to finished — only if it is still open, in one
+ * statement, so of a user's finish, a second finish and the daily cleanup
+ * exactly one closes it. The call that closes it, and only that one,
+ * announces it (when it has ready items and `announce` is given) and stores
+ * the announcement's post; a failed announcement is logged and the batch
+ * stays finished. The one rule for finishing a batch: `finishBatch` and the
+ * cleanup both go through here, so the announcement is wired in one place.
+ *
+ * `readyItems` are read after the move, so no item that became ready before
+ * it is missed. `feedPostId` is the post this call stored, if any.
  */
-export async function finishBatch(
-  deps: GalleryDeps,
-  input: { userId: string; batchId: number },
-  announce?: AnnounceBatch,
-): Promise<{ readyCount: number; feedPostId: number | null }> {
-  const batch = await requireOwnBatch(deps, input);
-  const won =
+export async function closeBatch(
+  deps: Pick<GalleryDeps, "payload" | "log">,
+  batch: GalleryBatch,
+  options: { announce?: AnnounceBatch; context: string },
+): Promise<{
+  closed: boolean;
+  readyItems: GalleryItem[];
+  feedPostId: number | null;
+}> {
+  const closed =
     batch.status === "open" &&
     (await transitionStatus(deps.payload, {
       collection: "gallery-batches",
@@ -602,24 +609,20 @@ export async function finishBatch(
       from: "open",
       to: "finished",
     }));
-  // Read after the move, so no item that became ready before it is missed.
   const readyItems = await readyItemsOf(deps, batch.id);
-  if (!won || !announce || readyItems.length === 0) {
-    // Lost the move to a concurrent finish: read what that one stored.
-    const lostRace = batch.status === "open" && !won;
-    const current = lostRace ? await requireOwnBatch(deps, input) : batch;
-    return {
-      readyCount: readyItems.length,
-      feedPostId: current.feedPostId ?? null,
-    };
+  if (!closed || !options.announce || readyItems.length === 0) {
+    return { closed, readyItems, feedPostId: null };
   }
 
   let feedPostId: number | null = null;
   try {
-    feedPostId = await announce({ ...batch, status: "finished" }, readyItems);
+    feedPostId = await options.announce(
+      { ...batch, status: "finished" },
+      readyItems,
+    );
   } catch (error) {
     (deps.log ?? console.error)(
-      "[gallery.finishBatch] announcing a finished batch failed",
+      `[gallery.${options.context}] announcing a finished batch failed`,
       { batchId: batch.id, error },
     );
   }
@@ -630,7 +633,37 @@ export async function finishBatch(
       data: { feedPostId },
     });
   }
-  return { readyCount: readyItems.length, feedPostId };
+  return { closed, readyItems, feedPostId };
+}
+
+/**
+ * Finishes the caller's batch (`closeBatch`). A call that did not close it —
+ * a second finish, or one that lost the race to a concurrent finish or the
+ * cleanup — returns what is stored.
+ */
+export async function finishBatch(
+  deps: GalleryDeps,
+  input: { userId: string; batchId: number },
+  announce?: AnnounceBatch,
+): Promise<{ readyCount: number; feedPostId: number | null }> {
+  const batch = await requireOwnBatch(deps, input);
+  const result = await closeBatch(deps, batch, {
+    announce,
+    context: "finishBatch",
+  });
+  if (result.closed) {
+    return {
+      readyCount: result.readyItems.length,
+      feedPostId: result.feedPostId,
+    };
+  }
+  // Lost the move to a concurrent finish: read what that one stored.
+  const current =
+    batch.status === "open" ? await requireOwnBatch(deps, input) : batch;
+  return {
+    readyCount: result.readyItems.length,
+    feedPostId: current.feedPostId ?? null,
+  };
 }
 
 /** The caller's own batch, whatever its state; anything else UPLOAD_EXPIRED. */

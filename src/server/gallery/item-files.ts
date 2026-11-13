@@ -25,22 +25,26 @@ export async function itemFileUrls(
   return { url, thumbnailUrl };
 }
 
+/** Every object an item owns: its file and its thumbnail. */
+export function itemFileKeys(
+  item: Pick<GalleryItem, "fileKey" | "thumbnailKey">,
+): [string, string] {
+  return [item.fileKey, item.thumbnailKey];
+}
+
 /** Removes an item's file and thumbnail, best effort: the sweep is the net. */
 export async function removeItemFiles(
   deps: Pick<GalleryDeps, "storage" | "log">,
   item: ItemFiles,
   context: string,
 ): Promise<void> {
+  const keys = itemFileKeys(item);
   try {
-    await deps.storage().remove([item.fileKey, item.thumbnailKey]);
+    await deps.storage().remove(keys);
   } catch (error) {
     (deps.log ?? console.error)(
       `[gallery.${context}] removing an item's objects failed`,
-      {
-        itemId: item.id,
-        keys: [item.fileKey, item.thumbnailKey],
-        error,
-      },
+      { itemId: item.id, keys, error },
     );
   }
 }
