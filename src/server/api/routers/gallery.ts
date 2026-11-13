@@ -48,17 +48,39 @@ async function depsFor(database: typeof db): Promise<GalleryDeps> {
 }
 
 /**
- * The rollout switch, checked first in every procedure: with the gallery off
- * nothing is validated, loaded or written, and every caller gets the same
- * GALLERY_DISABLED answer.
+ * The gallery's services and the viewer of the community with this slug
+ * (signed-out visitors are `userId: null`), for the procedures whose rules
+ * depend on who is looking.
  */
-function requireGalleryEnabled<T>({ next }: { next: () => T }): T {
-  if (!galleryEnabled()) throw galleryError("GALLERY_DISABLED");
-  return next();
+async function viewerIn(
+  ctx: { db: typeof db; session: { user: { id: string } } | null },
+  slug: string,
+) {
+  const deps = await depsFor(ctx.db);
+  const viewer = await loadGalleryViewer(deps, {
+    slug,
+    userId: ctx.session?.user.id ?? null,
+  });
+  return { deps, viewer };
 }
 
-const galleryPublicProcedure = publicProcedure.use(requireGalleryEnabled);
-const galleryProtectedProcedure = protectedProcedure.use(requireGalleryEnabled);
+/**
+ * The rollout switch, checked first in every procedure (before input is
+ * parsed): with the gallery off nothing is validated, loaded or written, and
+ * every caller gets the same GALLERY_DISABLED answer.
+ */
+function assertGalleryEnabled(): void {
+  if (!galleryEnabled()) throw galleryError("GALLERY_DISABLED");
+}
+
+const galleryPublicProcedure = publicProcedure.use(({ next }) => {
+  assertGalleryEnabled();
+  return next();
+});
+const galleryProtectedProcedure = protectedProcedure.use(({ next }) => {
+  assertGalleryEnabled();
+  return next();
+});
 
 /** Upper bounds for identifiers with no gallery rule of their own. */
 const SLUG_MAX = 100;
@@ -90,12 +112,8 @@ export const galleryRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const deps = await depsFor(ctx.db);
       const { slug, ...filters } = input;
-      const viewer = await loadGalleryViewer(deps, {
-        slug,
-        userId: ctx.session?.user?.id ?? null,
-      });
+      const { deps, viewer } = await viewerIn(ctx, slug);
       return listItems(deps, { viewer, ...filters });
     }),
 
@@ -103,22 +121,14 @@ export const galleryRouter = createTRPCRouter({
   facets: galleryPublicProcedure
     .input(inCommunity)
     .query(async ({ ctx, input }) => {
-      const deps = await depsFor(ctx.db);
-      const viewer = await loadGalleryViewer(deps, {
-        slug: input.slug,
-        userId: ctx.session?.user?.id ?? null,
-      });
+      const { deps, viewer } = await viewerIn(ctx, input.slug);
       return listFacets(deps, { viewer });
     }),
 
   item: galleryPublicProcedure
     .input(itemInCommunity)
     .query(async ({ ctx, input }) => {
-      const deps = await depsFor(ctx.db);
-      const viewer = await loadGalleryViewer(deps, {
-        slug: input.slug,
-        userId: ctx.session?.user?.id ?? null,
-      });
+      const { deps, viewer } = await viewerIn(ctx, input.slug);
       return getItem(deps, { viewer, itemId: input.itemId });
     }),
 
@@ -126,11 +136,7 @@ export const galleryRouter = createTRPCRouter({
   linkableEvents: galleryProtectedProcedure
     .input(inCommunity)
     .query(async ({ ctx, input }) => {
-      const deps = await depsFor(ctx.db);
-      const viewer = await loadGalleryViewer(deps, {
-        slug: input.slug,
-        userId: ctx.session.user.id,
-      });
+      const { deps, viewer } = await viewerIn(ctx, input.slug);
       return linkableEvents(deps, { viewer });
     }),
 
@@ -219,12 +225,8 @@ export const galleryRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const deps = await depsFor(ctx.db);
       const { slug, ...changes } = input;
-      const viewer = await loadGalleryViewer(deps, {
-        slug,
-        userId: ctx.session.user.id,
-      });
+      const { deps, viewer } = await viewerIn(ctx, slug);
       return updateItem(deps, { viewer, ...changes });
     }),
 
@@ -235,11 +237,7 @@ export const galleryRouter = createTRPCRouter({
   deleteItem: galleryProtectedProcedure
     .input(itemInCommunity)
     .mutation(async ({ ctx, input }) => {
-      const deps = await depsFor(ctx.db);
-      const viewer = await loadGalleryViewer(deps, {
-        slug: input.slug,
-        userId: ctx.session.user.id,
-      });
+      const { deps, viewer } = await viewerIn(ctx, input.slug);
       return deleteItem(deps, { viewer, itemId: input.itemId });
     }),
 });

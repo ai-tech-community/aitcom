@@ -171,6 +171,7 @@ describe("gallery router — flag off", () => {
     await expect(
       caller().startBatch({ ...START_BATCH, plannedFiles: 31 }),
     ).rejects.toMatchObject({ code: "NOT_FOUND", message: "GALLERY_DISABLED" });
+    expectNothingTouched();
   });
 });
 
@@ -252,6 +253,38 @@ describe("gallery router — input validation", () => {
       (c) => c.updateItem({ slug: "alpha", itemId: 1, alt: "x".repeat(501) }),
     ],
     ["an empty slug", (c) => c.list({ slug: "" })],
+    [
+      "a content type over 255 characters",
+      (c) => c.startItem({ ...START_ITEM, contentType: "x".repeat(256) }),
+    ],
+    [
+      "a topic over 100 characters",
+      (c) => c.startBatch({ ...START_BATCH, topicSlug: "x".repeat(101) }),
+    ],
+    [
+      "a topic filter over 100 characters",
+      (c) => c.list({ slug: "alpha", topicSlug: "x".repeat(101) }),
+    ],
+    [
+      "durationSeconds Infinity",
+      (c) =>
+        c.startItem({
+          ...START_ITEM,
+          mediaType: "video",
+          contentType: "video/mp4",
+          durationSeconds: Infinity,
+        }),
+    ],
+    [
+      "durationSeconds NaN",
+      (c) =>
+        c.startItem({
+          ...START_ITEM,
+          mediaType: "video",
+          contentType: "video/mp4",
+          durationSeconds: NaN,
+        }),
+    ],
   ];
 
   it.each(invalidCalls)(
