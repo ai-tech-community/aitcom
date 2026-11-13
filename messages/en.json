@@ -1161,6 +1161,17 @@
     "profile": {
       "title": "Profile"
     },
+    "deleteAccount": {
+      "title": "Delete account",
+      "description": "This removes your sign-in, profile, and personal details. Community posts stay up under “Deleted member”. Payment records stay for bookkeeping, without your email. This cannot be undone.",
+      "action": "Delete account",
+      "confirmTitle": "Delete your account?",
+      "confirmDescription": "Type {word} to confirm. You will be signed out and cannot sign back in to this account.",
+      "confirmLabel": "Type {word} to confirm",
+      "confirm": "Delete account",
+      "cancel": "Cancel",
+      "error": "Could not delete your account. Try again, or email info@klevox.com."
+    },
     "answers": {
       "title": "Your interests and goals",
       "description": "Your answers to the welcome questions shape your getting-started steps and the people we suggest.",

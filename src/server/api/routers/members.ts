@@ -68,6 +68,11 @@ import {
 import { memberActiveDays } from "@/server/members/active-days";
 import { routing } from "@/i18n/routing";
 import {
+  AccountNotFoundError,
+  ACCOUNT_DELETION_CONFIRMATION,
+  deleteMemberAccount,
+} from "@/server/members/delete-account";
+import {
   publicRosterColumns,
   toPublicRosterEntry,
   type PublicRosterEntry,
@@ -720,4 +725,26 @@ export const membersRouter = createTRPCRouter({
         };
       },
     ),
+
+  /**
+   * Erase the signed-in member. The id always comes from the session: the
+   * input has no user id, so one member cannot delete another.
+   */
+  deleteAccount: protectedProcedure
+    .input(
+      z.object({
+        confirmation: z.literal(ACCOUNT_DELETION_CONFIRMATION),
+      }),
+    )
+    .mutation(async ({ ctx }) => {
+      try {
+        await deleteMemberAccount(ctx.db, ctx.session.user.id);
+      } catch (error) {
+        if (error instanceof AccountNotFoundError) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+        throw error;
+      }
+      return { deleted: true as const };
+    }),
 });

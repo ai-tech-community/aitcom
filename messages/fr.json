@@ -1161,6 +1161,17 @@
     "profile": {
       "title": "Profil"
     },
+    "deleteAccount": {
+      "title": "Supprimer le compte",
+      "description": "Cela retire votre connexion, votre profil et vos données personnelles. Les messages de la communauté restent visibles sous « Deleted member ». Les enregistrements de paiement sont conservés pour la comptabilité, sans votre e-mail. Cette action est irréversible.",
+      "action": "Supprimer le compte",
+      "confirmTitle": "Supprimer votre compte ?",
+      "confirmDescription": "Saisissez {word} pour confirmer. Vous serez déconnecté et ne pourrez plus vous connecter à ce compte.",
+      "confirmLabel": "Saisissez {word} pour confirmer",
+      "confirm": "Supprimer le compte",
+      "cancel": "Annuler",
+      "error": "Impossible de supprimer votre compte. Réessayez, ou écrivez à info@klevox.com."
+    },
     "answers": {
       "title": "Vos centres d’intérêt et vos objectifs",
       "description": "Vos réponses aux questions d’accueil déterminent les premières étapes et les personnes que nous vous suggérons.",

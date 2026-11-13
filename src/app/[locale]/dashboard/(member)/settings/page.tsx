@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ConnectedIdentities } from "@/components/connected-identities";
+import { DeleteAccountSettings } from "@/components/dashboard/delete-account-settings";
 import { OnboardingAnswersSettings } from "@/components/dashboard/onboarding-answers-settings";
 import { ProfileSettings } from "@/components/dashboard/profile-settings";
 import { NotificationPrefs } from "@/components/notifications/notification-prefs";
@@ -22,6 +23,7 @@ export default function DashboardSettingsPage() {
       <NotificationPrefs />
       <ConnectedIdentities />
       <ChecklistSetting />
+      <DeleteAccountSettings />
     </div>
   );
 }
