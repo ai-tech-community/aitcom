@@ -1,3 +1,4 @@
+import { isGalleryKey } from "@/lib/gallery-rules";
 import { ABANDONED_UPLOAD_HOURS } from "@/lib/video-rules";
 import type {
   ObjectStorage,
@@ -5,6 +6,7 @@ import type {
 } from "@/server/media/object-storage";
 
 import type { Payload } from "./deps";
+import { deleteEmptyFinishedBatches } from "./empty-batches";
 import { itemFileKeys } from "./item-files";
 import { closeBatch } from "./uploads";
 
@@ -14,7 +16,7 @@ const CLEANUP_PAGE_SIZE = 200;
 /**
  * Daily cleanup of gallery uploads left behind (spec 2026-11-13, Cleanup;
  * ADR-0049). Mirrors the classroom file cleanup
- * (`material-uploads-cleanup.ts`).
+ * (`material-uploads-cleanup.ts`). Three passes, in this order:
  *
  * 1. Items `uploading` or `failed` older than ABANDONED_UPLOAD_HOURS: their
  *    file and thumbnail are removed, then the row. finishItem and discardItem
@@ -24,12 +26,17 @@ const CLEANUP_PAGE_SIZE = 200;
  *    effort, but a still-live grant may have stored them after that, so they
  *    are removed again. Files first, then the row: a storage failure never
  *    leaves objects no row points at. Removing a key that holds nothing
- *    succeeds, so that is not a failure.
+ *    succeeds, so that is not a failure. Only gallery keys (`isGalleryKey`)
+ *    are ever removed; any other key on a row is logged and left alone.
  * 2. Batches still `open` after ABANDONED_UPLOAD_HOURS: the uploader never
  *    finished them. Each is closed through `closeBatch`, the same move
- *    `finishBatch` makes, so a late finish and this cleanup never both act on
- *    it. A batch this run closed that has no items left is deleted (its items
- *    reference it, so it can only go once it is empty).
+ *    `finishBatch` makes, so a late finish and this cleanup never both act
+ *    on it.
+ * 3. Finished batches older than ABANDONED_UPLOAD_HOURS with no items and no
+ *    feed post are deleted (`deleteEmptyFinishedBatches`): batches whose
+ *    every item failed or was discarded, including those pass 2 just
+ *    closed. This is the one place an empty batch is deleted, so one that is
+ *    missed today (a full page of items, a failed delete) goes tomorrow.
  *
  * One row's failure must not abort the run: it is caught, logged, counted
  * in `failed`, and left for tomorrow's run where it can be retried. Storage
@@ -40,11 +47,18 @@ export async function cleanupAbandonedGalleryUploads(deps: {
   storage: ObjectStorageSource;
   now?: () => Date;
   warn?: (message: string, detail: unknown) => void;
-}): Promise<{ removed: number; failed: number; batchesClosed: number }> {
+  log?: (message: string, detail: unknown) => void;
+}): Promise<{
+  removed: number;
+  failed: number;
+  batchesClosed: number;
+  batchesDeleted: number;
+}> {
   const now = deps.now?.() ?? new Date();
   const cutoff = new Date(
     now.getTime() - ABANDONED_UPLOAD_HOURS * 60 * 60 * 1000,
   ).toISOString();
+  const log = deps.log ?? console.error;
   const warnIfFull = (count: number, what: string) => {
     if (count >= CLEANUP_PAGE_SIZE) {
       (deps.warn ?? console.warn)(
@@ -73,20 +87,32 @@ export async function cleanupAbandonedGalleryUploads(deps: {
   let failed = 0;
   for (const item of items) {
     try {
-      storage ??= deps.storage();
-      await storage.remove(itemFileKeys(item));
+      const keys = itemFileKeys(item);
+      const ours = keys.filter(isGalleryKey);
+      if (ours.length < keys.length) {
+        log(
+          "[gallery-uploads-cleanup] left a key outside the gallery folders",
+          {
+            itemId: item.id,
+            keys: keys.filter((key) => !isGalleryKey(key)),
+          },
+        );
+      }
+      if (ours.length > 0) {
+        storage ??= deps.storage();
+        await storage.remove(ours);
+      }
       await deps.payload.delete({ collection: "gallery-items", id: item.id });
       removed++;
     } catch (error) {
       failed++;
-      console.error(
-        "[gallery-uploads-cleanup] removing an abandoned item failed",
-        { itemId: item.id, error },
-      );
+      log("[gallery-uploads-cleanup] removing an abandoned item failed", {
+        itemId: item.id,
+        error,
+      });
     }
   }
 
-  // After the items, so a batch whose items were all abandoned is empty now.
   const { docs: batches } = await deps.payload.find({
     collection: "gallery-batches",
     where: {
@@ -105,28 +131,33 @@ export async function cleanupAbandonedGalleryUploads(deps: {
   for (const batch of batches) {
     try {
       // Slice 2 passes the feed announcement here, as finishBatch does.
-      const { closed } = await closeBatch(deps, batch, {
+      const closeDeps = { payload: deps.payload, log };
+      const { closed } = await closeBatch(closeDeps, batch, {
         context: "cleanup",
       });
-      if (!closed) continue;
-      batchesClosed++;
-      const { totalDocs } = await deps.payload.count({
-        collection: "gallery-items",
-        where: { batch: { equals: batch.id } },
-      });
-      if (totalDocs === 0) {
-        await deps.payload.delete({
-          collection: "gallery-batches",
-          id: batch.id,
-        });
-      }
+      if (closed) batchesClosed++;
     } catch (error) {
       failed++;
-      console.error(
-        "[gallery-uploads-cleanup] closing an abandoned batch failed",
-        { batchId: batch.id, error },
-      );
+      log("[gallery-uploads-cleanup] closing an abandoned batch failed", {
+        batchId: batch.id,
+        error,
+      });
     }
   }
-  return { removed, failed, batchesClosed };
+
+  // After the items and the closing, so batches emptied or closed in this
+  // run go today.
+  let batchesDeleted = 0;
+  try {
+    const deleted = await deleteEmptyFinishedBatches(deps.payload, {
+      createdBefore: cutoff,
+      limit: CLEANUP_PAGE_SIZE,
+    });
+    batchesDeleted = deleted.length;
+    warnIfFull(batchesDeleted, "empty batches");
+  } catch (error) {
+    failed++;
+    log("[gallery-uploads-cleanup] deleting empty batches failed", { error });
+  }
+  return { removed, failed, batchesClosed, batchesDeleted };
 }

@@ -36,10 +36,10 @@ async function runSweep<T extends SweepResult>(
 /**
  * Cron job: runs daily to delete the files and records of uploads nobody
  * finished within ABANDONED_UPLOAD_HOURS — Reels video grants, classroom
- * file uploads and gallery uploads (closing the gallery batches left open) —
- * and then the Reels video files no live post or open grant points at any
- * more, the feed post images no post links, and the gallery files no
- * gallery item points at. Protected by CRON_SECRET header. The path keeps
+ * file uploads and gallery uploads (closing gallery batches left open and
+ * deleting empty ones) — and then the Reels video files no live post or
+ * open grant points at any more, the feed post images no post links, and
+ * the gallery files no gallery item points at. Protected by CRON_SECRET header. The path keeps
  * its old name so the Vercel cron schedule is unchanged.
  *
  * The sweeps are independent: one throwing does not stop the others. The

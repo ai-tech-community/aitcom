@@ -262,6 +262,86 @@ describe.skipIf(!RUN_DB)("gallery cleanup [DB integration]", () => {
     ).resolves.toBeNull();
   });
 
+  /** Whether the batch still exists after a cleanup run. */
+  async function batchSurvivesCleanup(deps: Deps, batchId: number) {
+    const { payload } = deps;
+    await ageEverything(payload);
+    await m.cleanup.cleanupAbandonedGalleryUploads({
+      payload,
+      storage: deps.storage,
+    });
+    const batch = await payload.findByID({
+      collection: "gallery-batches",
+      id: batchId,
+      depth: 0,
+      disableErrors: true,
+    });
+    return batch !== null;
+  }
+
+  it("deletes a finished batch whose only item was discarded", async () => {
+    const { deps } = await setup();
+    const {
+      batchId,
+      itemIds: [itemId],
+    } = await startPhotos(deps, 1);
+    await m.uploads.discardItem(deps, { userId: fx.userId, itemId: itemId! });
+    await m.uploads.finishBatch(deps, { userId: fx.userId, batchId });
+
+    await expect(batchSurvivesCleanup(deps, batchId)).resolves.toBe(false);
+  });
+
+  it("keeps a finished batch that still has an item", async () => {
+    const { deps } = await setup();
+    const {
+      batchId,
+      itemIds: [itemId],
+    } = await startPhotos(deps, 1);
+    await m.uploads.finishItem(deps, { userId: fx.userId, itemId: itemId! });
+    await m.uploads.finishBatch(deps, { userId: fx.userId, batchId });
+
+    await expect(batchSurvivesCleanup(deps, batchId)).resolves.toBe(true);
+  });
+
+  it("keeps an empty finished batch that announced a feed post", async () => {
+    const { payload, deps } = await setup();
+    const {
+      batchId,
+      itemIds: [itemId],
+    } = await startPhotos(deps, 1);
+    await m.uploads.discardItem(deps, { userId: fx.userId, itemId: itemId! });
+    await m.uploads.finishBatch(deps, { userId: fx.userId, batchId });
+    await payload.update({
+      collection: "gallery-batches",
+      id: batchId,
+      data: { feedPostId: 123456 },
+    });
+
+    await expect(batchSurvivesCleanup(deps, batchId)).resolves.toBe(true);
+  });
+
+  it("keeps a young empty finished batch", async () => {
+    const { payload, deps } = await setup();
+    const { batchId } = await startPhotos(deps, 1);
+    await payload.delete({
+      collection: "gallery-items",
+      where: { batch: { equals: batchId } },
+    });
+    await m.uploads.finishBatch(deps, { userId: fx.userId, batchId });
+
+    await m.cleanup.cleanupAbandonedGalleryUploads({
+      payload,
+      storage: deps.storage,
+    });
+    await expect(
+      payload.findByID({
+        collection: "gallery-batches",
+        id: batchId,
+        depth: 0,
+      }),
+    ).resolves.toMatchObject({ status: "finished" });
+  });
+
   it("keeps every file an item points at, in any status, and removes only lost gallery files", async () => {
     const { payload, deps } = await setup();
     const {

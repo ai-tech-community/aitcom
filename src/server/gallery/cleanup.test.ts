@@ -4,6 +4,10 @@ const transition = vi.hoisted(() => vi.fn());
 vi.mock("@/server/payload-status-transition", () => ({
   transitionStatus: transition,
 }));
+const deleteEmpty = vi.hoisted(() => vi.fn());
+vi.mock("./empty-batches", () => ({
+  deleteEmptyFinishedBatches: deleteEmpty,
+}));
 
 import { cleanupAbandonedGalleryUploads } from "./cleanup";
 
@@ -13,7 +17,7 @@ const CUTOFF = "2026-11-12T12:00:00.000Z";
 const fileKeyOf = (id: number) => `private/gallery/c1/upload-${id}.jpg`;
 const thumbKeyOf = (id: number) => `private/gallery/c1/upload-${id}-thumb.jpg`;
 
-const item = (id: number, status: "uploading" | "failed") => ({
+const item = (id: number, status: "uploading" | "failed" | "ready") => ({
   id,
   status,
   storage: "private",
@@ -28,8 +32,8 @@ function fakes(
   over: {
     items?: unknown[];
     batches?: unknown[];
-    /** Items left in each batch once the abandoned ones are gone. */
-    itemsLeft?: Record<number, number>;
+    /** Ids of the empty finished batches the delete statement removes. */
+    emptyDeleted?: number[];
     /** Batches a concurrent finishBatch moved first. */
     lostRace?: number[];
     removeImpl?: (keys: string[]) => Promise<void>;
@@ -44,24 +48,30 @@ function fakes(
         return Promise.resolve(!over.lostRace?.includes(t.id));
       },
     );
+  deleteEmpty.mockReset().mockImplementation(() => {
+    calls.push("deleteEmptyFinishedBatches");
+    return Promise.resolve(over.emptyDeleted ?? []);
+  });
   const payload = {
-    find: vi.fn().mockImplementation(({ collection }: { collection: string }) =>
-      Promise.resolve({
-        docs:
-          collection === "gallery-batches"
-            ? (over.batches ?? [])
-            : collection === "gallery-items"
-              ? (over.items ?? [])
-              : [],
-      }),
-    ),
-    count: vi
+    // Items are filtered by the status clause of the query, so closing a
+    // batch reads only its ready items, and the cleanup only the abandoned.
+    find: vi
       .fn()
       .mockImplementation(
-        ({ where }: { where: { batch: { equals: number } } }) =>
-          Promise.resolve({
-            totalDocs: over.itemsLeft?.[where.batch.equals] ?? 0,
-          }),
+        ({ collection, where }: { collection: string; where?: Where }) => {
+          if (collection === "gallery-batches") {
+            return Promise.resolve({ docs: over.batches ?? [] });
+          }
+          if (collection !== "gallery-items") {
+            return Promise.resolve({ docs: [] });
+          }
+          const wanted = statusesOf(where);
+          return Promise.resolve({
+            docs: ((over.items ?? []) as { status: string }[]).filter(
+              (row) => wanted === null || wanted.includes(row.status),
+            ),
+          });
+        },
       ),
     delete: vi
       .fn()
@@ -81,19 +91,33 @@ function fakes(
   };
   const getStorage = vi.fn(() => storage);
   const warn = vi.fn();
+  const log = vi.fn();
   return {
     calls,
     payload,
     storage,
     getStorage,
     warn,
+    log,
     deps: {
       payload: payload as never,
       storage: getStorage as never,
       now: () => NOW,
       warn,
+      log,
     },
   };
+}
+
+type Where = {
+  and?: { status?: { in?: string[]; equals?: string } }[];
+};
+
+/** The statuses a query asks for, or null when it does not filter on status. */
+function statusesOf(where: Where | undefined): string[] | null {
+  const clause = where?.and?.find((c) => c.status)?.status;
+  if (!clause) return null;
+  return clause.in ?? (clause.equals ? [clause.equals] : null);
 }
 
 /** The find for abandoned items (not the ready-items read of closing a batch). */
@@ -110,6 +134,13 @@ function abandonedItemsQuery(payload: ReturnType<typeof fakes>["payload"]) {
 beforeEach(() => {
   vi.restoreAllMocks();
 });
+
+const NOTHING = {
+  removed: 0,
+  failed: 0,
+  batchesClosed: 0,
+  batchesDeleted: 0,
+};
 
 describe("cleanupAbandonedGalleryUploads: items", () => {
   it("looks only at uploading or failed items older than 24 hours, oldest first", async () => {
@@ -132,13 +163,12 @@ describe("cleanupAbandonedGalleryUploads: items", () => {
   it("removes an abandoned item's file and thumbnail, then its row", async () => {
     const { deps, calls } = fakes({ items: [item(1, "uploading")] });
     await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toEqual({
+      ...NOTHING,
       removed: 1,
-      failed: 0,
-      batchesClosed: 0,
     });
     // Files first: if the row went first, a failed removal would leave
     // objects no row points at until the production-only sweep.
-    expect(calls).toEqual([
+    expect(calls.slice(0, 2)).toEqual([
       `remove:${fileKeyOf(1)},${thumbKeyOf(1)}`,
       "delete:gallery-items:1",
     ]);
@@ -157,28 +187,44 @@ describe("cleanupAbandonedGalleryUploads: items", () => {
     });
   });
 
+  it("never removes a key outside the gallery folders, and says so", async () => {
+    const odd = { ...item(5, "failed"), fileKey: "private/videos/c1/x.mp4" };
+    const { deps, storage, payload, log } = fakes({ items: [odd] });
+    await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toMatchObject({
+      removed: 1,
+      failed: 0,
+    });
+    expect(storage.remove).toHaveBeenCalledTimes(1);
+    expect(storage.remove).toHaveBeenCalledWith([thumbKeyOf(5)]);
+    expect(log).toHaveBeenCalledWith(
+      "[gallery-uploads-cleanup] left a key outside the gallery folders",
+      { itemId: 5, keys: ["private/videos/c1/x.mp4"] },
+    );
+    expect(payload.delete).toHaveBeenCalledWith({
+      collection: "gallery-items",
+      id: 5,
+    });
+  });
+
   it("keeps going when storage fails for one item, and keeps that row for tomorrow", async () => {
-    const { deps, payload } = fakes({
+    const { deps, payload, log } = fakes({
       items: [item(1, "uploading"), item(2, "failed"), item(3, "uploading")],
       removeImpl: (keys) =>
         keys[0] === fileKeyOf(1)
           ? Promise.reject(new Error("s3 down"))
           : Promise.resolve(),
     });
-    const error = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
     await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toEqual({
+      ...NOTHING,
       removed: 2,
       failed: 1,
-      batchesClosed: 0,
     });
     expect(payload.delete).toHaveBeenCalledTimes(2);
     expect(payload.delete).not.toHaveBeenCalledWith({
       collection: "gallery-items",
       id: 1,
     });
-    expect(error).toHaveBeenCalledWith(
+    expect(log).toHaveBeenCalledWith(
       "[gallery-uploads-cleanup] removing an abandoned item failed",
       expect.objectContaining({ itemId: 1 }),
     );
@@ -189,7 +235,6 @@ describe("cleanupAbandonedGalleryUploads: items", () => {
       items: [item(1, "uploading"), item(2, "uploading")],
     });
     payload.delete.mockRejectedValueOnce(new Error("db down"));
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
     await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toMatchObject({
       removed: 1,
       failed: 1,
@@ -215,7 +260,7 @@ describe("cleanupAbandonedGalleryUploads: items", () => {
   });
 });
 
-describe("cleanupAbandonedGalleryUploads: batches", () => {
+describe("cleanupAbandonedGalleryUploads: open batches", () => {
   it("looks only at open batches older than 24 hours, oldest first", async () => {
     const { deps, payload } = fakes();
     await cleanupAbandonedGalleryUploads(deps);
@@ -234,13 +279,9 @@ describe("cleanupAbandonedGalleryUploads: batches", () => {
   });
 
   it("closes an abandoned open batch with the same open-to-finished move finishBatch makes", async () => {
-    const { deps, payload } = fakes({
-      batches: [openBatch(3)],
-      itemsLeft: { 3: 2 },
-    });
+    const { deps, payload } = fakes({ batches: [openBatch(3)] });
     await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toEqual({
-      removed: 0,
-      failed: 0,
+      ...NOTHING,
       batchesClosed: 1,
     });
     expect(transition).toHaveBeenCalledWith(payload, {
@@ -249,64 +290,96 @@ describe("cleanupAbandonedGalleryUploads: batches", () => {
       from: "open",
       to: "finished",
     });
-    // It still has items: kept.
+    // Closing never deletes: that is the empty-batch pass's job alone.
     expect(payload.delete).not.toHaveBeenCalled();
   });
 
-  it("deletes a closed batch that has no items left", async () => {
-    const { deps, payload, calls } = fakes({
-      items: [item(1, "uploading")],
+  it("reads only the batch's ready items when closing it", async () => {
+    const { deps, payload } = fakes({
+      items: [item(1, "uploading"), item(2, "ready")],
       batches: [openBatch(3)],
-      itemsLeft: { 3: 0 },
     });
+    await cleanupAbandonedGalleryUploads(deps);
+    const at = (payload.find.mock.calls as [{ where?: unknown }][]).findIndex(
+      ([args]) => JSON.stringify(args.where).includes('"equals":"ready"'),
+    );
+    expect(at).toBeGreaterThanOrEqual(0);
+    const { docs } = (await payload.find.mock.results[at]!.value) as {
+      docs: unknown[];
+    };
+    expect(docs).toEqual([item(2, "ready")]);
+  });
+
+  it("leaves a batch a late finishBatch moved first to that finish", async () => {
+    const { deps } = fakes({ batches: [openBatch(3)], lostRace: [3] });
+    await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toEqual(
+      NOTHING,
+    );
+  });
+
+  it("keeps going when one batch cannot be closed", async () => {
+    const { deps, log } = fakes({ batches: [openBatch(3), openBatch(4)] });
+    transition.mockRejectedValueOnce(new Error("db down"));
     await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toEqual({
-      removed: 1,
-      failed: 0,
+      ...NOTHING,
+      failed: 1,
       batchesClosed: 1,
     });
-    expect(payload.count).toHaveBeenCalledWith({
-      collection: "gallery-items",
-      where: { batch: { equals: 3 } },
+    expect(log).toHaveBeenCalledWith(
+      "[gallery-uploads-cleanup] closing an abandoned batch failed",
+      expect.objectContaining({ batchId: 3 }),
+    );
+  });
+});
+
+describe("cleanupAbandonedGalleryUploads: empty finished batches", () => {
+  it("deletes empty finished batches older than 24 hours, 200 at most", async () => {
+    const { deps, payload } = fakes({ emptyDeleted: [3, 9] });
+    await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toEqual({
+      ...NOTHING,
+      batchesDeleted: 2,
     });
-    // Its abandoned items go first, so the batch can be empty.
+    expect(deleteEmpty).toHaveBeenCalledWith(payload, {
+      createdBefore: CUTOFF,
+      limit: 200,
+    });
+  });
+
+  it("runs after the items are removed and the open batches closed, so they go the same day", async () => {
+    const { deps, calls } = fakes({
+      items: [item(1, "uploading")],
+      batches: [openBatch(3)],
+    });
+    await cleanupAbandonedGalleryUploads(deps);
     expect(calls).toEqual([
       `remove:${fileKeyOf(1)},${thumbKeyOf(1)}`,
       "delete:gallery-items:1",
       "transition:gallery-batches:3",
-      "delete:gallery-batches:3",
+      "deleteEmptyFinishedBatches",
     ]);
   });
 
-  it("leaves a batch a late finishBatch moved first to that finish", async () => {
-    const { deps, payload } = fakes({
-      batches: [openBatch(3)],
-      lostRace: [3],
-    });
-    await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toEqual({
-      removed: 0,
-      failed: 0,
-      batchesClosed: 0,
-    });
-    expect(payload.delete).not.toHaveBeenCalled();
+  it("warns when the page is full", async () => {
+    const full = Array.from({ length: 200 }, (_, i) => i + 1);
+    const { deps, warn } = fakes({ emptyDeleted: full });
+    await cleanupAbandonedGalleryUploads(deps);
+    expect(warn).toHaveBeenCalledWith(
+      "[gallery-uploads-cleanup] page full; more abandoned empty batches may remain",
+      { pageSize: 200 },
+    );
   });
 
-  it("keeps going when one batch cannot be closed", async () => {
-    const { deps } = fakes({
-      batches: [openBatch(3), openBatch(4)],
-      itemsLeft: { 3: 1, 4: 1 },
-    });
-    transition.mockRejectedValueOnce(new Error("db down"));
-    const error = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
+  it("counts and logs a failed delete, keeping the other results", async () => {
+    const { deps, log } = fakes({ items: [item(1, "uploading")] });
+    deleteEmpty.mockRejectedValueOnce(new Error("db down"));
     await expect(cleanupAbandonedGalleryUploads(deps)).resolves.toEqual({
-      removed: 0,
+      ...NOTHING,
+      removed: 1,
       failed: 1,
-      batchesClosed: 1,
     });
-    expect(error).toHaveBeenCalledWith(
-      "[gallery-uploads-cleanup] closing an abandoned batch failed",
-      expect.objectContaining({ batchId: 3 }),
+    expect(log).toHaveBeenCalledWith(
+      "[gallery-uploads-cleanup] deleting empty batches failed",
+      { error: expect.any(Error) },
     );
   });
 });

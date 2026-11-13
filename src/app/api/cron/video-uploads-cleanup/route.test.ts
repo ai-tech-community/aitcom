@@ -58,7 +58,12 @@ beforeEach(() => {
   m.materials.mockResolvedValue({ removed: 2, failed: 1 });
   m.unused.mockResolvedValue({ scanned: 9, removed: 3, failed: 0 });
   m.images.mockResolvedValue({ removed: 4, failed: 0 });
-  m.gallery.mockResolvedValue({ removed: 5, failed: 0, batchesClosed: 2 });
+  m.gallery.mockResolvedValue({
+    removed: 5,
+    failed: 0,
+    batchesClosed: 2,
+    batchesDeleted: 1,
+  });
   m.unusedGallery.mockResolvedValue({ scanned: 7, removed: 1, failed: 0 });
   m.ownsStorage.mockReturnValue(true);
 });
@@ -113,7 +118,7 @@ describe("video-uploads-cleanup cron", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({
       success: true,
-      gallery: { removed: 5, failed: 0, batchesClosed: 2 },
+      gallery: { removed: 5, failed: 0, batchesClosed: 2, batchesDeleted: 1 },
       unusedGalleryFiles: { scanned: 7, removed: 1, failed: 0 },
     });
     expect(m.gallery).toHaveBeenCalledWith({
@@ -160,7 +165,7 @@ describe("video-uploads-cleanup cron", () => {
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toMatchObject({
       success: false,
-      gallery: { removed: 5, failed: 0, batchesClosed: 2 },
+      gallery: { removed: 5, failed: 0, batchesClosed: 2, batchesDeleted: 1 },
       unusedGalleryFiles: null,
       unusedVideoFiles: { scanned: 9, removed: 3, failed: 0 },
     });
@@ -242,7 +247,7 @@ describe("video-uploads-cleanup cron", () => {
       unusedVideoFiles: { skipped: "not production" },
       unusedFeedImages: { skipped: "not production" },
       unusedGalleryFiles: { skipped: "not production" },
-      gallery: { removed: 5, failed: 0, batchesClosed: 2 },
+      gallery: { removed: 5, failed: 0, batchesClosed: 2, batchesDeleted: 1 },
     });
     expect(m.unused).not.toHaveBeenCalled();
     expect(m.images).not.toHaveBeenCalled();
