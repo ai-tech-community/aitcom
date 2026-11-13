@@ -252,10 +252,12 @@ export function GalleryLightbox({
       ? formatClipLength(item.durationSeconds)
       : null;
   const canEdit = item.isOwn && onEdit !== undefined;
-  // On a hidden item a moderator has the review's Remove instead.
-  const canDelete = item.isOwn || (canModerate && !item.hidden);
   const canReport = signedIn && !item.isOwn && !item.hidden;
   const showReview = item.hidden && (canModerate || item.isOwn);
+  // Where the moderator's review shows, its Remove takes Delete's place,
+  // even on the moderator's own item.
+  const canDelete =
+    (item.isOwn || canModerate) && !(canModerate && item.hidden);
   const caption = item.caption?.trim();
   const alt = item.alt?.trim() ?? "";
 
@@ -381,7 +383,12 @@ export function GalleryLightbox({
                 slug={slug}
                 item={item}
                 canReview={canModerate}
-                onRestored={() => onChanged?.(item.id, { gone: false })}
+                onRestored={() => {
+                  // Restore goes away with the banner: move focus before
+                  // it does, instead of losing it.
+                  closeRef.current?.focus();
+                  onChanged?.(item.id, { gone: false });
+                }}
                 onRemoved={() => deleted(item.id)}
               />
             ) : null}

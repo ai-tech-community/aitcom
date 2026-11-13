@@ -45,6 +45,7 @@ import {
   postVisibilityWhere,
 } from "@/server/communities/post-visibility";
 import { listReels } from "@/server/communities/reels";
+import { REPORT_NOTE_MAX } from "@/lib/post-report-reasons";
 import {
   listPostReports,
   REPORT_REASONS,
@@ -1271,7 +1272,7 @@ export const feedRouter = createTRPCRouter({
       z.object({
         postId: z.number(),
         reason: z.enum(REPORT_REASONS),
-        note: z.string().max(500).optional(),
+        note: z.string().max(REPORT_NOTE_MAX).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

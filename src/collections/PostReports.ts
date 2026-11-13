@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 
 import {
+  REPORT_NOTE_MAX,
   REPORT_REASON_LABELS,
   REPORT_REASONS,
 } from "@/lib/post-report-reasons";
@@ -32,7 +33,7 @@ export const PostReports: CollectionConfig = {
         value,
       })),
     },
-    { name: "note", type: "text", maxLength: 500 },
+    { name: "note", type: "text", maxLength: REPORT_NOTE_MAX },
     {
       // Set when a moderator restores the post. The row stays, so the same
       // reporter can't report it again; only open reports count and show.

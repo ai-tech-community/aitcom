@@ -687,7 +687,9 @@ describe("GalleryLightbox reports", () => {
         />,
       );
       open("Hid");
-      fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+      const restore = screen.getByRole("button", { name: "Restore" });
+      restore.focus();
+      fireEvent.click(restore);
       expect(m.reviewCalls).toEqual([
         {
           slug: "mlops",
@@ -698,6 +700,22 @@ describe("GalleryLightbox reports", () => {
       ]);
       expect(spies.onChanged).toHaveBeenCalledWith(5, { gone: false });
       expect(screen.getByRole("dialog")).toHaveAccessibleName("Hid");
+      // Restore goes away with the banner: focus is moved, not dropped.
+      expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+    });
+
+    it("gives a moderator who added it Remove, not Delete as well", () => {
+      const own = [
+        galleryItem({ id: 5, caption: "Mine", isOwn: true, hidden: true }),
+      ];
+      render(<Harness signedIn canModerate items={own} />);
+      const dialog = open("Mine");
+      expect(
+        within(dialog).getByRole("button", { name: "Remove" }),
+      ).toBeVisible();
+      expect(
+        within(dialog).queryByRole("button", { name: "Delete" }),
+      ).toBeNull();
     });
 
     it("removes like a delete: tells the caller, closes, focuses a neighbour", async () => {

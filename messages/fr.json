@@ -6545,6 +6545,7 @@
       "hiddenForModerator": "Masquée après un signalement",
       "hiddenForUploader": "Masquée le temps qu’un modérateur l’examine.",
       "reasons": "Motifs des signalements",
+      "noReports": "Aucun signalement en cours.",
       "retry": "Réessayer",
       "restore": "Restaurer",
       "remove": "Supprimer",

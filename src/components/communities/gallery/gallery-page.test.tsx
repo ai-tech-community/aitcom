@@ -221,10 +221,18 @@ vi.mock("./gallery-report-dialog", () => ({
     ) : null,
 }));
 vi.mock("./gallery-review-banner", () => ({
-  GalleryReviewBanner: (props: { onRestored: () => void }) => (
-    <button type="button" onClick={props.onRestored}>
-      Restored
-    </button>
+  GalleryReviewBanner: (props: {
+    onRestored: () => void;
+    onRemoved: () => void;
+  }) => (
+    <>
+      <button type="button" onClick={props.onRestored}>
+        Restored
+      </button>
+      <button type="button" onClick={props.onRemoved}>
+        Removed
+      </button>
+    </>
   ),
 }));
 vi.mock("sonner", () => ({
@@ -683,6 +691,18 @@ describe("GalleryPage", () => {
     expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
     expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 1 });
     expect(screen.getByRole("dialog")).toHaveAccessibleName("One");
+  });
+
+  it("refreshes the wall and the item after a moderator removed it", async () => {
+    asMember("moderator");
+    m.list.items = [galleryItem({ id: 1, caption: "One", hidden: true })];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    fireEvent.click(screen.getByRole("button", { name: "Removed" }));
+    expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 1 });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("gives a plain member no Delete on someone else's item", () => {

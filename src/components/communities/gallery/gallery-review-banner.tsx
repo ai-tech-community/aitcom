@@ -19,7 +19,8 @@ import { useGalleryReportReasonLabel } from "./gallery-report-text";
  * reports — reason, note, when — and decide: **Restore** dismisses exactly
  * the reports shown here (their ids, so a report that came in since stays
  * open) and shows the item again; **Remove**, after a confirmation, deletes
- * it and its reports. Restore waits until the reports are shown, and the
+ * it and its reports. With no open report, a muted line says so (Restore
+ * has nothing to name). Restore waits until the reports are shown, and the
  * reports are read again after a restore: one that came in meanwhile has
  * hidden the item again, and is shown for the next decision.
  *
@@ -107,6 +108,10 @@ export function GalleryReviewBanner({
             {t("retry")}
           </Button>
         </p>
+      ) : null}
+
+      {canReview && reports.data && shown.length === 0 ? (
+        <p className="text-muted-foreground pl-6">{t("noReports")}</p>
       ) : null}
 
       {shown.length > 0 ? (

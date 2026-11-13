@@ -2,10 +2,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  GALLERY_REPORT_NOTE_MAX,
   GALLERY_REPORT_REASON_LABELS,
   GALLERY_REPORT_REASONS,
 } from "./gallery-report-reasons";
-import { REPORT_REASON_LABELS, REPORT_REASONS } from "./post-report-reasons";
+import {
+  REPORT_NOTE_MAX,
+  REPORT_REASON_LABELS,
+  REPORT_REASONS,
+} from "./post-report-reasons";
 
 describe("gallery report reasons", () => {
   it("are the feed's reasons plus this_is_me, in order", () => {
@@ -17,6 +22,11 @@ describe("gallery report reasons", () => {
       "this_is_me",
     ]);
     expect(GALLERY_REPORT_REASONS).toEqual([...REPORT_REASONS, "this_is_me"]);
+  });
+
+  it("allow the same note length as a feed report", () => {
+    expect(REPORT_NOTE_MAX).toBe(500);
+    expect(GALLERY_REPORT_NOTE_MAX).toBe(REPORT_NOTE_MAX);
   });
 
   it("leave the feed's own list untouched", () => {

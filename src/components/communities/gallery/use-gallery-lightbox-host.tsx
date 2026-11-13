@@ -84,7 +84,7 @@ export function useGalleryLightboxHost({
         onEdit={isMember ? (item) => openEdit({ item }) : undefined}
         onDeleted={(itemId) => {
           forgetOpener(itemId);
-          refresh();
+          refresh(itemId);
           onChange?.();
         }}
         onChanged={(itemId, { gone }) => {

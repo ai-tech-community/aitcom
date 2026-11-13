@@ -6545,6 +6545,7 @@
       "hiddenForModerator": "Verborgen na een melding",
       "hiddenForUploader": "Verborgen tot een moderator hem bekijkt.",
       "reasons": "Waarom het gemeld is",
+      "noReports": "Geen openstaande meldingen.",
       "retry": "Opnieuw proberen",
       "restore": "Herstellen",
       "remove": "Verwijderen",

@@ -24,6 +24,7 @@ const m = vi.hoisted(() => ({
   editProps: vi.fn(),
   invalidateList: vi.fn(),
   invalidateFacets: vi.fn(),
+  invalidateItem: vi.fn(),
 }));
 
 vi.mock("@/trpc/react", () => ({
@@ -32,6 +33,7 @@ vi.mock("@/trpc/react", () => ({
       gallery: {
         list: { invalidate: m.invalidateList },
         facets: { invalidate: m.invalidateFacets },
+        item: { invalidate: m.invalidateItem },
       },
     }),
     topics: { list: { useQuery: () => ({ data: [] }) } },

@@ -192,6 +192,8 @@ describe("GalleryReviewBanner", () => {
     it("can't restore when there is no open report to decide on", () => {
       m.reports = { reports: [] };
       renderBanner({ canReview: true });
+      expect(screen.getByText("No open reports.")).toBeVisible();
+      expect(screen.queryByRole("list")).toBeNull();
       expect(screen.getByRole("button", { name: "Restore" })).toBeDisabled();
     });
 

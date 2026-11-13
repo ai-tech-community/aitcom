@@ -343,6 +343,7 @@ describe("GalleryCollage", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
     expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 9 });
   });
 
   it("lets a member edit their own item, then reloads the post", () => {

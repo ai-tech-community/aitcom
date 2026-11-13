@@ -6545,6 +6545,7 @@
       "hiddenForModerator": "Hidden after a report",
       "hiddenForUploader": "Hidden while a moderator reviews it.",
       "reasons": "Why it was reported",
+      "noReports": "No open reports.",
       "retry": "Try again",
       "restore": "Restore",
       "remove": "Remove",

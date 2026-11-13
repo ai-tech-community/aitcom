@@ -14,11 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { REPORT_REASONS, type ReportReason } from "@/lib/post-report-reasons";
+import {
+  REPORT_NOTE_MAX,
+  REPORT_REASONS,
+  type ReportReason,
+} from "@/lib/post-report-reasons";
 import { api } from "@/trpc/react";
-
-/** The longest note a reporter may add; the feed router allows the same. */
-const NOTE_MAX = 500;
 
 const FRESH: ReportDraft<ReportReason> = { reason: "spam", note: "" };
 
@@ -52,7 +53,7 @@ export function ReportDialog({
           reasonLabel={(id) => t(id)}
           draft={draft}
           onDraftChange={setDraft}
-          noteMax={NOTE_MAX}
+          noteMax={REPORT_NOTE_MAX}
           labels={{
             reasons: t("reasonLabel"),
             note: t("noteLabel"),
