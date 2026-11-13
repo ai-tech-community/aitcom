@@ -741,6 +741,46 @@ describe("reviewItemReports", () => {
     expect(log).not.toHaveBeenCalled();
   });
 
+  describe("a hidden item with no open report left (reports deleted in the admin)", () => {
+    it("restore with no reports named shows it again, writing no dismissal", async () => {
+      const { deps, payload, execute, notify, store } = fakes({
+        items: hiddenItem(),
+        reports: [],
+      });
+      await reviewItemReports(deps, {
+        viewer: moderator(),
+        itemId: 1,
+        ...review("restore", []),
+      });
+      expect(itemRow(store)).toMatchObject({ hiddenAt: null, reportCount: 0 });
+      expect(
+        payload.update.mock.calls.filter(
+          ([args]) => args.collection === "gallery-reports",
+        ),
+      ).toEqual([]);
+      expect(execute).not.toHaveBeenCalled();
+      expect(notify.itemReported).not.toHaveBeenCalled();
+    });
+
+    it("a report that came in unseen still stays open, and hides it again", async () => {
+      const { deps, notify, store } = fakes({
+        items: hiddenItem(),
+        reports: [report(1)],
+      });
+      await reviewItemReports(deps, {
+        viewer: moderator(),
+        itemId: 1,
+        ...review("restore", []),
+      });
+      expect(reportsOf(store)[0]!.dismissedAt).toBeNull();
+      expect(itemRow(store)).toMatchObject({
+        hiddenAt: NOW.toISOString(),
+        reportCount: 1,
+      });
+      expect(notify.itemReported).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("restore does not notify when every open report was reviewed", async () => {
     const { deps, notify, execute } = fakes({
       items: hiddenItem(),

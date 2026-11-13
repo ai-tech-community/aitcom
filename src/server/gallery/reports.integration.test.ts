@@ -463,6 +463,36 @@ describe.skipIf(!RUN_DB)("gallery item reports [DB integration]", () => {
     expect((await savedItem(otherId))!.hiddenAt).toBeTruthy();
   });
 
+  it("restores a hidden item whose reports were deleted in the admin, naming none", async () => {
+    const deps = await depsWith();
+    const { itemIds } = await galleryPost(1);
+    const itemId = itemIds[0]!;
+    await m.reports.reportItem(deps, {
+      viewer: await viewerOf(fx.reporterIds[0]),
+      itemId,
+      reason: "spam",
+    });
+    const payload = await m.getPayloadClient();
+    await payload.delete({
+      collection: "gallery-reports",
+      where: { item: { equals: itemId } },
+    });
+    const moderator = await viewerOf(fx.moderatorId);
+    await expect(
+      m.reports.listItemReports(deps, { viewer: moderator, itemId }),
+    ).resolves.toEqual({ reports: [] });
+
+    await m.reports.reviewItemReports(deps, {
+      viewer: moderator,
+      itemId,
+      action: "restore",
+      reviewedReportIds: [],
+    });
+
+    expect(await savedItem(itemId)).toMatchObject({ hiddenAt: null });
+    expect(Number((await savedItem(itemId))!.reportCount)).toBe(0);
+  });
+
   it("a report made while a restore runs ends with the item hidden and moderators told once", async () => {
     const deps = await depsWith();
     const { itemIds } = await galleryPost(1);

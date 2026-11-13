@@ -672,11 +672,54 @@ describe("GalleryPage", () => {
     fireEvent.click(screen.getByText("Reported"));
     expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
     expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
-    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 1 });
+    // The reporter can no longer read it: its entry is dropped, never asked
+    // for again only to be told it is gone.
+    expect(m.invalidateItem).not.toHaveBeenCalled();
+    expect(m.removeQueries).toHaveBeenCalledWith({
+      queryKey: ["item", { slug: "mlops", itemId: 1 }],
+      exact: true,
+    });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(window.location.search).toBe("");
-    // The reporter no longer sees it: no "gone" error for the closed item.
     expect(m.toastError).not.toHaveBeenCalled();
+  });
+
+  it("does not ask again for a linked item someone just reported", async () => {
+    m.signedIn = true;
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    // Linked, not on the wall: it is shown from its own query.
+    m.item = galleryItem({ id: 99, caption: "Linked" });
+    setUrl("item=99");
+    renderPage();
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Report",
+      }),
+    );
+    fireEvent.click(screen.getByText("Reported"));
+    expect(m.invalidateItem).not.toHaveBeenCalled();
+    expect(m.removeQueries).toHaveBeenCalledWith({
+      queryKey: ["item", { slug: "mlops", itemId: 99 }],
+      exact: true,
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.search).toBe("");
+    expect(m.toastError).not.toHaveBeenCalled();
+  });
+
+  it("reads an item a moderator reported again: they still see it, hidden", () => {
+    asMember("moderator");
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Report",
+      }),
+    );
+    fireEvent.click(screen.getByText("Reported"));
+    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 1 });
+    expect(m.removeQueries).not.toHaveBeenCalled();
   });
 
   it("offers a guest no Report", () => {

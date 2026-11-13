@@ -88,8 +88,12 @@ export function useGalleryLightboxHost({
           onChange?.();
         }}
         onChanged={(itemId, { gone }) => {
-          if (gone) forgetOpener(itemId);
-          refresh.changed(itemId);
+          if (gone) {
+            forgetOpener(itemId);
+            refresh.deleted(itemId);
+          } else {
+            refresh.changed(itemId);
+          }
           onChange?.();
         }}
         canModerate={canModerate}

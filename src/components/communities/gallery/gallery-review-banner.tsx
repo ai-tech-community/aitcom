@@ -19,8 +19,9 @@ import { useGalleryReportReasonLabel } from "./gallery-report-text";
  * reports — reason, note, when — and decide: **Restore** dismisses exactly
  * the reports shown here (their ids, so a report that came in since stays
  * open) and shows the item again; **Remove**, after a confirmation, deletes
- * it and its reports. With no open report, a muted line says so (Restore
- * has nothing to name). Restore waits until the reports are shown, and the
+ * it and its reports. With no open report (they were deleted in the
+ * admin), a line says so and Restore names none: it just shows the item
+ * again. Restore waits until the reports are read and shown, and the
  * reports are read again after a restore: one that came in meanwhile has
  * hidden the item again, and is shown for the next decision.
  *
@@ -67,9 +68,13 @@ export function GalleryReviewBanner({
   });
 
   const shown = canReview ? (reports.data?.reports ?? []) : [];
-  // Restore names what is on screen, so not while it is being re-read.
+  // Restore names what is on screen — possibly nothing — so only once the
+  // reports were read, and not while they are being read again.
   const canRestore =
-    !review.isPending && !reports.isFetching && shown.length > 0;
+    canReview &&
+    reports.data !== undefined &&
+    !reports.isFetching &&
+    !review.isPending;
 
   const askToRemove = async () => {
     const ok = await confirm({

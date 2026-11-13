@@ -349,16 +349,6 @@ describe("gallery router — input validation", () => {
         } as never),
     ],
     [
-      "a restore that names an empty list of reports",
-      (c) =>
-        c.reviewItemReports({
-          slug: "alpha",
-          itemId: 1,
-          action: "restore",
-          reviewedReportIds: [],
-        }),
-    ],
-    [
       "a restore that names report id 0",
       (c) =>
         c.reviewItemReports({
@@ -679,6 +669,11 @@ describe("gallery router — reports", () => {
 
   it.each([
     ["restore", { action: "restore" as const, reviewedReportIds: [3, 4] }],
+    // An item hidden with no open report left (deleted in the admin).
+    [
+      "restore with no open reports",
+      { action: "restore" as const, reviewedReportIds: [] },
+    ],
     ["remove", { action: "remove" as const }],
   ])(
     "reviews an item's reports: %s, with the report notices",

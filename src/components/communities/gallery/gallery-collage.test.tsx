@@ -392,7 +392,12 @@ describe("GalleryCollage", () => {
     fireEvent.click(screen.getByText("Reported"));
     expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
     expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
-    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 9 });
+    // The reporter can no longer read it: dropped, not asked for again.
+    expect(m.invalidateItem).not.toHaveBeenCalled();
+    expect(m.removeQueries).toHaveBeenCalledWith({
+      queryKey: ["item", { slug: "mlops", itemId: 9 }],
+      exact: true,
+    });
     expect(onChange).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });

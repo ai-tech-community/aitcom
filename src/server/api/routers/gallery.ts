@@ -291,7 +291,8 @@ export const galleryRouter = createTRPCRouter({
   /**
    * A moderator restores a reported item or removes it. A restore names
    * the reports it was decided on (their ids from `itemReports`); any other
-   * open report stays open.
+   * open report stays open. It may name none: an item can stay hidden
+   * after its reports were deleted in the admin.
    */
   reviewItemReports: galleryProtectedProcedure
     .input(
@@ -300,7 +301,7 @@ export const galleryRouter = createTRPCRouter({
           action: z.literal("restore"),
           reviewedReportIds: z
             .array(recordId)
-            .min(1)
+            .min(0)
             .max(GALLERY_REVIEW_REPORTS_MAX),
         }),
         itemInCommunity.extend({ action: z.literal("remove") }),

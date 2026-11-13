@@ -108,7 +108,7 @@ describe("notifyUploaderThisIsMe", () => {
       {
         userId: "u1",
         type: GALLERY_ITEM_THIS_IS_ME_NOTIFICATION,
-        title: "Someone asked to be removed from your photo",
+        title: "Someone asked to be removed from your photo or video",
         content:
           "Someone says they are in a photo or video you added to **Town Square** and asked to be removed. It is hidden while moderators review it. You can also delete it yourself.",
         communityId: "c1",

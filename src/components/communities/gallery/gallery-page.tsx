@@ -263,7 +263,9 @@ export function GalleryPage({ slug }: { slug: string }) {
         onClose={() => setParams({ item: null })}
         onEdit={isMember ? (item) => openEdit({ item }) : undefined}
         onDeleted={refresh.deleted}
-        onChanged={(itemId) => refresh.changed(itemId)}
+        onChanged={(itemId, { gone }) =>
+          gone ? refresh.deleted(itemId) : refresh.changed(itemId)
+        }
         canModerate={canModerate}
         signedIn={viewer.kind !== "guest"}
         fallbackFocus={headingRef}

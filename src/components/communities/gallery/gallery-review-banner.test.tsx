@@ -192,7 +192,8 @@ describe("GalleryReviewBanner", () => {
       expect(m.reviewCalls).toEqual([]);
     });
 
-    it("can't restore when there is no open report to decide on", () => {
+    it("restores an item left with no open report, naming none", () => {
+      // Hidden, but its reports were deleted in the admin.
       m.reports = { reports: [] };
       renderBanner({ canReview: true });
       const none = screen.getByText("No open reports.");
@@ -200,6 +201,17 @@ describe("GalleryReviewBanner", () => {
       // Muted text drops under 4.5:1 on the warning tint.
       expect(none).not.toHaveClass("text-muted-foreground");
       expect(screen.queryByRole("list")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+      expect(m.reviewCalls).toEqual([
+        { slug: "mlops", itemId: 7, action: "restore", reviewedReportIds: [] },
+      ]);
+      expect(onRestored).toHaveBeenCalledTimes(1);
+    });
+
+    it("can't restore an empty list while it is being read again", () => {
+      m.reports = { reports: [] };
+      m.fetching = true;
+      renderBanner({ canReview: true });
       expect(screen.getByRole("button", { name: "Restore" })).toBeDisabled();
     });
 

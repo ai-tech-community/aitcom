@@ -334,7 +334,9 @@ export async function reviewItemReports(
  * Dismisses exactly the reports the moderator read (`reviewedReportIds`,
  * from `listItemReports`) that are still open and are this item's — any
  * other id is ignored — and shows the item. Dismissed reports are kept, so
- * those reporters can't report again. A report the moderator did not see
+ * those reporters can't report again. The list may be empty: an item left
+ * hidden with no open report (its reports deleted in the admin) is simply
+ * shown again. A report the moderator did not see
  * — made after the read, or while this restore ran and so unable to hide
  * an item that was still hidden — stays open: once the item is shown, any
  * open report hides it again through the same guarded write, and the
@@ -345,24 +347,26 @@ async function restoreItem(
   item: GalleryItem,
   reviewedReportIds: readonly number[],
 ): Promise<void> {
-  const dismissed = await deps.payload.update({
-    collection: REPORTS,
-    where: {
-      and: [
-        openReportsWhere(REPORTS, item.id),
-        { id: { in: [...reviewedReportIds] } },
-      ],
-    },
-    data: { dismissedAt: nowOf(deps).toISOString() },
-    depth: 0,
-  });
-  if (dismissed.errors.length > 0) {
-    throw writeFailed(
-      deps,
-      "[gallery.reviewItemReports] dismissing reports failed",
-      item.id,
-      dismissed.errors,
-    );
+  if (reviewedReportIds.length > 0) {
+    const dismissed = await deps.payload.update({
+      collection: REPORTS,
+      where: {
+        and: [
+          openReportsWhere(REPORTS, item.id),
+          { id: { in: [...reviewedReportIds] } },
+        ],
+      },
+      data: { dismissedAt: nowOf(deps).toISOString() },
+      depth: 0,
+    });
+    if (dismissed.errors.length > 0) {
+      throw writeFailed(
+        deps,
+        "[gallery.reviewItemReports] dismissing reports failed",
+        item.id,
+        dismissed.errors,
+      );
+    }
   }
   const restored = await deps.payload.update({
     collection: "gallery-items",

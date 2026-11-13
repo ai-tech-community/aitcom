@@ -10,9 +10,10 @@ import { api } from "@/trpc/react";
  * wall and its filter choices, and the item's own entry (a linked item
  * that is not on the loaded wall).
  *
- * - `changed`: reported or restored. The item is still there, so its own
- *   entry is read again.
- * - `deleted`: deleted or removed. Its own entry is dropped, not
+ * - `changed`: the viewer can still read the item — a moderator restored
+ *   it or reported it — so its own entry is read again.
+ * - `deleted`: the viewer can no longer read the item — deleted, removed,
+ *   or reported out of their sight. Its own entry is dropped, not
  *   invalidated: a linked item is still on screen when this runs, and an
  *   invalidate would ask for it again only to be told it is gone.
  */
