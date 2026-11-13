@@ -1,0 +1,931 @@
+<title>Community Gallery Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the AIT community frame (20rem rail + content), copied from DESIGN.md; tokens copied from src/styles/globals.css */
+:root {
+  --bg: oklch(1 0 0);
+  --fg: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --raised: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-fg: oklch(0.205 0 0);
+  --muted-fg: oklch(0.556 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --primary: oklch(0.705 0.213 47.604);
+  --on-primary: oklch(1 0 0);
+  --ring: oklch(0.705 0.213 47.604 / 0.5);
+  --success: oklch(0.52 0.14 150);
+  --info: oklch(0.55 0.16 240);
+  --destructive: oklch(0.577 0.245 27.325);
+  --scrim: oklch(0.145 0 0 / 0.86);
+  --photo-shade: oklch(0 0 0 / 0.55);
+  --on-photo: oklch(1 0 0);
+  --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(0.145 0 0); --fg: oklch(0.985 0 0); --card: oklch(0.205 0 0); --raised: oklch(0.18 0 0);
+    --secondary: oklch(0.269 0 0); --secondary-fg: oklch(0.985 0 0); --muted-fg: oklch(0.708 0 0);
+    --border: oklch(1 0 0 / 10%); --input: oklch(1 0 0 / 15%);
+    --primary: oklch(0.646 0.222 41.116); --ring: oklch(0.646 0.222 41.116 / 0.5);
+    --success: oklch(0.72 0.16 150); --info: oklch(0.72 0.15 240); --destructive: oklch(0.704 0.191 22.216);
+    --scrim: oklch(0.1 0 0 / 0.9);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: oklch(0.145 0 0); --fg: oklch(0.985 0 0); --card: oklch(0.205 0 0); --raised: oklch(0.18 0 0);
+  --secondary: oklch(0.269 0 0); --secondary-fg: oklch(0.985 0 0); --muted-fg: oklch(0.708 0 0);
+  --border: oklch(1 0 0 / 10%); --input: oklch(1 0 0 / 15%);
+  --primary: oklch(0.646 0.222 41.116); --ring: oklch(0.646 0.222 41.116 / 0.5);
+  --success: oklch(0.72 0.16 150); --info: oklch(0.72 0.15 240); --destructive: oklch(0.704 0.191 22.216);
+  --scrim: oklch(0.1 0 0 / 0.9);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.5; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+.mono { font-family: var(--mono); font-size: 12px; letter-spacing: .05em; }
+.muted { color: var(--muted-fg); }
+.label { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--muted-fg); }
+.label::before { content: "/ "; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h2 { font-size: 1.5rem; font-weight: 600; line-height: 1.2; letter-spacing: -.01em; }
+h3 { font-size: 1rem; font-weight: 600; line-height: 1.25; }
+p { margin: 0; }
+:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
+
+/* site nav */
+.nav { height: 56px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wordmark { font-weight: 600; font-size: 16px; letter-spacing: -.01em; }
+.wordmark i { color: var(--primary); font-style: normal; }
+.nav .links { display: flex; gap: 18px; color: var(--muted-fg); }
+.nav .me { margin-left: auto; }
+.proto-note { border-bottom: 1px solid var(--border); background: var(--raised); padding-block: 8px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); color: var(--muted-fg); font-size: 13px; }
+.proto-note b { color: var(--fg); font-weight: 600; }
+
+/* community frame */
+.frame { display: grid; gap: 32px; padding-block: 24px 120px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (min-width: 640px) { .frame, .nav, .proto-note { padding-left: max(32px, env(safe-area-inset-left, 0px)); padding-right: max(32px, env(safe-area-inset-right, 0px)); } }
+@media (min-width: 1024px) { .frame { grid-template-columns: 20rem minmax(0, 1fr); } .rail { position: sticky; top: 24px; align-self: start; } }
+.rail { display: grid; gap: 20px; min-width: 0; }
+.identity { display: grid; gap: 10px; }
+.logo { width: 56px; height: 56px; border-radius: 14px; background: var(--fg); color: var(--bg); display: grid; place-items: center; font-weight: 600; font-size: 18px; }
+.identity h1 { font-size: 1.25rem; font-weight: 600; line-height: 1.2; }
+.tabs { display: flex; flex-direction: column; gap: 2px; }
+.tab { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; border: 0; background: none; padding: 8px 12px; border-radius: 8px; color: var(--muted-fg); cursor: pointer; }
+.tab:hover { background: color-mix(in oklch, var(--secondary) 60%, transparent); color: var(--fg); }
+.tab[aria-current="page"] { background: var(--secondary); color: var(--fg); font-weight: 500; }
+.tab .new { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; color: var(--muted-fg); }
+@media (max-width: 1023px) {
+  .rail { gap: 12px; }
+  .identity { grid-template-columns: 48px 1fr; align-items: center; column-gap: 12px; }
+  .identity .logo { width: 48px; height: 48px; grid-row: span 2; }
+  .identity .tagline, .identity .joined { display: none; }
+  .tabs { flex-direction: row; overflow-x: auto; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .tab { white-space: nowrap; }
+}
+main { min-width: 0; display: grid; gap: 24px; align-content: start; }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; white-space: nowrap; font-weight: 500; }
+.btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+.btn.primary { background: var(--primary); color: var(--on-primary); }
+.btn.primary:hover { background: color-mix(in oklch, var(--primary) 90%, var(--fg)); }
+.btn.ink { background: var(--fg); color: var(--bg); }
+.btn.outline { background: var(--bg); border-color: var(--border); box-shadow: 0 1px 2px oklch(0 0 0 / .05); }
+.btn.outline:hover, .btn.ghost:hover { background: var(--secondary); }
+.btn.ghost { background: none; }
+.btn.link { background: none; padding: 0; height: auto; color: var(--fg); text-decoration: underline; text-underline-offset: 4px; font-weight: 500; }
+.btn[disabled] { opacity: .5; pointer-events: none; }
+.btn svg { flex: none; }
+
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.page-head > div { display: grid; gap: 6px; min-width: 0; }
+.card { border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+.status { min-height: 0; }
+.status:not(:empty) { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: flex; gap: 8px; align-items: center; background: var(--raised); }
+.status svg { color: var(--success); }
+
+/* badges & chips */
+.badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 500; background: var(--secondary); color: var(--secondary-fg); white-space: nowrap; }
+.badge.outline { background: none; border: 1px solid var(--border); }
+.badge.ok { background: color-mix(in oklch, var(--success) 15%, transparent); color: var(--success); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--border); background: var(--bg); border-radius: 999px; padding: 4px 12px; cursor: pointer; font-size: 13px; }
+.chip[aria-checked="true"], .chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; padding: 2px; gap: 2px; background: var(--secondary); }
+.seg button { border: 0; background: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.seg button[aria-checked="true"] { background: var(--bg); box-shadow: 0 1px 2px oklch(0 0 0 / .08); font-weight: 500; }
+select, input[type="text"], textarea { border: 1px solid var(--input); border-radius: 8px; background: var(--bg); height: 36px; padding: 4px 12px; min-width: 0; }
+textarea { height: auto; padding: 8px 12px; resize: vertical; }
+.field { display: grid; gap: 6px; }
+.field > span { font-weight: 500; }
+.hint { font-size: 13px; color: var(--muted-fg); }
+.check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--fg); flex: none; }
+
+.avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--secondary); display: grid; place-items: center; font-size: 12px; font-weight: 600; flex: none; color: var(--secondary-fg); }
+.avatar.sm { width: 22px; height: 22px; font-size: 10px; }
+.avatars { display: flex; }
+.avatars .avatar { border: 2px solid var(--bg); margin-left: -6px; }
+.avatars .avatar:first-child { margin-left: 0; }
+
+/* media tile */
+.tile { position: relative; display: block; width: 100%; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--secondary); cursor: zoom-in; max-width: 100%; }
+.tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tile .vid { position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; gap: 4px; background: var(--photo-shade); color: var(--on-photo); border-radius: 999px; padding: 2px 8px 2px 6px; font-family: var(--mono); font-size: 11px; }
+.tile .more { position: absolute; inset: 0; background: var(--photo-shade); color: var(--on-photo); display: grid; place-items: center; font-size: 1.25rem; font-weight: 600; }
+.tile .cap { position: absolute; inset: auto 0 0 0; padding: 24px 10px 8px; background: linear-gradient(transparent, var(--photo-shade)); color: var(--on-photo); text-align: left; font-size: 13px; opacity: 0; transition: opacity .15s; }
+.tile:hover .cap, .tile:focus-visible .cap { opacity: 1; }
+.tile .new-dot { position: absolute; right: 8px; top: 8px; background: var(--bg); color: var(--fg); border-radius: 999px; font-family: var(--mono); font-size: 11px; padding: 1px 8px; }
+@media (prefers-reduced-motion: reduce) { .tile .cap { transition: none; } }
+
+/* A: wall */
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.toolbar select { height: 32px; }
+.wall { columns: 2; column-gap: 10px; }
+@container (min-width: 720px) { .wall { columns: 3; } }
+@container (min-width: 1100px) { .wall { columns: 4; } }
+.wall-host { container-type: inline-size; }
+.wall .tile { margin-bottom: 10px; break-inside: avoid; }
+.tile .ev { position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--photo-shade); color: var(--on-photo); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+.tile:hover .ev, .tile:focus-visible .ev { opacity: 0; }
+
+/* B: albums */
+.albums { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+.album { text-align: left; border: 1px solid var(--border); border-radius: 14px; background: var(--card); padding: 10px; cursor: pointer; display: grid; gap: 10px; }
+.album:hover { border-color: color-mix(in oklch, var(--fg) 25%, var(--border)); }
+.mosaic { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; }
+.mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; background: var(--secondary); }
+.mosaic img:first-child { grid-row: span 2; }
+.album .meta { display: grid; gap: 4px; padding: 0 4px 4px; }
+.grid-sq { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+.grid-sq .tile { aspect-ratio: 1; }
+
+/* C: timeline */
+.month { display: grid; gap: 16px; }
+.story { display: grid; gap: 12px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.story:last-child { border-bottom: 0; }
+.story-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; align-items: baseline; }
+.story-grid { display: grid; gap: 8px; grid-template-columns: 1fr; }
+.story-grid .lead { aspect-ratio: 16/10; }
+.story-grid .rest { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.story-grid .rest .tile { aspect-ratio: 1; }
+.c-host { container-type: inline-size; }
+@container (min-width: 640px) {
+  .story-grid { grid-template-columns: 2fr 1fr; }
+  .story-grid .lead { aspect-ratio: auto; height: 100%; min-height: 300px; }
+  .story-grid .rest { grid-template-columns: 1fr 1fr; }
+}
+.story-grid.expanded { grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)) !important; }
+.story-grid.expanded .tile { aspect-ratio: 1; min-height: 0; height: auto; }
+
+/* feed */
+.feed { display: grid; gap: 16px; max-width: 640px; }
+.composer { display: flex; gap: 12px; align-items: center; padding: 12px 16px; }
+.composer .fake { flex: 1; border: 1px solid var(--input); border-radius: 8px; padding: 7px 12px; color: var(--muted-fg); text-align: left; background: var(--bg); cursor: text; }
+.post { padding: 16px; display: grid; gap: 12px; }
+.post-head { display: flex; gap: 10px; align-items: flex-start; }
+.post-head .who { display: grid; gap: 2px; min-width: 0; }
+.post-head b { font-weight: 600; }
+.post-foot { display: flex; gap: 16px; color: var(--muted-fg); }
+.post-foot span { display: inline-flex; gap: 6px; align-items: center; font-family: var(--mono); font-size: 12px; }
+.ev-link { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px 2px 8px; font-size: 13px; background: none; cursor: pointer; max-width: 100%; }
+.ev-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.collage { display: grid; grid-template-columns: 2fr 1fr; gap: 4px; aspect-ratio: 3/2; border-radius: 10px; overflow: hidden; }
+.collage .tile { border-radius: 0; height: 100%; }
+.collage .side { display: grid; grid-template-rows: 1fr 1fr; gap: 4px; min-height: 0; }
+.strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+.strip .tile { flex: none; width: 156px; aspect-ratio: 1; scroll-snap-align: start; }
+.hero-c { display: grid; gap: 8px; }
+.hero-c .lead { aspect-ratio: 16/9; }
+.thumbrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.thumbrow .tile { width: 52px; height: 52px; border-radius: 8px; }
+
+/* event */
+.event-head { display: grid; gap: 10px; }
+.event-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted-fg); align-items: center; }
+.event-meta span { display: inline-flex; gap: 6px; align-items: center; }
+.slice { display: grid; gap: 14px; }
+.slice-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.ev-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ev-grid .tile { aspect-ratio: 1; }
+@container (min-width: 720px) { .ev-grid { grid-template-columns: repeat(6, 1fr); } }
+.ev-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ev-strip .tile { aspect-ratio: 3/4; }
+.album-wide { display: grid; gap: 16px; padding: 12px; }
+@container (min-width: 640px) { .album-wide { grid-template-columns: minmax(0, 1.2fr) 1fr; align-items: center; } }
+
+/* upload */
+.drop { border: 1px dashed color-mix(in oklch, var(--fg) 30%, var(--border)); border-radius: 12px; padding: 24px; display: grid; gap: 10px; justify-items: center; text-align: center; background: var(--raised); }
+.drop.over { border-color: var(--primary); }
+.drop .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.thumb { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; background: var(--secondary); }
+.thumb img, .thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .rm { position: absolute; right: 3px; top: 3px; width: 22px; height: 22px; border-radius: 999px; border: 0; background: var(--photo-shade); color: var(--on-photo); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.thumb .vid { position: absolute; left: 4px; bottom: 4px; background: var(--photo-shade); color: var(--on-photo); border-radius: 999px; padding: 0 5px; font-family: var(--mono); font-size: 10px; }
+.form { display: grid; gap: 18px; }
+.form-foot { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; align-items: center; }
+.form-foot .grow { margin-right: auto; }
+.suggest { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--raised); }
+.suggest svg { flex: none; margin-top: 2px; }
+.steps { display: flex; gap: 8px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; counter-reset: s; }
+.steps li { counter-increment: s; display: flex; align-items: center; gap: 8px; color: var(--muted-fg); padding-right: 12px; }
+.steps li::before { content: counter(s); width: 24px; height: 24px; border-radius: 999px; border: 1px solid var(--border); display: grid; place-items: center; font-family: var(--mono); font-size: 12px; }
+.steps li[aria-current="step"] { color: var(--fg); font-weight: 500; }
+.steps li[aria-current="step"]::before { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.steps li.done::before { content: "✓"; }
+.describe { display: grid; gap: 12px; }
+.describe-row { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; align-items: start; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.describe-row .inputs { display: grid; gap: 8px; }
+@media (min-width: 720px) { .describe-row .inputs { grid-template-columns: 1fr 1fr 160px; } }
+.composer-open { padding: 16px; display: grid; gap: 14px; }
+.pickers { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.pickers label { display: inline-flex; gap: 6px; align-items: center; }
+.pickers select { height: 32px; }
+
+/* modal */
+.modal-bg { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; padding: 16px; z-index: 40;
+  padding-top: max(16px, env(safe-area-inset-top, 0px)); padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+.modal { background: var(--card); color: var(--fg); border: 1px solid var(--border); border-radius: 14px; width: min(600px, 100%); max-height: 100%; overflow: auto; padding: 24px; display: grid; gap: 18px; box-shadow: 0 20px 50px oklch(0 0 0 / .25); }
+.modal-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 0; background: none; display: grid; place-items: center; cursor: pointer; flex: none; padding: 0; }
+.icon-btn:hover { background: var(--secondary); }
+
+/* lightbox */
+.lb { position: fixed; inset: 0; z-index: 50; background: var(--scrim); display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+@media (min-width: 900px) { .lb { grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: 1fr; } }
+.lb-stage { position: relative; display: grid; place-items: center; padding: 48px 56px; min-height: 0; }
+.lb-stage img, .lb-stage video { max-width: 100%; max-height: 100%; border-radius: 6px; object-fit: contain; }
+.lb-stage .play { position: absolute; width: 72px; height: 72px; border-radius: 999px; background: var(--photo-shade); color: var(--on-photo); display: grid; place-items: center; pointer-events: none; }
+.lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 999px; border: 0; background: var(--photo-shade); color: var(--on-photo); display: grid; place-items: center; cursor: pointer; }
+.lb-nav.prev { left: max(8px, env(safe-area-inset-left, 0px)); } .lb-nav.next { right: 8px; }
+.lb-close { position: absolute; top: 8px; right: 8px; color: var(--on-photo); }
+.lb-close:hover { background: var(--photo-shade); }
+.lb-side { background: var(--card); color: var(--fg); padding: 20px; display: grid; gap: 16px; align-content: start; overflow: auto; max-height: 50vh; }
+@media (min-width: 900px) { .lb-side { max-height: none; border-left: 1px solid var(--border); padding-right: max(20px, env(safe-area-inset-right, 0px)); } }
+.facts { display: grid; gap: 8px; margin: 0; }
+.facts div { display: grid; grid-template-columns: 96px 1fr; gap: 8px; align-items: center; }
+.facts dt { color: var(--muted-fg); }
+.facts dd { margin: 0; min-width: 0; }
+.lb-actions { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border); padding-top: 16px; }
+
+/* variant switcher (prototype chrome, not part of the design) */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: flex; align-items: center; gap: 4px; background: var(--fg); color: var(--bg); border-radius: 999px; padding: 4px; box-shadow: 0 8px 24px oklch(0 0 0 / .3); max-width: calc(100vw - 24px); overflow-x: auto; }
+.switcher button { border: 0; background: none; color: inherit; height: 32px; min-width: 32px; border-radius: 999px; cursor: pointer; padding: 0 10px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.switcher button:hover { background: color-mix(in oklch, var(--bg) 18%, transparent); }
+.switcher .vlabel { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; padding: 0 6px; white-space: nowrap; min-width: 120px; text-align: center; }
+.switcher .sep { width: 1px; height: 20px; background: color-mix(in oklch, var(--bg) 30%, transparent); margin: 0 4px; flex: none; }
+.switcher .scr[aria-pressed="true"] { background: var(--bg); color: var(--fg); }
+.switcher :focus-visible { outline-color: var(--primary); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+
+<header class="nav">
+  <span class="wordmark">ait<i>.</i></span>
+  <nav class="links" aria-label="Site"><span>Communities</span><span>Events</span><span>Magazines</span></nav>
+  <span class="me avatar" title="You">YO</span>
+</header>
+<div class="proto-note" id="proto-note"></div>
+
+<div class="frame">
+  <aside class="rail">
+    <div class="identity">
+      <div class="logo" aria-hidden="true">AB</div>
+      <h1>Amsterdam AI Builders</h1>
+      <p class="tagline muted">People shipping AI products in Amsterdam. Monthly meetups, hack weekends, paper club.</p>
+      <p class="mono muted">1,284 MEMBERS</p>
+      <div class="joined"><button class="btn outline sm" type="button">Joined</button></div>
+    </div>
+    <nav class="tabs" aria-label="Community" id="tabs"></nav>
+  </aside>
+  <main id="main"></main>
+</div>
+<div id="layer"></div>
+<div class="switcher" role="toolbar" aria-label="Prototype controls" id="switcher"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ---------- icons ---------- */
+const P = {
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  left: '<path d="m15 18-6-6 6-6"/>',
+  right: '<path d="m9 18 6-6-6-6"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>',
+  book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+  heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+  msg: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  userx: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5M22 8l-5 5"/>',
+  trash: '<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  pin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+};
+const ic = (n, s = 16) => n === "play"
+  ? `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>`
+  : `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+
+/* ---------- placeholder photos (drawn, seeded) ---------- */
+function rng(seed) { let t = seed >>> 0; return () => { t += 0x6d2b79f5; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; }
+function art(seed, scene, ratio) {
+  const R = rng(seed * 9973 + 7), W = 480, H = Math.round(W / ratio), h = Math.floor(R() * 360);
+  const grad = (a, b) => `<defs><linearGradient id="g" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#g)"/>`;
+  const person = (x, y, k, f) => `<circle cx="${x}" cy="${y}" r="${10 * k}" fill="${f}"/><rect x="${x - 15 * k}" y="${y + 12 * k}" width="${30 * k}" height="${70 * k}" rx="${13 * k}" fill="${f}"/>`;
+  let s = "";
+  if (scene === "talk") {
+    s += grad(`hsl(${h},22%,22%)`, `hsl(${h},28%,8%)`);
+    const sw = W * 0.56, sh = sw * 0.56, sx = (W - sw) / 2 + (R() - 0.5) * 50, sy = H * 0.1;
+    s += `<rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" rx="4" fill="hsl(${h + 40},35%,84%)"/>`;
+    for (let i = 0; i < 4; i++) s += `<rect x="${sx + sw * 0.1}" y="${sy + sh * (0.2 + i * 0.17)}" width="${sw * (0.35 + R() * 0.45)}" height="${sh * 0.06}" rx="2" fill="hsl(${h + 40},22%,55%)"/>`;
+    s += person(Math.min(W - 40, sx + sw + 34), H * 0.42, 1.5, `hsl(${h},20%,5%)`);
+    for (let i = 0; i < 9; i++) s += `<circle cx="${(i + 0.5) * W / 9 + (R() - 0.5) * 22}" cy="${H * 0.95 - R() * 14}" r="${24 + R() * 9}" fill="hsl(${h},15%,${4 + R() * 6}%)"/>`;
+  } else if (scene === "hack") {
+    s += grad(`hsl(${h},24%,74%)`, `hsl(${h},18%,52%)`);
+    for (let i = 0; i < 4; i++) s += person(60 + i * (W - 120) / 3 + (R() - 0.5) * 30, H * 0.38 + R() * 20, 1.3, `hsl(${h + 180},18%,${18 + R() * 14}%)`);
+    s += `<rect x="0" y="${H * 0.66}" width="${W}" height="${H * 0.34}" fill="hsl(${h + 20},20%,36%)"/>`;
+    for (let i = 0; i < 4; i++) { const x = 30 + i * (W - 60) / 4 + R() * 20; s += `<rect x="${x}" y="${H * 0.52}" width="80" height="54" rx="4" fill="hsl(${h + 200},10%,${22 + R() * 10}%)"/><rect x="${x + 6}" y="${H * 0.52 + 6}" width="68" height="40" rx="2" fill="hsl(${h + 160},50%,${62 + R() * 18}%)"/>`; }
+    for (let i = 0; i < 5; i++) s += `<circle cx="${R() * W}" cy="${H * 0.8 + R() * H * 0.15}" r="${6 + R() * 6}" fill="hsl(${h + 60},40%,${60 + R() * 20}%)"/>`;
+  } else if (scene === "demo") {
+    s += grad(`hsl(${h},18%,40%)`, `hsl(${h},22%,20%)`);
+    const mw = W * 0.42, mx = W * 0.12 + R() * W * 0.1, my = H * 0.18;
+    s += `<rect x="${mx}" y="${my}" width="${mw}" height="${mw * 0.62}" rx="6" fill="hsl(${h + 120},30%,16%)"/><rect x="${mx + 8}" y="${my + 8}" width="${mw - 16}" height="${mw * 0.62 - 16}" rx="3" fill="hsl(${h + 150},55%,${55 + R() * 15}%)"/>`;
+    s += `<rect x="${mx + mw / 2 - 6}" y="${my + mw * 0.62}" width="12" height="${H * 0.2}" fill="hsl(${h},10%,12%)"/>`;
+    for (let i = 0; i < 3; i++) s += person(W * 0.62 + i * 52 + R() * 10, H * 0.36 + R() * 25, 1.35, `hsl(${h + 30},${15 + R() * 20}%,${12 + R() * 22}%)`);
+  } else if (scene === "network") {
+    s += grad(`hsl(${h},35%,58%)`, `hsl(${h + 20},30%,26%)`);
+    for (let i = 0; i < 14; i++) s += `<circle cx="${R() * W}" cy="${R() * H * 0.45}" r="${8 + R() * 22}" fill="hsl(${h + 40},80%,85%)" opacity="${0.15 + R() * 0.3}"/>`;
+    for (let i = 0; i < 6; i++) s += person(30 + i * (W - 60) / 5 + (R() - 0.5) * 24, H * 0.42 + R() * H * 0.12, 1.2 + R() * 0.5, `hsl(${h + 200},${10 + R() * 25}%,${10 + R() * 18}%)`);
+  } else {
+    s += grad(`hsl(${h},40%,80%)`, `hsl(${h + 30},30%,62%)`);
+    const bx = W * 0.1 + R() * W * 0.1, bw = W * 0.7, by = H * 0.25;
+    s += `<rect x="${bx}" y="${by}" width="${bw}" height="${H}" fill="hsl(${h + 10},25%,${28 + R() * 12}%)"/>`;
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 6; c++) s += `<rect x="${bx + 14 + c * (bw - 20) / 6}" y="${by + 16 + r * 46}" width="${(bw - 20) / 6 - 14}" height="30" rx="2" fill="${R() > 0.45 ? `hsl(${h + 45},85%,78%)` : `hsl(${h},20%,20%)`}"/>`;
+    s += person(W * 0.88, H * 0.7, 1.3, `hsl(${h},20%,10%)`);
+  }
+  return "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice">${s}</svg>`);
+}
+
+/* ---------- made-up data ---------- */
+const EVENTS = [
+  { id: "e1", title: "AI Meetup: Agents in Production", short: "AI Meetup", date: "2026-11-07", label: "7 NOV 2026", venue: "Pakhuis de Zwijger, Amsterdam", went: 142,
+    blurb: "Three teams showed how they run agents in production: what broke, what they measure, and what they would build differently." },
+  { id: "e2", title: "Weekend Hackathon: Local LLMs", short: "Local LLM Hackathon", date: "2026-10-18", label: "18–19 OCT 2026", venue: "Lab111, Amsterdam", went: 64,
+    blurb: "Two days, 14 teams, everything running on laptops. No cloud APIs allowed." },
+  { id: "e3", title: "Paper Club: Reasoning Models", short: "Paper Club", date: "2026-09-24", label: "24 SEP 2026", venue: "Online and at B. Amsterdam", went: 38,
+    blurb: "We read and argued about three recent reasoning papers. Slides and notes are in the classroom." },
+];
+const CATS = ["Talks", "Demos", "Hacking", "Networking", "Behind the scenes"];
+const SCENE = { Talks: "talk", Demos: "demo", Hacking: "hack", Networking: "network", "Behind the scenes": "venue" };
+const CAPS = {
+  Talks: ["Mina on retries and timeouts for agents", "Q&A ran 20 minutes over", "The eval dashboard slide everyone photographed", "Ruben's live failure demo", "Opening talk, full room", "Panel: who owns the agent in prod?"],
+  Demos: ["Team Kettle demoing offline transcription", "The winning demo, running on a 2019 laptop", "Demo table after the talks", "Voice agent booking a table, live"],
+  Hacking: ["Hour 3: still choosing a model", "2 a.m. at table 4", "Quantising everything", "Whiteboard after the kick-off", "Pizza arrives"],
+  Networking: ["Drinks on the terrace", "Hallway track", "New members' corner", "The queue for the coffee bar", "Group photo, take 4"],
+  "Behind the scenes": ["Setting up the room at 5 p.m.", "Office hours at Lab111", "Friday coffee", "Name badges, 140 of them", "Packing up"],
+};
+const PEOPLE = { dana: "Dana Visser", ruben: "Ruben de Jong", priya: "Priya Natarajan", tom: "Tom Bakker", sofia: "Sofia Romano", lars: "Lars Jansen", mina: "Mina Okafor", you: "You" };
+const initials = (n) => n === "You" ? "YO" : n.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+const RATIOS = [4 / 3, 3 / 4, 1, 16 / 9, 4 / 5, 3 / 2];
+
+const items = [];
+const batches = [];
+let seq = 1;
+function makeBatch(b) {
+  const R = rng(b.seed);
+  const ids = [];
+  for (let i = 0; i < b.count; i++) {
+    const cat = R() < 0.75 ? b.cat : CATS[Math.floor(R() * CATS.length)];
+    const ratio = RATIOS[Math.floor(R() * RATIOS.length)];
+    const caps = CAPS[cat];
+    const it = {
+      id: "m" + seq++, type: R() < b.videoShare ? "video" : "photo", dur: `0:${String(12 + Math.floor(R() * 70)).padStart(2, "0")}`.replace(/^0:(\d)(\d)$/, (m, a, c) => (+a >= 6 ? `1:${String(+a - 6)}${c}` : m)),
+      event: b.event, cat, by: b.by, caption: caps[Math.floor(R() * caps.length)], date: b.date, when: b.when, ratio,
+      mag: R() < 0.6, vis: R() < 0.85 ? "members" : "public", batch: b.id,
+    };
+    it.alt = `${it.caption}. ${cat === "Talks" ? "A speaker in front of a screen, audience in the foreground." : cat === "Hacking" ? "People at long tables with laptops." : cat === "Demos" ? "A small group around a monitor." : cat === "Networking" ? "A group of people talking under warm lights." : "The venue before guests arrive."}`;
+    it.src = art(b.seed * 100 + i, SCENE[cat], ratio);
+    items.push(it); ids.push(it.id);
+  }
+  batches.push({ ...b, ids });
+}
+[
+  { id: "b1", by: PEOPLE.dana, event: "e1", cat: "Talks", count: 9, videoShare: 0.15, date: "2026-11-07", when: "2 days ago", seed: 11 },
+  { id: "b2", by: PEOPLE.ruben, event: "e1", cat: "Networking", count: 5, videoShare: 0.2, date: "2026-11-07", when: "5 days ago", seed: 23 },
+  { id: "b3", by: PEOPLE.priya, event: "e2", cat: "Hacking", count: 8, videoShare: 0.15, date: "2026-10-18", when: "3 weeks ago", seed: 37 },
+  { id: "b4", by: PEOPLE.tom, event: "e2", cat: "Demos", count: 4, videoShare: 0.5, date: "2026-10-19", when: "3 weeks ago", seed: 41 },
+  { id: "b5", by: PEOPLE.sofia, event: "e3", cat: "Talks", count: 6, videoShare: 0.1, date: "2026-09-24", when: "7 weeks ago", seed: 53 },
+  { id: "b6", by: PEOPLE.lars, event: null, cat: "Behind the scenes", count: 5, videoShare: 0, date: "2026-10-30", when: "2 weeks ago", seed: 67 },
+].forEach(makeBatch);
+
+const feed = [
+  { kind: "text", by: PEOPLE.mina, when: "1 day ago", text: "Slides from my agents talk are in the classroom now. Thanks to everyone who stayed for the Q&A.", likes: 31, comments: 6 },
+  { kind: "batch", batch: "b1", likes: 48, comments: 9 },
+  { kind: "text", by: PEOPLE.tom, when: "4 days ago", text: "Who's coming to the hackathon retro on Thursday? I'll bring the stickers.", likes: 12, comments: 14 },
+  { kind: "batch", batch: "b2", likes: 22, comments: 3 },
+];
+
+const byId = (id) => items.find((i) => i.id === id);
+const evById = (id) => EVENTS.find((e) => e.id === id);
+
+/* ---------- state ---------- */
+const VARIANTS = {
+  a: { name: "Wall", note: "<b>A · Wall.</b> One big wall of everything with filters. Upload is a single dialog. The feed shows a photo collage." },
+  b: { name: "Albums", note: "<b>B · Albums.</b> The gallery is organised into one album per event. Upload is a 3-step page where you describe each photo. The feed shows a scrolling strip." },
+  c: { name: "Stories", note: "<b>C · Stories.</b> A timeline of events, newest first, each with one lead photo. Upload works like writing a post and suggests the event from the photo date. The feed shows one big photo." },
+};
+const SCREENS = { feed: "Feed", gallery: "Gallery", event: "Event", upload: "Upload" };
+const st = {
+  v: "a", screen: "feed",
+  f: { event: "all", cat: "all", type: "all" },
+  album: null, expanded: new Set(), lightbox: null, dialog: false, composer: false, status: "",
+  u: null, lastFocus: null,
+};
+const freshUpload = (event = "") => ({ files: [], event, cat: "", vis: "members", mag: false, caption: "", step: 1, suggested: null });
+st.u = freshUpload();
+
+/* ---------- routing on the hash (#a-feed) ---------- */
+function readHash() {
+  const m = /^#([abc])-(feed|gallery|event|upload)$/.exec(location.hash);
+  if (m) { st.v = m[1]; st.screen = m[2]; }
+}
+function go(screen, v = st.v) {
+  // Upload is a dialog in A and an inline composer in C; only B has an upload page.
+  if (screen === "upload" && v === "a") { st.dialog = true; screen = st.screen === "event" ? "event" : "gallery"; }
+  if (screen === "upload" && v === "c") { st.composer = true; screen = "gallery"; }
+  st.v = v; st.screen = screen;
+  const h = `#${v}-${screen}`;
+  if (location.hash !== h) history.replaceState(null, "", h);
+  render();
+  window.scrollTo({ top: 0 });
+}
+
+/* ---------- small renderers ---------- */
+const tile = (it, extra = "", cls = "") => `<button type="button" class="tile ${cls}" data-open="${it.id}" aria-label="Open: ${esc(it.caption)}">
+  <img src="${it.src}" alt="${esc(it.alt)}" loading="lazy">
+  ${it.type === "video" ? `<span class="vid">${ic("play", 10)} ${it.dur}</span>` : ""}
+  ${it.isNew ? `<span class="new-dot">NEW</span>` : ""}${extra}</button>`;
+const evName = (id) => (id ? evById(id).title : "Not from an event");
+const avatar = (n, sm) => `<span class="avatar${sm ? " sm" : ""}" aria-hidden="true">${initials(n)}</span>`;
+function filtered() {
+  return items.filter((i) => (st.f.event === "all" || (st.f.event === "none" ? !i.event : i.event === st.f.event))
+    && (st.f.cat === "all" || i.cat === st.f.cat) && (st.f.type === "all" || i.type === st.f.type));
+}
+function countLabel(list) {
+  const p = list.filter((i) => i.type === "photo").length, v = list.length - p;
+  return [p ? `${p} PHOTO${p > 1 ? "S" : ""}` : "", v ? `${v} VIDEO${v > 1 ? "S" : ""}` : ""].filter(Boolean).join(" · ");
+}
+function addedText(list) {
+  const p = list.filter((i) => i.type === "photo").length, v = list.length - p;
+  return [p ? `${p} photo${p > 1 ? "s" : ""}` : "", v ? `${v} video${v > 1 ? "s" : ""}` : ""].filter(Boolean).join(" and ");
+}
+const eventItems = (id) => items.filter((i) => i.event === id);
+const people = (list) => [...new Set(list.map((i) => i.by))];
+
+/* ---------- FEED ---------- */
+function batchBody(b, list) {
+  if (st.v === "a") {
+    const [a, b2, c] = list, rest = list.length - 3;
+    return `<div class="collage">${tile(a)}<div class="side">${b2 ? tile(b2) : ""}${c ? tile(c, rest > 0 ? `<span class="more">+${rest}</span>` : "") : ""}</div></div>`;
+  }
+  if (st.v === "b") return `<div class="strip" tabindex="0" aria-label="Photos in this post, scroll sideways">${list.map((i) => tile(i)).join("")}</div>`;
+  const [lead, ...rest] = list;
+  return `<div class="hero-c">${tile(lead, `<span class="cap" style="opacity:1">${esc(lead.caption)}</span>`, "lead")}
+    <div class="thumbrow">${rest.slice(0, 5).map((i) => tile(i)).join("")}
+    ${b.event || rest.length > 5 ? `<button type="button" class="btn link" data-goevent="${b.event || ""}">See all ${list.length}${b.event ? ` from ${esc(evById(b.event).short)}` : ""}</button>` : ""}</div></div>`;
+}
+function renderPost(p) {
+  if (p.kind === "text") return `<article class="card post"><div class="post-head">${avatar(p.by)}<div class="who"><span><b>${esc(p.by)}</b></span><span class="mono muted">${esc(p.when.toUpperCase())}</span></div></div><p>${esc(p.text)}</p>
+    <div class="post-foot"><span>${ic("heart", 14)} ${p.likes}</span><span>${ic("msg", 14)} ${p.comments}</span></div></article>`;
+  const b = batches.find((x) => x.id === p.batch), list = b.ids.map(byId).filter(Boolean);
+  const target = st.v === "b" ? (b.event ? "the album" : "the gallery") : "the gallery";
+  return `<article class="card post">
+    <div class="post-head">${avatar(b.by)}<div class="who"><span><b>${esc(b.by)}</b> added ${addedText(list)} to ${target}</span><span class="mono muted">${esc(b.when.toUpperCase())}</span></div></div>
+    ${b.caption ? `<p>${esc(b.caption)}</p>` : ""}
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${b.event ? `<button type="button" class="ev-link" data-goevent="${b.event}">${ic("calendar", 14)}<span>${esc(evById(b.event).title)}</span></button>` : ""}
+    ${b.cat ? `<span class="badge">${esc(b.cat)}</span>` : ""}</div>
+    ${batchBody(b, list)}
+    <div class="post-foot"><span>${ic("heart", 14)} ${p.likes}</span><span>${ic("msg", 14)} ${p.comments}</span></div></article>`;
+}
+function screenFeed() {
+  return `<div class="page-head"><div><span class="label">Overview</span><h2>What's happening</h2></div></div>
+  <div class="feed">
+    <div class="card composer">${avatar("You")}<button type="button" class="fake">Write something to the community…</button>
+      <button type="button" class="icon-btn" title="Add photos to the gallery" data-act="upload">${ic("image", 18)}</button></div>
+    ${feed.map(renderPost).join("")}
+  </div>`;
+}
+
+/* ---------- GALLERY ---------- */
+const galleryHead = (sub) => `<div class="page-head"><div><span class="label">Gallery</span><h2>Photos and videos</h2><p class="muted">${sub}</p></div>
+  ${st.v === "c" ? "" : `<button type="button" class="btn primary" data-act="upload">${ic("upload")} Add photos and videos</button>`}</div>`;
+
+function galleryA() {
+  const list = filtered();
+  const evOpts = [["all", "All events"], ...EVENTS.map((e) => [e.id, e.title]), ["none", "Not from an event"]];
+  return `${galleryHead("From our events and everything in between. Only members can see these unless the uploader chose Everyone.")}
+  <div class="toolbar">
+    <label class="sr" for="f-event">Event</label>
+    <select id="f-event">${evOpts.map(([v, l]) => `<option value="${v}"${st.f.event === v ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>
+    <div class="chips" role="radiogroup" aria-label="Category">${["all", ...CATS].map((c) => `<button type="button" role="radio" class="chip" data-fcat="${c}" aria-checked="${st.f.cat === c}">${c === "all" ? "All" : esc(c)}</button>`).join("")}</div>
+    <div class="seg" role="radiogroup" aria-label="Type">${[["all", "All"], ["photo", "Photos"], ["video", "Videos"]].map(([v, l]) => `<button type="button" role="radio" data-ftype="${v}" aria-checked="${st.f.type === v}">${l}</button>`).join("")}</div>
+  </div>
+  <p class="mono muted">${list.length} ITEMS${list.length ? " · " + countLabel(list) : ""}</p>
+  ${list.length ? `<div class="wall-host"><div class="wall">${list.map((i) => tile(i, `${i.event ? `<span class="ev">${esc(evById(i.event).short)}</span>` : ""}<span class="cap">${esc(i.caption)}</span>`)).join("")}</div></div>`
+    : `<div class="card" style="padding:24px;display:grid;gap:8px"><h3>Nothing matches these filters</h3><p class="muted">Try another event or category, or add the first photos yourself.</p></div>`}`;
+}
+
+function galleryB() {
+  if (st.album) {
+    const ev = st.album === "none" ? null : evById(st.album);
+    let list = st.album === "none" ? items.filter((i) => !i.event) : eventItems(st.album);
+    const all = list;
+    if (st.f.cat !== "all") list = list.filter((i) => i.cat === st.f.cat);
+    const cats = CATS.filter((c) => all.some((i) => i.cat === c));
+    return `<div><button type="button" class="btn ghost sm" data-album="">${ic("left")} All albums</button></div>
+    <div class="page-head"><div><span class="label">Album</span><h2>${esc(ev ? ev.title : "Not from an event")}</h2>
+      <p class="mono muted">${ev ? ev.label + " · " : ""}${countLabel(all)} · ${people(all).length} PEOPLE</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${ev ? `<button type="button" class="btn outline" data-goevent="${ev.id}">Open event page</button>` : ""}
+      <button type="button" class="btn primary" data-act="upload" data-preset="${ev ? ev.id : ""}">${ic("upload")} Add to this album</button></div></div>
+    <div class="chips" role="radiogroup" aria-label="Category">${["all", ...cats].map((c) => `<button type="button" role="radio" class="chip" data-fcat="${c}" aria-checked="${st.f.cat === c}">${c === "all" ? "All" : esc(c)}</button>`).join("")}</div>
+    <div class="grid-sq">${list.map((i) => tile(i)).join("")}</div>`;
+  }
+  const albums = [...EVENTS.map((e) => ({ id: e.id, title: e.title, label: e.label, list: eventItems(e.id) })),
+    { id: "none", title: "Not from an event", label: "VARIOUS DATES", list: items.filter((i) => !i.event) }].filter((a) => a.list.length);
+  return `${galleryHead("One album per event. Photos that aren't from an event have their own album.")}
+  <div class="albums">${albums.map((a) => `<button type="button" class="album" data-album="${a.id}">
+    <div class="mosaic">${a.list.slice(0, 3).map((i) => `<img src="${i.src}" alt="" loading="lazy">`).join("")}</div>
+    <div class="meta"><h3>${esc(a.title)}</h3><span class="mono muted">${a.label}</span><span class="mono muted">${countLabel(a.list)}</span></div></button>`).join("")}</div>`;
+}
+
+function composerC() {
+  if (!st.composer) return `<div class="card composer">${avatar("You")}<button type="button" class="fake" data-act="upload">Share photos or videos from an event…</button>
+    <button type="button" class="btn primary sm" data-act="upload">${ic("image")} Add photos</button></div>`;
+  const u = st.u;
+  return `<div class="card composer-open" aria-label="Share photos and videos">
+    <div class="post-head">${avatar("You")}<textarea id="u-caption" rows="2" style="flex:1" placeholder="Say something about these (optional)">${esc(u.caption)}</textarea></div>
+    ${dropZone(true)}
+    ${u.suggested && u.event === u.suggested ? `<div class="suggest">${ic("calendar")}<p>These were taken on <b>${esc(evById(u.suggested).label.toLowerCase())}</b>, the day of <b>${esc(evById(u.suggested).title)}</b>, so we linked them to it. Change it below if that's wrong.</p></div>` : ""}
+    <div class="pickers">
+      <label>${ic("calendar")}<span class="sr">Event</span>${eventSelect("u-event")}</label>
+      <label><span class="sr">Category</span>${catSelect("u-cat")}</label>
+      ${visSeg()}
+    </div>
+    ${magCheck()}
+    <div class="form-foot"><button type="button" class="btn ghost" data-act="cancel">Cancel</button>
+      <button type="button" class="btn primary" data-act="submit"${u.files.length ? "" : " disabled"}>Share${u.files.length ? " " + u.files.length : ""}</button></div>
+  </div>`;
+}
+function galleryC() {
+  const groups = new Map();
+  [...items].sort((a, b) => b.date.localeCompare(a.date)).forEach((i) => {
+    const month = new Date(i.date + "T12:00:00").toLocaleString("en", { month: "long", year: "numeric" });
+    if (!groups.has(month)) groups.set(month, new Map());
+    const key = i.event || "none:" + month;
+    const m = groups.get(month);
+    if (!m.has(key)) m.set(key, []);
+    m.get(key).push(i);
+  });
+  let html = `${galleryHead("Every event as a short story, newest first.")}${composerC()}<div class="c-host" style="display:grid;gap:32px">`;
+  for (const [month, stories] of groups) {
+    html += `<section class="month"><span class="label">${esc(month)}</span>`;
+    for (const [key, list] of stories) {
+      const ev = key.startsWith("none") ? null : evById(key);
+      const open = st.expanded.has(key);
+      const [lead, ...rest] = list;
+      const ppl = people(list);
+      html += `<article class="story"><div class="story-head"><div style="display:grid;gap:4px"><h3>${ev ? `<button type="button" class="btn link" data-goevent="${ev.id}" style="font-size:1rem;font-weight:600">${esc(ev.title)}</button>` : "Around the community"}</h3>
+        <span class="mono muted">${ev ? ev.label + " · " : ""}${countLabel(list)}</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><span class="avatars">${ppl.slice(0, 4).map((n) => avatar(n, true)).join("")}</span><span class="muted">by ${esc(ppl[0].split(" ")[0])}${ppl.length > 1 ? ` and ${ppl.length - 1} other${ppl.length > 2 ? "s" : ""}` : ""}</span></div></div>
+        ${open ? `<div class="story-grid expanded">${list.map((i) => tile(i)).join("")}</div>`
+        : `<div class="story-grid">${tile(lead, `<span class="cap" style="opacity:1">${esc(lead.caption)}</span>`, "lead")}<div class="rest">${rest.slice(0, 4).map((i, n) => tile(i, n === 3 && rest.length > 4 ? `<span class="more">+${rest.length - 4}</span>` : "")).join("")}</div></div>`}
+        ${list.length > 5 ? `<div><button type="button" class="btn outline sm" data-expand="${key}">${open ? "Show less" : `Show all ${list.length}`}</button></div>` : ""}</article>`;
+    }
+    html += `</section>`;
+  }
+  return html + "</div>";
+}
+
+/* ---------- EVENT ---------- */
+function screenEvent() {
+  const ev = evById(st.eventId || "e1"), list = eventItems(ev.id), ppl = people(list);
+  let slice = "";
+  if (st.v === "a") {
+    slice = `<div class="slice-head"><div style="display:grid;gap:4px"><span class="label">Photos and videos</span><span class="mono muted">${list.length} ITEMS · BY ${ppl.length} PEOPLE</span></div>
+      <button type="button" class="btn primary" data-act="upload" data-preset="${ev.id}">${ic("upload")} Add yours</button></div>
+      <div class="wall-host"><div class="ev-grid">${list.slice(0, 6).map((i) => tile(i)).join("")}</div></div>
+      ${list.length > 6 ? `<div><button type="button" class="btn link" data-wallevent="${ev.id}">See all ${list.length} in the gallery</button></div>` : ""}`;
+  } else if (st.v === "b") {
+    slice = `<span class="label">Album</span>
+      <div class="wall-host"><div class="card album-wide"><div class="mosaic">${list.slice(0, 3).map((i) => `<img src="${i.src}" alt="" loading="lazy">`).join("")}</div>
+      <div style="display:grid;gap:10px"><h3>${list.length} photos and videos from this event</h3><p class="muted">Added by ${ppl.map((p) => esc(p.split(" ")[0])).join(", ")}.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn ink" data-album="${ev.id}" data-goalbum="1">Open album</button>
+      <button type="button" class="btn primary" data-act="upload" data-preset="${ev.id}">${ic("upload")} Add to this album</button></div></div></div></div>`;
+  } else {
+    slice = `<div class="slice-head"><span class="label">Moments</span>
+      <div style="display:flex;gap:8px;align-items:center"><span class="avatars">${ppl.slice(0, 4).map((n) => avatar(n, true)).join("")}</span><span class="muted">${ppl.length} people shared ${list.length}</span></div></div>
+      <div class="ev-strip">${list.slice(0, 4).map((i) => tile(i, `<span class="cap" style="opacity:1">${esc(i.caption)}</span>`)).join("")}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-act="upload" data-preset="${ev.id}">${ic("upload")} Add yours</button>
+      <button type="button" class="btn outline" data-gallery="1">See the whole story</button></div>`;
+  }
+  const other = EVENTS.filter((e) => e.id !== ev.id).map((e) => `<button type="button" class="chip" data-goevent="${e.id}">${esc(e.short)}</button>`).join("");
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="muted">Other past events:</span>${other}</div>
+  <div class="event-head"><span class="label">Event</span><h2>${esc(ev.title)}</h2>
+    <div class="event-meta"><span class="mono">${ev.label}</span><span>${ic("pin", 14)} ${esc(ev.venue)}</span><span>${ic("users", 14)} ${ev.went} went</span><span class="badge outline">Ended</span></div>
+    <p style="max-width:65ch">${esc(ev.blurb)}</p></div>
+  <section class="slice">${slice}</section>`;
+}
+
+/* ---------- UPLOAD pieces ---------- */
+function eventSelect(id) {
+  const u = st.u;
+  return `<select id="${id}"><option value="">Not from an event</option>${EVENTS.map((e) => `<option value="${e.id}"${u.event === e.id ? " selected" : ""}>${esc(e.title)} · ${e.label.toLowerCase()}</option>`).join("")}</select>`;
+}
+function catSelect(id, val = st.u.cat, none = "No category") {
+  return `<select id="${id}"><option value="">${none}</option>${CATS.map((c) => `<option${val === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select>`;
+}
+function catChips() {
+  return `<div class="chips" role="radiogroup" aria-label="Category">${CATS.map((c) => `<button type="button" role="radio" class="chip" data-ucat="${c}" aria-checked="${st.u.cat === c}">${esc(c)}</button>`).join("")}</div>`;
+}
+function visSeg() {
+  return `<div class="seg" role="radiogroup" aria-label="Who can see these">
+    <button type="button" role="radio" data-vis="members" aria-checked="${st.u.vis === "members"}">${ic("lock", 14)} Members</button>
+    <button type="button" role="radio" data-vis="public" aria-checked="${st.u.vis === "public"}">${ic("globe", 14)} Everyone</button></div>`;
+}
+function magCheck() {
+  return `<label class="check" for="u-mag"><input type="checkbox" id="u-mag"${st.u.mag ? " checked" : ""}>
+    <span><span style="font-weight:500">The community may use these in its magazine</span><br><span class="hint">Editors can only feature photos with this ticked. People who can't see a members-only photo won't see it in the magazine either.</span></span></label>`;
+}
+function thumbs() {
+  return `<div class="thumbs">${st.u.files.map((f) => `<div class="thumb">${f.type === "video" && f.objectUrl ? `<video src="${f.objectUrl}" muted></video>` : `<img src="${f.src}" alt="">`}
+    ${f.type === "video" ? `<span class="vid">VIDEO</span>` : ""}<button type="button" class="rm" data-rm="${f.id}" aria-label="Remove ${esc(f.name)}">${ic("x", 12)}</button></div>`).join("")}</div>`;
+}
+function dropZone(compact) {
+  const n = st.u.files.length;
+  return `<div class="drop" id="drop">
+    ${n ? thumbs() : `${ic("image", 28)}<p><b>Drop photos and videos here</b></p><p class="hint">Videos up to 90 seconds. We shrink them on your device before upload.</p>`}
+    <div class="row"><label class="btn outline sm" for="u-file">${n ? "Add more" : "Choose files"}</label>
+    <input id="u-file" type="file" accept="image/*,video/*" multiple class="sr">
+    <button type="button" class="btn ghost sm" data-act="samples">Use 6 sample photos</button></div>
+    ${compact || !n ? "" : `<p class="mono muted">${n} SELECTED</p>`}</div>`;
+}
+function dialogA() {
+  const u = st.u, ev = u.event ? evById(u.event) : null;
+  return `<div class="modal-bg" data-act="cancel-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+    <div class="modal-head"><div style="display:grid;gap:4px"><h2 id="dlg-title" style="font-size:1.25rem">Add photos and videos</h2>
+      <p class="muted">${ev ? `They'll go into the gallery and onto the page for ${esc(ev.title)}.` : "They'll go into the community gallery."}</p></div>
+      <button type="button" class="icon-btn" data-act="cancel" aria-label="Close">${ic("x", 18)}</button></div>
+    ${dropZone()}
+    <div class="form">
+      <label class="field" for="u-event"><span>Event</span>${eventSelect("u-event")}<span class="hint">Where were these taken? Leave it empty for photos that aren't from an event.</span></label>
+      <div class="field"><span>Category</span>${catChips()}</div>
+      <div class="field"><span>Who can see these</span><div>${visSeg()}</div></div>
+      ${magCheck()}
+    </div>
+    <div class="form-foot"><button type="button" class="btn ghost" data-act="cancel">Cancel</button>
+      <button type="button" class="btn primary" data-act="submit"${u.files.length ? "" : " disabled"}>Upload${u.files.length ? " " + u.files.length : ""}</button></div>
+  </div></div>`;
+}
+function screenUploadB() {
+  const u = st.u, n = u.files.length;
+  const steps = ["Choose", "Describe", "Album and sharing"];
+  let body = "";
+  if (u.step === 1) body = `${dropZone()}<div class="form-foot"><button type="button" class="btn ghost" data-act="cancel">Cancel</button>
+    <button type="button" class="btn ink" data-step="2"${n ? "" : " disabled"}>Next: describe</button></div>`;
+  if (u.step === 2) body = `<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><p class="muted" style="max-width:60ch">A caption helps people find the photo later. The description is read aloud to people who can't see it.</p>
+    <label style="display:inline-flex;gap:8px;align-items:center"><span class="muted">Category for all</span>${catSelect("u-cat-all", "", "Choose…")}</label></div>
+    <div class="describe">${u.files.map((f) => `<div class="describe-row"><div class="thumb">${f.objectUrl && f.type === "video" ? `<video src="${f.objectUrl}" muted></video>` : `<img src="${f.src}" alt="">`}</div>
+      <div class="inputs"><input type="text" id="cap-${f.id}" data-fcap="${f.id}" placeholder="Caption" value="${esc(f.caption || "")}" aria-label="Caption for ${esc(f.name)}">
+      <input type="text" id="alt-${f.id}" data-falt="${f.id}" placeholder="Describe it for people who can't see it" value="${esc(f.alt || "")}" aria-label="Description for ${esc(f.name)}">
+      <select id="cat-${f.id}" data-fcat-item="${f.id}" aria-label="Category for ${esc(f.name)}"><option value="">Category</option>${CATS.map((c) => `<option${f.cat === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></div></div>`).join("")}</div>
+    <div class="form-foot"><button type="button" class="btn ghost grow" data-step="1">${ic("left")} Back</button><button type="button" class="btn ink" data-step="3">Next: album and sharing</button></div>`;
+  if (u.step === 3) body = `<div class="form">
+      <label class="field" for="u-event"><span>Album</span>${eventSelect("u-event")}<span class="hint">Pick the event these are from. Each event has its own album.</span></label>
+      <div class="field"><span>Who can see these</span><div>${visSeg()}</div></div>
+      ${magCheck()}
+      <div class="suggest">${ic("image")}<p>${addedText(u.files.map((f) => ({ type: f.type })))} go into <b>${esc(u.event ? evById(u.event).title : "Not from an event")}</b>. A short post in the feed tells members they're there.</p></div></div>
+    <div class="form-foot"><button type="button" class="btn ghost grow" data-step="2">${ic("left")} Back</button><button type="button" class="btn primary" data-act="submit">Share ${n}</button></div>`;
+  return `<div><button type="button" class="btn ghost sm" data-gallery="1">${ic("left")} Gallery</button></div>
+  <div class="page-head"><div><span class="label">Gallery</span><h2>Add photos and videos</h2></div></div>
+  <ol class="steps">${steps.map((s, i) => `<li${u.step === i + 1 ? ' aria-current="step"' : ""}${u.step > i + 1 ? ' class="done"' : ""}>${s}</li>`).join("")}</ol>
+  <div class="card" style="padding:20px;display:grid;gap:18px;max-width:860px">${body}</div>`;
+}
+
+/* ---------- LIGHTBOX ---------- */
+function lightbox() {
+  const { id, list } = st.lightbox, it = byId(id), idx = list.indexOf(id);
+  const mine = it.by === "You";
+  return `<div class="lb" role="dialog" aria-modal="true" aria-label="${esc(it.caption)}">
+    <div class="lb-stage">
+      ${it.type === "video" && it.objectUrl ? `<video src="${it.objectUrl}" controls></video>` : `<img src="${it.src}" alt="${esc(it.alt)}">${it.type === "video" ? `<span class="play">${ic("play", 28)}</span>` : ""}`}
+      ${list.length > 1 ? `<button type="button" class="lb-nav prev" data-lb="${list[(idx - 1 + list.length) % list.length]}" aria-label="Previous">${ic("left", 20)}</button>
+      <button type="button" class="lb-nav next" data-lb="${list[(idx + 1) % list.length]}" aria-label="Next">${ic("right", 20)}</button>` : ""}
+      <button type="button" class="icon-btn lb-close" data-act="lb-close" aria-label="Close">${ic("x", 20)}</button>
+    </div>
+    <aside class="lb-side">
+      <div class="post-head">${avatar(it.by)}<div class="who"><b>${esc(it.by)}</b><span class="mono muted">${esc((it.when || "").toUpperCase())}${it.type === "video" ? " · VIDEO " + it.dur : ""}</span></div></div>
+      <p style="font-size:1rem">${esc(it.caption)}</p>
+      <dl class="facts">
+        <div><dt>Event</dt><dd>${it.event ? `<button type="button" class="btn link" data-goevent="${it.event}">${esc(evById(it.event).title)}</button>` : `<span class="muted">Not from an event</span>`}</dd></div>
+        <div><dt>Category</dt><dd>${it.cat ? `<span class="badge">${esc(it.cat)}</span>` : `<span class="muted">None</span>`}</dd></div>
+        <div><dt>Who can see</dt><dd><span class="badge outline">${it.vis === "public" ? ic("globe", 12) + " Everyone" : ic("lock", 12) + " Members only"}</span></dd></div>
+        <div><dt>Magazine</dt><dd>${it.mag ? `<span class="badge ok">${ic("check", 12)} Editors may use it</span>` : `<span class="muted">Not for the magazine</span>`}</dd></div>
+      </dl>
+      <p class="hint">${esc(it.alt)}</p>
+      <div class="lb-actions">${mine ? `<button type="button" class="btn outline sm">Edit details</button><button type="button" class="btn ghost sm" data-del="${it.id}">${ic("trash", 14)} Delete</button>`
+        : `<button type="button" class="btn outline sm" data-flag="me">${ic("userx", 14)} This is me, remove it</button><button type="button" class="btn ghost sm" data-flag="report">${ic("flag", 14)} Report</button>`}</div>
+      <p class="hint" id="lb-status" role="status"></p>
+    </aside></div>`;
+}
+
+/* ---------- render ---------- */
+function render() {
+  $("#proto-note").innerHTML = `Prototype with made-up data. Nothing is saved. ${VARIANTS[st.v].note}`;
+  const tabs = [["feed", "Overview"], ["events", "Events"], ["gallery", "Gallery"], ["classroom", "Classroom"], ["magazine", "Magazine"], ["members", "Members"]];
+  const activeTab = st.screen === "event" ? "events" : st.screen === "upload" ? "gallery" : st.screen;
+  $("#tabs").innerHTML = tabs.map(([k, l]) => `<button type="button" class="tab" data-tab="${k}"${activeTab === k ? ' aria-current="page"' : ""}><span>${l}</span>${k === "gallery" ? '<span class="new">NEW</span>' : ""}</button>`).join("");
+
+  let html = `<p class="status" role="status">${st.status ? ic("check") + "<span>" + st.status + "</span>" : ""}</p>`;
+  if (st.screen === "feed") html += screenFeed();
+  else if (st.screen === "gallery") html += st.v === "a" ? galleryA() : st.v === "b" ? galleryB() : galleryC();
+  else if (st.screen === "event") html += screenEvent();
+  else if (st.screen === "upload") html += st.v === "b" ? screenUploadB() : galleryA();
+  $("#main").innerHTML = html;
+
+  let layer = "";
+  if (st.dialog && st.v === "a") layer += dialogA();
+  if (st.lightbox) layer += lightbox();
+  $("#layer").innerHTML = layer;
+  document.body.style.overflow = layer ? "hidden" : "";
+
+  $("#switcher").innerHTML = `<button type="button" data-cycle="-1" aria-label="Previous variant">${ic("left")}</button>
+    <span class="vlabel" aria-live="polite">${st.v.toUpperCase()} — ${VARIANTS[st.v].name}</span>
+    <button type="button" data-cycle="1" aria-label="Next variant">${ic("right")}</button><span class="sep"></span>
+    ${Object.entries(SCREENS).map(([k, l]) => `<button type="button" class="scr" data-screen="${k}" aria-pressed="${st.screen === k || (k === "upload" && (st.dialog || st.composer))}">${l}</button>`).join("")}`;
+  wireInputs();
+}
+
+/* ---------- uploads ---------- */
+let fseq = 1;
+function addSamples() {
+  const R = rng(900 + fseq);
+  for (let i = 0; i < 6; i++) {
+    const cat = ["Networking", "Talks", "Networking", "Demos", "Talks", "Networking"][i];
+    const ratio = RATIOS[Math.floor(R() * RATIOS.length)];
+    st.u.files.push({ id: "f" + fseq++, name: `IMG_20261107_${1900 + i * 7}.jpg`, type: i === 4 ? "video" : "photo", src: art(5000 + fseq, SCENE[cat], ratio), ratio, date: "2026-11-07", cat: "" });
+  }
+  suggestEvent();
+}
+function addFiles(fileList) {
+  for (const file of fileList) {
+    if (!/^(image|video)\//.test(file.type)) continue;
+    const url = URL.createObjectURL(file), isV = file.type.startsWith("video/");
+    const d = new Date(file.lastModified || Date.now());
+    st.u.files.push({ id: "f" + fseq++, name: file.name, type: isV ? "video" : "photo", src: isV ? art(fseq, "network", 1) : url, objectUrl: isV ? url : null, ratio: 1,
+      date: d.toISOString().slice(0, 10), cat: "" });
+  }
+  suggestEvent();
+}
+function suggestEvent() {
+  const dates = new Set(st.u.files.map((f) => f.date));
+  const hit = EVENTS.find((e) => { const t = new Date(e.date).getTime(); return [...dates].some((d) => Math.abs(new Date(d).getTime() - t) <= 86400000 * 1.5); });
+  if (hit && !st.u.event && st.v === "c") { st.u.event = hit.id; st.u.suggested = hit.id; }
+}
+function submit() {
+  const u = st.u;
+  if (!u.files.length) return;
+  const bid = "b" + (batches.length + 1);
+  const ids = [];
+  u.files.forEach((f, i) => {
+    const cat = f.cat || u.cat || "";
+    const it = { id: "m" + seq++, type: f.type, dur: "0:34", event: u.event || null, cat, by: "You", caption: f.caption || u.caption || (cat ? `${cat} ${i + 1}` : `Photo ${i + 1}`),
+      alt: f.alt || "No description yet. Add one with Edit details.", date: f.date, when: "Just now", ratio: f.ratio, src: f.src, objectUrl: f.objectUrl, mag: u.mag, vis: u.vis, batch: bid, isNew: true };
+    items.unshift(it); ids.push(it.id);
+  });
+  batches.push({ id: bid, by: "You", event: u.event || null, cat: u.cat || "", caption: u.caption, when: "Just now", ids });
+  feed.unshift({ kind: "batch", batch: bid, likes: 0, comments: 0 });
+  const where = u.event ? evById(u.event).title : "the gallery";
+  st.status = `${addedText(ids.map(byId))} added to ${esc(where)}. Members see a short post about them in the feed.`;
+  const ev = u.event;
+  st.u = freshUpload(); st.dialog = false; st.composer = false;
+  if (st.v === "b") st.album = ev || "none";
+  st.f = { event: "all", cat: "all", type: "all" };
+  go("gallery");
+}
+
+/* ---------- events ---------- */
+function openUpload(preset) {
+  st.u = freshUpload(preset || "");
+  st.status = "";
+  if (st.v === "a") { st.dialog = true; render(); setTimeout(() => $(".modal button, .modal select")?.focus(), 0); return; }
+  if (st.v === "b") { go("upload"); return; }
+  st.composer = true; go("gallery");
+}
+function lightboxList(id) {
+  const it = byId(id);
+  if (st.screen === "gallery" && st.v === "a") return filtered().map((i) => i.id);
+  if (it.event) return eventItems(it.event).map((i) => i.id);
+  return items.filter((i) => i.batch === it.batch).map((i) => i.id);
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button, [data-act], .tab");
+  if (!t) return;
+  const d = t.dataset;
+  if (d.open) { st.lastFocus = d.open; st.lightbox = { id: d.open, list: lightboxList(d.open) }; render(); $(".lb-close")?.focus(); return; }
+  if (d.lb) { st.lightbox.id = d.lb; render(); $(`[data-lb]`)?.focus(); return; }
+  if (d.cycle) { const ks = Object.keys(VARIANTS); const v = ks[(ks.indexOf(st.v) + +d.cycle + ks.length) % ks.length]; st.dialog = false; st.composer = false; st.album = null; st.f.cat = "all"; go(st.screen, v); return; }
+  if (d.screen) { st.dialog = false; st.composer = false; st.lightbox = null; st.status = ""; if (d.screen === "upload") { openUpload(st.screen === "event" ? (st.eventId || "e1") : ""); return; } if (d.screen === "gallery") st.album = null; go(d.screen); return; }
+  if (d.tab) {
+    st.status = ""; st.dialog = false; st.composer = false; st.lightbox = null;
+    if (d.tab === "events") { go("event"); return; }
+    if (["classroom", "magazine", "members"].includes(d.tab)) { st.status = "That tab isn't part of this prototype."; render(); return; }
+    if (d.tab === "gallery") st.album = null;
+    go(d.tab); return;
+  }
+  if (d.goevent !== undefined) {
+    st.lightbox = null; st.status = "";
+    if (!d.goevent) { go("gallery"); return; }
+    st.eventId = d.goevent;
+    go("event"); return;
+  }
+  if (d.wallevent) { st.f = { event: d.wallevent, cat: "all", type: "all" }; go("gallery"); return; }
+  if (d.gallery) { st.album = null; st.composer = false; go("gallery"); return; }
+  if (d.album !== undefined) { st.album = d.album || null; st.f.cat = "all"; if (d.goalbum || st.screen !== "gallery") { go("gallery"); } else { render(); window.scrollTo({ top: 0 }); } return; }
+  if (d.expand) { st.expanded.has(d.expand) ? st.expanded.delete(d.expand) : st.expanded.add(d.expand); render(); return; }
+  if (d.fcat) { st.f.cat = d.fcat; render(); return; }
+  if (d.ftype) { st.f.type = d.ftype; render(); return; }
+  if (d.ucat) { st.u.cat = st.u.cat === d.ucat ? "" : d.ucat; render(); return; }
+  if (d.vis) { st.u.vis = d.vis; render(); return; }
+  if (d.rm) { st.u.files = st.u.files.filter((f) => f.id !== d.rm); render(); return; }
+  if (d.step) { st.u.step = +d.step; render(); window.scrollTo({ top: 0 }); return; }
+  if (d.flag) { const s = $("#lb-status"); if (s) s.textContent = d.flag === "me" ? "Sent. The uploader and the community moderators are asked to take it down. It's hidden from you right away." : "Thanks. A moderator will look at it."; return; }
+  if (d.del) { const i = items.findIndex((x) => x.id === d.del); if (i >= 0) items.splice(i, 1); st.lightbox = null; st.status = "Deleted."; render(); return; }
+  switch (d.act) {
+    case "upload": openUpload(d.preset); return;
+    case "samples": addSamples(); render(); return;
+    case "cancel": st.dialog = false; st.composer = false; st.u = freshUpload(); if (st.screen === "upload") { go("gallery"); } else render(); return;
+    case "cancel-bg": if (e.target === t) { st.dialog = false; render(); } return;
+    case "submit": submit(); return;
+    case "lb-close": st.lightbox = null; render(); document.querySelector(`[data-open="${st.lastFocus}"]`)?.focus(); return;
+  }
+});
+function wireInputs() {
+  const ev = $("#f-event"); if (ev) ev.onchange = () => { st.f.event = ev.value; render(); };
+  const ue = $("#u-event"); if (ue) ue.onchange = () => { st.u.event = ue.value; st.u.suggested = null; render(); };
+  const uc = $("#u-cat"); if (uc) uc.onchange = () => { st.u.cat = uc.value; };
+  const ua = $("#u-cat-all"); if (ua) ua.onchange = () => { st.u.files.forEach((f) => (f.cat = ua.value)); st.u.cat = ua.value; render(); };
+  const um = $("#u-mag"); if (um) um.onchange = () => { st.u.mag = um.checked; };
+  const cap = $("#u-caption"); if (cap) cap.oninput = () => { st.u.caption = cap.value; };
+  document.querySelectorAll("[data-fcap]").forEach((el) => (el.oninput = () => { st.u.files.find((f) => f.id === el.dataset.fcap).caption = el.value; }));
+  document.querySelectorAll("[data-falt]").forEach((el) => (el.oninput = () => { st.u.files.find((f) => f.id === el.dataset.falt).alt = el.value; }));
+  document.querySelectorAll("[data-fcat-item]").forEach((el) => (el.onchange = () => { st.u.files.find((f) => f.id === el.dataset.fcatItem).cat = el.value; }));
+  const fi = $("#u-file"); if (fi) fi.onchange = () => { addFiles(fi.files); render(); };
+  const drop = $("#drop");
+  if (drop) {
+    drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+    drop.ondragleave = () => drop.classList.remove("over");
+    drop.ondrop = (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); render(); };
+  }
+}
+document.addEventListener("keydown", (e) => {
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (e.key === "Escape") {
+    if (st.lightbox) { st.lightbox = null; render(); return; }
+    if (st.dialog) { st.dialog = false; render(); return; }
+  }
+  if (["input", "textarea", "select"].includes(tag) || e.target.isContentEditable) return;
+  if (st.lightbox && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+    const { id, list } = st.lightbox, i = list.indexOf(id);
+    st.lightbox.id = list[(i + (e.key === "ArrowRight" ? 1 : -1) + list.length) % list.length]; render(); return;
+  }
+  if (st.dialog) return;
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    const ks = Object.keys(VARIANTS); const v = ks[(ks.indexOf(st.v) + (e.key === "ArrowRight" ? 1 : -1) + ks.length) % ks.length];
+    st.composer = false; st.album = null; st.f.cat = "all"; go(st.screen, v);
+  }
+});
+window.addEventListener("hashchange", () => { readHash(); render(); });
+readHash();
+if (st.screen === "upload" && st.v !== "b") go("upload"); else render();
+})();
+</script>
