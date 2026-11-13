@@ -275,8 +275,9 @@ their category (set to empty), the same moment feed posts move to `general`.
   focus returned to the tile. Side panel: uploader, time, caption, event link,
   category, who can see it, magazine permission, description. Actions: owner →
   Edit details (caption, alt, category, event, magazine permission) and Delete;
-  others → "This is me, remove it" and Report; moderators → Restore/Remove on
-  reported items. Visibility stays fixed.
+  others → one **Report** action, whose dialog lists "This is me, please
+  remove it" first; moderators → Restore/Remove on reported items.
+  Visibility stays fixed.
 - Non-members see only public items and the join prompt.
 
 ### Upload dialog (variant A)
