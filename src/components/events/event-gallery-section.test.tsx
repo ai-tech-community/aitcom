@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ReactQuery from "@tanstack/react-query";
 import {
   fireEvent,
   render,
@@ -25,15 +26,23 @@ const m = vi.hoisted(() => ({
   invalidateList: vi.fn(),
   invalidateFacets: vi.fn(),
   invalidateItem: vi.fn(),
+  removeQueries: vi.fn(),
 }));
 
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof ReactQuery>()),
+  useQueryClient: () => ({ removeQueries: m.removeQueries }),
+}));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
       gallery: {
         list: { invalidate: m.invalidateList },
         facets: { invalidate: m.invalidateFacets },
-        item: { invalidate: m.invalidateItem },
+        item: {
+          invalidate: m.invalidateItem,
+          queryOptions: (input: unknown) => ({ queryKey: ["item", input] }),
+        },
       },
     }),
     topics: { list: { useQuery: () => ({ data: [] }) } },

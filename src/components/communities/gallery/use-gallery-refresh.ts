@@ -1,24 +1,42 @@
 "use client";
 
-import { useCallback } from "react";
+import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/trpc/react";
 
 /**
- * Reloads what the gallery shows after an item changed: the wall and its
- * filter choices and, given its id, the item on its own (a linked item
+ * Reloads what the gallery shows after an item changed or went away: the
+ * wall and its filter choices, and the item's own entry (a linked item
  * that is not on the loaded wall).
+ *
+ * - `changed`: reported or restored. The item is still there, so its own
+ *   entry is read again.
+ * - `deleted`: deleted or removed. Its own entry is dropped, not
+ *   invalidated: a linked item is still on screen when this runs, and an
+ *   invalidate would ask for it again only to be told it is gone.
  */
 export function useGalleryRefresh(slug: string) {
   const utils = api.useUtils();
-  return useCallback(
-    (itemId?: number) => {
+  // tRPC's provider shares this client (src/trpc/react.tsx).
+  const queryClient = useQueryClient();
+  return useMemo(() => {
+    const lists = () => {
       void utils.gallery.list.invalidate({ slug });
       void utils.gallery.facets.invalidate({ slug });
-      if (itemId !== undefined) {
+    };
+    return {
+      changed: (itemId: number) => {
+        lists();
         void utils.gallery.item.invalidate({ slug, itemId });
-      }
-    },
-    [utils, slug],
-  );
+      },
+      deleted: (itemId: number) => {
+        lists();
+        queryClient.removeQueries({
+          queryKey: utils.gallery.item.queryOptions({ slug, itemId }).queryKey,
+          exact: true,
+        });
+      },
+    };
+  }, [utils, queryClient, slug]);
 }

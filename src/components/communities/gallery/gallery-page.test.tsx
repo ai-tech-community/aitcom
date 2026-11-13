@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ReactQuery from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 import {
   fireEvent,
@@ -56,6 +57,7 @@ const m = vi.hoisted(() => ({
   invalidateList: vi.fn(),
   invalidateFacets: vi.fn(),
   invalidateItem: vi.fn(),
+  removeQueries: vi.fn(),
   deleteFails: false,
   toastError: vi.fn(),
 }));
@@ -72,13 +74,20 @@ vi.mock("next/navigation", () => ({
       ),
     ),
 }));
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof ReactQuery>()),
+  useQueryClient: () => ({ removeQueries: m.removeQueries }),
+}));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
       gallery: {
         list: { invalidate: m.invalidateList },
         facets: { invalidate: m.invalidateFacets },
-        item: { invalidate: m.invalidateItem },
+        item: {
+          invalidate: m.invalidateItem,
+          queryOptions: (input: unknown) => ({ queryKey: ["item", input] }),
+        },
       },
     }),
     gallery: {
@@ -693,15 +702,21 @@ describe("GalleryPage", () => {
     expect(screen.getByRole("dialog")).toHaveAccessibleName("One");
   });
 
-  it("refreshes the wall and the item after a moderator removed it", async () => {
+  it("refreshes the wall and drops the item after a moderator removed it", async () => {
     asMember("moderator");
-    m.list.items = [galleryItem({ id: 1, caption: "One", hidden: true })];
+    // Linked, not on the wall: it is shown from its own query.
+    m.item = galleryItem({ id: 1, caption: "One", hidden: true });
+    setUrl("item=1");
     renderPage();
-    fireEvent.click(screen.getByRole("button", { name: "One" }));
     fireEvent.click(screen.getByRole("button", { name: "Removed" }));
     expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
     expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
-    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 1 });
+    // Not invalidated: that would ask for it again, only to hear it's gone.
+    expect(m.invalidateItem).not.toHaveBeenCalled();
+    expect(m.removeQueries).toHaveBeenCalledWith({
+      queryKey: ["item", { slug: "mlops", itemId: 1 }],
+      exact: true,
+    });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 

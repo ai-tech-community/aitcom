@@ -262,8 +262,8 @@ export function GalleryPage({ slug }: { slug: string }) {
         onNavigate={(itemId) => setParams({ item: itemId })}
         onClose={() => setParams({ item: null })}
         onEdit={isMember ? (item) => openEdit({ item }) : undefined}
-        onDeleted={(itemId) => refresh(itemId)}
-        onChanged={(itemId) => refresh(itemId)}
+        onDeleted={refresh.deleted}
+        onChanged={(itemId) => refresh.changed(itemId)}
         canModerate={canModerate}
         signedIn={viewer.kind !== "guest"}
         fallbackFocus={headingRef}

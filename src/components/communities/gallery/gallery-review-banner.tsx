@@ -24,9 +24,10 @@ import { useGalleryReportReasonLabel } from "./gallery-report-text";
  * reports are read again after a restore: one that came in meanwhile has
  * hidden the item again, and is shown for the next decision.
  *
- * Text stays `text-foreground` on the soft warning tint, as on a reported
- * feed post: the warning colour is carried by the border and the icon
- * (Pair-With-A-Cue).
+ * All text stays `text-foreground` on the soft warning tint, as on a
+ * reported feed post: `text-warning` and `text-muted-foreground` both drop
+ * under 4.5:1 there. The warning colour is carried by the border and the
+ * icon (Pair-With-A-Cue).
  */
 export function GalleryReviewBanner({
   slug,
@@ -111,7 +112,7 @@ export function GalleryReviewBanner({
       ) : null}
 
       {canReview && reports.data && shown.length === 0 ? (
-        <p className="text-muted-foreground pl-6">{t("noReports")}</p>
+        <p className="pl-6">{t("noReports")}</p>
       ) : null}
 
       {shown.length > 0 ? (
@@ -122,10 +123,7 @@ export function GalleryReviewBanner({
                 <span className="font-medium">
                   {reasonLabel(report.reason)}
                 </span>
-                <RelativeTime
-                  date={report.createdAt}
-                  className="text-muted-foreground font-mono text-xs"
-                />
+                <RelativeTime date={report.createdAt} className="text-xs" />
               </span>
               {report.note ? (
                 <span className="min-w-0 break-words">{report.note}</span>

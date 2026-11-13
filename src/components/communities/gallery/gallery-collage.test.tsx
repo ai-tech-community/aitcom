@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ReactQuery from "@tanstack/react-query";
 import {
   fireEvent,
   render,
@@ -27,16 +28,24 @@ const m = vi.hoisted(() => ({
   invalidateList: vi.fn(),
   invalidateFacets: vi.fn(),
   invalidateItem: vi.fn(),
+  removeQueries: vi.fn(),
   editProps: vi.fn(),
 }));
 
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof ReactQuery>()),
+  useQueryClient: () => ({ removeQueries: m.removeQueries }),
+}));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
       gallery: {
         list: { invalidate: m.invalidateList },
         facets: { invalidate: m.invalidateFacets },
-        item: { invalidate: m.invalidateItem },
+        item: {
+          invalidate: m.invalidateItem,
+          queryOptions: (input: unknown) => ({ queryKey: ["item", input] }),
+        },
       },
     }),
     topics: {
@@ -343,7 +352,11 @@ describe("GalleryCollage", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
     expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
-    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 9 });
+    expect(m.invalidateItem).not.toHaveBeenCalled();
+    expect(m.removeQueries).toHaveBeenCalledWith({
+      queryKey: ["item", { slug: "mlops", itemId: 9 }],
+      exact: true,
+    });
   });
 
   it("lets a member edit their own item, then reloads the post", () => {

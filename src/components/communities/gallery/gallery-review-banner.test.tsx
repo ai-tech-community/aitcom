@@ -150,6 +150,9 @@ describe("GalleryReviewBanner", () => {
       expect(rows[0]).toHaveTextContent("This is me, please remove it");
       expect(rows[0]).toHaveTextContent("I'm on the left");
       expect(rows[1]).toHaveTextContent("Spam");
+      const time = rows[0]!.querySelector("time")!;
+      expect(time).toHaveClass("font-mono");
+      expect(time).not.toHaveClass("text-muted-foreground");
     });
 
     it("restores with exactly the reports it showed", () => {
@@ -192,7 +195,10 @@ describe("GalleryReviewBanner", () => {
     it("can't restore when there is no open report to decide on", () => {
       m.reports = { reports: [] };
       renderBanner({ canReview: true });
-      expect(screen.getByText("No open reports.")).toBeVisible();
+      const none = screen.getByText("No open reports.");
+      expect(none).toBeVisible();
+      // Muted text drops under 4.5:1 on the warning tint.
+      expect(none).not.toHaveClass("text-muted-foreground");
       expect(screen.queryByRole("list")).toBeNull();
       expect(screen.getByRole("button", { name: "Restore" })).toBeDisabled();
     });
