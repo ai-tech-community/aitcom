@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import { clampText } from "@/lib/classroom/material-rules";
 import {
   GALLERY_BATCH_TEXT_MAX,
   GALLERY_MAX_FILES_PER_BATCH,
@@ -15,6 +14,7 @@ import {
   galleryObjectKeys,
   type GalleryMediaType,
 } from "@/lib/gallery-rules";
+import { clampText } from "@/lib/text-utils";
 import {
   FINISH_WINDOW_HOURS,
   MAX_VIDEO_BYTES,
@@ -23,7 +23,6 @@ import {
   type VideoVisibility,
 } from "@/lib/video-rules";
 import type { GalleryBatch, GalleryItem } from "@/payload-types";
-import { isActiveCommunityMember } from "@/server/communities/content-visibility-queries";
 import {
   allowanceFor,
   exceedsAllowance,
@@ -34,10 +33,13 @@ import type {
   StoredObject,
 } from "@/server/media/object-storage";
 
+import { transitionStatus } from "@/server/payload-status-transition";
+
 import {
   assertCommunityTopic,
   assertLinkableEvent,
   loadGalleryViewer,
+  loadGalleryViewerById,
 } from "./access";
 import { nowOf, type GalleryDeps } from "./deps";
 import { galleryError } from "./errors";
@@ -234,17 +236,8 @@ async function requireOpenOwnBatch(
   input: { userId: string; batchId: number },
   now: Date,
 ): Promise<GalleryBatch> {
-  const batch = await deps.payload.findByID({
-    collection: "gallery-batches",
-    id: input.batchId,
-    depth: 0,
-    disableErrors: true,
-  });
-  if (
-    batch?.uploaderId !== input.userId ||
-    batch.status !== "open" ||
-    isPastFinishWindow(batch.createdAt, now)
-  ) {
+  const batch = await requireOwnBatch(deps, input);
+  if (batch.status !== "open" || isPastFinishWindow(batch.createdAt, now)) {
     throw galleryError("UPLOAD_EXPIRED");
   }
   return batch;
@@ -316,7 +309,8 @@ function assertFileAllowed(input: {
 
 /**
  * Checks, in order: the gallery is on; the batch is the caller's, open and
- * inside its finish window; the caller is still a member; the file is
+ * inside its finish window; its community still exists and the caller is
+ * still a member; the file is
  * allowed; it fits the batch's plan and today's quota; the community's
  * allowance has room for the file and its thumbnail. Then grants one
  * presigned POST each for the file and the thumbnail, pinned to their keys,
@@ -343,11 +337,13 @@ export async function startItem(
   assertGalleryEnabled();
   const now = nowOf(deps);
   const batch = await requireOpenOwnBatch(deps, input, now);
-  if (
-    !(await isActiveCommunityMember(deps.db, batch.communityId, input.userId))
-  ) {
-    throw galleryError("NOT_A_MEMBER");
-  }
+  const viewer = await loadGalleryViewerById(deps, {
+    communityId: batch.communityId,
+    userId: input.userId,
+  });
+  // A deleted community is answered like an unknown batch.
+  if (!viewer) throw galleryError("UPLOAD_EXPIRED");
+  if (!viewer.isMember) throw galleryError("NOT_A_MEMBER");
   assertFileAllowed(input);
   await assertFitsPlan(deps, batch, input.mediaType);
   const today = await uploadsToday(deps, input.userId, input.mediaType, now);
@@ -440,23 +436,22 @@ async function requireOwnItem(
 }
 
 /**
- * Move an item out of "uploading", but only if it is still uploading, so
- * finish and discard can never overwrite each other. Returns the updated
- * item, or null when another request changed it first.
+ * Move an item out of "uploading", but only if it is still uploading, in one
+ * statement, so finish and discard can never both win. Returns whether this
+ * call moved it; re-read the item to see what a concurrent request left.
  */
-async function leaveUploading(
+function leaveUploading(
   deps: GalleryDeps,
   itemId: number,
-  data: { status: "ready" } | { status: "failed"; failureReason: string },
-): Promise<GalleryItem | null> {
-  const { docs } = await deps.payload.update({
+  to: { status: "ready" } | { status: "failed"; failureReason: string },
+): Promise<boolean> {
+  return transitionStatus(deps.payload, {
     collection: "gallery-items",
-    where: {
-      and: [{ id: { equals: itemId } }, { status: { equals: "uploading" } }],
-    },
-    data,
+    id: itemId,
+    from: "uploading",
+    to: to.status,
+    ...("failureReason" in to && { set: { failureReason: to.failureReason } }),
   });
-  return docs[0] ?? null;
 }
 
 /** Removes an item's file and thumbnail, best effort: the sweep is the net. */
@@ -503,17 +498,19 @@ function isValidUpload(
   );
 }
 
+function ownView(item: GalleryItem): GalleryItemOwnView {
+  return {
+    id: item.id,
+    status: "ready",
+    mediaType: item.mediaType,
+    width: item.width,
+    height: item.height,
+  };
+}
+
 /** What finish answers for an item that is no longer uploading. */
 function settledItem(item: GalleryItem): GalleryItemOwnView {
-  if (item.status === "ready") {
-    return {
-      id: item.id,
-      status: "ready",
-      mediaType: item.mediaType,
-      width: item.width,
-      height: item.height,
-    };
-  }
+  if (item.status === "ready") return ownView(item);
   if (item.status === "failed") throw galleryError("UPLOAD_FAILED");
   // Still uploading after a lost conditional write cannot happen; refuse
   // rather than report a file that was never checked.
@@ -526,7 +523,9 @@ function settledItem(item: GalleryItem): GalleryItemOwnView {
  * caller told UPLOAD_FAILED. A second finish of a ready item returns it.
  * Past the finish window nothing is touched: the daily cleanup may already
  * be acting on it. If a concurrent finish or discard settled it first, that
- * result stands.
+ * result stands. The batch's state is not checked: an item finished after its
+ * batch was finished (a slow last file) still becomes ready and joins the
+ * gallery, just without being in the batch's announcement.
  */
 export async function finishItem(
   deps: GalleryDeps,
@@ -551,8 +550,10 @@ export async function finishItem(
     await removeObjects(deps, item, "finishItem");
     throw galleryError("UPLOAD_FAILED");
   }
-  const ready = await leaveUploading(deps, item.id, { status: "ready" });
-  return settledItem(ready ?? (await requireOwnItem(deps, input)));
+  if (await leaveUploading(deps, item.id, { status: "ready" })) {
+    return ownView(item);
+  }
+  return settledItem(await requireOwnItem(deps, input));
 }
 
 /**
@@ -576,6 +577,7 @@ export async function discardItem(
     status: "failed",
     failureReason: FAILURE.cancelled,
   });
+  // A concurrent finish settled it first: its result stands.
   if (!discarded) return;
   await removeObjects(deps, item, "discardItem");
 }
@@ -598,56 +600,42 @@ async function readyItemsOf(
 }
 
 /**
- * Marks the caller's batch finished — only if it is still open, so a second
- * call, or the daily cleanup, can never finish it twice. The request that
- * finishes it, and only that one, announces it (when it has ready items and
- * `announce` is given) and stores the announcement's post. Any later call
- * returns the stored result. A failed announcement is logged; the uploads
- * stand.
+ * Marks the caller's batch finished — only if it is still open, in one
+ * statement, so a second call, or the daily cleanup, can never finish it
+ * twice. The request that finishes it, and only that one, announces it (when
+ * it has ready items and `announce` is given) and stores the announcement's
+ * post. Any other call returns what is stored. A failed announcement is
+ * logged; the uploads stand.
  */
 export async function finishBatch(
   deps: GalleryDeps,
   input: { userId: string; batchId: number },
   announce?: AnnounceBatch,
 ): Promise<{ readyCount: number; feedPostId: number | null }> {
-  const batch = await deps.payload.findByID({
-    collection: "gallery-batches",
-    id: input.batchId,
-    depth: 0,
-    disableErrors: true,
-  });
-  if (batch?.uploaderId !== input.userId) {
-    throw galleryError("UPLOAD_EXPIRED");
-  }
-  const readyItems = await readyItemsOf(deps, batch.id);
-  const stored = (b: GalleryBatch) => ({
-    readyCount: readyItems.length,
-    feedPostId: b.feedPostId ?? null,
-  });
-  if (batch.status !== "open") return stored(batch);
-
-  const { docs } = await deps.payload.update({
-    collection: "gallery-batches",
-    where: {
-      and: [{ id: { equals: batch.id } }, { status: { equals: "open" } }],
-    },
-    data: { status: "finished" },
-  });
-  const finished = docs[0];
-  if (!finished) {
-    const settled = await deps.payload.findByID({
+  const batch = await requireOwnBatch(deps, input);
+  const won =
+    batch.status === "open" &&
+    (await transitionStatus(deps.payload, {
       collection: "gallery-batches",
       id: batch.id,
-      depth: 0,
-      disableErrors: true,
-    });
-    return stored(settled ?? batch);
+      from: "open",
+      to: "finished",
+    }));
+  // Read after the move, so no item that became ready before it is missed.
+  const readyItems = await readyItemsOf(deps, batch.id);
+  if (!won || !announce || readyItems.length === 0) {
+    // Lost the move to a concurrent finish: read what that one stored.
+    const lostRace = batch.status === "open" && !won;
+    const current = lostRace ? await requireOwnBatch(deps, input) : batch;
+    return {
+      readyCount: readyItems.length,
+      feedPostId: current.feedPostId ?? null,
+    };
   }
-  if (!announce || readyItems.length === 0) return stored(finished);
 
   let feedPostId: number | null = null;
   try {
-    feedPostId = await announce(finished, readyItems);
+    feedPostId = await announce({ ...batch, status: "finished" }, readyItems);
   } catch (error) {
     (deps.log ?? console.error)(
       "[gallery.finishBatch] announcing a finished batch failed",
@@ -662,4 +650,21 @@ export async function finishBatch(
     });
   }
   return { readyCount: readyItems.length, feedPostId };
+}
+
+/** The caller's own batch, whatever its state; anything else UPLOAD_EXPIRED. */
+async function requireOwnBatch(
+  deps: GalleryDeps,
+  input: { userId: string; batchId: number },
+): Promise<GalleryBatch> {
+  const batch = await deps.payload.findByID({
+    collection: "gallery-batches",
+    id: input.batchId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (batch?.uploaderId !== input.userId) {
+    throw galleryError("UPLOAD_EXPIRED");
+  }
+  return batch;
 }

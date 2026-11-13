@@ -25,25 +25,41 @@ type DB = typeof _db;
 
 type CommunityRef = CommunityVisibility & { id: string };
 
-export async function isActiveCommunityMember(
+/**
+ * The user's role in the community when they are an active member whose
+ * paid membership (where the community charges) is in order; null for
+ * anyone else, signed-out visitors included. Staff roles never pay.
+ */
+export async function activeCommunityRole(
   db: DB,
   communityId: string,
   userId: string | null | undefined,
-): Promise<boolean> {
-  if (!userId) return false;
+): Promise<string | null> {
+  if (!userId) return null;
   const membership = await db.query.communityMemberships.findFirst({
     where: and(
       eq(communityMemberships.communityId, communityId),
       eq(communityMemberships.userId, userId),
       eq(communityMemberships.status, "active"),
     ),
-    columns: { communityId: true, role: true },
+    columns: { role: true },
   });
-  return (
-    !!membership &&
-    (membership.role !== "member" ||
-      (await membershipPaymentAllowed(db, communityId, userId)))
-  );
+  if (!membership) return null;
+  if (
+    membership.role === "member" &&
+    !(await membershipPaymentAllowed(db, communityId, userId))
+  ) {
+    return null;
+  }
+  return membership.role;
+}
+
+export async function isActiveCommunityMember(
+  db: DB,
+  communityId: string,
+  userId: string | null | undefined,
+): Promise<boolean> {
+  return (await activeCommunityRole(db, communityId, userId)) !== null;
 }
 
 /** Skips the membership lookup when the content is public anyway. */

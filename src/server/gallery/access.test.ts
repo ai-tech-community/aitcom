@@ -15,6 +15,7 @@ import {
   assertLinkableEvent,
   isLinkableEvent,
   loadGalleryViewer,
+  loadGalleryViewerById,
 } from "./access";
 
 const NOW = new Date("2026-11-13T12:00:00.000Z");
@@ -111,6 +112,33 @@ describe("loadGalleryViewer", () => {
         { slug: "town", userId: "u1" },
       ),
     ).resolves.toMatchObject({ isMember: false, isModerator: false });
+  });
+});
+
+describe("loadGalleryViewerById", () => {
+  it("answers null for a deleted community", async () => {
+    await expect(
+      loadGalleryViewerById(
+        { db: fakeDb({ community: false }) },
+        { communityId: "c1", userId: "u1" },
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("reads the membership once", async () => {
+    const db = fakeDb({ role: "admin" });
+    await expect(
+      loadGalleryViewerById({ db }, { communityId: "c1", userId: "u1" }),
+    ).resolves.toEqual({
+      userId: "u1",
+      communityId: "c1",
+      isMember: true,
+      isModerator: true,
+    });
+    expect(
+      (db as { query: { communityMemberships: { findFirst: unknown } } }).query
+        .communityMemberships.findFirst,
+    ).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -3,10 +3,10 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { eventStartInstant } from "@/lib/event-time";
 import type { Event } from "@/payload-types";
-import { isActiveCommunityMember } from "@/server/communities/content-visibility-queries";
+import { activeCommunityRole } from "@/server/communities/content-visibility-queries";
 import { DEFAULT_TOPIC } from "@/server/communities/post-topics";
 import { isModeratorRole } from "@/server/communities/post-visibility";
-import { communities, communityMemberships } from "@/server/db/schema";
+import { communities } from "@/server/db/schema";
 
 import type { GalleryDeps, Payload } from "./deps";
 import { galleryError } from "./errors";
@@ -23,6 +23,21 @@ export type GalleryViewer = {
   isModerator: boolean;
 };
 
+/** The viewer behind a user (or a signed-out visitor) in a live community. */
+async function viewerIn(
+  deps: Pick<GalleryDeps, "db">,
+  communityId: string,
+  userId: string | null,
+): Promise<GalleryViewer> {
+  const role = await activeCommunityRole(deps.db, communityId, userId);
+  return {
+    userId,
+    communityId,
+    isMember: role !== null,
+    isModerator: isModeratorRole(role),
+  };
+}
+
 /**
  * The viewer of the gallery of the live community with this slug. An unknown
  * or deleted community is NOT_FOUND; a signed-out visitor is an outsider.
@@ -36,33 +51,30 @@ export async function loadGalleryViewer(
     columns: { id: true, slug: true },
   });
   if (!community) throw new TRPCError({ code: "NOT_FOUND" });
-  const outsider = {
-    userId: input.userId,
-    communityId: community.id,
-    isMember: false,
-    isModerator: false,
+  return {
+    ...(await viewerIn(deps, community.id, input.userId)),
     community: { id: community.id, slug: community.slug },
   };
-  if (!input.userId) return outsider;
-  const membership = await deps.db.query.communityMemberships.findFirst({
+}
+
+/**
+ * The viewer of a gallery reached through one of its records (a batch, an
+ * item), which hold the community's id. Null when the community was deleted:
+ * callers answer that as they answer an unknown record.
+ */
+export async function loadGalleryViewerById(
+  deps: Pick<GalleryDeps, "db">,
+  input: { communityId: string; userId: string | null },
+): Promise<GalleryViewer | null> {
+  const community = await deps.db.query.communities.findFirst({
     where: and(
-      eq(communityMemberships.communityId, community.id),
-      eq(communityMemberships.userId, input.userId),
-      eq(communityMemberships.status, "active"),
+      eq(communities.id, input.communityId),
+      isNull(communities.deletedAt),
     ),
-    columns: { role: true },
+    columns: { id: true },
   });
-  if (!membership) return outsider;
-  const isMember = await isActiveCommunityMember(
-    deps.db,
-    community.id,
-    input.userId,
-  );
-  return {
-    ...outsider,
-    isMember,
-    isModerator: isMember && isModeratorRole(membership.role),
-  };
+  if (!community) return null;
+  return viewerIn(deps, community.id, input.userId);
 }
 
 /**

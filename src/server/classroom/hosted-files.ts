@@ -11,7 +11,6 @@ import {
   MATERIAL_TITLE_MAX,
   MATERIAL_UPLOADS_PER_DAY,
   MAX_FILE_BYTES,
-  clampText,
   contentTypeFor,
   downloadFileName,
   fileExtensionOf,
@@ -21,6 +20,7 @@ import {
   type MaterialStatus,
   type MaterialVisibility,
 } from "@/lib/classroom/material-rules";
+import { clampText } from "@/lib/text-utils";
 import { FINISH_WINDOW_HOURS } from "@/lib/video-rules";
 import type { HostedMaterial } from "@/payload-types";
 import {
@@ -41,6 +41,7 @@ import type {
   PresignedUpload,
 } from "@/server/media/object-storage";
 import type { getPayloadClient } from "@/server/payload";
+import { transitionStatus } from "@/server/payload-status-transition";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
@@ -272,27 +273,23 @@ async function requireOwnUpload(
 }
 
 /**
- * Move an upload out of "uploading", but only if it is still uploading, so
- * finish and discard can never overwrite each other. Returns the updated
- * record, or null when another request changed it first (re-read it with
- * `requireOwnUpload` to see what that request left).
+ * Move an upload out of "uploading", but only if it is still uploading, in
+ * one statement, so finish and discard can never both win. Returns whether
+ * this call moved it; re-read it with `requireOwnUpload` to see the result
+ * (or what a concurrent request left).
  */
-async function leaveUploading(
+function leaveUploading(
   deps: HostedFileDeps,
   materialId: number,
-  data: { status: "ready" } | { status: "failed"; failureReason: string },
-): Promise<HostedMaterial | null> {
-  const { docs } = await deps.payload.update({
+  to: { status: "ready" } | { status: "failed"; failureReason: string },
+): Promise<boolean> {
+  return transitionStatus(deps.payload, {
     collection: "hosted-materials",
-    where: {
-      and: [
-        { id: { equals: materialId } },
-        { status: { equals: "uploading" } },
-      ],
-    },
-    data,
+    id: materialId,
+    from: "uploading",
+    to: to.status,
+    ...("failureReason" in to && { set: { failureReason: to.failureReason } }),
   });
-  return docs[0] ?? null;
 }
 
 /** Refuses (COURSE_ARCHIVED) when the file's course was archived. */
@@ -364,8 +361,8 @@ export async function finishFileUpload(
     }
     throw refuse("BAD_REQUEST", "UPLOAD_FAILED");
   }
-  const ready = await leaveUploading(deps, material.id, { status: "ready" });
-  return settledUpload(ready ?? (await requireOwnUpload(deps, input)));
+  await leaveUploading(deps, material.id, { status: "ready" });
+  return settledUpload(await requireOwnUpload(deps, input));
 }
 
 /** What finish answers for an upload that is no longer in progress. */
@@ -410,7 +407,7 @@ export async function discardUpload(
       { materialId: material.id, key: material.storageKey, error },
     );
   }
-  return toCourseMaterial(discarded);
+  return toCourseMaterial(await requireOwnUpload(deps, input));
 }
 
 /**

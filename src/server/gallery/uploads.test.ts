@@ -20,6 +20,11 @@ vi.mock("@/server/payments/access", async (importOriginal) => ({
   membershipPaymentAllowed: payments.membershipPaymentAllowed,
 }));
 
+const transition = vi.hoisted(() => vi.fn());
+vi.mock("@/server/payload-status-transition", () => ({
+  transitionStatus: transition,
+}));
+
 import {
   discardItem,
   finishBatch,
@@ -143,6 +148,24 @@ function fakes(over: Over = {}) {
     "gallery-items": "item" in over ? over.item : item(),
   };
   const reads: Record<string, number> = {};
+  // The compare-and-set: it wins and moves the record, unless a concurrent
+  // request is set up to have changed the record first.
+  transition
+    .mockReset()
+    .mockImplementation(
+      (
+        _payload: unknown,
+        t: { collection: string; to: string; set?: object },
+      ) => {
+        if ("lostRace" in over) return Promise.resolve(false);
+        records[t.collection] = {
+          ...(records[t.collection] as object),
+          status: t.to,
+          ...t.set,
+        };
+        return Promise.resolve(true);
+      },
+    );
   const payload = {
     findByID: vi.fn(({ collection }: { collection: string }) => {
       reads[collection] = (reads[collection] ?? 0) + 1;
@@ -189,25 +212,8 @@ function fakes(over: Over = {}) {
         }),
     ),
     update: vi.fn(
-      ({
-        collection,
-        id,
-        where,
-        data,
-      }: {
-        collection: string;
-        id?: number;
-        where?: unknown;
-        data: object;
-      }) => {
-        const updated = { ...(records[collection] as object), ...data };
-        if (id !== undefined) return Promise.resolve(updated);
-        void where;
-        return Promise.resolve({
-          docs: "lostRace" in over ? [] : [updated],
-          errors: [],
-        });
-      },
+      ({ collection, data }: { collection: string; data: object }) =>
+        Promise.resolve({ ...(records[collection] as object), ...data }),
     ),
   };
   const db = {
@@ -591,6 +597,16 @@ describe("startItem", () => {
     expect(payload.create).not.toHaveBeenCalled();
   });
 
+  it("refuses a batch whose community was deleted with UPLOAD_EXPIRED", async () => {
+    const { deps, payload, storage } = fakes({ community: false });
+    await expect(startItem(deps, PHOTO)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "UPLOAD_EXPIRED",
+    });
+    expect(storage.presignUpload).not.toHaveBeenCalled();
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
   it("refuses everyone while the gallery is switched off", async () => {
     vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
     const { deps, storage } = fakes();
@@ -640,6 +656,14 @@ describe("startItem", () => {
   it("refuses a file once today's quota is used up by other batches", async () => {
     const { deps, payload } = fakes({ today: { photo: 150 } });
     await expect(startItem(deps, PHOTO)).rejects.toMatchObject({
+      message: "UPLOAD_LIMIT",
+    });
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a video once today's video quota is used up by other batches", async () => {
+    const { deps, payload } = fakes({ today: { video: 20 } });
+    await expect(startItem(deps, VIDEO)).rejects.toMatchObject({
       message: "UPLOAD_LIMIT",
     });
     expect(payload.create).not.toHaveBeenCalled();
@@ -718,10 +742,16 @@ describe("startItem", () => {
   });
 });
 
-/** The conditional write finish and discard use: only while still uploading. */
-const WHILE_UPLOADING = {
-  and: [{ id: { equals: 7 } }, { status: { equals: "uploading" } }],
-};
+/** The compare-and-set finish and discard use: only while still uploading. */
+function whileUploading(to: "ready" | "failed", failureReason?: string) {
+  return {
+    collection: "gallery-items",
+    id: 7,
+    from: "uploading",
+    to,
+    ...(failureReason && { set: { failureReason } }),
+  };
+}
 
 describe("finishItem", () => {
   it("checks both stored objects, then marks the item ready", async () => {
@@ -737,23 +767,31 @@ describe("finishItem", () => {
     });
     expect(storage.inspect).toHaveBeenCalledWith(FILE_KEY);
     expect(storage.inspect).toHaveBeenCalledWith(THUMB_KEY);
-    expect(payload.update).toHaveBeenCalledWith({
-      collection: "gallery-items",
-      where: WHILE_UPLOADING,
-      data: { status: "ready" },
-    });
+    expect(transition).toHaveBeenCalledWith(payload, whileUploading("ready"));
     expect(storage.remove).not.toHaveBeenCalled();
   });
 
   it("returns a ready item again on a second finish, without checking storage", async () => {
-    const { deps, payload, storage } = fakes({
+    const { deps, storage } = fakes({
       item: item({ status: "ready" }),
     });
     await expect(
       finishItem(deps, { userId: "u1", itemId: 7 }),
     ).resolves.toMatchObject({ id: 7, status: "ready" });
     expect(storage.inspect).not.toHaveBeenCalled();
-    expect(payload.update).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
+  });
+
+  it("makes an item ready even when its batch was already finished", async () => {
+    const { deps, payload } = fakes({
+      batch: batch({ status: "finished" }),
+    });
+    await expect(
+      finishItem(deps, { userId: "u1", itemId: 7 }),
+    ).resolves.toMatchObject({ id: 7, status: "ready" });
+    expect(payload.findByID).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "gallery-batches" }),
+    );
   });
 
   it.each([
@@ -768,14 +806,14 @@ describe("finishItem", () => {
   });
 
   it("touches nothing past the finish window", async () => {
-    const { deps, payload, storage } = fakes({
+    const { deps, storage } = fakes({
       item: item({ createdAt: ago(FINISH_WINDOW_HOURS * HOUR + 1) }),
     });
     await expect(
       finishItem(deps, { userId: "u1", itemId: 7 }),
     ).rejects.toMatchObject({ message: "UPLOAD_EXPIRED" });
     expect(storage.inspect).not.toHaveBeenCalled();
-    expect(payload.update).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
   });
 
   it("refuses an item that already failed", async () => {
@@ -813,11 +851,10 @@ describe("finishItem", () => {
         code: "BAD_REQUEST",
         message: "UPLOAD_FAILED",
       });
-      expect(payload.update).toHaveBeenCalledWith({
-        collection: "gallery-items",
-        where: WHILE_UPLOADING,
-        data: { status: "failed", failureReason: "UPLOAD_MISMATCH" },
-      });
+      expect(transition).toHaveBeenCalledWith(
+        payload,
+        whileUploading("failed", "UPLOAD_MISMATCH"),
+      );
       expect(storage.remove).toHaveBeenCalledWith([FILE_KEY, THUMB_KEY]);
     },
   );
@@ -857,11 +894,10 @@ describe("discardItem", () => {
     await expect(
       discardItem(deps, { userId: "u1", itemId: 7 }),
     ).resolves.toBeUndefined();
-    expect(payload.update).toHaveBeenCalledWith({
-      collection: "gallery-items",
-      where: WHILE_UPLOADING,
-      data: { status: "failed", failureReason: "cancelled" },
-    });
+    expect(transition).toHaveBeenCalledWith(
+      payload,
+      whileUploading("failed", "cancelled"),
+    );
     expect(storage.remove).toHaveBeenCalledWith([FILE_KEY, THUMB_KEY]);
   });
 
@@ -869,11 +905,11 @@ describe("discardItem", () => {
     ["ready", item({ status: "ready" })],
     ["failed", item({ status: "failed", failureReason: "UPLOAD_MISMATCH" })],
   ])("leaves a %s item as it is", async (_label, found) => {
-    const { deps, payload, storage } = fakes({ item: found });
+    const { deps, storage } = fakes({ item: found });
     await expect(
       discardItem(deps, { userId: "u1", itemId: 7 }),
     ).resolves.toBeUndefined();
-    expect(payload.update).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
     expect(storage.remove).not.toHaveBeenCalled();
   });
 
@@ -886,11 +922,22 @@ describe("discardItem", () => {
   });
 
   it("refuses someone else's item with UPLOAD_EXPIRED", async () => {
-    const { deps, payload } = fakes({ item: item({ uploaderId: "u2" }) });
+    const { deps } = fakes({ item: item({ uploaderId: "u2" }) });
     await expect(
       discardItem(deps, { userId: "u1", itemId: 7 }),
     ).rejects.toMatchObject({ message: "UPLOAD_EXPIRED" });
-    expect(payload.update).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
+  });
+
+  it("touches nothing past the finish window", async () => {
+    const { deps, storage } = fakes({
+      item: item({ createdAt: ago(FINISH_WINDOW_HOURS * HOUR + 1) }),
+    });
+    await expect(
+      discardItem(deps, { userId: "u1", itemId: 7 }),
+    ).rejects.toMatchObject({ message: "UPLOAD_EXPIRED" });
+    expect(transition).not.toHaveBeenCalled();
+    expect(storage.remove).not.toHaveBeenCalled();
   });
 
   it("logs, and still succeeds, when removing the objects fails", async () => {
@@ -905,8 +952,12 @@ describe("discardItem", () => {
   });
 });
 
+/** The compare-and-set that finishes a batch: only while still open. */
 const WHILE_OPEN = {
-  and: [{ id: { equals: 3 } }, { status: { equals: "open" } }],
+  collection: "gallery-batches",
+  id: 3,
+  from: "open",
+  to: "finished",
 };
 const READY = [item({ status: "ready" }), item({ id: 8, status: "ready" })];
 
@@ -916,11 +967,7 @@ describe("finishBatch", () => {
     await expect(
       finishBatch(deps, { userId: "u1", batchId: 3 }),
     ).resolves.toEqual({ readyCount: 2, feedPostId: null });
-    expect(payload.update).toHaveBeenCalledWith({
-      collection: "gallery-batches",
-      where: WHILE_OPEN,
-      data: { status: "finished" },
-    });
+    expect(transition).toHaveBeenCalledWith(payload, WHILE_OPEN);
     expect(payload.find).toHaveBeenCalledWith({
       collection: "gallery-items",
       where: {
@@ -930,6 +977,14 @@ describe("finishBatch", () => {
       pagination: false,
       depth: 0,
     });
+  });
+
+  it("reads the ready items only after it has finished the batch", async () => {
+    const { deps, payload } = fakes({ ready: READY });
+    await finishBatch(deps, { userId: "u1", batchId: 3 });
+    expect(payload.find.mock.invocationCallOrder[0]).toBeGreaterThan(
+      transition.mock.invocationCallOrder[0]!,
+    );
   });
 
   it("announces the batch it finished and stores the announcement's post", async () => {
@@ -961,7 +1016,7 @@ describe("finishBatch", () => {
   it("stores nothing when the announcement makes no post", async () => {
     const { deps, payload } = fakes({ ready: READY });
     await finishBatch(deps, { userId: "u1", batchId: 3 }, async () => null);
-    expect(payload.update).toHaveBeenCalledTimes(1);
+    expect(payload.update).not.toHaveBeenCalled();
   });
 
   it("keeps the batch finished, and logs, when the announcement fails", async () => {
@@ -987,6 +1042,7 @@ describe("finishBatch", () => {
       finishBatch(deps, { userId: "u1", batchId: 3 }, announce),
     ).resolves.toEqual({ readyCount: 2, feedPostId: 91 });
     expect(announce).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
     expect(payload.update).not.toHaveBeenCalled();
   });
 
@@ -1006,10 +1062,10 @@ describe("finishBatch", () => {
     ["missing", null],
     ["someone else's", batch({ uploaderId: "u2" })],
   ])("refuses a batch that is %s with UPLOAD_EXPIRED", async (_l, found) => {
-    const { deps, payload } = fakes({ batch: found });
+    const { deps } = fakes({ batch: found });
     await expect(
       finishBatch(deps, { userId: "u1", batchId: 3 }),
     ).rejects.toMatchObject({ message: "UPLOAD_EXPIRED" });
-    expect(payload.update).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
   });
 });

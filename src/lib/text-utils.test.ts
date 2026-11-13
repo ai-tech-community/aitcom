@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { clipText, oneLine, slugify } from "./text-utils";
+import {
+  clampText,
+  clipText,
+  oneLine,
+  slugify,
+  wellFormed,
+} from "./text-utils";
+
+const EMOJI = "\u{1F600}"; // two UTF-16 units
+const LONE_HIGH = "\uD83D";
+const LONE_LOW = "\uDE00";
+
+/** True when the string survives encodeURIComponent (no lone surrogates). */
+function isWellFormed(value: string): boolean {
+  try {
+    encodeURIComponent(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 describe("slugify", () => {
   it("lowercases and replaces spaces with hyphens", () => {
@@ -54,5 +74,32 @@ describe("clipText", () => {
 describe("oneLine", () => {
   it("flattens newlines and runs of spaces", () => {
     expect(oneLine("  Ada \n\t Lovelace  ")).toBe("Ada Lovelace");
+  });
+});
+
+describe("wellFormed / clampText", () => {
+  it("keeps valid text, including whole emoji, unchanged", () => {
+    expect(wellFormed(`Week ${EMOJI} 1`)).toBe(`Week ${EMOJI} 1`);
+  });
+
+  it.each([
+    [`a${LONE_HIGH}b`, "a\uFFFDb"],
+    [`a${LONE_LOW}b`, "a\uFFFDb"],
+    [`${LONE_LOW}${LONE_HIGH}`, "\uFFFD\uFFFD"],
+    [`end${LONE_HIGH}`, "end\uFFFD"],
+  ])("replaces lone surrogates in %j", (input, output) => {
+    expect(wellFormed(input)).toBe(output);
+  });
+
+  it("cuts to the limit in UTF-16 units without splitting an emoji", () => {
+    expect(clampText(`ab${EMOJI}`, 3)).toBe("ab");
+    expect(clampText(`ab${EMOJI}`, 4)).toBe(`ab${EMOJI}`);
+    expect(clampText("abcdef", 3)).toBe("abc");
+  });
+
+  it("cleans lone surrogates before cutting", () => {
+    const clamped = clampText(`${"a".repeat(200)}${LONE_HIGH}`, 200 + 1);
+    expect(clamped).toBe(`${"a".repeat(200)}\uFFFD`);
+    expect(isWellFormed(clamped)).toBe(true);
   });
 });

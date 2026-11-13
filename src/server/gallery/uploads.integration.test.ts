@@ -106,7 +106,11 @@ describe.skipIf(!RUN_DB)("gallery uploads [DB integration]", () => {
     await m.db.delete(m.schema.user).where(m.eq(m.schema.user.id, fx.userId));
   });
 
-  it("takes a member's photo from a new batch to ready, and finishes the batch", async () => {
+  /**
+   * Object storage that holds whatever was granted, as if the browser had
+   * uploaded exactly that, and records what is removed.
+   */
+  async function setup() {
     const payload = await m.getPayloadClient();
     const stored = new Map<string, { contentType: string; bytes: number }>();
     const storage = {
@@ -120,7 +124,6 @@ describe.skipIf(!RUN_DB)("gallery uploads [DB integration]", () => {
           contentType: string;
           maxBytes: number;
         }) => {
-          // The browser uploads exactly what was granted.
           stored.set(key, { contentType, bytes: maxBytes });
           return { url: "https://s3.test/", fields: { key } };
         },
@@ -129,14 +132,42 @@ describe.skipIf(!RUN_DB)("gallery uploads [DB integration]", () => {
       signedGetUrl: vi.fn(),
       publicUrl: vi.fn(),
       list: vi.fn(),
-      remove: vi.fn(),
+      remove: vi.fn(async (keys: readonly string[]) => {
+        for (const key of keys) stored.delete(key);
+      }),
     };
-    const deps = {
-      payload,
-      db: m.db,
-      storage: () => storage as never,
-    };
+    const deps = { payload, db: m.db, storage: () => storage as never };
+    return { payload, storage, stored, deps };
+  }
 
+  type Deps = Awaited<ReturnType<typeof setup>>["deps"];
+
+  function openBatch(deps: Deps, plannedFiles: number) {
+    return m.uploads.startBatch(deps, {
+      userId: fx.userId,
+      slug: fx.slug,
+      visibility: "community",
+      magazineConsent: false,
+      plannedFiles,
+      plannedVideos: 0,
+    });
+  }
+
+  function startPhoto(deps: Deps, batchId: number) {
+    return m.uploads.startItem(deps, {
+      userId: fx.userId,
+      batchId,
+      mediaType: "photo",
+      contentType: "image/jpeg",
+      bytes: 900_000,
+      thumbnailBytes: 40_000,
+      width: 2048,
+      height: 1365,
+    });
+  }
+
+  it("takes a member's photo from a new batch to ready, and finishes the batch", async () => {
+    const { payload, deps } = await setup();
     const { batchId } = await m.uploads.startBatch(deps, {
       userId: fx.userId,
       slug: fx.slug,
@@ -198,5 +229,67 @@ describe.skipIf(!RUN_DB)("gallery uploads [DB integration]", () => {
       plannedFiles: 1,
     });
     expect(batch.magazineConsentAt).toBeTruthy();
+  });
+
+  it("lets exactly one of a finish and a discard racing on an item win", async () => {
+    const { payload, storage, stored, deps } = await setup();
+    const rounds = 6;
+    const { batchId } = await openBatch(deps, rounds);
+    for (let round = 0; round < rounds; round++) {
+      storage.remove.mockClear();
+      const { itemId } = await startPhoto(deps, batchId);
+      const [finished, discarded] = await Promise.allSettled([
+        m.uploads.finishItem(deps, { userId: fx.userId, itemId }),
+        m.uploads.discardItem(deps, { userId: fx.userId, itemId }),
+      ]);
+      expect(discarded.status).toBe("fulfilled");
+      const item = await payload.findByID({
+        collection: "gallery-items",
+        id: itemId,
+        depth: 0,
+      });
+      if (item.status === "ready") {
+        // The finish won: the discard changed nothing and kept the files.
+        expect(finished.status).toBe("fulfilled");
+        expect(storage.remove).not.toHaveBeenCalled();
+        expect(stored.has(item.fileKey)).toBe(true);
+        expect(stored.has(item.thumbnailKey)).toBe(true);
+      } else {
+        // The discard won: the finish reports the failure, files are gone.
+        expect(item).toMatchObject({
+          status: "failed",
+          failureReason: "cancelled",
+        });
+        expect(finished).toMatchObject({
+          status: "rejected",
+          reason: { message: "UPLOAD_FAILED" },
+        });
+        expect(storage.remove).toHaveBeenCalledTimes(1);
+        expect(stored.has(item.fileKey)).toBe(false);
+      }
+    }
+  });
+
+  it("announces a batch once when two finishes race", async () => {
+    const { payload, deps } = await setup();
+    const { batchId } = await openBatch(deps, 1);
+    const { itemId } = await startPhoto(deps, batchId);
+    await m.uploads.finishItem(deps, { userId: fx.userId, itemId });
+    const announce = vi.fn(async () => 4242);
+
+    const results = await Promise.all([
+      m.uploads.finishBatch(deps, { userId: fx.userId, batchId }, announce),
+      m.uploads.finishBatch(deps, { userId: fx.userId, batchId }, announce),
+    ]);
+
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(results.map((r) => r.readyCount)).toEqual([1, 1]);
+    expect(results.map((r) => r.feedPostId)).toContain(4242);
+    const batch = await payload.findByID({
+      collection: "gallery-batches",
+      id: batchId,
+      depth: 0,
+    });
+    expect(batch).toMatchObject({ status: "finished", feedPostId: 4242 });
   });
 });
