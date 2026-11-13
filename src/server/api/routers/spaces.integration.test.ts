@@ -1,5 +1,13 @@
 // @vitest-environment node
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -86,7 +94,7 @@ describe.skipIf(!RUN_DB)("spaces router [DB integration]", () => {
     await db.delete(schema.user).where(eq(schema.user.id, userId));
   });
 
-  it("seeds five ordered builtin spaces", async () => {
+  it("seeds six ordered builtin spaces", async () => {
     const { db, schema } = m;
     const { eq, asc } = await import("drizzle-orm");
     const rows = await db
@@ -94,10 +102,11 @@ describe.skipIf(!RUN_DB)("spaces router [DB integration]", () => {
       .from(schema.spaces)
       .where(eq(schema.spaces.communityId, communityId))
       .orderBy(asc(schema.spaces.position));
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(6);
     expect(rows.map((r) => r.builtinSurface)).toEqual([
       "forum",
       "events",
+      "gallery",
       "classroom",
       "ideas",
       "members",
@@ -129,7 +138,144 @@ describe.skipIf(!RUN_DB)("spaces router [DB integration]", () => {
           isNull(schema.spaces.archivedAt),
         ),
       );
-    expect(enabled).toHaveLength(4);
+    expect(enabled).toHaveLength(5);
+  });
+});
+
+// ── Gallery rollout flag: every tab reader hides the gallery row ─────────────
+
+describe.skipIf(!RUN_DB)("gallery tab behind its flag [DB integration]", () => {
+  type Mods = {
+    db: typeof import("@/server/db").db;
+    schema: typeof import("@/server/db/schema");
+    buildDefaultSpaceRows: typeof import("@/server/communities/space-defaults").buildDefaultSpaceRows;
+    createCaller: typeof import("@/server/api/root").createCaller;
+  };
+  let m: Mods;
+  let communityId: string;
+  let slug: string;
+  let userId: string;
+
+  beforeAll(async () => {
+    const [{ db }, schema, { buildDefaultSpaceRows }, { createCaller }] =
+      await Promise.all([
+        import("@/server/db"),
+        import("@/server/db/schema"),
+        import("@/server/communities/space-defaults"),
+        import("@/server/api/root"),
+      ]);
+    m = { db, schema, buildDefaultSpaceRows, createCaller };
+  });
+
+  beforeEach(async () => {
+    const { db, schema, buildDefaultSpaceRows } = m;
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    userId = `gt-owner-${suffix}`;
+    slug = `gallery-tab-${suffix}`;
+    await db.insert(schema.user).values({
+      id: userId,
+      email: `gt-${suffix}@example.test`,
+      name: "Gallery Tab Owner",
+    });
+    const [c] = await db
+      .insert(schema.communities)
+      .values({ name: `Gallery Tab ${suffix}`, slug, createdBy: userId })
+      .returning();
+    communityId = c!.id;
+    await db.insert(schema.communityMemberships).values({
+      communityId,
+      userId,
+      role: "owner",
+      status: "active",
+    });
+    await db.insert(schema.spaces).values([
+      ...buildDefaultSpaceRows(communityId),
+      {
+        communityId,
+        kind: "room",
+        visibility: "public",
+        name: "Lounge",
+        slug: `lounge-${suffix}`,
+        position: 10,
+        createdBy: userId,
+      },
+    ]);
+  });
+
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    const { db, schema } = m;
+    const { eq } = await import("drizzle-orm");
+    await db
+      .delete(schema.spaces)
+      .where(eq(schema.spaces.communityId, communityId));
+    await db
+      .delete(schema.communityMemberships)
+      .where(eq(schema.communityMemberships.communityId, communityId));
+    await db
+      .delete(schema.communities)
+      .where(eq(schema.communities.id, communityId));
+    await db.delete(schema.user).where(eq(schema.user.id, userId));
+  });
+
+  function guest() {
+    return m.createCaller({ db: m.db, session: null, headers: new Headers() });
+  }
+
+  function owner() {
+    return m.createCaller({
+      db: m.db,
+      session: { user: { id: userId, name: "Gallery Tab Owner" } } as never,
+      headers: new Headers(),
+    });
+  }
+
+  it("spaces.list omits the gallery row while the flag is off, keeping rooms", async () => {
+    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
+    const rows = await guest().spaces.list({ slug });
+    expect(rows.map((r) => r.slug)).not.toContain("gallery");
+    expect(rows.map((r) => r.builtinSurface)).toEqual([
+      "forum",
+      "events",
+      "classroom",
+      "ideas",
+      "members",
+      null,
+    ]);
+  });
+
+  it("spaces.list includes the gallery row once the flag is on", async () => {
+    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
+    const rows = await guest().spaces.list({ slug });
+    expect(rows.map((r) => r.builtinSurface)).toEqual([
+      "forum",
+      "events",
+      "gallery",
+      "classroom",
+      "ideas",
+      "members",
+      null,
+    ]);
+  });
+
+  it("owner tab settings hide the gallery row while the flag is off", async () => {
+    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
+    const off = await owner().spaces.listForAdmin({ slug });
+    expect(off.map((r) => r.slug)).not.toContain("gallery");
+    expect(off).toHaveLength(6);
+
+    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
+    const on = await owner().spaces.listForAdmin({ slug });
+    expect(on.map((r) => r.slug)).toContain("gallery");
+    expect(on).toHaveLength(7);
+  });
+
+  it("listRooms never returns the gallery, flag on or off", async () => {
+    for (const flag of ["false", "true"]) {
+      vi.stubEnv("COMMUNITY_GALLERY_ENABLED", flag);
+      const rooms = await owner().spaces.listRooms({ slug });
+      expect(rooms.map((r) => r.name)).toEqual(["Lounge"]);
+    }
   });
 });
 

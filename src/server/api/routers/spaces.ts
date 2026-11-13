@@ -28,9 +28,13 @@ import {
   invalidateSquareRooms,
   loadSquareRoomRows,
 } from "@/server/communities/live-rooms-queries";
+import { visibleSpaceCondition } from "@/server/communities/space-visibility";
 
-/** Enabled spaces for the public nav, position-ordered. */
 export const spacesRouter = createTRPCRouter({
+  /**
+   * Enabled spaces for the public nav, position-ordered. Surfaces still
+   * behind a rollout flag are left out.
+   */
   list: publicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -53,12 +57,20 @@ export const spacesRouter = createTRPCRouter({
         })
         .from(spaces)
         .where(
-          and(eq(spaces.communityId, community.id), isNull(spaces.archivedAt)),
+          and(
+            eq(spaces.communityId, community.id),
+            isNull(spaces.archivedAt),
+            visibleSpaceCondition(),
+          ),
         )
         .orderBy(asc(spaces.position));
     }),
 
-  /** All spaces incl. disabled, for the admin Compose page. */
+  /**
+   * All spaces incl. disabled, for the admin Compose page. Surfaces still
+   * behind a rollout flag stay out, so owners cannot rename or reorder a tab
+   * nobody can see yet.
+   */
   listForAdmin: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
@@ -76,7 +88,12 @@ export const spacesRouter = createTRPCRouter({
           archivedAt: spaces.archivedAt,
         })
         .from(spaces)
-        .where(eq(spaces.communityId, ctx.community.id))
+        .where(
+          and(
+            eq(spaces.communityId, ctx.community.id),
+            visibleSpaceCondition(),
+          ),
+        )
         .orderBy(asc(spaces.position));
       return rows.map((r) => ({ ...r, enabled: r.archivedAt === null }));
     }),
