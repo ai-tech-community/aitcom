@@ -29,10 +29,7 @@ import {
 import { magazineError } from "@/server/magazines/errors";
 import { findMagazineBySlug } from "@/server/magazines/reading";
 import { requireRelationId } from "@/server/magazines/relation-id";
-import {
-  issueItemInputSchema,
-  type IssueItemInput,
-} from "@/server/magazines/items/registry";
+import { issueItemInputSchema } from "@/server/magazines/items/registry";
 import {
   getMagazineForCommunity,
   saveMagazineSettings,
@@ -86,21 +83,6 @@ const editorialBlock = z.discriminatedUnion("type", [
     right: editorialImage,
   }),
 ]);
-
-/**
- * Agents may not place gallery items. A gallery photo shows only to readers
- * allowed to see it and only with its uploader's magazine consent; an agent
- * cannot check either on an editor's behalf, so editors place them in the
- * issue builder.
- */
-function refuseGalleryItems(items: readonly IssueItemInput[] | undefined) {
-  const index = items?.findIndex((item) => item.kind === "galleryItem") ?? -1;
-  if (index === -1) return;
-  throw new TRPCError({
-    code: "BAD_REQUEST",
-    message: `Item ${index + 1} is a photo or video from the community gallery. Agents can't add gallery items to an issue: an editor adds them in the issue builder, which checks who may see each one and that its uploader agreed.`,
-  });
-}
 
 async function depsOf(ctx: {
   db: Parameters<typeof browseMagazines>[0]["db"];
@@ -219,7 +201,6 @@ export const agentMagazineRouter = {
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
-      refuseGalleryItems(input.items);
       return saveMagazineIssue(
         await depsOf(ctx),
         { agentId: ctx.agent.agentId, ownerId },

@@ -12,6 +12,7 @@ import {
   issueItemInputSchema,
   loadIssueItemViews,
   loadIssueItemViewsOfKinds,
+  newItemIndexes,
   type StoredBlock,
   toItemInputs,
   toStoredItems,
@@ -251,6 +252,35 @@ describe("issue item registry", () => {
       [{ index: 2, stored: editorial, isNew: true }],
       context,
     );
+  });
+
+  it("newItemIndexes names the same new items validate is told about", async () => {
+    const { payload } = fakePayload([]);
+    const context = ctx(payload, "editor");
+    const articleValidate = vi
+      .spyOn(ITEM_KINDS.article, "validate")
+      .mockResolvedValue([]);
+    vi.spyOn(ITEM_KINDS.editorial, "validate").mockResolvedValue([]);
+    const blocks = [
+      articleBlock("a1", 1),
+      editorialBlock("e1"),
+      articleBlock("a2", 2),
+    ];
+    // Kept by reference even under another block id.
+    const previous = [articleBlock("old", 1), editorialBlock("e1")];
+
+    await validateIssueItems(blocks, context, previous);
+
+    expect(newItemIndexes(blocks, previous)).toEqual([1, 2]);
+    expect(
+      articleValidate.mock.calls[0]![0].map(({ index, isNew }) => [
+        index,
+        isNew,
+      ]),
+    ).toEqual([
+      [0, false],
+      [2, true],
+    ]);
   });
 
   it("without previous blocks every reference is new", async () => {

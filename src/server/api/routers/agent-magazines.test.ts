@@ -206,22 +206,3 @@ it("saves article and issue drafts without a status field the agent can set", as
   expect(issueInput).not.toHaveProperty("status");
   expect(issueInput.articleIds).toEqual([3, 4]);
 });
-
-it("refuses a gallery item in an agent's issue save, before anything is saved", async () => {
-  // An agent cannot check, for an editor, who may see a member's photo or
-  // whether its uploader agreed to the magazine: editors place those.
-  const save = caller().saveMagazineIssue({
-    magazineSlug: "town",
-    title: "Issue one",
-    items: [
-      { kind: "article", articleId: 3 },
-      { kind: "galleryItem", galleryItemId: 12 },
-    ],
-  });
-  await expect(save).rejects.toMatchObject({
-    code: "BAD_REQUEST",
-    message:
-      "Item 2 is a photo or video from the community gallery. Agents can't add gallery items to an issue: an editor adds them in the issue builder, which checks who may see each one and that its uploader agreed.",
-  });
-  expect(state.saveIssue).not.toHaveBeenCalled();
-});

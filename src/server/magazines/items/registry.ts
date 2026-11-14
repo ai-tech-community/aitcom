@@ -149,32 +149,41 @@ function groupByKind(blocks: StoredBlock[]): Map<ItemKindId, IndexedBlock[]> {
   return groups;
 }
 
+function referenceOfBlock<K extends ItemKindId>(
+  kind: K,
+  block: StoredBlock,
+): string | null {
+  return ITEM_KINDS[kind].referenceOf(asStored<K>(block));
+}
+
+/**
+ * Whether a save adds this block rather than keeping one the issue already
+ * holds: issue-owned content (no reference) is always new, content is new
+ * unless the same reference was in the issue before. The one rule `validate`
+ * receives as `isNew`.
+ */
+function isNewBlock(
+  block: StoredBlock,
+  previousReferences: ReadonlySet<string>,
+): boolean {
+  const reference = referenceOfBlock(block.blockType, block);
+  return reference === null || !previousReferences.has(reference);
+}
+
 function validateKind<K extends ItemKindId>(
   kind: K,
   group: IndexedBlock[],
   ctx: ItemContext,
   previousReferences: ReadonlySet<string>,
 ): Promise<ItemProblem[]> {
-  const strategy = ITEM_KINDS[kind];
   return ITEM_KINDS[kind].validate(
-    group.map(({ index, block }) => {
-      const stored = asStored<K>(block);
-      const reference = strategy.referenceOf(stored);
-      return {
-        index,
-        stored,
-        isNew: reference === null || !previousReferences.has(reference),
-      };
-    }),
+    group.map(({ index, block }) => ({
+      index,
+      stored: asStored<K>(block),
+      isNew: isNewBlock(block, previousReferences),
+    })),
     ctx,
   );
-}
-
-function referenceOfBlock<K extends ItemKindId>(
-  kind: K,
-  block: StoredBlock,
-): string | null {
-  return ITEM_KINDS[kind].referenceOf(asStored<K>(block));
 }
 
 /** Content identities in block order; issue-owned content has none. */
@@ -183,6 +192,20 @@ export function referencesOfBlocks(blocks: StoredBlock[]): string[] {
     const reference = referenceOfBlock(block.blockType, block);
     return reference === null ? [] : [reference];
   });
+}
+
+/**
+ * Positions of the blocks a save adds to an issue whose stored blocks were
+ * `previous`, by the same rule `validate` gets as `isNew`.
+ */
+export function newItemIndexes(
+  blocks: readonly StoredBlock[],
+  previous: readonly StoredBlock[],
+): number[] {
+  const previousReferences = new Set(referencesOfBlocks([...previous]));
+  return blocks.flatMap((block, index) =>
+    isNewBlock(block, previousReferences) ? [index] : [],
+  );
 }
 
 async function openHrefsOfKind<K extends ItemKindId>(

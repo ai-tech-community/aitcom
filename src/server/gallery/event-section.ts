@@ -43,11 +43,11 @@ type SectionEvent = Pick<
 /**
  * An event's photos and videos for one viewer: only the items that viewer
  * may see, under the gallery's own read rule. `null` — no section — for a
- * Hub event (no community), for an
- * event its community's photos may not link to (`isLinkableEvent`: not
- * published or completed, or not started yet), for a deleted community,
- * and when there is nothing to show to someone who cannot add (anyone but
- * a member). A member always gets the section, empty or not, to add to it.
+ * Hub event (no community), for an event its community's photos may not
+ * link to (`isLinkableEvent`: not published or completed, or not started
+ * yet), for a deleted community, and when there is nothing to show to
+ * someone who cannot add (anyone but a member). A member always gets the
+ * section, empty or not, to add to it.
  */
 export async function loadEventGallerySection(
   deps: GalleryDeps,
