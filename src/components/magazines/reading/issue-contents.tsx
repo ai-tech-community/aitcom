@@ -17,7 +17,9 @@ function itemThumbnail(view: EditorItemView): string | null {
   if ("unavailable" in view) return null;
   switch (view.kind) {
     case "article":
-      return view.article.imageUrl || null;
+      // An empty URL is no picture.
+      if (view.article.imageUrl) return view.article.imageUrl;
+      return null;
     case "galleryItem":
       // Signed for this request only; EditorialImage skips the optimizer.
       return view.thumbnailUrl;

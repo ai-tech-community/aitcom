@@ -186,9 +186,9 @@ export function PickerPanel({
           >
             {candidate.thumbnailUrl && (
               // Signed per request after the editor's access check: never
-              // through the image optimizer, never kept.
+              // through the image optimizer, never kept. Decorative: the
+              // title next to it names the item.
               // eslint-disable-next-line @next/next/no-img-element
-              // Decorative: the title next to it names the item.
               <img
                 src={candidate.thumbnailUrl}
                 alt=""
