@@ -18,7 +18,7 @@ export type CandidateFact =
   | { type: "source"; host: string }
   | {
       type: "date";
-      label: "updated" | "published" | "starts" | "lastActive";
+      label: "updated" | "published" | "added" | "starts" | "lastActive";
       at: string;
     }
   | { type: "count"; what: "sources" | "replies" | "upvotes"; value: number }

@@ -2,7 +2,7 @@
 
 import { keepPreviousData } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
@@ -188,9 +188,10 @@ export function PickerPanel({
               // Signed per request after the editor's access check: never
               // through the image optimizer, never kept.
               // eslint-disable-next-line @next/next/no-img-element
+              // Decorative: the title next to it names the item.
               <img
                 src={candidate.thumbnailUrl}
-                alt={candidate.title}
+                alt=""
                 loading="lazy"
                 decoding="async"
                 className="bg-secondary size-12 shrink-0 rounded-sm object-cover"
@@ -203,15 +204,20 @@ export function PickerPanel({
               {candidate.facts.length > 0 && (
                 <p className="text-muted-foreground flex min-w-0 flex-wrap gap-x-2 text-xs">
                   {candidate.facts.map((fact, factIndex) => (
-                    <Fragment key={factIndex}>
-                      {factIndex > 0 && (
+                    // Each separator stays with the fact before it, so a
+                    // wrapped line never starts with one.
+                    <span
+                      key={factIndex}
+                      className="inline-flex min-w-0 gap-x-2"
+                    >
+                      <Fact fact={fact} />
+                      {factIndex < candidate.facts.length - 1 && (
                         <>
                           <span aria-hidden="true">·</span>
                           <span className="sr-only">, </span>
                         </>
                       )}
-                      <Fact fact={fact} />
-                    </Fragment>
+                    </span>
                   ))}
                 </p>
               )}

@@ -61,7 +61,8 @@ export function galleryItemCandidate(
     ...(credit.event
       ? [{ type: "event" as const, title: credit.event.title }]
       : []),
-    { type: "date", label: "published", at: item.createdAt },
+    // When it went into the gallery, labelled so it never reads as the event's date.
+    { type: "date", label: "added", at: item.createdAt },
     { type: "mediaType", mediaType: item.mediaType },
   ];
   return {

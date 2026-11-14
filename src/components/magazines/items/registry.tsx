@@ -113,13 +113,16 @@ function titleOfKind<K extends ItemKindId>(
   return title(view, translate);
 }
 
-/** Editors only: what stands in for an item whose content cannot be shown. */
+/**
+ * Editors only: what stands in for an item whose content cannot be shown.
+ * It keeps its own height, so beside a tall photo it does not stretch.
+ */
 function UnavailableMarker({ reason }: { reason: UnavailableItem["reason"] }) {
   const t = useTranslations("magazines.item");
   return (
     <div
       role="note"
-      className="text-muted-foreground flex h-full flex-col gap-1 rounded-xl border border-dashed p-5 text-sm"
+      className="text-muted-foreground flex flex-col gap-1 rounded-xl border border-dashed p-5 text-sm"
     >
       <p className="text-foreground font-medium">{t("unavailable")}</p>
       <p>{t(`unavailableReason.${reason}`)}</p>

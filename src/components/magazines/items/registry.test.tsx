@@ -441,6 +441,9 @@ describe("issue item registry", () => {
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByRole("heading")).toBeNull();
     expect(container.querySelector("[data-item-kind]")).toBeNull();
+    // It keeps its own height: beside a tall photo in a grid row it would
+    // otherwise stretch into a tall empty box.
+    expect(screen.getByRole("note")).not.toHaveClass("h-full");
   });
 
   it.each([

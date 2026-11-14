@@ -40,10 +40,11 @@ describe("GalleryItem", () => {
       expect(
         container.querySelector('[data-item-kind="galleryItem"]'),
       ).not.toBeNull();
-      const image = screen.getByRole("img", {
-        name: "People building robots 1",
-      });
-      expect(image).toHaveAttribute("loading", "lazy");
+      // Its own alt text describes the picture, so it is kept.
+      expect(container.querySelector("img")).toHaveAttribute(
+        "alt",
+        "People building robots 1",
+      );
       expect(
         screen
           .getAllByRole("link")
@@ -80,16 +81,121 @@ describe("GalleryItem", () => {
   it.each(["row", "related"] as const)(
     "uses the small picture and names the %s by its label",
     (size) => {
-      renderItem(galleryItemView(), size);
-      expect(
-        screen.getByRole("img", { name: "People building robots 1" }),
-      ).toHaveAttribute("src", galleryItemView().thumbnailUrl);
+      const { container } = renderItem(galleryItemView(), size);
+      expect(container.querySelector("img")).toHaveAttribute(
+        "src",
+        galleryItemView().thumbnailUrl,
+      );
       const heading = screen.getByRole("heading", { name: "Caption 1" });
       expect(
         within(heading).getByRole("link", { name: "Caption 1" }),
       ).toHaveAttribute("href", "/communities/local-builders/gallery?item=1");
     },
   );
+
+  it.each(["row", "related"] as const)(
+    "gives a %s one link to the item: the picture's copy is skipped",
+    (size) => {
+      const { container } = renderItem(galleryItemView(), size);
+      const picture = container.querySelector("img")!.closest("a")!;
+      expect(picture).toHaveAttribute(
+        "href",
+        "/communities/local-builders/gallery?item=1",
+      );
+      expect(picture).toHaveAttribute("tabindex", "-1");
+      expect(picture).toHaveAttribute("aria-hidden", "true");
+      expect(
+        screen
+          .getAllByRole("link")
+          .filter(
+            (link) =>
+              link.getAttribute("href") ===
+              "/communities/local-builders/gallery?item=1",
+          ),
+      ).toEqual([screen.getByRole("link", { name: "Caption 1" })]);
+    },
+  );
+
+  it.each(["lead", "card"] as const)(
+    "keeps the %s picture as the item's link, reachable by keyboard",
+    (size) => {
+      const { container } = renderItem(galleryItemView(), size);
+      const picture = container.querySelector("img")!.closest("a")!;
+      expect(picture).not.toHaveAttribute("tabindex");
+      expect(picture).not.toHaveAttribute("aria-hidden");
+      // magazine.css draws its focus ring inside the picture by this class.
+      expect(picture).toHaveClass("gallery-picture-link");
+    },
+  );
+
+  it.each(["lead", "card"] as const)(
+    "gives a %s a heading like other kinds, the caption when there is one",
+    (size) => {
+      const { container } = renderItem(galleryItemView(), size);
+      const heading = screen.getByRole("heading", {
+        level: 2,
+        name: "Caption 1",
+      });
+      expect(heading.closest("figcaption")).not.toBeNull();
+      expect(heading).not.toHaveClass("sr-only");
+      expect(container.querySelectorAll("h2")).toHaveLength(1);
+    },
+  );
+
+  it.each(["lead", "card"] as const)(
+    "names a captionless %s by a heading for screen readers only",
+    (size) => {
+      renderItem(
+        galleryItemView(1, {
+          caption: null,
+          alt: null,
+          label: {
+            key: "gallery.label.photoFromEvent",
+            values: { event: "Model night", name: "Sanne" },
+          },
+        }),
+        size,
+      );
+      expect(
+        screen.getByRole("heading", {
+          level: 2,
+          name: "Photo from Model night by Sanne",
+        }),
+      ).toHaveClass("sr-only");
+    },
+  );
+
+  it("loads the lead picture first and the others when they scroll near", () => {
+    const { container, unmount } = renderItem(galleryItemView(), "lead");
+    const lead = container.querySelector("img")!;
+    expect(lead).toHaveAttribute("loading", "eager");
+    expect(lead).toHaveAttribute("fetchpriority", "high");
+    unmount();
+    for (const size of ["card", "row", "related"] as const) {
+      const { container: other, unmount: done } = renderItem(
+        galleryItemView(),
+        size,
+      );
+      const image = other.querySelector("img")!;
+      expect(image, size).toHaveAttribute("loading", "lazy");
+      expect(image, size).not.toHaveAttribute("fetchpriority");
+      done();
+    }
+  });
+
+  it("lines a card's text up with its picture inside a publication", () => {
+    const { container } = renderItem(
+      { ...galleryItemView(), intro: "Our favourite moment" },
+      "card",
+    );
+    // magazine.css removes the card inset for these, as for article cards.
+    expect(container.querySelector("figcaption")).toHaveClass(
+      "gallery-card-text",
+    );
+    expect(screen.getByText("Our favourite moment").parentElement).toHaveClass(
+      "gallery-card-text",
+    );
+  });
 
   it("says where a row comes from, in words", () => {
     renderItem(galleryItemView(), "row");
@@ -115,9 +221,7 @@ describe("GalleryItem", () => {
       expect(
         container.querySelector('img[src$=".mp4?signature=a"]'),
       ).toBeNull();
-      const image = screen.getByRole("img", {
-        name: "Video from Model night by Sanne",
-      });
+      const image = container.querySelector("img")!;
       expect(image).toHaveAttribute("src", view.thumbnailUrl);
       const badge = screen.getByText("Video", { exact: true });
       expect(badge).toBeVisible();
@@ -126,15 +230,22 @@ describe("GalleryItem", () => {
         "true",
       );
       expect(screen.getByText("Video by Sanne")).toBeVisible();
-      // The badge is part of the picture's link, so the link says it is a video.
-      const link = screen.getAllByRole("link").find((a) => a.contains(image));
+      const link = image.closest("a");
       expect(link).toHaveAttribute(
         "href",
         "/communities/local-builders/gallery?item=2",
       );
-      expect(link).toHaveAccessibleName(
-        /Video from Model night by Sanne.*Video/,
-      );
+      if (size === "lead" || size === "card") {
+        // The badge is part of the picture's link, so the link says it is a video.
+        expect(link).toHaveAccessibleName(
+          /Video from Model night by Sanne.*Video/,
+        );
+      } else {
+        // The name next to it is the link; its own name says it is a video.
+        expect(
+          screen.getByRole("link", { name: "Video from Model night by Sanne" }),
+        ).toBeVisible();
+      }
     },
   );
 
@@ -146,21 +257,50 @@ describe("GalleryItem", () => {
     expect(screen.getByText("Photo by Deleted member")).toBeVisible();
   });
 
-  it("falls back to the label for alt text when the item has none", () => {
-    renderItem(
+  it.each(SIZES)(
+    "does not repeat a %s's visible caption as the picture's alt text",
+    (size) => {
+      const { container } = renderItem(galleryItemView(1, { alt: null }), size);
+      expect(container.querySelector("img")).toHaveAttribute("alt", "");
+      expect(screen.queryByRole("img")).toBeNull();
+    },
+  );
+
+  it.each(["lead", "card"] as const)(
+    "names a %s picture without alt text by the item's heading",
+    (size) => {
+      const { container } = renderItem(
+        galleryItemView(1, {
+          caption: null,
+          alt: null,
+          label: {
+            key: "gallery.label.photoFromEvent",
+            values: { event: "Model night", name: "Sanne" },
+          },
+        }),
+        size,
+      );
+      expect(container.querySelector("img")).toHaveAttribute("alt", "");
+      expect(container.querySelector("img")!.closest("a")).toHaveAccessibleName(
+        "Photo from Model night by Sanne",
+      );
+    },
+  );
+
+  it("keeps alt text that only repeats the name out of the picture", () => {
+    // No caption: the name is the alt text, already given as the heading.
+    const { container } = renderItem(
       galleryItemView(1, {
         caption: null,
-        alt: null,
-        label: {
-          key: "gallery.label.photoFromEvent",
-          values: { event: "Model night", name: "Sanne" },
-        },
+        alt: "Robots on a table",
+        label: { text: "Robots on a table" },
       }),
       "card",
     );
-    expect(
-      screen.getByRole("img", { name: "Photo from Model night by Sanne" }),
-    ).toBeVisible();
+    expect(container.querySelector("img")).toHaveAttribute("alt", "");
+    expect(container.querySelector("img")!.closest("a")).toHaveAccessibleName(
+      "Robots on a table",
+    );
   });
 
   it("leaves out the event line for an item from no event", () => {
@@ -189,7 +329,9 @@ describe("GalleryItem", () => {
     rerender(
       <IssueItem view={refreshed} size="card" href={href} teaser={null} />,
     );
-    expect(screen.getByRole("img")).toHaveAttribute("src", refreshed.url);
+    expect(
+      screen.getByRole("img", { name: "People building robots 1" }),
+    ).toHaveAttribute("src", refreshed.url);
   });
 
   it("credits the photo and its event in Dutch", () => {

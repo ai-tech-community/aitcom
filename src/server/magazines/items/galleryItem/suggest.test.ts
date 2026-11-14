@@ -108,7 +108,7 @@ describe("gallery highlights for automatic drafts", () => {
       title: "The keynote",
       facts: [
         { type: "event", title: "Model night" },
-        { type: "date", label: "published", at: at("07") },
+        { type: "date", label: "added", at: at("07") },
         { type: "mediaType", mediaType: "photo" },
       ],
       openHref: "/communities/town/gallery?item=2",

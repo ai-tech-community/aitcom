@@ -557,7 +557,7 @@ describe("gallery item picker", () => {
         reference: "galleryItem:3",
         title: "Pizza on the stage",
         facts: [
-          { type: "date", label: "published", at: "2026-11-13T12:00:00.000Z" },
+          { type: "date", label: "added", at: "2026-11-13T12:00:00.000Z" },
           { type: "mediaType", mediaType: "photo" },
         ],
         thumbnailUrl: "https://signed.test/private/gallery/c1/u3-thumb.jpg",
@@ -569,7 +569,7 @@ describe("gallery item picker", () => {
         title: "Video from Demo day by Dana",
         facts: [
           { type: "event", title: "Demo day" },
-          { type: "date", label: "published", at: "2026-11-12T12:00:00.000Z" },
+          { type: "date", label: "added", at: "2026-11-12T12:00:00.000Z" },
           { type: "mediaType", mediaType: "video" },
         ],
         thumbnailUrl: "https://signed.test/private/gallery/c1/u2-thumb.jpg",
@@ -581,7 +581,7 @@ describe("gallery item picker", () => {
         title: "The keynote",
         facts: [
           { type: "event", title: "Model night" },
-          { type: "date", label: "published", at: "2026-11-11T12:00:00.000Z" },
+          { type: "date", label: "added", at: "2026-11-11T12:00:00.000Z" },
           { type: "mediaType", mediaType: "photo" },
         ],
         thumbnailUrl: "https://signed.test/private/gallery/c1/u1-thumb.jpg",

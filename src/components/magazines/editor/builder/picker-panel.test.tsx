@@ -18,7 +18,7 @@ type Candidate = {
     | { type: "byline"; name: string }
     | { type: "source"; host: string }
     | { type: "count"; what: "sources"; value: number }
-    | { type: "date"; label: "updated"; at: string }
+    | { type: "date"; label: "updated" | "added"; at: string }
     | { type: "mediaType"; mediaType: "photo" | "video" }
     | { type: "event"; title: string }
   )[];
@@ -99,7 +99,7 @@ afterEach(() => {
 });
 
 describe("PickerPanel", () => {
-  it("shows a picture's thumbnail, named by its title, and no broken image without one", () => {
+  it("shows a picture's thumbnail beside its title, and no broken image without one", () => {
     trpc.candidates = [
       {
         input: { kind: "galleryItem", galleryItemId: 4 },
@@ -122,9 +122,11 @@ describe("PickerPanel", () => {
     ];
     renderPanel({ kind: "galleryItem" });
     const [withPicture, withoutPicture] = screen.getAllByRole("listitem");
-    const thumbnail = within(withPicture!).getByRole("img", {
-      name: "Robots on stage",
-    });
+    // Decorative: the title right next to it already names the item.
+    expect(within(withPicture!).queryByRole("img")).toBeNull();
+    const thumbnail = withPicture!.querySelector("img")!;
+    expect(thumbnail).toHaveAttribute("alt", "");
+    expect(within(withPicture!).getByText("Robots on stage")).toBeVisible();
     expect(thumbnail).toHaveAttribute(
       "src",
       "https://files.example.test/4-thumb.jpg?signature=a",
@@ -254,9 +256,17 @@ describe("PickerPanel", () => {
     ];
     renderPanel();
 
-    const facts = screen.getByText("By Ada").parentElement!;
+    const facts = screen.getByText("By Ada").closest("p")!;
     expect(within(facts).getAllByText("·")).toHaveLength(3);
     expect(within(facts).getAllByText(",")).toHaveLength(3);
+    // Each separator ends the fact before it, so a wrapped line never
+    // starts with one.
+    const groups = [...facts.children];
+    expect(groups).toHaveLength(4);
+    for (const group of groups) {
+      expect(group.firstElementChild).not.toHaveTextContent("·");
+    }
+    expect(groups.at(-1)).not.toHaveTextContent("·");
     expect(screen.getByText("By Ada")).not.toHaveClass("font-mono");
     expect(screen.getByText("example.com")).not.toHaveClass("font-mono");
     expect(screen.getByText("14 sources")).toHaveClass("font-mono");
@@ -266,6 +276,24 @@ describe("PickerPanel", () => {
         "Only articles marked ready and not in another issue show here.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("says when a gallery item was added, so it never reads as its event's date", () => {
+    trpc.candidates = [
+      {
+        input: { kind: "galleryItem", galleryItemId: 4 },
+        reference: "galleryItem:4",
+        title: "Robots on stage",
+        facts: [
+          { type: "event", title: "Model night" },
+          { type: "date", label: "added", at: "2026-11-13T12:00:00.000Z" },
+          { type: "mediaType", mediaType: "photo" },
+        ],
+        openHref: null,
+      },
+    ];
+    renderPanel({ kind: "galleryItem" });
+    expect(screen.getByText("Added 13 Nov 2026")).toHaveClass("font-mono");
   });
 
   it("leaves out what the issue already holds and moves focus after Add", () => {
