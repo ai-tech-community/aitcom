@@ -244,6 +244,29 @@ describe("CommunityIdentity", () => {
       expect(screen.getByRole("heading", { level: 1 })).toHaveFocus();
     });
 
+    it("waits for the switch to full before taking focus", () => {
+      m.menuProps = [];
+      const view = (status: "active" | null, density: "full" | "compact") => (
+        <NextIntlClientProvider locale="en" messages={en}>
+          <CommunityIdentity
+            community={community}
+            membershipStatus={status}
+            memberRole="member"
+            density={density}
+          />
+        </NextIntlClientProvider>
+      );
+      const { rerender } = render(view("active", "compact"));
+      const trigger = screen.getByRole("button", { name: "Community options" });
+      trigger.focus();
+      act(() => m.menuProps.at(-1)?.onLeft?.());
+      // The leave landed but the rail has not switched yet.
+      rerender(view(null, "compact"));
+      expect(trigger).toHaveFocus();
+      rerender(view(null, "full"));
+      expect(screen.getByRole("heading", { level: 1 })).toHaveFocus();
+    });
+
     it("leaves focus alone when the density changes for another reason", () => {
       const { rerender } = render(
         <NextIntlClientProvider locale="en" messages={en}>

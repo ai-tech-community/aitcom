@@ -12,12 +12,13 @@ const m = vi.hoisted(() => ({
   leave: vi.fn(async () => undefined),
   onChange: undefined as (() => void) | undefined,
   refresh: vi.fn(),
+  busy: false,
 }));
 
 vi.mock("./use-community-join", () => ({
   useCommunityJoin: (opts: { onChange?: () => void }) => {
     m.onChange = opts.onChange;
-    return { action: m.action, leave: m.leave, run: vi.fn(), busy: false };
+    return { action: m.action, leave: m.leave, run: vi.fn(), busy: m.busy };
   },
 }));
 vi.mock("@/i18n/navigation", () => ({
@@ -46,6 +47,7 @@ beforeEach(() => {
   m.action = { kind: "member", canLeave: true };
   m.leave.mockClear();
   m.refresh.mockClear();
+  m.busy = false;
 });
 
 describe("CommunityActionsMenu", () => {
@@ -72,6 +74,16 @@ describe("CommunityActionsMenu", () => {
     m.onChange?.();
     expect(onLeft).toHaveBeenCalledOnce();
     expect(m.refresh).toHaveBeenCalledOnce();
+  });
+
+  it("marks the menu button busy while leaving runs", () => {
+    m.busy = true;
+    renderMenu();
+    expect(
+      screen.getByRole("button", {
+        name: en.communities.profile.communityActions,
+      }),
+    ).toHaveAttribute("aria-busy", "true");
   });
 
   it("renders nothing for someone who cannot leave, such as the owner", () => {

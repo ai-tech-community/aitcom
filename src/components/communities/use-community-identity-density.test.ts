@@ -41,6 +41,14 @@ describe("useCommunityIdentityDensity", () => {
     expect(result.current).toBe("full");
   });
 
+  it("stays full when a member leaves and rejoins on the same page", () => {
+    const { result, rerender } = setup([], true);
+    rerender({ segments: [], isMember: false });
+    expect(result.current).toBe("full");
+    rerender({ segments: [], isMember: true });
+    expect(result.current).toBe("full");
+  });
+
   it("turns full at once when a member leaves", () => {
     const { result, rerender } = setup(["forum"], true);
     rerender({ segments: ["forum"], isMember: false });

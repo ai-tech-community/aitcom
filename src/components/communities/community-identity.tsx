@@ -110,9 +110,12 @@ export function CommunityIdentity({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const focusHeadingOnSwitch = useRef(false);
   useEffect(() => {
-    if (!focusHeadingOnSwitch.current) return;
+    // Only the compact → full switch that the leave caused takes focus. Any
+    // switch clears the request, so a leave whose refresh never landed
+    // cannot pull focus later, on some unrelated change.
+    const leaveFinished = focusHeadingOnSwitch.current && density === "full";
     focusHeadingOnSwitch.current = false;
-    headingRef.current?.focus();
+    if (leaveFinished) headingRef.current?.focus();
   }, [density]);
 
   if (density === "compact") {

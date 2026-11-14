@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { LogOut, MoreHorizontal } from "lucide-react";
+import { Loader2, LogOut, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -65,8 +65,14 @@ export function CommunityActionsMenu({
           size="icon"
           className="size-8 shrink-0"
           aria-label={t("communityActions")}
+          aria-busy={busy || undefined}
         >
-          <MoreHorizontal aria-hidden="true" className="size-4" />
+          {/* The menu closes on choosing Leave; the trigger shows it is running. */}
+          {busy ? (
+            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+          ) : (
+            <MoreHorizontal aria-hidden="true" className="size-4" />
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

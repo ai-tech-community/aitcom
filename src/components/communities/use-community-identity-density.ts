@@ -23,7 +23,11 @@ export function useCommunityIdentityDensity(
   const [entry, setEntry] = useState({ page, isMember });
   // A new page: remember membership as it is now (state adjusted during
   // render, React's pattern for resetting state when an input changes).
-  if (entry.page !== page) setEntry({ page, isMember });
+  // Leaving counts at once too: rejoining on the same page then keeps the
+  // full identity, like any other join.
+  if (entry.page !== page || (entry.isMember && !isMember)) {
+    setEntry({ page, isMember });
+  }
   const memberOnEntry = entry.page === page ? entry.isMember : isMember;
   return resolveCommunityIdentityDensity(isMember && memberOnEntry);
 }
