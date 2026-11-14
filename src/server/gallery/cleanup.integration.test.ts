@@ -92,7 +92,6 @@ describe.skipIf(!RUN_DB)("gallery cleanup [DB integration]", () => {
   });
 
   beforeEach(async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
     const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
     const userId = `it-galc-${suffix}`;
     const slug = `galc-${suffix}`;
@@ -112,7 +111,6 @@ describe.skipIf(!RUN_DB)("gallery cleanup [DB integration]", () => {
   });
 
   afterEach(async () => {
-    vi.unstubAllEnvs();
     const payload = await m.getPayloadClient();
     await payload.delete({
       collection: "feed-posts",

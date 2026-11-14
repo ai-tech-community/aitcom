@@ -8,9 +8,8 @@ type Tx = Parameters<Parameters<DB["transaction"]>[0]>[0];
 
 /**
  * The same default builtin spaces the community form inserts: forum, events,
- * gallery, classroom, ideas, and members. The gallery row is written even
- * while its rollout flag is off; readers hide it. Magazine is not one of
- * them; it is added when the community's magazine is created.
+ * gallery, classroom, ideas, and members. Magazine is not one of them; it
+ * is added when the community's magazine is created.
  */
 export async function seedDefaultSpaces(
   db: DB | Tx,

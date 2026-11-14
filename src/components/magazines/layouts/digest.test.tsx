@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { articleView, editorialView } from "../test-fixtures";
+import { articleView, editorialView, galleryItemView } from "../test-fixtures";
 import { renderWithIntl } from "../test-intl";
 import { itemAnchorId } from "../reading/anchors";
 import { DigestLayout } from "./digest";
@@ -18,6 +18,28 @@ vi.mock("@/i18n/navigation", () => ({
 const href = (slug: string) => `/magazines/gazette/issue-1/${slug}`;
 
 describe("digest layout", () => {
+  it("lines a gallery row's number up with its name, not its picture's bottom", () => {
+    renderWithIntl(
+      <DigestLayout items={[galleryItemView(1)]} href={href} teaser={null} />,
+    );
+    const row = screen.getByRole("listitem");
+    // The list item aligns the number with the row's first baseline; a flex
+    // row takes its baseline from its baseline-aligned item, which must be
+    // the text (a picture's baseline is its bottom edge).
+    expect(row).toHaveClass("items-baseline");
+    const item = row.lastElementChild!;
+    const baselineChildren = [...item.children].filter((child) =>
+      child.classList.contains("self-baseline"),
+    );
+    expect(baselineChildren).toHaveLength(1);
+    expect(
+      within(baselineChildren[0] as HTMLElement).getByRole("heading", {
+        name: "Caption 1",
+      }),
+    ).toBeVisible();
+    expect(baselineChildren[0]!.querySelector("img")).toBeNull();
+  });
+
   it("renders an ordered list of rows with anchors", () => {
     renderWithIntl(
       <DigestLayout

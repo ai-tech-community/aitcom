@@ -17,31 +17,6 @@ export const BUILTIN_SURFACES = [
 export type DefaultBuiltinSurface = (typeof BUILTIN_SURFACES)[number];
 
 /**
- * Default surfaces still behind a rollout flag. Their rows are seeded and
- * backfilled like any default, but every reader that lists tabs hides them
- * until the flag is on (the flag lookup lives server-side, in
- * `space-visibility.ts`). Remove an entry when its flag is deleted.
- */
-export const ROLLOUT_GATED_SURFACES = [
-  "gallery",
-] as const satisfies readonly DefaultBuiltinSurface[];
-
-export type RolloutGatedSurface = (typeof ROLLOUT_GATED_SURFACES)[number];
-
-export function isRolloutGatedSurface(
-  surface: BuiltinSurface,
-): surface is RolloutGatedSurface {
-  return (ROLLOUT_GATED_SURFACES as readonly string[]).includes(surface);
-}
-
-/**
- * Tabs the nav falls back to when the spaces list cannot load. The client
- * cannot read rollout flags, so gated surfaces stay out.
- */
-export const FALLBACK_NAV_SURFACES: readonly DefaultBuiltinSurface[] =
-  BUILTIN_SURFACES.filter((surface) => !isRolloutGatedSurface(surface));
-
-/**
  * Builtin surfaces a community gains by turning a feature on, never by
  * default: the Magazine tab is added when the community's magazine is
  * created. Once added, they rename, hide and reorder like the defaults.
@@ -63,10 +38,7 @@ export interface DefaultSpaceRow {
   position: number;
 }
 
-/**
- * The default builtin spaces for a community, in canonical nav order. Gated
- * surfaces are included: the row exists, the flag only hides it.
- */
+/** The default builtin spaces for a community, in canonical nav order. */
 export function buildDefaultSpaceRows(communityId: string): DefaultSpaceRow[] {
   return BUILTIN_SURFACES.map((surface, position) => ({
     communityId,

@@ -52,7 +52,7 @@ not copies", "Assemble", delivery slice 2); implementation plan:
    issue owns, such as editorial text.
 
 2. **Each platform kind uses its content's readability rule, for the actual
-   viewer.** The five rules and their sources are:
+   viewer.** The six rules and their sources are:
    - `storyline`: the exported `publicStoryline` predicate in
      `src/server/news/storylines.ts`, used by the story page: published, a
      non-empty overview and at least two sourced articles. Otherwise it is
@@ -67,6 +67,16 @@ not copies", "Assemble", delivery slice 2); implementation plan:
    - `launchpadProject`: status `published` (otherwise `unpublished`), plus
      the community content rule (`no_access`), as `profileProjectsWhere` in
      `src/server/members/profile-work.ts` does.
+   - `galleryItem` (community gallery, spec 2026-11-13, slice 4): status
+     `ready` (otherwise `not_ready`); hidden or magazine consent withdrawn is
+     `withdrawn` for every viewer, moderators included; then the gallery's
+     own read rule (`galleryReadableWhere`, in memory as `isGalleryReadable`
+     in `src/server/gallery/items.ts`) for the viewer's gallery viewer, built
+     once per issue with `loadGalleryViewerById` (`no_access`). The community
+     content rule is not enough here: it knows nothing about an item's
+     `community` visibility. File links are signed only after this check,
+     through `ItemContext.storage` (the app's object storage unless
+     injected), and never stored.
 
    The community content rule comes from
    `hiddenContentCommunityIds(db, viewerId)` in
@@ -82,13 +92,16 @@ not copies", "Assemble", delivery slice 2); implementation plan:
 
 3. **Unreadable content becomes a marker only for editors.** The unavailable
    reasons add `unpublished` and `no_access` to `missing`, `not_ready` and
-   `other_magazine`. A kind returns the reason without the inaccessible
+   `other_magazine`; gallery items add `withdrawn`. A kind returns the reason without the inaccessible
    content; the registry skips markers for readers. Item order is preserved
    among the views the reader actually receives.
 
 4. **Community-scoped views carry `membersOnly`.** Event, thread and project
    views set this flag when their community is in
-   `hiddenContentCommunityIds(db, null)`. It describes the content's audience,
+   `hiddenContentCommunityIds(db, null)`; a gallery item view sets it when a
+   signed-out gallery viewer of its community may not read the item (so a
+   `public` item in a members-only or paid community counts too), for
+   editors only. It describes the content's audience,
    even though the viewer receiving the view can read it. Editors see
    "Only members see this"; Visitor preview omits those items. The
    members-only set is requested only for `editor` access, with an exhaustive

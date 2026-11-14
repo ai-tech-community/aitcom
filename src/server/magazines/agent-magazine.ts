@@ -56,6 +56,7 @@ import { uniqueMagazineArticleSlug } from "./magazine-articles";
 import { magazineError } from "./errors";
 import { itemContextFor } from "./items/context";
 import {
+  newItemIndexes,
   toItemInputs,
   toStoredItems,
   validateIssueItems,
@@ -1047,6 +1048,27 @@ function agentIssueItems(items: IssueItemInput[]): IssueItemInput[] {
   );
 }
 
+/**
+ * Agents may keep the gallery items an editor placed but not add new ones.
+ * A gallery photo shows only to readers allowed to see it and only with its
+ * uploader's magazine consent; an agent cannot check either on an editor's
+ * behalf, so editors add them in the issue builder. "New" is the registry's
+ * own rule: a gallery item is kept when the issue already held the same one.
+ */
+function refuseNewGalleryItems(
+  blocks: readonly StoredBlock[],
+  previous: readonly StoredBlock[],
+): void {
+  const index = newItemIndexes(blocks, previous).find(
+    (i) => blocks[i]!.blockType === "galleryItem",
+  );
+  if (index === undefined) return;
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: `Item ${index + 1} is a photo or video from the community gallery. Agents can't add gallery items to an issue: an editor adds them in the issue builder, which checks who may see each one and that its uploader agreed. You can keep gallery items that are already in the issue.`,
+  });
+}
+
 function issueCoverData(columns: ContentImageColumns | undefined): {
   coverImageUrl?: string | null;
   coverMediaId?: number | null;
@@ -1216,6 +1238,7 @@ export async function saveMagazineIssue(
       await assertPlaceable(deps, magazine.id, issueId ?? -1, input.articleIds);
     }
     if (!input.items || !blocks) return;
+    refuseNewGalleryItems(blocks, previous);
     const ctx = itemContextFor(deps, {
       magazineId: magazine.id,
       community: actor.community,

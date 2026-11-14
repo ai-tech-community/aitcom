@@ -181,10 +181,13 @@ describe("CommunityNav", () => {
     ).toBeInTheDocument();
   });
 
-  it("leaves the gated Gallery tab out of the fallback list", () => {
+  it("lists the Gallery tab in the fallback list, like every default tab", () => {
     renderNav();
     expect(screen.getByRole("link", { name: "Events" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Gallery" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Gallery" })).toHaveAttribute(
+      "href",
+      "/communities/mlops/gallery",
+    );
   });
 
   it("shows the Gallery tab when the spaces list returns it", () => {

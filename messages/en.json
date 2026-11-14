@@ -5306,7 +5306,7 @@
       "readingTime": "{minutes} min read",
       "draftNotice": "Draft — only editors can see this",
       "editIssue": "Edit issue",
-      "noItems": "This issue has no articles yet.",
+      "noItems": "Nothing to read in this issue yet.",
       "published": "Published {date}",
       "signature": "— {name}, editor",
       "contentsCount": "{count, plural, one {# item} other {# items}}",
@@ -5324,7 +5324,8 @@
         "not_ready": "Readers cannot see this item yet.",
         "other_magazine": "This article belongs to another magazine. Remove it from the issue.",
         "unpublished": "This was taken offline. Readers skip it until it is back.",
-        "no_access": "This is private to its community. Only people who can open it see it."
+        "no_access": "This is private to its community. Only people who can open it see it.",
+        "withdrawn": "The person who added this no longer shares it with the magazine, or it was hidden. Readers do not see it."
       },
       "editorsOnly": "Only editors see this.",
       "storylineKind": "From AIT News",
@@ -5342,7 +5343,12 @@
       "projectKind": "Launchpad project",
       "upvotes": "{count, plural, one {# upvote} other {# upvotes}}",
       "articleKind": "Article",
-      "editorialKind": "Editorial"
+      "editorialKind": "Editorial",
+      "galleryKind": "From the gallery",
+      "galleryCredit": "{mediaType, select, video {Video by {name}} other {Photo by {name}}}",
+      "galleryEvent": "From <link>{event}</link>",
+      "galleryVideo": "Video",
+      "membersOnly": "Only members see this"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
@@ -5441,6 +5447,7 @@
         "storyline": "AIT News stories",
         "newsItem": "AIT News headlines",
         "event": "Community events",
+        "galleryItems": "Gallery highlights",
         "forumThread": "Forum threads",
         "launchpadProject": "Launchpad projects",
         "welcome": "Welcome new members"
@@ -5516,6 +5523,7 @@
         "article": "Approved and waiting longest first",
         "storyline": "Stories about your topics, newest updates first",
         "event": "Coming up soonest first, then past events with the most people going",
+        "galleryItems": "Newest member-approved photo or video from each past event, busiest events first",
         "forumThread": "Most replies, then most views",
         "launchpadProject": "Most upvotes",
         "newsItem": "Headlines about your topics, newest first",
@@ -5730,7 +5738,8 @@
         "eventRecap": "Took place on <number>{date}</number>, {going, plural, one {<number>#</number> going} other {<number>#</number> going}}",
         "mostReplies": "Most talked about: {count, plural, one {<number>#</number> reply} other {<number>#</number> replies}}",
         "mostUpvotes": "Most upvoted: {count, plural, one {<number>#</number> upvote} other {<number>#</number> upvotes}}",
-        "newMembers": "{count, plural, one {<number>#</number> new member joined} other {<number>#</number> new members joined}}"
+        "newMembers": "{count, plural, one {<number>#</number> new member joined} other {<number>#</number> new members joined}}",
+        "galleryHighlight": "From {eventTitle}: {count, plural, one {<number>#</number> photo or video} other {<number>#</number> photos and videos}} to choose from"
       },
       "autoDraft": {
         "label": "Made automatically",
@@ -5819,6 +5828,7 @@
         "actions": "Actions for {title}",
         "edit": "Edit",
         "openArticle": "Open the article",
+        "openGalleryItem": "Open in the gallery",
         "opensInNewTab": "(opens in a new tab)",
         "moveUp": "Move up",
         "moveDown": "Move down",
@@ -5838,7 +5848,8 @@
         "event": "Event",
         "membersOnly": "Only members see this",
         "forumThread": "Forum thread",
-        "launchpadProject": "Project"
+        "launchpadProject": "Project",
+        "galleryItem": "Photo or video"
       },
       "editorial": {
         "heading": "Heading (optional)",
@@ -5856,7 +5867,8 @@
           "newsItem": "News",
           "event": "Events",
           "forumThread": "Forum",
-          "launchpadProject": "Projects"
+          "launchpadProject": "Projects",
+          "galleryItem": "Gallery"
         },
         "search": {
           "article": "Search ready articles",
@@ -5864,7 +5876,8 @@
           "newsItem": "Search news headlines",
           "event": "Search your community's events",
           "forumThread": "Search your community's forum",
-          "launchpadProject": "Search your members' projects"
+          "launchpadProject": "Search your members' projects",
+          "galleryItem": "Search your community's gallery"
         },
         "empty": {
           "article": "No articles are ready. Articles marked ready for an issue show up here.",
@@ -5872,7 +5885,8 @@
           "newsItem": "No headlines found.",
           "event": "Your community has no events yet.",
           "forumThread": "No threads found.",
-          "launchpadProject": "No projects found."
+          "launchpadProject": "No projects found.",
+          "galleryItem": "No photos or videos to pick yet. Members choose when they add them whether the magazine may use them."
         },
         "hint": {
           "article": "Only articles marked ready and not in another issue show here.",
@@ -5880,7 +5894,8 @@
           "newsItem": "Headlines link to the original article.",
           "event": "Events of your community. Readers see the latest details.",
           "forumThread": "Threads stay live: readers see new replies too.",
-          "launchpadProject": "Projects from your community or by its members."
+          "launchpadProject": "Projects from your community or by its members.",
+          "galleryItem": "Only photos and videos whose owners said the magazine may use them. If they change their mind, the item leaves the issue."
         },
         "noMatch": "Nothing matches “{query}”.",
         "add": "Add",
@@ -5894,12 +5909,15 @@
           "updated": "Updated {date}",
           "published": "{date}",
           "starts": "{date}",
+          "added": "Added {date}",
           "lastActive": "Last reply {date}",
           "sources": "{count, plural, one {# source} other {# sources}}",
           "replies": "{count, plural, one {# reply} other {# replies}}",
           "upvotes": "{count, plural, one {# upvote} other {# upvotes}}",
           "cancelled": "Cancelled",
-          "completed": "Took place"
+          "completed": "Took place",
+          "photo": "Photo",
+          "video": "Video"
         },
         "results": "{count, plural, one {# result} other {# results}}"
       },
@@ -6448,6 +6466,7 @@
   },
   "gallery": {
     "deletedMember": "Deleted member",
+    "unnamedMember": "Member",
     "label": {
       "photoFromEvent": "Photo from {event} by {name}",
       "photoBy": "Photo by {name}",
@@ -6631,7 +6650,6 @@
     },
     "errors": {
       "NOT_ALLOWED": "You can't change this photo or video.",
-      "GALLERY_DISABLED": "The gallery is switched off right now.",
       "NOT_FOUND": "This photo or video is no longer here.",
       "deleteFailed": "We couldn't delete it. Please try again.",
       "loadFailed": "We couldn't open this photo or video. Please try again.",

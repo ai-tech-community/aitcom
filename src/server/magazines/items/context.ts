@@ -43,6 +43,7 @@ export function itemContextFor(
   return {
     payload: deps.payload,
     db: deps.db,
+    ...(deps.storage ? { storage: deps.storage } : {}),
     ...issue,
     reader: createItemReader(deps.db, viewerId),
   };

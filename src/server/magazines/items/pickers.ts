@@ -1,5 +1,6 @@
 import { forumThreadPicker } from "./forumThread/picker";
 import { eventPicker } from "./event/picker";
+import { galleryItemPicker } from "./galleryItem/picker";
 import {
   AUTO_DRAFT_SOURCES,
   AUTO_DRAFT_SOURCE_ORDER,
@@ -30,6 +31,7 @@ export const ITEM_PICKERS: {
   event: eventPicker,
   forumThread: forumThreadPicker,
   launchpadProject: launchpadProjectPicker,
+  galleryItem: galleryItemPicker,
 };
 
 /** Search one source and attach the kind strategy's content identity. */
@@ -106,5 +108,26 @@ export async function pickerCandidatesFor<K extends PickableKindId>(
       }
     }
   }
-  return [...candidates.values()].slice(0, PICKER_LIMIT);
+  const shown = [...candidates.values()].slice(0, PICKER_LIMIT);
+  return decorateSuggestions(kind, shown, ctx);
+}
+
+/** The kind's picker decoration for the suggestions shown, in place. */
+async function decorateSuggestions<K extends PickableKindId>(
+  kind: K,
+  shown: (PickerCandidate<InputOf<K>> & PickerSuggestion)[],
+  ctx: PickerContext,
+): Promise<(PickerCandidate<InputOf<K>> & PickerSuggestion)[]> {
+  const picker: ItemPickerSource<InputOf<K>> = ITEM_PICKERS[kind];
+  const suggested = shown.filter((candidate) => candidate.reason !== null);
+  if (!picker.decorate || suggested.length === 0) return shown;
+  const decorated = new Map(
+    (await picker.decorate(suggested, ctx)).map((candidate) => [
+      candidate.reference,
+      candidate,
+    ]),
+  );
+  return shown.map(
+    (candidate) => decorated.get(candidate.reference) ?? candidate,
+  );
 }

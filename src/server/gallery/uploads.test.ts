@@ -45,7 +45,6 @@ import {
 } from "./uploads";
 
 beforeEach(() => {
-  vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
   payments.membershipPaymentAllowed.mockReset().mockResolvedValue(true);
   feedPostLink.releaseEmptyGalleryPost.mockReset().mockResolvedValue(false);
 });
@@ -386,15 +385,6 @@ describe("startBatch", () => {
     });
   });
 
-  it("refuses everyone while the gallery is switched off", async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
-    const { deps, payload } = fakes();
-    await expect(startBatch(deps, BATCH)).rejects.toMatchObject({
-      message: "GALLERY_DISABLED",
-    });
-    expect(payload.create).not.toHaveBeenCalled();
-  });
-
   it("refuses someone who is not an active member", async () => {
     const { deps, payload } = fakes({ role: null });
     await expect(startBatch(deps, BATCH)).rejects.toMatchObject({
@@ -701,15 +691,6 @@ describe("startItem", () => {
     });
     expect(storage.presignUpload).not.toHaveBeenCalled();
     expect(payload.create).not.toHaveBeenCalled();
-  });
-
-  it("refuses everyone while the gallery is switched off", async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
-    const { deps, storage } = fakes();
-    await expect(startItem(deps, PHOTO)).rejects.toMatchObject({
-      message: "GALLERY_DISABLED",
-    });
-    expect(storage.presignUpload).not.toHaveBeenCalled();
   });
 
   it("counts only the batch's uploading and ready items against its plan", async () => {

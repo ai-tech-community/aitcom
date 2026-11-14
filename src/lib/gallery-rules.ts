@@ -88,7 +88,6 @@ export const GALLERY_STORAGE_LABELS: Record<VideoStorageClass, string> = {
  * code; the server's status table must cover exactly these.
  */
 export const GALLERY_ERROR_CODES = [
-  "GALLERY_DISABLED",
   "NOT_A_MEMBER",
   "EVENT_NOT_ALLOWED",
   "TOPIC_NOT_FOUND",
@@ -202,8 +201,7 @@ export type GalleryItemLabel =
 /**
  * An item's accessible name: its caption, else its alt text, else a
  * generated description. The generated one is a message key plus values, so
- * the UI translates it (`"text" in label ? label.text : t(label.key,
- * label.values)`).
+ * the UI translates it (`galleryItemLabelText`).
  */
 export function galleryItemLabel(input: {
   caption: string | null | undefined;
@@ -234,4 +232,24 @@ export function galleryItemLabel(input: {
         : "gallery.label.photoBy",
     values: { name },
   };
+}
+
+/**
+ * A label in words: its own text, or its message translated by a root-level
+ * translator (the keys are fully qualified).
+ */
+export function galleryItemLabelText(
+  label: GalleryItemLabel,
+  translate: (key: string, values: Record<string, string>) => string,
+): string {
+  return "text" in label ? label.text : translate(label.key, label.values);
+}
+
+/**
+ * The item open in its community's gallery (locale-less, for the app's
+ * `Link`): where a notification, a magazine issue or any other page sends
+ * someone to see one item.
+ */
+export function galleryItemPath(slug: string, itemId: number): string {
+  return `/communities/${slug}/gallery?item=${itemId}`;
 }

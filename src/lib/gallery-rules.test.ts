@@ -10,6 +10,7 @@ import {
   GALLERY_PHOTOS_PER_DAY,
   GALLERY_VIDEOS_PER_DAY,
   galleryItemLabel,
+  galleryItemPath,
   galleryMediaTypeOf,
   galleryObjectKeys,
   isGalleryErrorCode,
@@ -173,5 +174,13 @@ describe("isGalleryUploadRefusalCode", () => {
     expect(isGalleryUploadRefusalCode("OWN_ITEM")).toBe(false);
     expect(isGalleryUploadRefusalCode("ALREADY_REPORTED")).toBe(false);
     expect(isGalleryUploadRefusalCode("Internal server error")).toBe(false);
+  });
+});
+
+describe("galleryItemPath", () => {
+  it("opens the item in its community's gallery", () => {
+    expect(galleryItemPath("town", 42)).toBe(
+      "/communities/town/gallery?item=42",
+    );
   });
 });

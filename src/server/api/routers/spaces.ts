@@ -37,13 +37,9 @@ import {
   invalidateSquareRooms,
   loadSquareRoomRows,
 } from "@/server/communities/live-rooms-queries";
-import { visibleSpaceCondition } from "@/server/communities/space-visibility";
 
 export const spacesRouter = createTRPCRouter({
-  /**
-   * Enabled spaces for the public nav, position-ordered. Surfaces still
-   * behind a rollout flag are left out.
-   */
+  /** Enabled spaces for the public nav, position-ordered. */
   list: publicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -66,20 +62,12 @@ export const spacesRouter = createTRPCRouter({
         })
         .from(spaces)
         .where(
-          and(
-            eq(spaces.communityId, community.id),
-            isNull(spaces.archivedAt),
-            visibleSpaceCondition(),
-          ),
+          and(eq(spaces.communityId, community.id), isNull(spaces.archivedAt)),
         )
         .orderBy(asc(spaces.position));
     }),
 
-  /**
-   * All spaces incl. disabled, for the admin Compose page. Surfaces still
-   * behind a rollout flag stay out, so owners cannot rename or reorder a tab
-   * nobody can see yet.
-   */
+  /** All spaces incl. disabled, for the admin Compose page. */
   listForAdmin: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
@@ -97,21 +85,16 @@ export const spacesRouter = createTRPCRouter({
           archivedAt: spaces.archivedAt,
         })
         .from(spaces)
-        .where(
-          and(
-            eq(spaces.communityId, ctx.community.id),
-            visibleSpaceCondition(),
-          ),
-        )
+        .where(eq(spaces.communityId, ctx.community.id))
         .orderBy(asc(spaces.position));
       return rows.map((r) => ({ ...r, enabled: r.archivedAt === null }));
     }),
 
   /**
    * Persist a new ordering: ids in display order → position = index. Spaces
-   * the caller did not send (a surface still behind its rollout flag, which
-   * listForAdmin hides) move after them in their current order, so no
-   * position is shared and they keep the "append at the end" rule.
+   * the caller did not send (say, a room created after the Compose page
+   * loaded) move after them in their current order, so no position is shared
+   * and they keep the "append at the end" rule.
    */
   reorder: communityProcedure
     .input(z.object({ slug: z.string(), orderedIds: z.array(z.string()) }))

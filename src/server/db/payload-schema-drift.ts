@@ -25,6 +25,7 @@ export const GUARDED_PAYLOAD_TABLES = [
   "magazine_issues_blocks_event",
   "magazine_issues_blocks_forum_thread",
   "magazine_issues_blocks_launchpad_project",
+  "magazine_issues_blocks_gallery_item",
   "feed_posts",
   "gallery_items",
   "gallery_batches",

@@ -188,6 +188,7 @@ describe("magazine-issues collection", () => {
       "event",
       "forumThread",
       "launchpadProject",
+      "galleryItem",
     ]);
     for (const block of items.blocks!) {
       expect(block.fields[0]?.name).toBe("intro");
@@ -275,6 +276,32 @@ describe("magazine platform items migration", () => {
     expect(
       index.indexOf('name: "20261026b_magazine_platform_items"'),
     ).toBeGreaterThan(index.indexOf('name: "20261026a_magazines"'));
+  });
+});
+
+describe("magazine gallery items migration", () => {
+  it("ships an idempotent block table with a plain item id, registered after the gallery", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/migrations/20261114b_magazine_gallery_items.ts"),
+      "utf8",
+    );
+    for (const needle of [
+      'CREATE TABLE IF NOT EXISTS "magazine_issues_blocks_gallery_item"',
+      '"gallery_item_id" numeric NOT NULL',
+      '"image" jsonb',
+      'REFERENCES "public"."magazine_issues"("id")',
+    ]) {
+      expect(source).toContain(needle);
+    }
+    // A live reference (ADR-0044 D1): deleting the item keeps the block.
+    expect(source).not.toContain('"public"."gallery_items"');
+    const index = readFileSync(
+      join(process.cwd(), "src/migrations/index.ts"),
+      "utf8",
+    );
+    expect(
+      index.indexOf('name: "20261114b_magazine_gallery_items"'),
+    ).toBeGreaterThan(index.indexOf('name: "20261113c_gallery_reports"'));
   });
 });
 

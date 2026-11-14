@@ -42,8 +42,9 @@ for the acting person's rights, and
    `AUTO_DRAFT_SOURCES` record holds each source's kind, defaults, count limit,
    topic requirement and whether it counts toward the minimum. Defaults,
    controls and counts derive from it. Sources are `article`, `storyline`,
-   `event`, `forumThread`, `launchpadProject`, `newsItem` and `welcome` in that
-   draft order; `welcome` belongs to `editorial`. A second editorial source
+   `event`, `galleryItems`, `forumThread`, `launchpadProject`, `newsItem` and
+   `welcome` in that draft order; `welcome` belongs to `editorial` and
+   `galleryItems` to `galleryItem` (gallery slice 4). A second editorial source
    needs a new source id, not a fake kind or a settings migration. A type check
    makes a kind without a source a compile error. Server suggesters live in
    each kind's folder and an exhaustive, source-keyed `ITEM_SUGGESTERS`
@@ -65,8 +66,18 @@ for the acting person's rights, and
    projects rank by votes and id, applying the look-back inside the member
    project query before its limit. The welcome is one editorial block with a
    count of new active memberships, never names, and does not count toward
-   the minimum. Other source defaults are 5, 3, 4, 3, 3 and 5 items; their
-   maximum is ten, while welcome allows one.
+   the minimum. Gallery highlights (`galleryItems`, reason `galleryHighlight`
+   with the event's title and a count) offer one item per event that ended in
+   the window: events rank by how many items the acting editor may feature
+   (the picker's and `acceptNew`'s `featurableByWhere` rule: consented, ready,
+   not hidden, uploader not deleted, readable by the editor), then later end,
+   then id; each event offers its newest such item, then the lower id.
+   Excluded items still count for their event. Like the welcome, highlights do
+   not count toward the minimum, and neither the candidate nor its reason
+   carries a file link: the picker adds thumbnails per request through the
+   kind picker's optional `decorate` step, which re-checks the rule for the
+   editor before linking. Other source defaults are 5, 3, 4, 3, 3, 3 and 5
+   items; their maximum is ten, while welcome allows one.
 
 3. **Reasons stay apart from reader content (plan Decision 3).** Structured
    `SuggestionReason` values live in `app.magazine_auto_pick`, keyed by issue
@@ -119,8 +130,8 @@ for the acting person's rights, and
    An open draft skips with `draft_open` and no notice. Fewer than three valid items
    from sources that count skips with `too_few`, recording found and needed.
    Scheduled and event skips notify once per period; manual skips show their
-   answer only to the person who pressed the button. The welcome never
-   satisfies the minimum.
+   answer only to the person who pressed the button. The welcome and gallery
+   highlights never satisfy the minimum.
 
 8. **Act with a person's rights (plan Decision 8).** Scheduled assembly uses
    the person who last saved settings, rechecking `edit` each time. Lost rights
@@ -282,5 +293,5 @@ for the acting person's rights, and
   person must retain `edit` and settings must allow `auto_publish`. This
   amends ADR-0046 Decision 8's settings-only rule.
 - **Small communities may produce no draft.** Three substantive items are
-  required; a welcome alone does not count. Magazines without topics receive
-  neither storyline nor news suggestions.
+  required; a welcome or gallery highlights do not count. Magazines without
+  topics receive neither storyline nor news suggestions.

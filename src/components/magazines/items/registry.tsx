@@ -14,6 +14,7 @@ import {
 } from "./launchpad-project-item";
 import { ForumThreadItem, forumThreadItemTitle } from "./forum-thread-item";
 import { EventItem, eventItemTitle } from "./event-item";
+import { GalleryItem, galleryItemTitle } from "./gallery-item";
 import { NewsItemCard, newsItemTitle } from "./news-item";
 import { ArticleItem, articleItemTitle } from "./article-item";
 import { EditorialItem, editorialItemTitle } from "./editorial-item";
@@ -25,9 +26,15 @@ import type {
   ItemTitle,
   ItemTeaser,
   ItemViewOfKind,
+  TranslateMessage,
 } from "./types";
 
-export type { ArticleHref, ItemRendererProps, ItemSize } from "./types";
+export type {
+  ArticleHref,
+  ItemRendererProps,
+  ItemSize,
+  TranslateMessage,
+} from "./types";
 
 /**
  * One renderer per item kind (ADR-0043), the client twin of the server's
@@ -44,6 +51,7 @@ export const ITEM_RENDERERS: {
   event: EventItem,
   forumThread: ForumThreadItem,
   launchpadProject: LaunchpadProjectItem,
+  galleryItem: GalleryItem,
 };
 
 /** Each kind's title for the issue's contents list. */
@@ -55,6 +63,7 @@ const ITEM_TITLES: { [K in ItemKindId]: ItemTitle<K> } = {
   event: eventItemTitle,
   forumThread: forumThreadItemTitle,
   launchpadProject: launchpadProjectItemTitle,
+  galleryItem: galleryItemTitle,
 };
 
 export function isUnavailableItem(
@@ -86,26 +95,34 @@ function renderKind<K extends ItemKindId>(
 /**
  * The item's title as the contents list shows it: the kind's own title,
  * or null when the item has none or is unavailable (callers fall back to
- * their own words).
+ * their own words). `translate` is a root-level translator, for titles that
+ * are messages.
  */
-export function itemTitle(view: EditorItemView): string | null {
-  return isUnavailableItem(view) ? null : titleOfKind(view);
+export function itemTitle(
+  view: EditorItemView,
+  translate: TranslateMessage,
+): string | null {
+  return isUnavailableItem(view) ? null : titleOfKind(view, translate);
 }
 
 function titleOfKind<K extends ItemKindId>(
   view: ItemViewOfKind<K>,
+  translate: TranslateMessage,
 ): string | null {
   const title: ItemTitle<K> = ITEM_TITLES[view.kind];
-  return title(view);
+  return title(view, translate);
 }
 
-/** Editors only: what stands in for an item whose content cannot be shown. */
+/**
+ * Editors only: what stands in for an item whose content cannot be shown.
+ * It keeps its own height, so beside a tall photo it does not stretch.
+ */
 function UnavailableMarker({ reason }: { reason: UnavailableItem["reason"] }) {
   const t = useTranslations("magazines.item");
   return (
     <div
       role="note"
-      className="text-muted-foreground flex h-full flex-col gap-1 rounded-xl border border-dashed p-5 text-sm"
+      className="text-muted-foreground flex flex-col gap-1 rounded-xl border border-dashed p-5 text-sm"
     >
       <p className="text-foreground font-medium">{t("unavailable")}</p>
       <p>{t(`unavailableReason.${reason}`)}</p>

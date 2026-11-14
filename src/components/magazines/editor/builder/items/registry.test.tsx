@@ -7,21 +7,26 @@ import { ITEM_KINDS } from "@/server/magazines/items/registry";
 import type { InputOf } from "@/server/magazines/items/registry";
 import type { StoredItem } from "@/server/magazines/items/types";
 import type { ItemKindId } from "@/lib/magazines/item-views";
+import { newItemImage } from "@/lib/magazines/item-image";
 import { PICKABLE_ITEM_KINDS } from "@/lib/magazines/picker";
 
 import {
   eventView,
   launchpadProjectView,
   forumThreadView,
+  galleryItemView,
   newsItemView,
   storylineView,
 } from "../../../test-fixtures";
 import { ITEM_RENDERERS } from "../../../items/registry";
+import { translateEn as translate } from "../../../test-intl";
 import type { BuilderItem } from "../items-model";
 import {
+  acceptsBuilderItemImage,
   ADD_TAB_ORDER,
   BUILDER_ITEM_KINDS,
   builderKindLabelKey,
+  builderOpenLabelKey,
   builderPreviewView,
   builderReferenceKey,
   builderRowTitle,
@@ -54,6 +59,7 @@ const referenceInputs: { [K in ItemKindId]: InputOf<K> } = {
   event: { kind: "event", eventId: 7 },
   forumThread: { kind: "forumThread", threadId: 7 },
   launchpadProject: { kind: "launchpadProject", projectId: 7 },
+  galleryItem: { kind: "galleryItem", galleryItemId: 7 },
 };
 
 function referenceParity<K extends ItemKindId>(kind: K) {
@@ -93,6 +99,7 @@ describe("builder item registry", () => {
       "storyline",
       "newsItem",
       "event",
+      "galleryItem",
       "forumThread",
       "launchpadProject",
       "editorial",
@@ -106,9 +113,9 @@ describe("builder item registry", () => {
     const saved = storylineView();
     expect(builderKindLabelKey(item)).toBe("storyline");
     expect(builderReferenceKey(item)).toBe("storyline:s1");
-    expect(builderRowTitle(item, { saved, titleHint: "Old title", t })).toBe(
-      "Story 1",
-    );
+    expect(
+      builderRowTitle(item, { saved, titleHint: "Old title", t, translate }),
+    ).toBe("Story 1");
     expect(builderPreviewView(item, undefined)).toBeNull();
     expect(builderPreviewView(item, saved)).toEqual({
       ...saved,
@@ -129,9 +136,9 @@ describe("builder item registry", () => {
     const saved = newsItemView();
     expect(builderKindLabelKey(item)).toBe("newsItem");
     expect(builderReferenceKey(item)).toBe("newsItem:n1");
-    expect(builderRowTitle(item, { saved, titleHint: "Old title", t })).toBe(
-      "Headline 1",
-    );
+    expect(
+      builderRowTitle(item, { saved, titleHint: "Old title", t, translate }),
+    ).toBe("Headline 1");
     expect(builderPreviewView(item, undefined)).toBeNull();
     expect(builderPreviewView(item, saved)).toEqual({
       ...saved,
@@ -143,7 +150,7 @@ describe("builder item registry", () => {
   });
 
   it("dispatches row titles, saving rules, previews and references per kind", () => {
-    const ctx = { saved: undefined, titleHint: undefined, t };
+    const ctx = { saved: undefined, titleHint: undefined, t, translate };
     expect(builderRowTitle(article, ctx)).toBe("[article]");
     expect(builderRowTitle(article, { ...ctx, titleHint: "Evals" })).toBe(
       "Evals",
@@ -186,9 +193,9 @@ it("adds events after news and follows the saved event and edited intro", () => 
   );
   expect(builderKindLabelKey(item)).toBe("event");
   expect(builderReferenceKey(item)).toBe("event:7");
-  expect(builderRowTitle(item, { saved, titleHint: "Old title", t })).toBe(
-    "Event 1",
-  );
+  expect(
+    builderRowTitle(item, { saved, titleHint: "Old title", t, translate }),
+  ).toBe("Event 1");
   expect(builderPreviewView(item, saved)).toEqual({
     ...saved,
     itemId: "event",
@@ -198,7 +205,64 @@ it("adds events after news and follows the saved event and edited intro", () => 
   expect(hasBuilderItemEditor(item)).toBe(false);
 });
 
-it("adds forum threads after events and follows the saved title and edited intro", () => {
+it("adds gallery items after events, titled by their translated label and never with an issue image", () => {
+  const item: BuilderItem = {
+    kind: "galleryItem",
+    key: "gallery",
+    galleryItemId: 7,
+    intro: "Our pick",
+  };
+  const saved = galleryItemView(7, {
+    caption: null,
+    alt: null,
+    label: { key: "gallery.label.photoBy", values: { name: "Sanne" } },
+  });
+  expect(ADD_TAB_ORDER.indexOf("galleryItem")).toBe(
+    ADD_TAB_ORDER.indexOf("event") + 1,
+  );
+  expect(builderKindLabelKey(item)).toBe("galleryItem");
+  expect(builderReferenceKey(item)).toBe("galleryItem:7");
+  // A saved item's row menu opens it in the gallery (the server's openHrefs).
+  expect(builderOpenLabelKey(item)).toBe("openGalleryItem");
+  expect(
+    builderRowTitle(item, { saved, titleHint: "Old title", t, translate }),
+  ).toBe("Photo by Sanne");
+  expect(
+    builderRowTitle(item, {
+      saved: undefined,
+      titleHint: "Robots on stage",
+      t,
+      translate,
+    }),
+  ).toBe("Robots on stage");
+  expect(builderPreviewView(item, undefined)).toBeNull();
+  expect(builderPreviewView(item, saved)).toEqual({
+    ...saved,
+    itemId: "gallery",
+    intro: "Our pick",
+  });
+  expect(isSavableBuilderItem(item)).toBe(true);
+  expect(hasBuilderItemEditor(item)).toBe(false);
+  expect(acceptsBuilderItemImage(item)).toBe(false);
+  // An image left on the working copy (say, from an older draft) never
+  // reaches the preview: the server would refuse it.
+  const withImage = {
+    ...item,
+    image: newItemImage("https://example.test/i.jpg"),
+  };
+  expect(builderPreviewView(withImage, saved)).not.toHaveProperty(
+    "image",
+    expect.anything(),
+  );
+});
+
+it("lets every other kind carry an issue image", () => {
+  for (const kind of ADD_TAB_ORDER.filter((kind) => kind !== "galleryItem")) {
+    expect(BUILDER_ITEM_KINDS[kind].acceptsImage ?? true).toBe(true);
+  }
+});
+
+it("adds forum threads after gallery items and follows the saved title and edited intro", () => {
   const item: BuilderItem = {
     kind: "forumThread",
     key: "thread",
@@ -207,13 +271,13 @@ it("adds forum threads after events and follows the saved title and edited intro
   };
   const saved = forumThreadView();
   expect(ADD_TAB_ORDER.indexOf("forumThread")).toBe(
-    ADD_TAB_ORDER.indexOf("event") + 1,
+    ADD_TAB_ORDER.indexOf("galleryItem") + 1,
   );
   expect(builderKindLabelKey(item)).toBe("forumThread");
   expect(builderReferenceKey(item)).toBe("forumThread:7");
-  expect(builderRowTitle(item, { saved, titleHint: "Old title", t })).toBe(
-    "Thread 1",
-  );
+  expect(
+    builderRowTitle(item, { saved, titleHint: "Old title", t, translate }),
+  ).toBe("Thread 1");
   expect(builderPreviewView(item, undefined)).toBeNull();
   expect(builderPreviewView(item, saved)).toEqual({
     ...saved,
@@ -237,9 +301,9 @@ it("adds projects last before editorial and follows the saved title and edited i
   );
   expect(builderKindLabelKey(item)).toBe("launchpadProject");
   expect(builderReferenceKey(item)).toBe("launchpadProject:7");
-  expect(builderRowTitle(item, { saved, titleHint: "Old title", t })).toBe(
-    "Project 1",
-  );
+  expect(
+    builderRowTitle(item, { saved, titleHint: "Old title", t, translate }),
+  ).toBe("Project 1");
   expect(builderPreviewView(item, undefined)).toBeNull();
   expect(builderPreviewView(item, saved)).toEqual({
     ...saved,

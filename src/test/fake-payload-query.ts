@@ -23,20 +23,42 @@ export function matchesWhere(doc: Doc, where: Where | undefined): boolean {
         switch (op) {
           case "equals":
             return value === operand;
+          case "not_equals":
+            return value !== operand;
           case "in":
             return (operand as unknown[]).includes(value);
+          case "not_in":
+            return !(operand as unknown[]).includes(value);
+          case "like":
+            return likeMatches(value, operand as string);
           case "exists":
             return (value !== null && value !== undefined) === operand;
           case "less_than":
             return (value as number | string) < (operand as number | string);
           case "less_than_equal":
             return (value as number | string) <= (operand as number | string);
+          case "greater_than_equal":
+            return (value as number | string) >= (operand as number | string);
           default:
             throw new Error(`fake payload: unsupported operator ${op}`);
         }
       },
     );
   });
+}
+
+/**
+ * Payload's `like`: every word of the operand appears in the value, case
+ * ignored. An empty value never matches.
+ */
+function likeMatches(value: unknown, operand: string): boolean {
+  if (typeof value !== "string") return false;
+  const text = value.toLowerCase();
+  return operand
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => text.includes(word));
 }
 
 /** Rows in the order of a single-field Payload `sort` (`-` for descending). */

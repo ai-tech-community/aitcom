@@ -2,6 +2,8 @@
 // marker in place of an item whose content cannot be shown.
 import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import en from "../../../../messages/en.json";
+import fr from "../../../../messages/fr.json";
 import nl from "../../../../messages/nl.json";
 import { describe, expect, it, vi } from "vitest";
 
@@ -19,13 +21,14 @@ import {
   editorialView,
   eventView,
   forumThreadView,
+  galleryItemView,
   newsItemView,
   storylineView,
   unavailableView,
 } from "../test-fixtures";
-import { renderWithIntl } from "../test-intl";
+import { renderWithIntl, translateEn } from "../test-intl";
 
-import { IssueItem, ITEM_RENDERERS } from "./registry";
+import { IssueItem, ITEM_RENDERERS, itemTitle } from "./registry";
 import { newItemImage } from "@/lib/magazines/item-image";
 
 const href = (slug: string) => `/magazines/agents-weekly/issue-4/${slug}`;
@@ -241,6 +244,7 @@ describe("issue item registry", () => {
       "editorial",
       "event",
       "forumThread",
+      "galleryItem",
       "launchpadProject",
       "newsItem",
       "storyline",
@@ -437,6 +441,65 @@ describe("issue item registry", () => {
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByRole("heading")).toBeNull();
     expect(container.querySelector("[data-item-kind]")).toBeNull();
+    // It keeps its own height: beside a tall photo in a grid row it would
+    // otherwise stretch into a tall empty box.
+    expect(screen.getByRole("note")).not.toHaveClass("h-full");
+  });
+
+  it.each([
+    [
+      "en",
+      en,
+      "The person who added this no longer shares it with the magazine, or it was hidden. Readers do not see it.",
+    ],
+    [
+      "nl",
+      nl,
+      "Wie dit heeft toegevoegd, deelt het niet meer met het magazine, of het is verborgen. Lezers zien het niet.",
+    ],
+    [
+      "fr",
+      fr,
+      "La personne qui l’a ajouté ne le partage plus avec le magazine, ou il a été masqué. Le lectorat ne le voit pas.",
+    ],
+  ] as const)(
+    "tells editors in %s why a withdrawn gallery item is gone",
+    (locale, messages, reason) => {
+      render(
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <IssueItem
+            teaser={null}
+            view={{
+              kind: "galleryItem",
+              itemId: "gallery-1",
+              unavailable: true,
+              reason: "withdrawn",
+            }}
+            size="card"
+            href={href}
+          />
+        </NextIntlClientProvider>,
+      );
+      expect(screen.getByRole("note")).toHaveTextContent(reason);
+      expect(screen.queryByRole("img")).toBeNull();
+    },
+  );
+
+  it("titles a gallery item by its label, translated when it has no words of its own", () => {
+    const translate = translateEn;
+    expect(itemTitle(galleryItemView(), translate)).toBe("Caption 1");
+    expect(
+      itemTitle(
+        galleryItemView(1, {
+          caption: null,
+          alt: null,
+          label: { key: "gallery.label.photoBy", values: { name: "Sanne" } },
+        }),
+        translate,
+      ),
+    ).toBe("Photo by Sanne");
+    expect(itemTitle(articleView(1), translate)).toBe("Article 1");
+    expect(itemTitle(unavailableView(1), translate)).toBeNull();
   });
 });
 

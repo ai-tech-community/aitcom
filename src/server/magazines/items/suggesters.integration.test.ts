@@ -10,8 +10,10 @@ import {
   vi,
 } from "vitest";
 
+import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
 import {
   AUTO_DRAFT_SOURCE_IDS,
+  AUTO_DRAFT_SOURCES,
   type AutoDraftSourceId,
 } from "@/lib/magazines/auto-draft";
 import { magazineArticleEditPath } from "@/lib/magazines/paths";
@@ -21,6 +23,7 @@ import {
   plainTextToLexical,
 } from "@/server/challenge-engine/lexical";
 import type * as Schema from "@/server/db/schema";
+import { testObjectStorage } from "@/test/test-object-storage";
 
 import type { Deps } from "../deps";
 import type * as Context from "./context";
@@ -92,6 +95,8 @@ describe.skipIf(!isLocalDbConfigured())(
       storyIds: string[];
       ctx: SuggestContext;
     };
+    /** One finished upload batch per test, made with its first item. */
+    let galleryBatchId: number | null = null;
 
     beforeAll(async () => {
       const [
@@ -121,6 +126,7 @@ describe.skipIf(!isLocalDbConfigured())(
         suggesters,
         events,
         payload: await getPayloadClient(),
+        storage: () => testObjectStorage,
       };
     }, 120_000);
 
@@ -208,6 +214,12 @@ describe.skipIf(!isLocalDbConfigured())(
         where: { authorId: { in: fx.userIds } },
       });
       await payload.delete({ collection: "magazines", id: fx.magazine.id });
+      for (const collection of ["gallery-items", "gallery-batches"] as const)
+        await payload.delete({
+          collection,
+          where: { communityId: { equals: fx.community.id } },
+        });
+      galleryBatchId = null;
       for (const [collection, ids] of [
         ["events", fx.eventIds],
         ["forum-threads", fx.threadIds],
@@ -313,6 +325,64 @@ describe.skipIf(!isLocalDbConfigured())(
         context: { skipGeocode: true },
       });
       fx.eventIds.push(Number(doc.id));
+      return Number(doc.id);
+    }
+
+    async function galleryItem(
+      eventId: number,
+      opts: {
+        createdAt?: number;
+        magazineConsent?: boolean;
+        hiddenAt?: string;
+        uploaderId?: string;
+        visibility?: "community" | "public";
+      } = {},
+    ) {
+      galleryBatchId ??= (
+        await m.payload.create({
+          collection: "gallery-batches",
+          data: {
+            communityId: fx.community.id,
+            uploaderId: fx.userIds[1]!,
+            visibility: "community",
+            magazineConsent: true,
+            plannedFiles: 20,
+            plannedVideos: 0,
+            status: "finished",
+          },
+        })
+      ).id;
+      const visibility = opts.visibility ?? "community";
+      const uploadId = `sg-${fx.suffix}-${crypto.randomUUID()}`;
+      const prefix =
+        visibility === "public"
+          ? `media/gallery/public/${fx.community.id}`
+          : `private/gallery/${fx.community.id}`;
+      const doc = await m.payload.create({
+        collection: "gallery-items",
+        data: {
+          communityId: fx.community.id,
+          event: eventId,
+          mediaType: "photo",
+          status: "ready",
+          storage: visibility === "public" ? "public" : "private",
+          visibility,
+          fileKey: `${prefix}/${uploadId}.jpg`,
+          thumbnailKey: `${prefix}/${uploadId}-thumb.jpg`,
+          width: 800,
+          height: 600,
+          bytes: 100_000,
+          uploaderId: opts.uploaderId ?? fx.userIds[1]!,
+          batch: galleryBatchId,
+          uploadId,
+          magazineConsent: opts.magazineConsent ?? true,
+          hiddenAt: opts.hiddenAt ?? null,
+        },
+      });
+      if (opts.createdAt !== undefined)
+        await m.db.execute(
+          sql`update "public"."gallery_items" set "created_at" = ${at(-60 * 24 * opts.createdAt)} where "id" = ${doc.id}`,
+        );
       return Number(doc.id);
     }
 
@@ -528,10 +598,8 @@ describe.skipIf(!isLocalDbConfigured())(
         { type: "date", label: "starts", at: day(-5) },
         { type: "eventStatus", status: "completed" },
       ]);
-      expect(search.find((c) => c.input.eventId === cancelled)!.facts).toEqual([
-        { type: "date", label: "starts", at: day(-4) },
-        { type: "eventStatus", status: "cancelled" },
-      ]);
+      // The picker offers only published and completed events.
+      expect(search.map((c) => c.input.eventId)).not.toContain(cancelled);
       expect(
         (await suggest("event", 2, [`event:${today}`])).map(
           (c) => c.input.eventId,
@@ -551,6 +619,54 @@ describe.skipIf(!isLocalDbConfigured())(
           at(0),
         ),
       ).toEqual([{ id: yesterday, endsAt: new Date(day(0)) }]);
+    });
+
+    it("offers one gallery highlight per ended event, most featurable first", async () => {
+      const busy = await event(-3);
+      const quiet = await event(-2);
+      const upcoming = await event(2);
+      const older = await galleryItem(busy, { createdAt: 3 });
+      const newest = await galleryItem(busy, { createdAt: 1 });
+      await galleryItem(busy, { createdAt: 0, magazineConsent: false });
+      await galleryItem(busy, {
+        createdAt: 0,
+        hiddenAt: at(-60).toISOString(),
+      });
+      await galleryItem(busy, { createdAt: 0, uploaderId: DELETED_AUTHOR_ID });
+      const only = await galleryItem(quiet, { createdAt: 2 });
+      // Not ended yet: its items wait for a later draft.
+      await galleryItem(upcoming, { createdAt: 0 });
+      await galleryItem(upcoming, { createdAt: 0 });
+      await galleryItem(upcoming, { createdAt: 0 });
+      const result = await suggest("galleryItems");
+      expect(
+        result.map((c) => [c.input.galleryItemId, c.reason, c.reference]),
+      ).toEqual([
+        [
+          newest,
+          {
+            type: "galleryHighlight",
+            eventTitle: `Event 0 ${fx.suffix}`,
+            count: 2,
+          },
+          `galleryItem:${newest}`,
+        ],
+        [
+          only,
+          {
+            type: "galleryHighlight",
+            eventTitle: `Event 1 ${fx.suffix}`,
+            count: 1,
+          },
+          `galleryItem:${only}`,
+        ],
+      ]);
+      expect(JSON.stringify(result)).not.toMatch(/https?:|thumb/);
+      expect(
+        (await suggest("galleryItems", 20, [`galleryItem:${newest}`])).map(
+          (c) => c.input.galleryItemId,
+        ),
+      ).toEqual([older, only]);
     });
 
     it("ranks threads by replies inside the window", async () => {
@@ -691,7 +807,7 @@ describe.skipIf(!isLocalDbConfigured())(
     it("gives the same answer every time", async () => {
       await article("stable", 1);
       await event(1);
-      await event(-2);
+      await galleryItem(await event(-2));
       await thread(5);
       await project(7, { unscoped: true });
       await story(`AI agents${fx.suffix} at work `, 1);
@@ -703,7 +819,11 @@ describe.skipIf(!isLocalDbConfigured())(
         expect(first.length).toBeGreaterThan(0);
         expect(await suggest(source)).toEqual(first);
         if (source === "welcome") continue;
-        const search = await searchPickerCandidates(source, fx.suffix, fx.ctx);
+        const search = await searchPickerCandidates(
+          AUTO_DRAFT_SOURCES[source].kind,
+          fx.suffix,
+          fx.ctx,
+        );
         for (const candidate of first) {
           const picked = search.find(
             (item) => item.reference === candidate.reference,

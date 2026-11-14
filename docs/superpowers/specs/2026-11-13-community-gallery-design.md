@@ -39,7 +39,9 @@ instead of stock imagery.
 - Gallery photos as magazine issue covers or as another item's image: those
   are copied URLs owned by the issue and could not honour a withdrawn
   permission. Editors feature gallery photos as `galleryItem` items only.
-- MCP/agent tools for the gallery.
+- MCP/agent tools for the gallery (browsing, uploading or picking gallery
+  items). Agent issue saves may only keep or remove gallery items an editor
+  placed (see Magazine).
 
 ## Anti-goals
 
@@ -134,8 +136,9 @@ All reads and writes go through tRPC and the gallery service.
 - **Operational prerequisite (Greg):** the app's AWS credentials must be allowed
   `s3:PutObject`, `GetObject`, `DeleteObject` and `ListBucket` on
   `media/gallery/*` and `private/gallery/*`, and `media/gallery/public/*` must be
-  publicly readable like `media/videos/public/*`. `COMMUNITY_GALLERY_ENABLED`
-  stays off until this is done.
+  publicly readable like `media/videos/public/*`. This had to be in place
+  before the gallery went live (the `COMMUNITY_GALLERY_ENABLED` flag that held
+  it back was removed in slice 4).
 - **Media allowance:** gallery files count toward the same per-community
   allowance as classroom materials (`src/server/classroom/media-allowance.ts`).
   `usageFor` sums both sources in one SQL `SUM`. The allowance module moves out of `classroom/`
@@ -202,9 +205,8 @@ route next to the feed sweeps:
 - **Unused files sweep (production only, `ownsStorageContents`):** list both
   gallery prefixes; delete objects older than 7 days that no gallery item row
   references. Same safety rules as #388.
-- Both gallery passes run only while `COMMUNITY_GALLERY_ENABLED` is on (the S3
-  permissions for the gallery prefixes arrive with the flag) and report
-  themselves skipped otherwise.
+- Both gallery passes run on every cron run. (Until slice 4 they were skipped
+  while the `COMMUNITY_GALLERY_ENABLED` flag was off; the flag is removed.)
 - Deleting an item removes its files best effort; the sweep is the safety net.
 - When a member deletes their account (#568), their items and batches stay:
   `uploaderId` becomes the deleted-author marker, and the gallery shows the
@@ -246,8 +248,7 @@ their category (set to empty), the same moment feed posts move to `general`.
   leftover nullable column. A follow-up migration drops the column, index and
   foreign key once this deploy is live.
 - The section is not shown for Hub events (no community), for events that
-  can't be linked (draft, cancelled, rejected) or haven't started, or while
-  the flag is off.
+  can't be linked (draft, cancelled, rejected) or haven't started.
 
 ### Gallery tab (variant A · Wall)
 
@@ -257,8 +258,8 @@ their category (set to empty), the same moment feed posts move to `general`.
   tabs. New communities get it in canonical order; a backfill migration adds it
   to existing communities **at the end of their current order** so custom
   orders are kept (production: 19 communities, no room owns the slug
-  `gallery`, checked 13 Nov). While `COMMUNITY_GALLERY_ENABLED` is off, the
-  spaces list omits it and the route 404s.
+  `gallery`, checked 13 Nov). The tab is listed for every community (the
+  rollout flag that hid it and 404'd the route was removed in slice 4).
 - Header: `/ GALLERY` kicker, "Photos and videos", one line on who can see
   them, and **Add photos and videos** (the page's one orange action; members
   only, guests get the auth gate).
@@ -394,6 +395,43 @@ lets the member retry or drop them.
 - Suggester for auto-drafts: consented, ready, not-hidden items from events in
   the window, best first (most items from the same event first, then newest);
   at most one per event.
+- Settled 14 Nov (slice 4):
+  - **Per-reader access uses the gallery's own read rule**, not only the
+    magazine's community-content rule (which knows nothing about an item's
+    `community` visibility): `load` builds the reader's gallery viewer for the
+    magazine's community and requires the item to be readable by it. Editors
+    see a "members only" marker on `community` items.
+  - Consent withdrawn or the item hidden → unavailable for **every** reader,
+    editors (even moderators) included, with an editor-visible reason; the
+    magazine never shows a hidden item. Missing → `missing`; not ready →
+    `not_ready`.
+  - **Videos** may be featured: rendered as their thumbnail with a play badge,
+    linking to the item in the gallery; no inline playback in the magazine.
+  - A `galleryItem` block never carries an issue-owned image: `validate`
+    refuses one and the builder hides the image editor for it. "Use source
+    image" is never wired for gallery items. Signed URLs are made only inside
+    `load`/picker after the access check and are never stored (blocks,
+    auto-pick reasons, agent output).
+  - Items whose uploader deleted their account (`DELETED_AUTHOR_ID`) can't be
+    newly picked or suggested; ones already placed keep rendering, credited as
+    "Deleted member".
+  - Picker, `acceptNew` and suggester share one predicate: same community,
+    ready, not hidden, consented, uploader not deleted, readable by the editor.
+  - The picker shows thumbnails (`PickerSourceCandidate.thumbnailUrl`); titles
+    for captionless items come from `galleryItemLabel`, translated server-side.
+  - The auto-draft source `galleryItems` is enabled by default like the other
+    sources (auto-draft itself is off by default), comes after events, and
+    does **not** count toward the 3-item minimum. It ranks events that ended
+    in the window by the number of eligible items, picks each event's newest
+    eligible item, ties broken by id; reason `galleryHighlight`.
+  - Agents can't add gallery items to an issue. Agent issue saves (service
+    and the MCP `save-magazine-issue` tool) may keep a `galleryItem` an editor
+    already placed, by sending it back with the same `galleryItemId`, or
+    remove it by leaving it out; a new one is refused with a plain message.
+    The MCP item union lists every registry kind, `galleryItem` included, so
+    keeping one is possible (a test pins the union to the registry's kinds).
+  - This slice deletes `COMMUNITY_GALLERY_ENABLED` and every gate on it
+    (done: the gallery is on for every community).
 
 ## Constraints
 
@@ -409,14 +447,16 @@ lets the member retry or drop them.
   Never Payload push against production.
 - `src/payload-types.ts` regenerated in the same change as each collection
   edit.
-- The flag `COMMUNITY_GALLERY_ENABLED` hides the tab, the event section and the
-  feed card until the last slice ships; then the flag is deleted.
+- The flag `COMMUNITY_GALLERY_ENABLED` hid the tab, the event section and the
+  feed card until the last slice shipped. Slice 4 deleted it: the gallery is on
+  for every community.
 
 ## Slices
 
 1. **Gallery core:** collection, migration, `gallery-rules`, storage, start/
    finish batch, quotas and allowance, cleanup, Gallery tab with wall, filters,
-   lightbox, upload dialog, owner edit/delete. Behind the flag.
+   lightbox, upload dialog, owner edit/delete. Behind the flag (removed in
+   slice 4).
 2. **Feed and events:** gallery-batch feed post with collage, event page
    section with "Add yours", removal of `Events.gallery`.
 3. **Reports and moderation:** `gallery-reports`, "This is me", hide/restore/

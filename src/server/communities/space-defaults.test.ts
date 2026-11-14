@@ -5,9 +5,7 @@ import fr from "../../../messages/fr.json";
 import nl from "../../../messages/nl.json";
 import {
   BUILTIN_SURFACES,
-  FALLBACK_NAV_SURFACES,
   OPTIONAL_BUILTIN_SURFACES,
-  ROLLOUT_GATED_SURFACES,
   buildDefaultSpaceRows,
   isDefaultBuiltinLabel,
   resolveSpaceLabel,
@@ -41,25 +39,12 @@ describe("buildDefaultSpaceRows", () => {
     }
   });
 
-  it("seeds the gallery row whatever the rollout flag says", () => {
+  it("seeds the gallery row after events", () => {
     expect(buildDefaultSpaceRows("comm-1")[2]).toMatchObject({
       builtinSurface: "gallery",
       slug: "gallery",
       position: 2,
     });
-  });
-});
-
-describe("ROLLOUT_GATED_SURFACES", () => {
-  it("gates the gallery, and the nav fallback leaves gated surfaces out", () => {
-    expect(ROLLOUT_GATED_SURFACES).toEqual(["gallery"]);
-    expect(FALLBACK_NAV_SURFACES).toEqual([
-      "forum",
-      "events",
-      "classroom",
-      "ideas",
-      "members",
-    ]);
   });
 });
 

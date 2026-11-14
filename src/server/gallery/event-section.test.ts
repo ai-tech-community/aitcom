@@ -41,7 +41,6 @@ vi.mock("./access", async (importOriginal) => ({
 const NOW = new Date("2026-11-13T12:00:00.000Z");
 
 beforeEach(() => {
-  vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
   standing.joinPolicy = "open";
   standing.membershipStatus = null;
   loadViewer.mockImplementation(
@@ -71,7 +70,6 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
-  vi.unstubAllEnvs();
   vi.clearAllMocks();
 });
 
@@ -342,16 +340,6 @@ describe("loadEventGallerySection", () => {
   });
 
   describe("no section", () => {
-    it("while the gallery is switched off, without reading anything", async () => {
-      vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
-      const { deps, payload } = fakes({ items: [item(1)] });
-      await expect(
-        loadEventGallerySection(deps, { event: event(), userId: "u2" }),
-      ).resolves.toBeNull();
-      expect(loadViewer).not.toHaveBeenCalled();
-      expect(payload.find).not.toHaveBeenCalled();
-    });
-
     it.each([
       ["a Hub event (no community)", { communityId: null }],
       ["a cancelled event", { status: "cancelled" }],

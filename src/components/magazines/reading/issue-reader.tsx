@@ -23,11 +23,6 @@ import {
 } from "./magazine-join-prompt";
 import { ReadTracker } from "./read-tracker";
 
-function NoItems() {
-  const t = useTranslations("magazines.issue");
-  return <p className="text-muted-foreground text-sm">{t("noItems")}</p>;
-}
-
 const NOTICE: Record<IssueStatus, "draftNotice" | "scheduledNotice" | null> = {
   draft: "draftNotice",
   scheduled: "scheduledNotice",
@@ -146,7 +141,6 @@ export function IssueReader({
           <div className="magazine-stories">
             <Layout items={items} href={href} teaser={teaser} />
           </div>
-          {items.length === 0 && <NoItems />}
         </article>
         <aside className="magazine-about">
           <IssueRail

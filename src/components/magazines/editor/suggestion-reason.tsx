@@ -34,6 +34,12 @@ export function SuggestionReasonText({ reason }: { reason: SuggestionReason }) {
       return t.rich("mostUpvotes", { count: reason.count, number });
     case "newMembers":
       return t.rich("newMembers", { count: reason.count, number });
+    case "galleryHighlight":
+      return t.rich("galleryHighlight", {
+        eventTitle: reason.eventTitle,
+        count: reason.count,
+        number,
+      });
     default: {
       const unreachable: never = reason;
       return unreachable;

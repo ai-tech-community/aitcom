@@ -8,6 +8,7 @@ import type {
   EventItemView,
   ForumThreadItemView,
   EditorialItemView,
+  GalleryItemItemView,
   NewsItemView,
   StorylineItemView,
   UnavailableItem,
@@ -195,6 +196,36 @@ export function launchpadProjectView(
       authorName: "Sanne",
       ...overrides,
     },
+  };
+}
+
+/**
+ * A gallery photo featured in an issue, with its per-request signed links
+ * (never stored) and its uploader's name as the server sends it.
+ */
+export function galleryItemView(
+  n = 1,
+  overrides: Partial<GalleryItemItemView> = {},
+): GalleryItemItemView {
+  return {
+    kind: "galleryItem",
+    itemId: `gallery-${n}`,
+    intro: null,
+    membersOnly: false,
+    galleryItemId: n,
+    mediaType: "photo",
+    url: `https://files.example.test/gallery/${n}.jpg?signature=a`,
+    thumbnailUrl: `https://files.example.test/gallery/${n}-thumb.jpg?signature=a`,
+    width: 1600,
+    height: 1200,
+    durationSeconds: null,
+    caption: `Caption ${n}`,
+    alt: `People building robots ${n}`,
+    label: { text: `Caption ${n}` },
+    event: { title: "Model night", slug: "model-night" },
+    uploader: { name: "Sanne" },
+    href: `/communities/local-builders/gallery?item=${n}`,
+    ...overrides,
   };
 }
 

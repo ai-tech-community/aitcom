@@ -9,6 +9,7 @@ import { articleSuggester } from "./article/suggest";
 import { welcomeSuggester } from "./editorial/suggest";
 import { eventSuggester } from "./event/suggest";
 import { forumThreadSuggester } from "./forumThread/suggest";
+import { galleryItemSuggester } from "./galleryItem/suggest";
 import { launchpadProjectSuggester } from "./launchpadProject/suggest";
 import { newsItemSuggester } from "./newsItem/suggest";
 import { referenceOfInput, type InputOf } from "./registry";
@@ -27,6 +28,7 @@ export const ITEM_SUGGESTERS: {
   storyline: storylineSuggester,
   newsItem: newsItemSuggester,
   event: eventSuggester,
+  galleryItems: galleryItemSuggester,
   forumThread: forumThreadSuggester,
   launchpadProject: launchpadProjectSuggester,
   welcome: welcomeSuggester,

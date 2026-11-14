@@ -13,6 +13,7 @@ import type { CandidateFact } from "@/lib/magazines/picker";
 import type { SuggestWindow } from "@/lib/magazines/auto-draft-schedule";
 import type { SuggestionReason } from "@/lib/magazines/suggestions";
 import type { MagazineIssue } from "@/payload-types";
+import type { ObjectStorageSource } from "@/server/media/object-storage";
 
 import type { Deps, PayloadClient } from "../deps";
 import type { MagazineCommunity } from "../magazine-service";
@@ -34,6 +35,12 @@ export type PickerSourceCandidate<Input> = {
   title: string;
   facts: CandidateFact[];
   openHref: string | null;
+  /**
+   * A small picture of the content, for kinds that are pictures (gallery
+   * items). Made per request after the editor's access was checked; never
+   * stored.
+   */
+  thumbnailUrl?: string;
 };
 
 /** A candidate with its content identity in `itemReference` form. */
@@ -47,6 +54,16 @@ export interface ItemPickerSource<Input> {
     ctx: PickerContext,
     exclude: readonly string[],
   ): Promise<PickerSourceCandidate<Input>[]>;
+  /**
+   * Adds what the picker shows but a suggestion must never carry (a
+   * gallery item's thumbnail: suggestions end up stored as auto-pick
+   * reasons). Runs per picker request, for this editor, on the suggested
+   * candidates; returns them in the same order, none added or removed.
+   */
+  decorate?<C extends PickerSourceCandidate<Input>>(
+    candidates: C[],
+    ctx: PickerContext,
+  ): Promise<C[]>;
 }
 
 /** viewerId is the acting person; editor links follow that person's rights. */
@@ -88,6 +105,8 @@ export type ItemContext = {
    */
   access: IssueReaderAccess;
   reader: ItemReader;
+  /** Object storage for file links; the app's storage when not given. */
+  storage?: ObjectStorageSource;
 };
 
 type IssueItemBlock = NonNullable<MagazineIssue["items"]>[number];

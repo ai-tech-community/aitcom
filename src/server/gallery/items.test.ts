@@ -18,6 +18,7 @@ import {
   deleteItem,
   getItem,
   galleryReadableWhere,
+  isGalleryReadable,
   listFacets,
   listItems,
   previewBatches,
@@ -92,7 +93,7 @@ function event(id: number, over: Doc = {}): Doc {
   };
 }
 
-const USERS = [
+const USERS: { id: string; name: string | null; image: string | null }[] = [
   { id: "u1", name: "Dana", image: "https://img.test/dana.png" },
   { id: "u2", name: "Ruben", image: null },
   { id: "u3", name: "Priya", image: null },
@@ -526,6 +527,17 @@ describe("listItems", () => {
     expect(view!.uploader).toBeNull();
   });
 
+  it("leaves an uploader without a name unnamed, for the reader's language to fill", async () => {
+    const { deps, db } = fakes({ items: [item(1, { uploaderId: "u1" })] });
+    db.select.mockImplementation(() => ({
+      from: () => ({
+        where: vi.fn(async () => [{ id: "u1", name: null, image: null }]),
+      }),
+    }));
+    const [view] = (await listItems(deps, { viewer: await member() })).items;
+    expect(view!.uploader).toEqual({ id: "u1", name: null, image: null });
+  });
+
   it("looks up only the uploaders who still have an account", async () => {
     const { deps, db } = fakes({
       items: [item(1), item(2, { uploaderId: DELETED_AUTHOR_ID })],
@@ -760,6 +772,51 @@ describe("galleryReadableWhere", () => {
       });
     }
   });
+});
+
+describe("isGalleryReadable", () => {
+  // Every state an item can be in that the read rule looks at.
+  const rows = [
+    item(1),
+    item(2, { visibility: "public" }),
+    item(3, { hiddenAt: ago(HOUR) }),
+    item(4, { visibility: "public", hiddenAt: ago(HOUR) }),
+    item(5, { status: "uploading" }),
+    item(6, { status: "failed", visibility: "public" }),
+    item(7, { communityId: "c2", visibility: "public" }),
+    item(8, { uploaderId: "u9" }),
+    item(9, { uploaderId: "u9", hiddenAt: ago(HOUR) }),
+    item(10, { uploaderId: "u9", status: "uploading" }),
+    item(11, { uploaderId: DELETED_AUTHOR_ID, visibility: "public" }),
+  ];
+
+  it.each([
+    [
+      "a signed-out visitor, members-only community",
+      () => outsider(null, false),
+    ],
+    ["a signed-out visitor", () => outsider(null, true)],
+    [
+      "a signed-in non-member, members-only community",
+      () => outsider("u9", false),
+    ],
+    ["a signed-in non-member", () => outsider("u9", true)],
+    ["a member", () => member("u2")],
+    ["a member who uploaded some", () => member("u9")],
+    ["a moderator", () => moderator()],
+  ])(
+    "decides every item exactly as galleryReadableWhere does: %s",
+    async (_label, who) => {
+      const viewer = await who();
+      const where = galleryReadableWhere(viewer) as Where;
+      for (const row of rows) {
+        expect(
+          isGalleryReadable(viewer, row as never),
+          `item ${String(row.id)}`,
+        ).toBe(matchesWhere(row, where));
+      }
+    },
+  );
 });
 
 describe("an uploader who left the community", () => {

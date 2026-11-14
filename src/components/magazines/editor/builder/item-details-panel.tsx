@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { renderBuilderItemEditor } from "./items/registry";
+import {
+  acceptsBuilderItemImage,
+  renderBuilderItemEditor,
+} from "./items/registry";
 import { ItemImageEditor } from "./item-image-editor";
 import type { BuilderItem } from "./items-model";
 
@@ -69,14 +72,16 @@ export function ItemDetailsPanel({
       {renderBuilderItemEditor(item, {
         onChange: (patch) => onChange(patch as Partial<BuilderItem>),
       })}
-      <ItemImageEditor
-        disabled={imageUploading}
-        key={item.key}
-        value={item.image ?? null}
-        sourceImageUrl={sourceImageUrl}
-        onChange={(image) => onChange({ image })}
-        onUploadingChange={onUploadingChange}
-      />
+      {acceptsBuilderItemImage(item) && (
+        <ItemImageEditor
+          disabled={imageUploading}
+          key={item.key}
+          value={item.image ?? null}
+          sourceImageUrl={sourceImageUrl}
+          onChange={(image) => onChange({ image })}
+          onUploadingChange={onUploadingChange}
+        />
+      )}
       <Button
         type="button"
         variant="outline"

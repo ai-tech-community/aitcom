@@ -7,6 +7,7 @@ import { forumThreadItemBlock } from "./forumThread/block";
 import { eventItemBlock } from "./event/block";
 import { newsItemBlock } from "./newsItem/block";
 import { launchpadProjectItemBlock } from "./launchpadProject/block";
+import { galleryItemItemBlock } from "./galleryItem/block";
 
 /**
  * The `items` blocks of the `magazine-issues` collection, one per item kind
@@ -22,4 +23,5 @@ export const ISSUE_ITEM_BLOCKS: Block[] = [
   eventItemBlock,
   forumThreadItemBlock,
   launchpadProjectItemBlock,
+  galleryItemItemBlock,
 ];

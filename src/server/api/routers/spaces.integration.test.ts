@@ -1,13 +1,5 @@
 // @vitest-environment node
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 // Type-only: erased at runtime, so the modules still load lazily (after the
 // RUN_DB gate) through the dynamic imports in each beforeAll.
@@ -149,9 +141,9 @@ describe.skipIf(!RUN_DB)("spaces router [DB integration]", () => {
   });
 });
 
-// ── Gallery rollout flag: every tab reader hides the gallery row ─────────────
+// ── Gallery tab: listed for every community ─────────────────────────────────
 
-describe.skipIf(!RUN_DB)("gallery tab behind its flag [DB integration]", () => {
+describe.skipIf(!RUN_DB)("gallery tab [DB integration]", () => {
   type Mods = {
     db: typeof Db;
     schema: typeof Schema;
@@ -210,7 +202,6 @@ describe.skipIf(!RUN_DB)("gallery tab behind its flag [DB integration]", () => {
   });
 
   afterEach(async () => {
-    vi.unstubAllEnvs();
     const { db, schema } = m;
     const { eq } = await import("drizzle-orm");
     await db
@@ -237,22 +228,7 @@ describe.skipIf(!RUN_DB)("gallery tab behind its flag [DB integration]", () => {
     });
   }
 
-  it("spaces.list omits the gallery row while the flag is off, keeping rooms", async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
-    const rows = await guest().spaces.list({ slug });
-    expect(rows.map((r) => r.slug)).not.toContain("gallery");
-    expect(rows.map((r) => r.builtinSurface)).toEqual([
-      "forum",
-      "events",
-      "classroom",
-      "ideas",
-      "members",
-      null,
-    ]);
-  });
-
-  it("spaces.list includes the gallery row once the flag is on", async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
+  it("spaces.list includes the gallery row for every community, before its rooms", async () => {
     const rows = await guest().spaces.list({ slug });
     expect(rows.map((r) => r.builtinSurface)).toEqual([
       "forum",
@@ -265,42 +241,30 @@ describe.skipIf(!RUN_DB)("gallery tab behind its flag [DB integration]", () => {
     ]);
   });
 
-  it("owner tab settings hide the gallery row while the flag is off", async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
-    const off = await owner().spaces.listForAdmin({ slug });
-    expect(off.map((r) => r.slug)).not.toContain("gallery");
-    expect(off).toHaveLength(6);
-
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
-    const on = await owner().spaces.listForAdmin({ slug });
-    expect(on.map((r) => r.slug)).toContain("gallery");
-    expect(on).toHaveLength(7);
+  it("owner tab settings list the gallery row", async () => {
+    const rows = await owner().spaces.listForAdmin({ slug });
+    expect(rows.map((r) => r.slug)).toContain("gallery");
+    expect(rows).toHaveLength(7);
   });
 
-  it("a reorder while the flag is off moves the hidden gallery row to the end", async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
-    const visible = await owner().spaces.listForAdmin({ slug });
-    expect(visible.map((r) => r.slug)).not.toContain("gallery");
-    // The Compose page sends every row it shows, in the new order.
-    const orderedIds = visible.map((r) => r.id).reverse();
+  it("a reorder that leaves a space out moves it to the end", async () => {
+    const all = await owner().spaces.listForAdmin({ slug });
+    const gallery = all.find((r) => r.builtinSurface === "gallery")!;
+    // A Compose page loaded before the row existed sends every other row.
+    const orderedIds = all
+      .filter((r) => r.id !== gallery.id)
+      .map((r) => r.id)
+      .reverse();
     await owner().spaces.reorder({ slug, orderedIds });
 
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
     const rows = await guest().spaces.list({ slug });
-    expect(rows.map((r) => r.id)).toEqual([
-      ...orderedIds,
-      rows.find((r) => r.builtinSurface === "gallery")!.id,
-    ]);
-    expect(rows.at(-1)!.builtinSurface).toBe("gallery");
+    expect(rows.map((r) => r.id)).toEqual([...orderedIds, gallery.id]);
     expect(new Set(rows.map((r) => r.position)).size).toBe(rows.length);
   });
 
-  it("listRooms never returns the gallery, flag on or off", async () => {
-    for (const flag of ["false", "true"]) {
-      vi.stubEnv("COMMUNITY_GALLERY_ENABLED", flag);
-      const rooms = await owner().spaces.listRooms({ slug });
-      expect(rooms.map((r) => r.name)).toEqual(["Lounge"]);
-    }
+  it("listRooms never returns the gallery", async () => {
+    const rooms = await owner().spaces.listRooms({ slug });
+    expect(rooms.map((r) => r.name)).toEqual(["Lounge"]);
   });
 });
 

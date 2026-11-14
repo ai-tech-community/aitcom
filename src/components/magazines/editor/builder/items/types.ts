@@ -3,6 +3,8 @@ import type { ComponentType } from "react";
 import type { EditorItemView, ItemKindId } from "@/lib/magazines/item-views";
 import type { IssueItemInput } from "@/server/magazines/items/registry";
 
+import type { TranslateMessage } from "../../../items/types";
+
 import type { BuilderItem } from "../items-model";
 
 /** One kind's item in the builder's working list. */
@@ -16,7 +18,11 @@ export type BuilderItemOf<K extends ItemKindId> = Extract<
  * label key by construction, so Tasks 4–8 need no edit here — each adds
  * `magazineEditor.builder.items.<kind>` in its copy step.
  */
-export type BuilderItemsMessage = ItemKindId | "editorialEmpty" | "openArticle";
+export type BuilderItemsMessage =
+  | ItemKindId
+  | "editorialEmpty"
+  | "openArticle"
+  | "openGalleryItem";
 
 /** What "Add more" knows about the content it just put in the issue. */
 export type AddedContent = {
@@ -39,6 +45,8 @@ export type BuilderRowContext = {
   /** A name given when the item was added (an article's title), if any. */
   titleHint: string | undefined;
   t: (key: BuilderItemsMessage) => string;
+  /** A root-level translator, for saved titles that are messages. */
+  translate: TranslateMessage;
 };
 
 /** What a kind's own editor gets. The details panel owns Done. */
@@ -61,6 +69,13 @@ export interface BuilderItemKind<K extends ItemKindId> {
   rowTitle(item: BuilderItemOf<K>, ctx: BuilderRowContext): string;
   /** An editor panel for content the issue owns; absent when it has none. */
   readonly Editor?: ComponentType<BuilderItemEditorProps<K>>;
+  /**
+   * Whether the editor may give the item an issue-owned image (the image
+   * editor in its details panel). Defaults to true; false for kinds whose
+   * content is the picture (a gallery item), which the server refuses an
+   * image for.
+   */
+  readonly acceptsImage?: boolean;
   /** Whether the server would accept the item as it is now. */
   isSavable(item: BuilderItemOf<K>): boolean;
   /**

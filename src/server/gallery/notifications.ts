@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 
+import { galleryItemPath } from "@/lib/gallery-rules";
 import type { db } from "@/server/db";
 import { communities, notifications } from "@/server/db/schema";
 import { communityModeratorIds } from "@/server/moderation/report-rules";
@@ -18,11 +19,6 @@ type Database = typeof db;
 
 export const GALLERY_ITEM_REPORTED_NOTIFICATION = "gallery_item_reported";
 export const GALLERY_ITEM_THIS_IS_ME_NOTIFICATION = "gallery_item_this_is_me";
-
-/** The item open in its community's gallery. */
-export function galleryItemPath(slug: string, itemId: number): string {
-  return `/communities/${slug}/gallery?item=${itemId}`;
-}
 
 type Notice = {
   type: string;

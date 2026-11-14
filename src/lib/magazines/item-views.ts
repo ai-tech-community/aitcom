@@ -4,6 +4,8 @@
  * server imports here: client code imports this module.
  */
 
+import type { GalleryItemLabel, GalleryMediaType } from "@/lib/gallery-rules";
+
 import type { ItemImage } from "./item-image";
 
 export type ItemImageMetadata = { image?: ItemImage };
@@ -112,6 +114,39 @@ export type LaunchpadProjectItemView = ItemImageMetadata & {
   };
 };
 
+/**
+ * A community gallery photo or video, read live for the current viewer
+ * through the gallery's own read rule. Its links are made per request after
+ * that check and are never stored. The item is the picture: `validate`
+ * refuses an issue-owned image on it, so `image` stays unset.
+ */
+export type GalleryItemItemView = ItemImageMetadata & {
+  kind: "galleryItem";
+  itemId: string;
+  intro: string | null;
+  /**
+   * Editors only: a signed-out visitor could not open the item (shared with
+   * members, or in a community outsiders cannot read).
+   */
+  membersOnly: boolean;
+  galleryItemId: number;
+  mediaType: GalleryMediaType;
+  url: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  durationSeconds: number | null;
+  caption: string | null;
+  alt: string | null;
+  /** Its accessible name (`galleryItemLabel`), for the UI to translate. */
+  label: GalleryItemLabel;
+  event: { title: string; slug: string } | null;
+  /** Who added it, in the issue's language ("Deleted member" once gone). */
+  uploader: { name: string };
+  /** The item open in its community's gallery (locale-less). */
+  href: string;
+};
+
 /** What a reader sees for one issue item, by kind. */
 export type IssueItemView =
   | ArticleItemView
@@ -120,7 +155,8 @@ export type IssueItemView =
   | NewsItemView
   | EventItemView
   | ForumThreadItemView
-  | LaunchpadProjectItemView;
+  | LaunchpadProjectItemView
+  | GalleryItemItemView;
 
 /** The item kinds; each has one strategy, one block and one renderer. */
 export type ItemKindId = IssueItemView["kind"];
@@ -139,7 +175,9 @@ export type UnavailableItem = {
     | "not_ready"
     | "other_magazine"
     | "unpublished"
-    | "no_access";
+    | "no_access"
+    /** Its owner took it back from the magazine, or it was hidden. */
+    | "withdrawn";
 };
 
 /** What an editor sees for one issue item. */

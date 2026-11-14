@@ -53,7 +53,6 @@ const REFUSALS: Record<GalleryUploadErrorCode, Refusal> = {
   EVENT_NOT_ALLOWED: SAME_SETTINGS,
   TOPIC_NOT_FOUND: SAME_SETTINGS,
   NOT_A_MEMBER: SAME_SETTINGS,
-  GALLERY_DISABLED: SAME_SETTINGS,
   NOT_ALLOWED: SAME_SETTINGS,
   PUBLIC_NOT_AVAILABLE: SAME_SETTINGS,
   // This batch is done for, but a new one may get through: its window

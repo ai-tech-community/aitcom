@@ -15,6 +15,12 @@
   outline: 2px solid var(--ring);
   outline-offset: 5px;
 }
+/* A gallery picture's ring is drawn inside it: outside, a card clips it and a
+   lead's sits loose around the photo. */
+.magazine-publication .gallery-picture-link:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: -3px;
+}
 .magazine-display {
   font-family: var(--magazine-display);
   font-weight: 400;
@@ -186,6 +192,10 @@
   padding-top: 1.5rem;
 }
 .magazine-stories [data-item-kind="editorial"] {
+  padding-inline: 0;
+}
+/* Without the card's border, a gallery card's text lines up with its picture. */
+.magazine-stories [data-item-kind="galleryItem"] .gallery-card-text {
   padding-inline: 0;
 }
 .magazine-stories .issue-lead {

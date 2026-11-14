@@ -65,6 +65,7 @@ vi.mock("@/i18n/navigation", () => ({
 import {
   articleView,
   editorialView,
+  galleryItemView,
   issuePage,
   unavailableView,
 } from "../test-fixtures";
@@ -551,5 +552,71 @@ describe("IssueReader", () => {
       screen.getByRole("link", { name: "Edit issue" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Draft — only editors can see this")).toBeNull();
+  });
+
+  describe("an issue with nothing this reader can open", () => {
+    it.each(["full", "teaser", "editor"] as const)(
+      "says there is nothing to read yet, without a zero count, for %s readers",
+      (access) => {
+        renderWithIntl(
+          <IssueReader
+            url="https://example.test/en/magazines/agents-weekly/issue-4"
+            data={issuePage({
+              access,
+              items: [],
+              issue: { editorNote: null },
+            })}
+            locale="en"
+          />,
+        );
+        const contents = screen.getByRole("navigation", { name: "Contents" });
+        // Inside the contents, so it never sits against the footer rule.
+        expect(
+          within(contents).getByText("Nothing to read in this issue yet."),
+        ).toBeVisible();
+        expect(within(contents).queryByRole("list")).toBeNull();
+        expect(screen.queryByText(/0 items/)).toBeNull();
+        expect(screen.queryByText(/min read/)).toBeNull();
+        expect(screen.queryByText(/no articles/i)).toBeNull();
+        expect(
+          screen.getAllByText("Nothing to read in this issue yet."),
+        ).toHaveLength(1);
+      },
+    );
+
+    it("still lists the editor's note and its reading time", () => {
+      renderWithIntl(
+        <IssueReader
+          url="https://example.test/en/magazines/agents-weekly/issue-4"
+          data={issuePage({ items: [] })}
+          locale="en"
+        />,
+      );
+      const contents = screen.getByRole("navigation", { name: "Contents" });
+      expect(
+        within(contents).getByRole("link", { name: /From the editor/ }),
+      ).toBeVisible();
+      expect(within(contents).getByText("8 min read")).toBeVisible();
+      expect(screen.queryByText(/0 items/)).toBeNull();
+      expect(
+        screen.queryByText("Nothing to read in this issue yet."),
+      ).toBeNull();
+    });
+  });
+
+  it("shows a gallery item's picture in the contents, never through the optimizer", () => {
+    const view = galleryItemView(1);
+    renderWithIntl(
+      <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
+        data={issuePage({ items: [view] })}
+        locale="en"
+      />,
+    );
+    const contents = screen.getByRole("navigation", { name: "Contents" });
+    const entry = within(contents).getByRole("link", { name: "Caption 1" });
+    const thumbnail = entry.querySelector("img");
+    expect(thumbnail).toHaveAttribute("src", view.thumbnailUrl);
+    expect(thumbnail).toHaveAttribute("alt", "");
   });
 });

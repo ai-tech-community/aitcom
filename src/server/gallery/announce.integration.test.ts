@@ -95,7 +95,6 @@ describe.skipIf(!RUN_DB)("gallery feed announcement [DB integration]", () => {
   });
 
   beforeEach(async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
     const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
     const userId = `it-gala-${suffix}`;
     const slug = `gala-${suffix}`;
@@ -115,7 +114,6 @@ describe.skipIf(!RUN_DB)("gallery feed announcement [DB integration]", () => {
   });
 
   afterEach(async () => {
-    vi.unstubAllEnvs();
     const payload = await m.getPayloadClient();
     await payload.delete({
       collection: "feed-posts",

@@ -59,7 +59,8 @@ export type GalleryItemView = {
    * Who added it. Null once they deleted their account (or their account
    * record is gone): the UI says "Deleted member", with no photo.
    */
-  uploader: { id: string; name: string; image: string | null } | null;
+  /** Null name: the account has none; null uploader: it was deleted. */
+  uploader: { id: string; name: string | null; image: string | null } | null;
   createdAt: string;
   isOwn: boolean;
   batchId: number;
@@ -96,9 +97,6 @@ export type GalleryUploadChoices = {
   publicReachesOutsiders: boolean;
 };
 
-/** What an uploader whose account has no name is called. */
-const UNNAMED_UPLOADER = "Member";
-
 /**
  * The items this viewer may see: ready items of the viewer's community, and
  * of those —
@@ -129,11 +127,36 @@ export function galleryReadableWhere(viewer: GalleryViewer): Where {
   return { and: [...base, { or: readable }] };
 }
 
+/** What the read rule looks at on an item. */
+export type ReadableItemFields = Pick<
+  GalleryItem,
+  "communityId" | "status" | "uploaderId" | "visibility" | "hiddenAt"
+>;
+
+/**
+ * `galleryReadableWhere` for an item already in memory: the same rule, for
+ * callers that read items by id for several viewers' purposes and decide per
+ * item without another query (a magazine issue's gallery items). Tests keep
+ * the two forms in step.
+ */
+export function isGalleryReadable(
+  viewer: GalleryViewer,
+  item: ReadableItemFields,
+): boolean {
+  if (item.communityId !== viewer.communityId) return false;
+  if (item.status !== "ready") return false;
+  if (viewer.isModerator) return true;
+  if (viewer.userId !== null && item.uploaderId === viewer.userId) return true;
+  if (item.hiddenAt != null) return false;
+  if (viewer.isMember) return true;
+  return viewer.canSeePublic && item.visibility === "public";
+}
+
 /**
  * Uploader names and photos for a set of user ids, in one query. The id a
  * deleted account leaves behind is no user, so it is not looked up.
  */
-async function loadUploaders(
+export async function loadUploaders(
   deps: Pick<GalleryDeps, "db">,
   userIds: readonly string[],
 ): Promise<Map<string, { name: string | null; image: string | null }>> {
@@ -211,7 +234,9 @@ async function toViews(
         uploader: uploader
           ? {
               id: item.uploaderId,
-              name: uploader.name ?? UNNAMED_UPLOADER,
+              // No name on the account: the page says "Member" in the
+              // reader's language (`gallery.unnamedMember`).
+              name: uploader.name,
               image: uploader.image,
             }
           : null,

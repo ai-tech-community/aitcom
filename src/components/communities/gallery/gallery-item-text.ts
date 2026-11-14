@@ -3,16 +3,22 @@
 import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 
-import { galleryItemLabel } from "@/lib/gallery-rules";
+import { galleryItemLabel, galleryItemLabelText } from "@/lib/gallery-rules";
 import type { GalleryItemView } from "@/server/gallery/items";
 
 /**
- * The name an item's uploader is shown by: theirs, or "Deleted member" once
- * they deleted their account.
+ * The name an item's uploader is shown by: theirs, "Member" when their
+ * account has no name, or "Deleted member" once they deleted their account.
  */
 export function useGalleryUploaderName(): (item: GalleryItemView) => string {
   const t = useTranslations("gallery");
-  return useCallback((item) => item.uploader?.name ?? t("deletedMember"), [t]);
+  return useCallback(
+    (item) =>
+      item.uploader
+        ? (item.uploader.name ?? t("unnamedMember"))
+        : t("deletedMember"),
+    [t],
+  );
 }
 
 /**
@@ -33,7 +39,7 @@ export function useGalleryItemLabel(): (item: GalleryItemView) => string {
         eventTitle: item.event?.title,
         uploaderName: uploaderName(item),
       });
-      return "text" in label ? label.text : t(label.key, label.values);
+      return galleryItemLabelText(label, t);
     },
     [t, uploaderName],
   );

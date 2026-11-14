@@ -18,6 +18,7 @@ import type { Event, Magazine } from "@/payload-types";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import type * as Schema from "@/server/db/schema";
 import type { Deps } from "@/server/magazines/deps";
+import { testObjectStorage } from "@/test/test-object-storage";
 
 export function isLocalDbConfigured(): boolean {
   if (process.env.RUN_DB_TESTS !== "1") return false;
@@ -69,6 +70,7 @@ export function drafterFixture() {
     threadIds: number[];
     projectIds: number[];
     newsIds: string[];
+    galleryBatchId: number | null;
   };
 
   beforeAll(async () => {
@@ -113,6 +115,7 @@ export function drafterFixture() {
       runs,
       picks,
       jobs,
+      storage: () => testObjectStorage,
     };
   }, 120_000);
 
@@ -153,6 +156,7 @@ export function drafterFixture() {
       threadIds: [],
       projectIds: [],
       newsIds: [],
+      galleryBatchId: null,
     };
     const made = await makeMagazine(suffix);
     fx.community = made.community;
@@ -200,6 +204,11 @@ export function drafterFixture() {
       collection: "magazines",
       where: { id: { in: fx.magazineIds } },
     });
+    for (const collection of ["gallery-items", "gallery-batches"] as const)
+      await payload.delete({
+        collection,
+        where: { communityId: { in: fx.communityIds } },
+      });
     if (fx.eventIds.length)
       await payload.delete({
         collection: "events",
@@ -355,6 +364,48 @@ export function drafterFixture() {
     fx.eventIds.push(Number(doc.id));
     return Number(doc.id);
   }
+  /** A ready, consented member photo of `eventId`, `daysAgo` before now. */
+  async function galleryItem(eventId: number, daysAgo = 1) {
+    fx.galleryBatchId ??= (
+      await m.payload.create({
+        collection: "gallery-batches",
+        data: {
+          communityId: fx.community.id,
+          uploaderId: fx.memberId,
+          visibility: "community",
+          magazineConsent: true,
+          plannedFiles: 20,
+          plannedVideos: 0,
+          status: "finished",
+        },
+      })
+    ).id;
+    const uploadId = `draft-${fx.suffix}-${crypto.randomUUID()}`;
+    const doc = await m.payload.create({
+      collection: "gallery-items",
+      data: {
+        communityId: fx.community.id,
+        event: eventId,
+        mediaType: "photo",
+        status: "ready",
+        storage: "private",
+        visibility: "community",
+        fileKey: `private/gallery/${fx.community.id}/${uploadId}.jpg`,
+        thumbnailKey: `private/gallery/${fx.community.id}/${uploadId}-thumb.jpg`,
+        width: 800,
+        height: 600,
+        bytes: 100_000,
+        uploaderId: fx.memberId,
+        batch: fx.galleryBatchId,
+        uploadId,
+        magazineConsent: true,
+      },
+    });
+    await m.db.execute(
+      sql`update "public"."gallery_items" set "created_at" = ${at(-60 * 24 * daysAgo)} where "id" = ${doc.id}`,
+    );
+    return Number(doc.id);
+  }
   async function clearContent() {
     await m.payload.delete({
       collection: "articles",
@@ -416,6 +467,7 @@ export function drafterFixture() {
     article,
     thread,
     event,
+    galleryItem,
     clearContent,
     issues,
     notices,

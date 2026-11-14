@@ -5,7 +5,6 @@ import { notifications } from "@/server/db/schema";
 import {
   GALLERY_ITEM_REPORTED_NOTIFICATION,
   GALLERY_ITEM_THIS_IS_ME_NOTIFICATION,
-  galleryItemPath,
   galleryReportNotices,
   notifyGalleryItemReported,
   notifyUploaderThisIsMe,
@@ -44,14 +43,6 @@ function fakeDb(
   };
   return { db: db as never, raw: db, inserted, tables };
 }
-
-describe("galleryItemPath", () => {
-  it("opens the item in its community's gallery", () => {
-    expect(galleryItemPath("town", 42)).toBe(
-      "/communities/town/gallery?item=42",
-    );
-  });
-});
 
 describe("notifyGalleryItemReported", () => {
   it("tells each moderator once, with a link to review the item", async () => {

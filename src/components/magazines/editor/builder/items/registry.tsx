@@ -8,6 +8,7 @@ import { storylineBuilderKind } from "./storyline";
 import { forumThreadBuilderKind } from "./forum-thread";
 import { launchpadProjectBuilderKind } from "./launchpad-project";
 import { eventBuilderKind } from "./event";
+import { galleryItemBuilderKind } from "./gallery-item";
 import { newsItemBuilderKind } from "./news-item";
 import { articleBuilderKind } from "./article";
 import { editorialBuilderKind } from "./editorial";
@@ -35,6 +36,7 @@ export const BUILDER_ITEM_KINDS: { [K in ItemKindId]: BuilderItemKind<K> } = {
   event: eventBuilderKind,
   forumThread: forumThreadBuilderKind,
   launchpadProject: launchpadProjectBuilderKind,
+  galleryItem: galleryItemBuilderKind,
 };
 
 /**
@@ -46,6 +48,7 @@ export const ADD_TAB_ORDER: readonly ItemKindId[] = [
   "storyline",
   "newsItem",
   "event",
+  "galleryItem",
   "forumThread",
   "launchpadProject",
   "editorial",
@@ -84,7 +87,15 @@ export function builderPreviewView<K extends ItemKindId>(
 ): EditorItemView | null {
   const view = kindOf(item).previewView(item, saved);
   if (!view || "unavailable" in view) return view;
+  if (!acceptsBuilderItemImage(item)) return view;
   return { ...view, image: readItemImage(item.image) ?? undefined };
+}
+
+/** Whether the item may carry an issue-owned image (its image editor). */
+export function acceptsBuilderItemImage<K extends ItemKindId>(
+  item: BuilderItemOf<K>,
+): boolean {
+  return kindOf(item).acceptsImage ?? true;
 }
 
 /** The content the item references (at most once per issue), or null. */

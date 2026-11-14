@@ -46,7 +46,6 @@ import {
 import { nowOf, type GalleryDeps } from "./deps";
 import { galleryError } from "./errors";
 import { releaseEmptyGalleryPost } from "./feed-post-link";
-import { galleryEnabled } from "./flag";
 import { removeItemFiles } from "./item-files";
 import { relationId } from "./relation-id";
 
@@ -117,11 +116,6 @@ const DAILY_LIMIT: Record<GalleryMediaType, number> = {
 
 function isWholeNumber(value: unknown, min: number): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= min;
-}
-
-/** Nobody may start uploading while the gallery is switched off. */
-function assertGalleryEnabled(): void {
-  if (!galleryEnabled()) throw galleryError("GALLERY_DISABLED");
 }
 
 /** Gallery items of this type the user started in the last 24 hours, any status. */
@@ -205,7 +199,6 @@ export async function startBatch(
     plannedVideos: number;
   },
 ): Promise<{ batchId: number }> {
-  assertGalleryEnabled();
   const viewer = await loadGalleryViewer(deps, {
     slug: input.slug,
     userId: input.userId,
@@ -379,7 +372,6 @@ export async function startItem(
   file: PresignedUpload;
   thumbnail: PresignedUpload;
 }> {
-  assertGalleryEnabled();
   const now = nowOf(deps);
   const batch = await requireOpenOwnBatch(deps, input, now);
   const viewer = await loadGalleryViewerById(deps, {

@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
+import nl from "../../../../messages/nl.json";
 import { GalleryTile } from "./gallery-tile";
 import { galleryItem } from "./gallery-test-fixtures";
 
@@ -55,6 +56,23 @@ describe("GalleryTile", () => {
     expect(
       screen.getByRole("button", { name: "Video by Ana Lopez" }),
     ).toBeVisible();
+  });
+
+  it("calls an uploader without a name a member, in the viewer's language", () => {
+    const item = galleryItem({
+      uploader: { id: "u-x", name: null, image: null },
+    });
+    renderTile(item);
+    expect(
+      screen.getByRole("button", { name: "Photo by Member" }),
+    ).toBeVisible();
+    cleanup();
+    render(
+      <NextIntlClientProvider locale="nl" messages={nl}>
+        <GalleryTile item={item} showEvent onOpen={vi.fn()} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByRole("button", { name: "Foto door Lid" })).toBeVisible();
   });
 
   it("names a deleted member as the uploader", () => {

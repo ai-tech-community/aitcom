@@ -205,7 +205,7 @@ describe("loadActivityStream across communities", () => {
   });
 
   it("leaves out a gallery post with no words that shows the viewer nothing", async () => {
-    // The gallery is switched off in tests, so no batch shows anything.
+    // The fake reads hold no gallery items, so no batch shows anything.
     const at = "2026-09-23T12:00:00.000Z";
     const post = (id: number, content: string) => ({
       id,

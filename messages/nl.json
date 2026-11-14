@@ -5306,7 +5306,7 @@
       "readingTime": "{minutes} min lezen",
       "draftNotice": "Concept — alleen redacteuren zien dit",
       "editIssue": "Nummer bewerken",
-      "noItems": "Dit nummer heeft nog geen artikelen.",
+      "noItems": "Er is nog niets te lezen in dit nummer.",
       "published": "Verschenen op {date}",
       "signature": "— {name}, redacteur",
       "contentsCount": "{count, plural, one {# onderdeel} other {# onderdelen}}",
@@ -5324,7 +5324,8 @@
         "not_ready": "Lezers kunnen dit onderdeel nog niet zien.",
         "other_magazine": "Dit artikel hoort bij een ander magazine. Haal het uit het nummer.",
         "unpublished": "Dit is offline gehaald. Lezers slaan het over tot het weer online staat.",
-        "no_access": "Dit is alleen voor de community. Alleen mensen met toegang zien het."
+        "no_access": "Dit is alleen voor de community. Alleen mensen met toegang zien het.",
+        "withdrawn": "Wie dit heeft toegevoegd, deelt het niet meer met het magazine, of het is verborgen. Lezers zien het niet."
       },
       "editorsOnly": "Alleen redacteuren zien dit.",
       "storylineKind": "Uit AIT News",
@@ -5342,7 +5343,12 @@
       "projectKind": "Launchpad-project",
       "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
       "articleKind": "Artikel",
-      "editorialKind": "Van de redactie"
+      "editorialKind": "Van de redactie",
+      "galleryKind": "Uit de galerij",
+      "galleryCredit": "{mediaType, select, video {Video door {name}} other {Foto door {name}}}",
+      "galleryEvent": "Van <link>{event}</link>",
+      "galleryVideo": "Video",
+      "membersOnly": "Alleen leden zien dit"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
@@ -5441,6 +5447,7 @@
         "storyline": "Verhalen uit AIT Nieuws",
         "newsItem": "Koppen uit AIT Nieuws",
         "event": "Evenementen van de community",
+        "galleryItems": "Hoogtepunten uit de galerij",
         "forumThread": "Forumgesprekken",
         "launchpadProject": "Launchpad-projecten",
         "welcome": "Nieuwe leden welkom heten"
@@ -5516,6 +5523,7 @@
         "article": "Goedgekeurde artikelen die het langst wachten eerst",
         "storyline": "Verhalen over je onderwerpen, nieuwste updates eerst",
         "event": "Komende evenementen eerst op datum, daarna afgelopen evenementen met de meeste deelnemers",
+        "galleryItems": "Nieuwste door leden vrijgegeven foto of video van elk afgelopen evenement, drukste evenementen eerst",
         "forumThread": "Meeste reacties, daarna meeste weergaven",
         "launchpadProject": "Meeste stemmen",
         "newsItem": "Koppen over je onderwerpen, nieuwste eerst",
@@ -5730,7 +5738,8 @@
         "eventRecap": "Vond plaats op <number>{date}</number>, {going, plural, one {<number>#</number> deelnemer} other {<number>#</number> deelnemers}}",
         "mostReplies": "Meest besproken: {count, plural, one {<number>#</number> reactie} other {<number>#</number> reacties}}",
         "mostUpvotes": "Meeste stemmen: {count, plural, one {<number>#</number> stem} other {<number>#</number> stemmen}}",
-        "newMembers": "{count, plural, one {<number>#</number> nieuw lid erbij} other {<number>#</number> nieuwe leden erbij}}"
+        "newMembers": "{count, plural, one {<number>#</number> nieuw lid erbij} other {<number>#</number> nieuwe leden erbij}}",
+        "galleryHighlight": "Van {eventTitle}: {count, plural, one {<number>#</number> foto of video} other {<number>#</number> foto’s en video’s}} om uit te kiezen"
       },
       "autoDraft": {
         "label": "Automatisch gemaakt",
@@ -5819,6 +5828,7 @@
         "actions": "Acties voor {title}",
         "edit": "Bewerken",
         "openArticle": "Artikel openen",
+        "openGalleryItem": "Openen in de galerij",
         "opensInNewTab": "(opent in een nieuw tabblad)",
         "moveUp": "Omhoog",
         "moveDown": "Omlaag",
@@ -5838,7 +5848,8 @@
         "event": "Evenement",
         "membersOnly": "Alleen leden zien dit",
         "forumThread": "Forumgesprek",
-        "launchpadProject": "Project"
+        "launchpadProject": "Project",
+        "galleryItem": "Foto of video"
       },
       "editorial": {
         "heading": "Kop (optioneel)",
@@ -5856,7 +5867,8 @@
           "newsItem": "Nieuws",
           "event": "Evenementen",
           "forumThread": "Forum",
-          "launchpadProject": "Projecten"
+          "launchpadProject": "Projecten",
+          "galleryItem": "Galerij"
         },
         "search": {
           "article": "Zoek artikelen die klaar zijn",
@@ -5864,7 +5876,8 @@
           "newsItem": "Zoek nieuwsberichten",
           "event": "Zoek evenementen van je community",
           "forumThread": "Zoek in het forum van je community",
-          "launchpadProject": "Zoek projecten van je leden"
+          "launchpadProject": "Zoek projecten van je leden",
+          "galleryItem": "Zoek in de galerij van je community"
         },
         "empty": {
           "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
@@ -5872,7 +5885,8 @@
           "newsItem": "Geen nieuwsberichten gevonden.",
           "event": "Je community heeft nog geen evenementen.",
           "forumThread": "Geen gesprekken gevonden.",
-          "launchpadProject": "Geen projecten gevonden."
+          "launchpadProject": "Geen projecten gevonden.",
+          "galleryItem": "Nog geen foto's of video's om te kiezen. Leden kiezen bij het toevoegen of het magazine ze mag gebruiken."
         },
         "hint": {
           "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier.",
@@ -5880,7 +5894,8 @@
           "newsItem": "Nieuwsberichten linken naar het oorspronkelijke artikel.",
           "event": "Evenementen van je community. Lezers zien altijd de laatste informatie.",
           "forumThread": "Gesprekken gaan door: lezers zien ook nieuwe reacties.",
-          "launchpadProject": "Projecten van je community of van haar leden."
+          "launchpadProject": "Projecten van je community of van haar leden.",
+          "galleryItem": "Alleen foto's en video's waarvan de eigenaar zei dat het magazine ze mag gebruiken. Bedenkt iemand zich, dan verdwijnt het uit het nummer."
         },
         "noMatch": "Niets gevonden voor “{query}”.",
         "add": "Toevoegen",
@@ -5894,12 +5909,15 @@
           "updated": "Bijgewerkt op {date}",
           "published": "{date}",
           "starts": "{date}",
+          "added": "Toegevoegd op {date}",
           "lastActive": "Laatste reactie {date}",
           "sources": "{count, plural, one {# bron} other {# bronnen}}",
           "replies": "{count, plural, one {# reactie} other {# reacties}}",
           "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
           "cancelled": "Geannuleerd",
-          "completed": "Afgelopen"
+          "completed": "Afgelopen",
+          "photo": "Foto",
+          "video": "Video"
         },
         "results": "{count, plural, one {# resultaat} other {# resultaten}}"
       },
@@ -6448,6 +6466,7 @@
   },
   "gallery": {
     "deletedMember": "Verwijderd lid",
+    "unnamedMember": "Lid",
     "label": {
       "photoFromEvent": "Foto van {event} door {name}",
       "photoBy": "Foto door {name}",
@@ -6631,7 +6650,6 @@
     },
     "errors": {
       "NOT_ALLOWED": "Je kunt deze foto of video niet wijzigen.",
-      "GALLERY_DISABLED": "De galerij staat nu uit.",
       "NOT_FOUND": "Deze foto of video is er niet meer.",
       "deleteFailed": "Verwijderen is niet gelukt. Probeer het opnieuw.",
       "loadFailed": "Deze foto of video kon niet worden geopend. Probeer het opnieuw.",
