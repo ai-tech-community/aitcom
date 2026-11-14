@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
 import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
-import { getAvatarUrl } from "@/lib/avatar";
 import { MemberDashboardFrame } from "@/components/dashboard/member-dashboard-frame";
 import { DashboardSidePanel } from "@/components/dashboard/side-panel/dashboard-side-panel";
 
@@ -31,10 +30,7 @@ export default async function MemberDashboardLayout({
           aria-label={t("sidePanelLabel")}
           className="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:thin]"
         >
-          <DashboardSidePanel
-            fallbackName={name}
-            avatarUrl={getAvatarUrl(user.email, user.image)}
-          />
+          <DashboardSidePanel fallbackName={name} />
         </aside>
       </div>
     </MemberDashboardFrame>

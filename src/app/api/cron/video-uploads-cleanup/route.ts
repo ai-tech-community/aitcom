@@ -7,6 +7,7 @@ import { cleanupAbandonedUploads } from "@/server/communities/video-uploads-clea
 import { db } from "@/server/db";
 import { cleanupAbandonedGalleryUploads } from "@/server/gallery/cleanup";
 import { sweepUnusedGalleryFiles } from "@/server/gallery/unused-files-sweep";
+import { sweepUnusedProfilePhotos } from "@/server/members/unused-profile-photos-sweep";
 import { getObjectStorage } from "@/server/media/object-storage";
 import { ownsStorageContents } from "@/server/media/storage-ownership";
 import { getVideoStorage } from "@/server/media/video-storage";
@@ -40,8 +41,8 @@ async function runSweep<T extends SweepResult>(
  * file uploads and gallery uploads (closing gallery batches left open and
  * announcing them in the feed, and deleting empty ones) — and then the
  * Reels video files no live post or open grant points at any more, the feed
- * post images no post links, and the gallery files no gallery item points
- * at. Protected by CRON_SECRET
+ * post images no post links, the profile photos no member shows, and the
+ * gallery files no gallery item points at. Protected by CRON_SECRET
  * header. The path keeps its old name so the Vercel cron schedule is
  * unchanged.
  *
@@ -49,9 +50,10 @@ async function runSweep<T extends SweepResult>(
  * response keeps the video counts at the top level (as before), the
  * classroom counts under `materials`, the gallery counts under `gallery`,
  * the unused video files under `unusedVideoFiles`, the unused feed images
- * under `unusedFeedImages` and the unused gallery files under
+ * under `unusedFeedImages`, the unused profile photos under
+ * `unusedProfilePhotos` and the unused gallery files under
  * `unusedGalleryFiles`; a sweep that threw reports null and makes the run
- * answer 500 so the cron shows as failed. The three unused-file sweeps run
+ * answer 500 so the cron shows as failed. The four unused-file sweeps run
  * in production only (see `ownsStorageContents`) and report themselves
  * skipped elsewhere.
  */
@@ -91,6 +93,12 @@ export async function GET(request: Request) {
         sweepUnusedFeedImages({ payload }),
       )
     : NOT_PRODUCTION;
+  // Same reason: profile photos are media files in the shared bucket.
+  const unusedProfilePhotos = ownsStorage
+    ? await runSweep("unused profile photos", () =>
+        sweepUnusedProfilePhotos({ db, payload }),
+      )
+    : NOT_PRODUCTION;
   const unusedGalleryFiles = ownsStorage
     ? await runSweep<UnusedSweepResult>("unused gallery files", () =>
         sweepUnusedGalleryFiles({ payload, storage: getObjectStorage }),
@@ -102,6 +110,7 @@ export async function GET(request: Request) {
     gallery !== null &&
     unusedVideoFiles !== null &&
     unusedFeedImages !== null &&
+    unusedProfilePhotos !== null &&
     unusedGalleryFiles !== null;
 
   return NextResponse.json(
@@ -113,6 +122,7 @@ export async function GET(request: Request) {
       gallery,
       unusedVideoFiles,
       unusedFeedImages,
+      unusedProfilePhotos,
       unusedGalleryFiles,
       timestamp: new Date().toISOString(),
     },

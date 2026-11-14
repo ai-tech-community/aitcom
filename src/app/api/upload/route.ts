@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getPayloadClient } from "@/server/payload";
 import { auth } from "@/server/better-auth";
-import { MAX_IMAGE_BYTES, isMediaPurpose } from "@/lib/image-uploads";
+import { MAX_IMAGE_BYTES, isUploadRoutePurpose } from "@/lib/image-uploads";
 
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   // What the image is for. A purpose makes it the uploader's, for one use
   // only (a feed post image); without one it may be shared (a cover).
   const purpose = formData.get("purpose");
-  if (purpose !== null && !isMediaPurpose(purpose)) {
+  if (purpose !== null && !isUploadRoutePurpose(purpose)) {
     return NextResponse.json({ error: "Unknown purpose" }, { status: 400 });
   }
   // A feed post picture's description is written by its author later;

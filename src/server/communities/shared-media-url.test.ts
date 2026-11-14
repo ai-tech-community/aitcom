@@ -73,4 +73,21 @@ describe("sharedMediaUrl", () => {
       ),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("refuses the owner's profile photo: it is deleted when they change it", async () => {
+    await expect(
+      sharedMediaUrl(
+        payload({
+          url: "https://cdn.example.test/avatar.png",
+          uploadedBy: "owner-1",
+          purpose: "avatar",
+        }) as never,
+        4,
+        "owner-1",
+      ),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "That image is a profile photo",
+    });
+  });
 });

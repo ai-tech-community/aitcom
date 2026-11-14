@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const deleteMemberAccount = vi.fn();
+const photos = vi.hoisted(() => ({
+  removeProfilePhoto: vi.fn(),
+}));
+vi.mock("@/server/members/profile-photo", () => photos);
 
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
@@ -52,6 +56,8 @@ function caller(userId: string | null) {
 beforeEach(() => {
   deleteMemberAccount.mockReset();
   deleteMemberAccount.mockResolvedValue(undefined);
+  photos.removeProfilePhoto.mockReset();
+  photos.removeProfilePhoto.mockResolvedValue(undefined);
 });
 
 describe("members.deleteAccount", () => {
@@ -87,5 +93,57 @@ describe("members.deleteAccount", () => {
 
     expect(deleteMemberAccount).toHaveBeenCalledTimes(1);
     expect(deleteMemberAccount).toHaveBeenCalledWith(fakeDb, "user-a");
+  });
+});
+
+describe("members.deleteAccount profile photos", () => {
+  it("deletes the member's uploaded photos after the account", async () => {
+    await caller("user-a").members.deleteAccount({ confirmation: "DELETE" });
+
+    expect(photos.removeProfilePhoto).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-a",
+    );
+    expect(deleteMemberAccount.mock.invocationCallOrder[0]!).toBeLessThan(
+      photos.removeProfilePhoto.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("keeps photos when the account deletion fails", async () => {
+    deleteMemberAccount.mockRejectedValue(new Error("db down"));
+    await expect(
+      caller("user-a").members.deleteAccount({ confirmation: "DELETE" }),
+    ).rejects.toThrow();
+    expect(photos.removeProfilePhoto).not.toHaveBeenCalled();
+  });
+
+  it("still reports the account deleted when a photo cannot be deleted", async () => {
+    photos.removeProfilePhoto.mockRejectedValue(new Error("s3 down"));
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    await expect(
+      caller("user-a").members.deleteAccount({ confirmation: "DELETE" }),
+    ).resolves.toEqual({ deleted: true });
+    error.mockRestore();
+  });
+});
+
+describe("members.removeProfilePhoto", () => {
+  it("rejects a signed-out caller", async () => {
+    await expect(
+      caller(null).members.removeProfilePhoto(),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(photos.removeProfilePhoto).not.toHaveBeenCalled();
+  });
+
+  it("removes only the signed-in member's photo", async () => {
+    await expect(
+      caller("user-a").members.removeProfilePhoto(),
+    ).resolves.toEqual({ image: null });
+    expect(photos.removeProfilePhoto).toHaveBeenCalledWith(
+      expect.objectContaining({ db: fakeDb }),
+      "user-a",
+    );
   });
 });

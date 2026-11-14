@@ -6,6 +6,7 @@ const m = vi.hoisted(() => ({
   materials: vi.fn(),
   unused: vi.fn(),
   images: vi.fn(),
+  photos: vi.fn(),
   gallery: vi.fn(),
   unusedGallery: vi.fn(),
   ownsStorage: vi.fn(),
@@ -23,6 +24,9 @@ vi.mock("@/server/media/storage-ownership", () => ({
 }));
 vi.mock("@/server/communities/unused-feed-images-sweep", () => ({
   sweepUnusedFeedImages: m.images,
+}));
+vi.mock("@/server/members/unused-profile-photos-sweep", () => ({
+  sweepUnusedProfilePhotos: m.photos,
 }));
 vi.mock("@/server/communities/unused-video-files-sweep", () => ({
   sweepUnusedVideoFiles: m.unused,
@@ -60,6 +64,7 @@ beforeEach(() => {
   m.materials.mockResolvedValue({ removed: 2, failed: 1 });
   m.unused.mockResolvedValue({ scanned: 9, removed: 3, failed: 0 });
   m.images.mockResolvedValue({ removed: 4, failed: 0 });
+  m.photos.mockResolvedValue({ removed: 6, failed: 0 });
   m.gallery.mockResolvedValue({
     removed: 5,
     failed: 0,
@@ -249,11 +254,13 @@ describe("video-uploads-cleanup cron", () => {
       success: true,
       unusedVideoFiles: { skipped: "not production" },
       unusedFeedImages: { skipped: "not production" },
+      unusedProfilePhotos: { skipped: "not production" },
       unusedGalleryFiles: { skipped: "not production" },
       gallery: { removed: 5, failed: 0, batchesClosed: 2, batchesDeleted: 1 },
     });
     expect(m.unused).not.toHaveBeenCalled();
     expect(m.images).not.toHaveBeenCalled();
+    expect(m.photos).not.toHaveBeenCalled();
     expect(m.unusedGallery).not.toHaveBeenCalled();
     expect(m.videos).toHaveBeenCalledTimes(1);
     expect(m.gallery).toHaveBeenCalledTimes(1);
@@ -273,6 +280,35 @@ describe("video-uploads-cleanup cron", () => {
     });
     expect(error).toHaveBeenCalledWith(
       "[video-uploads-cleanup] unused feed images sweep failed",
+      expect.any(Error),
+    );
+    error.mockRestore();
+  });
+
+  it("sweeps the profile photos no member shows", async () => {
+    const res = await GET(authorized());
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      success: true,
+      unusedProfilePhotos: { removed: 6, failed: 0 },
+    });
+    expect(m.photos).toHaveBeenCalledWith({ db: m.db, payload: m.payload });
+  });
+
+  it("reports a failed profile photo sweep without losing the other results", async () => {
+    m.photos.mockRejectedValue(new Error("db down"));
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const res = await GET(authorized());
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toMatchObject({
+      success: false,
+      unusedFeedImages: { removed: 4, failed: 0 },
+      unusedProfilePhotos: null,
+    });
+    expect(error).toHaveBeenCalledWith(
+      "[video-uploads-cleanup] unused profile photos sweep failed",
       expect.any(Error),
     );
     error.mockRestore();

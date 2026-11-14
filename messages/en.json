@@ -1158,7 +1158,25 @@
       "contributions": "{count, plural, one {# contribution} other {# contributions}}"
     },
     "profile": {
-      "title": "Profile"
+      "title": "Profile",
+      "photo": {
+        "label": "Profile photo",
+        "hint": "JPG, PNG, WebP, or GIF. People see it on your profile, posts, and messages.",
+        "choose": "Choose a profile photo",
+        "upload": "Upload photo",
+        "change": "Change photo",
+        "uploading": "Uploading…",
+        "remove": "Remove",
+        "saved": "Profile photo updated",
+        "removed": "Profile photo removed",
+        "errorType": "Use a JPG, PNG, WebP, or GIF picture.",
+        "errorSize": "That picture is too large. Use one under 2 MB.",
+        "error": "Could not update your photo. Try again.",
+        "removeTitle": "Remove your profile photo?",
+        "removeDescription": "People will see your initials or your Gravatar instead. A photo from GitHub, Google, or LinkedIn does not come back when you sign in again. You can upload a new one any time.",
+        "removeConfirm": "Remove photo",
+        "cancel": "Cancel"
+      }
     },
     "deleteAccount": {
       "title": "Delete account",

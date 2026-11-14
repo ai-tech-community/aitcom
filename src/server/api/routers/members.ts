@@ -66,6 +66,7 @@ import {
   type ProfileWork,
 } from "@/server/members/profile-work";
 import { memberActiveDays } from "@/server/members/active-days";
+import { removeProfilePhoto } from "@/server/members/profile-photo";
 import { routing } from "@/i18n/routing";
 import {
   AccountNotFoundError,
@@ -131,8 +132,13 @@ export const membersRouter = createTRPCRouter({
       .where(and(eq(memberBadges.userId, userId), displayableBadgeRows()))
       .orderBy(desc(memberBadges.earnedAt), memberBadges.badgeSlug);
 
-    const [names] = await ctx.db
-      .select({ firstName: user.firstName, lastName: user.lastName })
+    const [me] = await ctx.db
+      .select({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        image: user.image,
+      })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1);
@@ -163,8 +169,15 @@ export const membersRouter = createTRPCRouter({
     return {
       profile: profile ?? null,
       names: {
-        firstName: names?.firstName ?? null,
-        lastName: names?.lastName ?? null,
+        firstName: me?.firstName ?? null,
+        lastName: me?.lastName ?? null,
+      },
+      // What the member is shown with everywhere: their picture (uploaded or
+      // from sign-in), else their Gravatar. `isSet` is whether they have a
+      // picture of their own to remove.
+      photo: {
+        url: getAvatarUrl(me?.email ?? null, me?.image),
+        isSet: Boolean(me?.image),
       },
       badges: toDisplayableBadges(badges),
       social: toPublicSocialJson(social),
@@ -745,6 +758,30 @@ export const membersRouter = createTRPCRouter({
         }
         throw error;
       }
+      // After the account is gone: files cannot join its transaction. A
+      // photo that fails to delete is logged and no longer shown; the
+      // unused profile photos sweep deletes it later.
+      await removeProfilePhoto(
+        { db: ctx.db, payload: await getPayloadClient() },
+        ctx.session.user.id,
+      ).catch((error: unknown) => {
+        console.error("[delete-account] deleting profile photos failed", {
+          error,
+        });
+      });
       return { deleted: true as const };
     }),
+
+  /**
+   * Takes the member's picture away: their uploaded photos are deleted and
+   * they get the Gravatar or their initials. Uploading one is
+   * `POST /api/profile-photo`, which carries the file.
+   */
+  removeProfilePhoto: protectedProcedure.mutation(async ({ ctx }) => {
+    await removeProfilePhoto(
+      { db: ctx.db, payload: await getPayloadClient() },
+      ctx.session.user.id,
+    );
+    return { image: null };
+  }),
 });

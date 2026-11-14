@@ -1158,7 +1158,25 @@
       "contributions": "{count, plural, one {# bijdrage} other {# bijdragen}}"
     },
     "profile": {
-      "title": "Profiel"
+      "title": "Profiel",
+      "photo": {
+        "label": "Profielfoto",
+        "hint": "JPG, PNG, WebP of GIF. Mensen zien hem op je profiel, posts en berichten.",
+        "choose": "Kies een profielfoto",
+        "upload": "Foto uploaden",
+        "change": "Foto wijzigen",
+        "uploading": "Uploaden…",
+        "remove": "Verwijderen",
+        "saved": "Profielfoto bijgewerkt",
+        "removed": "Profielfoto verwijderd",
+        "errorType": "Gebruik een JPG-, PNG-, WebP- of GIF-afbeelding.",
+        "errorSize": "Die afbeelding is te groot. Gebruik er een kleiner dan 2 MB.",
+        "error": "Je foto kon niet worden bijgewerkt. Probeer het opnieuw.",
+        "removeTitle": "Je profielfoto verwijderen?",
+        "removeDescription": "Mensen zien dan je initialen of je Gravatar. Een foto van GitHub, Google of LinkedIn komt niet terug als je opnieuw inlogt. Je kunt altijd een nieuwe uploaden.",
+        "removeConfirm": "Foto verwijderen",
+        "cancel": "Annuleren"
+      }
     },
     "deleteAccount": {
       "title": "Account verwijderen",

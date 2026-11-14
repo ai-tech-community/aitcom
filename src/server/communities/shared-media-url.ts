@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
+import { isMediaPurpose, type MediaPurpose } from "@/lib/image-uploads";
 import type { PayloadClient } from "@/server/magazines/deps";
 
 export const UNKNOWN_SHARED_IMAGE_MESSAGE =
@@ -15,8 +16,18 @@ export function isUnknownSharedImageError(error: unknown): boolean {
 }
 
 /**
+ * Why an owned upload cannot be shared: it is deleted when its one use ends.
+ * Keyed by every purpose, so a new purpose must say why here.
+ */
+const OWNED_UPLOAD_MESSAGES: Record<MediaPurpose, string> = {
+  "feed-post": "That image belongs to a feed post",
+  avatar: "That image is a profile photo",
+};
+
+/**
  * The URL and alt for a media id from `upload-image` (or the same shared
- * upload). Feed-post images are refused: they are deleted with the post.
+ * upload). Owned uploads (feed post images, profile photos) are refused:
+ * they are deleted when their one use ends.
  * The file must belong to the owner the agent acts for.
  */
 export async function sharedMediaImage(
@@ -38,10 +49,10 @@ export async function sharedMediaImage(
       message: UNKNOWN_SHARED_IMAGE_MESSAGE,
     });
   }
-  if (media.purpose === "feed-post") {
+  if (isMediaPurpose(media.purpose)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "That image belongs to a feed post",
+      message: OWNED_UPLOAD_MESSAGES[media.purpose],
     });
   }
   if (media.uploadedBy !== ownerId) {

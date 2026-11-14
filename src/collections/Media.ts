@@ -64,7 +64,7 @@ export const Media: CollectionConfig = {
       admin: {
         readOnly: true,
         description:
-          "What it was uploaded for. A feed post image belongs to one post and is deleted when the post stops using it. Empty for shared images (covers, logos).",
+          "What it was uploaded for. A feed post image belongs to one post and is deleted when the post stops using it. A profile photo belongs to its uploader and is deleted when they replace or remove it, or delete their account. Empty for shared images (covers, logos).",
       },
     },
     // The S3 folder of the file. The storage plugin owns this field (hidden,

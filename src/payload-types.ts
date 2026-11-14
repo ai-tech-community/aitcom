@@ -385,9 +385,9 @@ export interface Media {
    */
   uploadedBy?: string | null;
   /**
-   * What it was uploaded for. A feed post image belongs to one post and is deleted when the post stops using it. Empty for shared images (covers, logos).
+   * What it was uploaded for. A feed post image belongs to one post and is deleted when the post stops using it. A profile photo belongs to its uploader and is deleted when they replace or remove it, or delete their account. Empty for shared images (covers, logos).
    */
-  purpose?: 'feed-post' | null;
+  purpose?: ('feed-post' | 'avatar') | null;
   prefix?: string | null;
   updatedAt: string;
   createdAt: string;

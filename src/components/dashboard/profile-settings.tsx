@@ -2,16 +2,28 @@
 
 import { useTranslations } from "next-intl";
 
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import { ProfileEditForm } from "@/components/profile-edit-form";
+import { ProfilePhotoSettings } from "@/components/dashboard/profile-photo-settings";
 import {
   DashboardSection,
   statusFromQueries,
 } from "@/components/dashboard/dashboard-section";
 
 /**
- * The profile form on the Settings tab (anchor `#profile`). The side panel's
- * "You" card links here to edit; a member without a profile creates it here.
+ * The name behind the photo's initials: the display name, or for a member
+ * without a profile yet, their first and last name.
+ */
+function photoName(data: RouterOutputs["members"]["getMyProfile"]): string {
+  const displayName = data.profile?.displayName.trim();
+  if (displayName) return displayName;
+  return [data.names.firstName, data.names.lastName].filter(Boolean).join(" ");
+}
+
+/**
+ * The profile form on the Settings tab (anchor `#profile`), with the
+ * member's photo above it. The side panel's "You" card links here to edit;
+ * a member without a profile creates it here.
  */
 export function ProfileSettings() {
   const t = useTranslations("dashboard");
@@ -23,6 +35,14 @@ export function ProfileSettings() {
       title={t("profile.title")}
       status={statusFromQueries(query)}
     >
+      {query.data && (
+        <div className="mb-6">
+          <ProfilePhotoSettings
+            name={photoName(query.data)}
+            photo={query.data.photo}
+          />
+        </div>
+      )}
       {!query.data?.profile && (
         <p className="text-muted-foreground mb-4 text-sm">
           {t("completeProfile")}
