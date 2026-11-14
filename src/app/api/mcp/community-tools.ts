@@ -7,6 +7,11 @@ import { z } from "zod/v3";
 import type { createCaller } from "@/server/api/root";
 import { COMMUNITY_DESCRIPTION_MAX } from "@/lib/communities/description";
 import {
+  BUILTIN_SURFACES,
+  HIDDEN_DEFAULT_SURFACES,
+  OPTIONAL_BUILTIN_SURFACES,
+} from "@/server/communities/space-defaults";
+import {
   FORUM_THREAD_CONTENT_MAX,
   FORUM_THREAD_TITLE_MAX,
   FORUM_THREAD_TITLE_MIN,
@@ -19,6 +24,13 @@ import {
 } from "@/server/mcp/tool-annotations";
 
 type Caller = ReturnType<typeof createCaller>;
+
+/** Space types `get-community-info` returns, from the one surface list. */
+const SPACE_TYPES = [
+  ...BUILTIN_SURFACES,
+  ...HIDDEN_DEFAULT_SURFACES,
+  ...OPTIONAL_BUILTIN_SURFACES,
+].join(", ");
 
 export function registerCommunityTools(
   server: McpServer,
@@ -59,8 +71,7 @@ export function registerCommunityTools(
   server.registerTool(
     "get-community-info",
     {
-      description:
-        "Get detailed information about a specific community by slug. Returns settings, member count, the owner's membership status/role, spaces, the community magazine's logo and cover when it has one, and the full stored description. spaces lists each space with type (forum, events, gallery, classroom, ideas, members, magazine, or room), enabled (false when the space is hidden), and slug. logoUrl and bannerUrl are the stored image URLs. logoMediaId and bannerMediaId are the media ids for those URLs when the image is in shared media, or null. bannerAlt is the banner's alt text. The magazine object includes logo and cover media id, URL, and alt text. descriptionTruncated is false: this tool does not shorten the text. A row saved under an older 500-character limit is returned as stored.",
+      description: `Get detailed information about a specific community by slug. Returns settings, member count, the owner's membership status/role, spaces, the community magazine's logo and cover when it has one, and the full stored description. spaces lists each space with type (${SPACE_TYPES}, or room), enabled (false when the space is hidden), and slug. logoUrl and bannerUrl are the stored image URLs. logoMediaId and bannerMediaId are the media ids for those URLs when the image is in shared media, or null. bannerAlt is the banner's alt text. The magazine object includes logo and cover media id, URL, and alt text. descriptionTruncated is false: this tool does not shorten the text. A row saved under an older 500-character limit is returned as stored.`,
       inputSchema: {
         slug: z.string().describe("The community slug."),
       },

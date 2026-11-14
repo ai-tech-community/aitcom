@@ -212,11 +212,9 @@ describe("publishing an offer and the Offers tab", () => {
     expect(offersTab.show).toHaveBeenCalledTimes(1);
     expect(offersTab.show).toHaveBeenCalledWith(tx, "community-A");
     expect(offersTab.events).toEqual(["show tab", "update offer"]);
-    expect(offersTab.invalidate).toHaveBeenCalledTimes(1);
   });
 
-  it("does not refresh the menu cache when the tab did not change", async () => {
-    offersTab.show.mockResolvedValue(false);
+  it("leaves the public rooms cache alone: the Offers tab is not a room", async () => {
     const { call } = publishCaller();
     await call.publishOffer({ slug: "alpha", offerId, published: true });
     expect(offersTab.invalidate).not.toHaveBeenCalled();

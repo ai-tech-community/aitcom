@@ -1,4 +1,9 @@
 import { expect, it, vi } from "vitest";
+import {
+  BUILTIN_SURFACES,
+  HIDDEN_DEFAULT_SURFACES,
+  OPTIONAL_BUILTIN_SURFACES,
+} from "@/server/communities/space-defaults";
 
 import { COMMUNITY_DESCRIPTION_MAX } from "@/lib/communities/description";
 import { TOOL_META } from "@/server/mcp/catalog-meta";
@@ -86,6 +91,15 @@ it("registers community thread tools and image settings on the existing procedur
   expect(tools.get("get-community-info")!.config.description).toContain(
     "full stored description",
   );
+  for (const surface of [
+    ...BUILTIN_SURFACES,
+    ...HIDDEN_DEFAULT_SURFACES,
+    ...OPTIONAL_BUILTIN_SURFACES,
+  ]) {
+    expect(tools.get("get-community-info")!.config.description).toContain(
+      surface,
+    );
+  }
   expect(tools.get("update-community-settings")!.config.description).toContain(
     "warning",
   );

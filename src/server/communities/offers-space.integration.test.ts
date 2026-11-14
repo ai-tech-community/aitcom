@@ -81,6 +81,7 @@ describe.skipIf(!isLocalDbConfigured())(
       tx: Tx,
       c: { id: string; owner: string },
       published: boolean,
+      everPublished = published,
     ) {
       const connection = await tx.execute(sql`
         INSERT INTO "app"."payment_connection"
@@ -90,9 +91,10 @@ describe.skipIf(!isLocalDbConfigured())(
       const connectionId = (connection.rows[0] as { id: string }).id;
       await tx.execute(sql`
         INSERT INTO "app"."payment_offer"
-          ("id", "community_id", "connection_id", "title", "kind", "amount", "interval", "published")
+          ("id", "community_id", "connection_id", "title", "kind", "amount", "interval", "published", "published_at")
         VALUES (gen_random_uuid(), ${c.id}, ${connectionId}, 'Membership',
-          'membership', 1000, 'month', ${published})`);
+          'membership', 1000, 'month', ${published},
+          ${everPublished ? sql`now()` : null})`);
     }
 
     async function offersTabHidden(tx: Tx, communityId: string) {
@@ -116,6 +118,17 @@ describe.skipIf(!isLocalDbConfigured())(
       await inRollback(async (tx) => {
         const c = await community(tx, "hidden");
         await offer(tx, c, true);
+
+        expect(await mod.showOffersSpaceOnFirstPublish(tx, c.id)).toBe(false);
+        expect(await offersTabHidden(tx, c.id)).toEqual([true]);
+      });
+    });
+
+    it("leaves a hidden tab hidden after an earlier offer was unpublished", async () => {
+      await inRollback(async (tx) => {
+        const c = await community(tx, "hidden");
+        // Published once, then unpublished (e.g. to change its price).
+        await offer(tx, c, false, true);
 
         expect(await mod.showOffersSpaceOnFirstPublish(tx, c.id)).toBe(false);
         expect(await offersTabHidden(tx, c.id)).toEqual([true]);

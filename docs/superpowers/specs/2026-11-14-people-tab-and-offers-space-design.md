@@ -62,10 +62,14 @@ to decide what the menu shows.
   one so their relative order is unchanged. Hidden unless the community has a
   published offer. Communities that already have an `offers` row are skipped.
 - **First publish shows the tab** (builder call, made during design): when an
-  owner publishes an offer and the community had no published offer before,
-  the Offers row is un-hidden in the same transaction. Publishing later
-  offers never re-shows a tab the owner hid on purpose. Like Magazine, the
-  feature being switched on is what reveals its tab.
+  owner publishes an offer and the community has never published one before
+  (no offer has `published_at` set; it is never cleared), the Offers row is
+  un-hidden in the same transaction. After that, publishing never re-shows a
+  tab the owner hid on purpose, including unpublish-then-publish (the usual
+  way to change a price). Like Magazine, the feature being switched on is what
+  reveals its tab. The owner's menu refreshes right after publishing.
+  Trade-off: a community whose offers were all unpublished before this change
+  does not get the tab back on its next publish; the owner shows it in Spaces.
 - **Default labels**: add `offers` to the default-label catalogue (en "What
   your community offers" plus the nl/fr strings already used for that title)
   and add People/Mensen/Personnes to the `members` catalogue, keeping the old

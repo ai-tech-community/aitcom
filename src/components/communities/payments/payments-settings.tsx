@@ -9,6 +9,7 @@ import { PaymentFinance } from "./payment-finance";
 
 export function PaymentsSettings({ slug }: { slug: string }) {
   const t = useTranslations("payments");
+  const utils = api.useUtils();
   const query = api.communityPayments.overview.useQuery({ slug });
   const connect = api.communityPayments.connect.useMutation();
   const refresh = api.communityPayments.refresh.useMutation();
@@ -39,8 +40,14 @@ export function PaymentsSettings({ slug }: { slug: string }) {
     createOffer: (offer) => update(create.mutateAsync({ slug, offer })),
     updateOffer: (offerId, offer) =>
       update(edit.mutateAsync({ slug, offerId, offer })),
-    publishOffer: (offerId, published) =>
-      update(publish.mutateAsync({ slug, offerId, published })),
+    publishOffer: async (offerId, published) => {
+      await update(publish.mutateAsync({ slug, offerId, published }));
+      // A first publish shows the Offers tab: refresh the community menu.
+      await Promise.all([
+        utils.spaces.list.invalidate({ slug }),
+        utils.spaces.listForAdmin.invalidate({ slug }),
+      ]);
+    },
     refund: (orderId) => update(refund.mutateAsync({ slug, orderId })),
     cancel: (subscriptionId) => update(cancel.mutateAsync({ subscriptionId })),
     paidEntry: (enabled) => update(entry.mutateAsync({ slug, enabled })),

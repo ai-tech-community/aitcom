@@ -4111,8 +4111,9 @@ export const communityMemberships = appSchema.table(
 
 // Community Spaces — composable navigation surfaces + rooms (Slice 3, Plan 1).
 // kind="builtin": a configurable pointer to an existing community surface
-// (forum/events/classroom/ideas/members, plus the optional magazine); the
-// surface's data stays community-level.
+// (forum/events/gallery/classroom/ideas/members, offers seeded hidden, plus the
+// optional magazine; see space-defaults.ts); the surface's data stays
+// community-level.
 // kind="room": (Plan 2) a real container with its own membership + chat/posts.
 // `name` is an optional display override — for builtins, null means "use the
 // default i18n label"; rooms set it at creation (enforced in the app layer).
