@@ -42,6 +42,13 @@ describe.skipIf(!RUN_DB)(
         import("./20261001a_feed_post_owned_images"),
       ]);
       m = { db, sql, up: migration.up };
+      // 20261001a reads events_rels.media_id / _events_v_rels.media_id, which
+      // 20261114a later dropped (Events.gallery is gone). Put the empty
+      // column back so this older migration can still be exercised.
+      await db.execute(sql`
+        ALTER TABLE "events_rels" ADD COLUMN IF NOT EXISTS "media_id" integer;
+        ALTER TABLE "_events_v_rels" ADD COLUMN IF NOT EXISTS "media_id" integer;
+      `);
       await m.up({ db } as unknown as Parameters<typeof Up>[0]);
     }, 120_000);
 
