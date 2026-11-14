@@ -55,6 +55,18 @@ vi.mock("@/server/payments/billing-scheduler", () => ({
   recoverAdyenSubscription: vi.fn(),
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: vi.fn() }));
+const offersTab = vi.hoisted(() => ({
+  events: [] as string[],
+  show: vi.fn(),
+  invalidate: vi.fn(),
+}));
+vi.mock("@/server/communities/offers-space", () => ({
+  showOffersSpaceOnFirstPublish: offersTab.show,
+}));
+vi.mock("@/server/communities/live-rooms-queries", () => ({
+  invalidateSquareRooms: offersTab.invalidate,
+}));
+import { refreshConnection } from "@/server/payments/connections";
 import { communityPaymentsRouter } from "./community-payments";
 
 function caller(
@@ -134,5 +146,85 @@ describe("community payment authority", () => {
       "user-current",
       subscriptionId,
     );
+  });
+});
+
+describe("publishing an offer and the Offers tab", () => {
+  const offerId = "20000000-0000-4000-8000-000000000001";
+  const connectionId = "20000000-0000-4000-8000-000000000002";
+
+  /** A db whose reads return the offer, policy and connection, in order. */
+  function publishCaller() {
+    const tx = {
+      execute: vi.fn(async () => undefined),
+      update: vi.fn(() => {
+        offersTab.events.push("update offer");
+        return { set: () => ({ where: async () => [] }) };
+      }),
+    };
+    const reads = [
+      [
+        {
+          id: offerId,
+          communityId: "community-A",
+          connectionId,
+          kind: "membership",
+          resourceId: null,
+          publishedAt: null,
+          amount: 1000,
+        },
+      ],
+      [{ communityId: "community-A", activeConnectionId: connectionId }],
+      [{ id: connectionId, ownerId: "user-current" }],
+    ];
+    const db = {
+      select: vi.fn(() => ({
+        from: () => ({ where: async () => reads.shift() ?? [] }),
+      })),
+      transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) =>
+        fn(tx),
+      ),
+    };
+    const call = communityPaymentsRouter.createCaller({
+      db,
+      community: { id: "community-A", slug: "alpha", name: "Alpha" },
+      communityRole: "owner",
+      session: { user: { id: "user-current", email: "current@example.com" } },
+      headers: new Headers(),
+    } as never);
+    return { call, tx };
+  }
+
+  beforeEach(() => {
+    offersTab.events = [];
+    offersTab.show.mockImplementation(async () => {
+      offersTab.events.push("show tab");
+      return true;
+    });
+    vi.mocked(refreshConnection).mockResolvedValue({
+      chargesEnabled: true,
+    } as never);
+  });
+
+  it("checks the Offers tab inside the transaction, before the offer is marked published", async () => {
+    const { call, tx } = publishCaller();
+    await call.publishOffer({ slug: "alpha", offerId, published: true });
+    expect(offersTab.show).toHaveBeenCalledTimes(1);
+    expect(offersTab.show).toHaveBeenCalledWith(tx, "community-A");
+    expect(offersTab.events).toEqual(["show tab", "update offer"]);
+    expect(offersTab.invalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not refresh the menu cache when the tab did not change", async () => {
+    offersTab.show.mockResolvedValue(false);
+    const { call } = publishCaller();
+    await call.publishOffer({ slug: "alpha", offerId, published: true });
+    expect(offersTab.invalidate).not.toHaveBeenCalled();
+  });
+
+  it("leaves the Offers tab alone when an offer is unpublished", async () => {
+    const { call } = publishCaller();
+    await call.publishOffer({ slug: "alpha", offerId, published: false });
+    expect(offersTab.show).not.toHaveBeenCalled();
   });
 });

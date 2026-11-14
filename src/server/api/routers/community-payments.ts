@@ -49,6 +49,8 @@ import { paymentAppUrl } from "@/server/payments/providers/http";
 import { checkRateLimit } from "@/server/agent/rate-limit";
 import { recoverAdyenSubscription } from "@/server/payments/billing-scheduler";
 import { loadPaymentFinance } from "@/server/payments/finance";
+import { showOffersSpaceOnFirstPublish } from "@/server/communities/offers-space";
+import { invalidateSquareRooms } from "@/server/communities/live-rooms-queries";
 
 const slugInput = z.object({ slug: z.string().min(1).max(255) });
 const ownerProcedure = communityProcedure.use(({ ctx, next }) => {
@@ -442,10 +444,15 @@ export const communityPaymentsRouter = createTRPCRouter({
             offer.resourceId!,
           );
       }
-      await ctx.db.transaction(async (tx) => {
+      const offersTabShown = await ctx.db.transaction(async (tx) => {
         await tx.execute(
           sql`SELECT pg_advisory_xact_lock(hashtextextended(${ctx.community.id}, 0))`,
         );
+        // Before any offer row changes: a course or event offer that
+        // replaces an earlier published one is not a first publish.
+        const shown = input.published
+          ? await showOffersSpaceOnFirstPublish(tx, ctx.community.id)
+          : false;
         if (
           input.published &&
           (offer.kind === "event" || offer.kind === "course")
@@ -469,7 +476,9 @@ export const communityPaymentsRouter = createTRPCRouter({
               : {}),
           })
           .where(eq(paymentOffers.id, offer.id));
+        return shown;
       });
+      if (offersTabShown) invalidateSquareRooms();
       if (input.published && offer.kind === "event")
         await (
           await getPayloadClient()
