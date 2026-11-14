@@ -7,9 +7,10 @@ type DB = typeof Database;
 type Tx = Parameters<Parameters<DB["transaction"]>[0]>[0];
 
 /**
- * The same default builtin spaces the community form inserts: forum, events,
- * gallery, classroom, ideas, and members. Magazine is not one of them; it
- * is added when the community's magazine is created.
+ * The same default builtin spaces the community form inserts: Offers
+ * (hidden until shown or until the first offer is published), then forum,
+ * events, gallery, classroom, ideas, and members. Magazine is not one of
+ * them; it is added when the community's magazine is created.
  */
 export async function seedDefaultSpaces(
   db: DB | Tx,

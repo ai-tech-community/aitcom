@@ -74,11 +74,65 @@ describe("CommunityNav", () => {
       expect(
         screen.queryByRole("link", { name: en.payments.myPayments }),
       ).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: en.payments.offersTitle }),
-      ).toHaveAttribute("href", "/communities/mlops/offers");
     },
   );
+
+  it("shows Offers where the community's spaces put it", () => {
+    m.spacesError = false;
+    m.spaces = [
+      {
+        id: "s0",
+        kind: "builtin",
+        builtinSurface: "offers",
+        name: null,
+        slug: "offers",
+        position: 0,
+      },
+      {
+        id: "s1",
+        kind: "builtin",
+        builtinSurface: "forum",
+        name: null,
+        slug: "forum",
+        position: 1,
+      },
+    ];
+    renderNav("member");
+    const links = screen.getAllByRole("link").map((l) => l.textContent);
+    expect(links.slice(0, 3)).toEqual([
+      "Overview",
+      en.payments.offersTitle,
+      "Forum",
+    ]);
+    expect(
+      screen.getByRole("link", { name: en.payments.offersTitle }),
+    ).toHaveAttribute("href", "/communities/mlops/offers");
+  });
+
+  it("leaves Offers out when it is hidden (not in the list)", () => {
+    m.spacesError = false;
+    m.spaces = [
+      {
+        id: "s1",
+        kind: "builtin",
+        builtinSurface: "forum",
+        name: null,
+        slug: "forum",
+        position: 1,
+      },
+    ];
+    renderNav("member");
+    expect(
+      screen.queryByRole("link", { name: en.payments.offersTitle }),
+    ).toBeNull();
+  });
+
+  it("leaves Offers out of the fallback menu", () => {
+    renderNav("member");
+    expect(
+      screen.queryByRole("link", { name: en.payments.offersTitle }),
+    ).toBeNull();
+  });
 
   it("is one navigation landmark for every screen size", () => {
     renderNav();

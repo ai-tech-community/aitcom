@@ -93,7 +93,7 @@ describe.skipIf(!RUN_DB)("spaces router [DB integration]", () => {
     await db.delete(schema.user).where(eq(schema.user.id, userId));
   });
 
-  it("seeds six ordered builtin spaces", async () => {
+  it("seeds Offers hidden, then six ordered builtin spaces", async () => {
     const { db, schema } = m;
     const { eq, asc } = await import("drizzle-orm");
     const rows = await db
@@ -101,8 +101,11 @@ describe.skipIf(!RUN_DB)("spaces router [DB integration]", () => {
       .from(schema.spaces)
       .where(eq(schema.spaces.communityId, communityId))
       .orderBy(asc(schema.spaces.position));
-    expect(rows).toHaveLength(6);
+    expect(rows).toHaveLength(7);
+    expect(rows[0]!.archivedAt).not.toBeNull();
+    expect(rows.slice(1).every((r) => r.archivedAt === null)).toBe(true);
     expect(rows.map((r) => r.builtinSurface)).toEqual([
+      "offers",
       "forum",
       "events",
       "gallery",
@@ -244,7 +247,10 @@ describe.skipIf(!RUN_DB)("gallery tab [DB integration]", () => {
   it("owner tab settings list the gallery row", async () => {
     const rows = await owner().spaces.listForAdmin({ slug });
     expect(rows.map((r) => r.slug)).toContain("gallery");
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(8);
+    expect(rows.find((r) => r.slug === "offers")).toMatchObject({
+      enabled: false,
+    });
   });
 
   it("a reorder that leaves a space out moves it to the end", async () => {
@@ -257,8 +263,12 @@ describe.skipIf(!RUN_DB)("gallery tab [DB integration]", () => {
       .reverse();
     await owner().spaces.reorder({ slug, orderedIds });
 
+    // The hidden Offers row keeps its new position but stays off the menu.
+    const hidden = new Set(all.filter((r) => !r.enabled).map((r) => r.id));
     const rows = await guest().spaces.list({ slug });
-    expect(rows.map((r) => r.id)).toEqual([...orderedIds, gallery.id]);
+    expect(rows.map((r) => r.id)).toEqual(
+      [...orderedIds, gallery.id].filter((id) => !hidden.has(id)),
+    );
     expect(new Set(rows.map((r) => r.position)).size).toBe(rows.length);
   });
 

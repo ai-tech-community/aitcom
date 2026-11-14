@@ -5,6 +5,7 @@ import fr from "../../../messages/fr.json";
 import nl from "../../../messages/nl.json";
 import {
   BUILTIN_SURFACES,
+  HIDDEN_DEFAULT_SURFACES,
   OPTIONAL_BUILTIN_SURFACES,
   buildDefaultSpaceRows,
   isDefaultBuiltinLabel,
@@ -26,11 +27,21 @@ describe("BUILTIN_SURFACES", () => {
 });
 
 describe("buildDefaultSpaceRows", () => {
-  it("returns one builtin row per surface, position-ordered, slug=surface", () => {
-    const rows = buildDefaultSpaceRows("comm-1");
-    expect(rows).toHaveLength(6);
-    expect(rows.map((r) => r.builtinSurface)).toEqual(BUILTIN_SURFACES);
-    expect(rows.map((r) => r.position)).toEqual([0, 1, 2, 3, 4, 5]);
+  it("seeds Offers first and hidden, then the six shown surfaces", () => {
+    const now = new Date("2026-11-14T00:00:00Z");
+    const rows = buildDefaultSpaceRows("comm-1", now);
+    expect(rows.map((r) => r.slug)).toEqual([
+      "offers",
+      "forum",
+      "events",
+      "gallery",
+      "classroom",
+      "ideas",
+      "members",
+    ]);
+    expect(rows.map((r) => r.position)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(rows[0]).toMatchObject({ builtinSurface: "offers", archivedAt: now });
+    expect(rows.slice(1).every((r) => r.archivedAt === null)).toBe(true);
     for (const r of rows) {
       expect(r.communityId).toBe("comm-1");
       expect(r.kind).toBe("builtin");
@@ -40,24 +51,17 @@ describe("buildDefaultSpaceRows", () => {
   });
 
   it("seeds the gallery row after events", () => {
-    expect(buildDefaultSpaceRows("comm-1")[2]).toMatchObject({
-      builtinSurface: "gallery",
-      slug: "gallery",
-      position: 2,
-    });
+    const rows = buildDefaultSpaceRows("comm-1");
+    const slugs = rows.map((r) => r.slug);
+    expect(slugs.indexOf("gallery")).toBe(slugs.indexOf("events") + 1);
   });
 });
 
 describe("OPTIONAL_BUILTIN_SURFACES", () => {
-  it("magazine is an optional surface, not one of the six defaults", () => {
-    expect(buildDefaultSpaceRows("c").map((r) => r.slug)).toEqual([
-      "forum",
-      "events",
-      "gallery",
-      "classroom",
-      "ideas",
-      "members",
-    ]);
+  it("magazine is an optional surface, never seeded", () => {
+    expect(buildDefaultSpaceRows("c").map((r) => r.slug)).not.toContain(
+      "magazine",
+    );
     expect(OPTIONAL_BUILTIN_SURFACES).toContain("magazine");
   });
 });
@@ -86,6 +90,7 @@ describe("resolveSpaceLabel", () => {
   it("treats every locale's catalogue label as the default name", () => {
     const surfaces = [
       ...BUILTIN_SURFACES,
+      ...HIDDEN_DEFAULT_SURFACES,
       ...OPTIONAL_BUILTIN_SURFACES,
     ] as const satisfies readonly BuiltinSurface[];
     for (const messages of [en, nl, fr]) {

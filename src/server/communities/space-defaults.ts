@@ -13,8 +13,18 @@ export const BUILTIN_SURFACES = [
   "members",
 ] as const;
 
-/** A surface every new community gets. */
+/** A surface every new community gets, shown in its menu. */
 export type DefaultBuiltinSurface = (typeof BUILTIN_SURFACES)[number];
+
+/**
+ * Builtin surfaces every new community gets, hidden until an owner shows
+ * them (or the feature turns them on: the first published offer shows the
+ * Offers tab). Seeded first, above the shown defaults. Left out of the
+ * menu's fallback list, which is `BUILTIN_SURFACES` only.
+ */
+export const HIDDEN_DEFAULT_SURFACES = ["offers"] as const;
+
+export type HiddenDefaultSurface = (typeof HIDDEN_DEFAULT_SURFACES)[number];
 
 /**
  * Builtin surfaces a community gains by turning a feature on, never by
@@ -26,27 +36,45 @@ export const OPTIONAL_BUILTIN_SURFACES = ["magazine"] as const;
 /** Any builtin surface a space row can point at. */
 export type BuiltinSurface =
   | DefaultBuiltinSurface
+  | HiddenDefaultSurface
   | (typeof OPTIONAL_BUILTIN_SURFACES)[number];
 
 /** Shape of a default builtin space row (pre-insert; id/createdAt are DB-filled). */
 export interface DefaultSpaceRow {
   communityId: string;
   kind: "builtin";
-  builtinSurface: DefaultBuiltinSurface;
+  builtinSurface: DefaultBuiltinSurface | HiddenDefaultSurface;
   name: null;
-  slug: DefaultBuiltinSurface;
+  slug: DefaultBuiltinSurface | HiddenDefaultSurface;
   position: number;
+  /** Set for a hidden surface; null for one shown in the menu. */
+  archivedAt: Date | null;
 }
 
-/** The default builtin spaces for a community, in canonical nav order. */
-export function buildDefaultSpaceRows(communityId: string): DefaultSpaceRow[] {
-  return BUILTIN_SURFACES.map((surface, position) => ({
+/**
+ * The default builtin spaces for a community, in canonical nav order: the
+ * hidden surfaces first (archived at `now`), then the shown ones.
+ */
+export function buildDefaultSpaceRows(
+  communityId: string,
+  now: Date = new Date(),
+): DefaultSpaceRow[] {
+  const hidden = HIDDEN_DEFAULT_SURFACES.map((surface) => ({
+    surface,
+    archivedAt: now as Date | null,
+  }));
+  const shown = BUILTIN_SURFACES.map((surface) => ({
+    surface,
+    archivedAt: null as Date | null,
+  }));
+  return [...hidden, ...shown].map(({ surface, archivedAt }, position) => ({
     communityId,
     kind: "builtin" as const,
     builtinSurface: surface,
     name: null,
     slug: surface,
     position,
+    archivedAt,
   }));
 }
 
@@ -71,6 +99,11 @@ const DEFAULT_BUILTIN_LABELS: Record<BuiltinSurface, readonly string[]> = {
   ideas: ["Ideas", "Idées", "Ideeën"],
   // Members was renamed People; the old labels still count as the default.
   members: ["Members", "Membres", "Leden", "People", "Mensen", "Personnes"],
+  offers: [
+    "What your community offers",
+    "Het aanbod van je community",
+    "Les offres de votre communauté",
+  ],
   magazine: ["Magazine"],
 };
 

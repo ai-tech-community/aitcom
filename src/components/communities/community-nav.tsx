@@ -26,7 +26,6 @@ interface NavItem {
 export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   const tRooms = useTranslations("communities.rooms");
   const t = useTranslations("communities.profile");
-  const tPayments = useTranslations("payments");
   const pathname = usePathname();
 
   const basePath = `/communities/${slug}`;
@@ -64,11 +63,6 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
 
   const navItems: NavItem[] = [
     { key: "overview", href: basePath, label: t("overview") },
-    {
-      key: "offers",
-      href: `${basePath}/offers`,
-      label: tPayments("offersTitle"),
-    },
     ...surfaceItems,
     ...roomItems,
     ...(memberRole
