@@ -5442,6 +5442,7 @@
         "storyline": "Verhalen uit AIT Nieuws",
         "newsItem": "Koppen uit AIT Nieuws",
         "event": "Evenementen van de community",
+        "galleryItems": "Hoogtepunten uit de galerij",
         "forumThread": "Forumgesprekken",
         "launchpadProject": "Launchpad-projecten",
         "welcome": "Nieuwe leden welkom heten"
@@ -5517,6 +5518,7 @@
         "article": "Goedgekeurde artikelen die het langst wachten eerst",
         "storyline": "Verhalen over je onderwerpen, nieuwste updates eerst",
         "event": "Komende evenementen eerst op datum, daarna afgelopen evenementen met de meeste deelnemers",
+        "galleryItems": "De nieuwste foto of video van elk afgelopen evenement, evenementen met de meeste foto’s en video’s eerst. Alleen wat leden voor het magazine hebben vrijgegeven",
         "forumThread": "Meeste reacties, daarna meeste weergaven",
         "launchpadProject": "Meeste stemmen",
         "newsItem": "Koppen over je onderwerpen, nieuwste eerst",
@@ -5731,7 +5733,8 @@
         "eventRecap": "Vond plaats op <number>{date}</number>, {going, plural, one {<number>#</number> deelnemer} other {<number>#</number> deelnemers}}",
         "mostReplies": "Meest besproken: {count, plural, one {<number>#</number> reactie} other {<number>#</number> reacties}}",
         "mostUpvotes": "Meeste stemmen: {count, plural, one {<number>#</number> stem} other {<number>#</number> stemmen}}",
-        "newMembers": "{count, plural, one {<number>#</number> nieuw lid erbij} other {<number>#</number> nieuwe leden erbij}}"
+        "newMembers": "{count, plural, one {<number>#</number> nieuw lid erbij} other {<number>#</number> nieuwe leden erbij}}",
+        "galleryHighlight": "Van {eventTitle}: {count, plural, one {<number>#</number> foto of video gedeeld} other {<number>#</number> foto’s en video’s gedeeld}}"
       },
       "autoDraft": {
         "label": "Automatisch gemaakt",

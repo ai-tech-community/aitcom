@@ -123,6 +123,20 @@ describe("message catalogues", () => {
             : `${going} ${going === 1 ? "deelnemer" : "deelnemers"}`,
         );
       }
+      for (const count of [1, 2]) {
+        const highlight = t.rich("builder.reasons.galleryHighlight", {
+          eventTitle: "Demo day",
+          count,
+          number: (chunks) => chunks,
+        });
+        expect(highlight).toContain("Demo day");
+        expect(highlight).toContain(
+          {
+            en: { 1: "1 photo or video", 2: "2 photos and videos" },
+            nl: { 1: "1 foto of video", 2: "2 foto’s en video’s" },
+          }[locale][count as 1 | 2],
+        );
+      }
       for (const [key, singular, plural] of [
         ["builder.reasons.mostReplies", singleReply, pluralReplies],
         ["builder.reasons.mostUpvotes", singleVote, pluralVotes],

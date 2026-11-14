@@ -43,6 +43,16 @@ describe("SuggestionReasonText", () => {
       text: "7 new members joined",
       mono: ["7"],
     },
+    {
+      reason: { type: "galleryHighlight", eventTitle: "Model night", count: 6 },
+      text: "From Model night: 6 photos and videos shared",
+      mono: ["6"],
+    },
+    {
+      reason: { type: "galleryHighlight", eventTitle: "Model night", count: 1 },
+      text: "From Model night: 1 photo or video shared",
+      mono: ["1"],
+    },
   ])(
     "renders $reason.type with only dates and counts in mono",
     ({ reason, text, mono }) => {

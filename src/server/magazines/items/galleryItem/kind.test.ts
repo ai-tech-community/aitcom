@@ -3,13 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
 import { PICKER_LIMIT } from "@/lib/magazines/picker";
 import type { GalleryViewer } from "@/server/gallery/access";
-import {
-  matchesWhere,
-  selectFields,
-  sortDocs,
-} from "@/test/fake-payload-query";
+import { matchesWhere } from "@/test/fake-payload-query";
 
-import type { Deps } from "../../deps";
 import { searchPickerCandidates } from "../pickers";
 import {
   issueItemInputSchema,
@@ -17,7 +12,7 @@ import {
   toStoredItems,
   validateIssueItems,
 } from "../registry";
-import type { ItemContext, PickerContext } from "../types";
+import type { ItemContext } from "../types";
 import {
   featurableByWhere,
   featurableWhere,
@@ -25,6 +20,19 @@ import {
   isFeaturableBy,
 } from "./featurable";
 import { galleryItemItemKind } from "./kind";
+import { galleryItemSuggester } from "./suggest";
+import {
+  context,
+  event,
+  fakes,
+  item,
+  pickerContext,
+  suggestContext,
+  WINDOW,
+  type Doc,
+  type Fakes,
+  type Where,
+} from "./test-fixtures";
 
 // The registry imports every kind; none of them reach the database here.
 vi.mock("@/server/db", () => ({ db: {} }));
@@ -46,161 +54,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
 });
-
-type Doc = Record<string, unknown>;
-type Where = Record<string, unknown>;
-
-const COMMUNITY = { id: "c1", slug: "town" };
-
-function item(id: number, over: Doc = {}): Doc {
-  const isPublic = over.visibility === "public";
-  const stem = isPublic
-    ? `media/gallery/public/c1/u${id}`
-    : `private/gallery/c1/u${id}`;
-  return {
-    id,
-    communityId: "c1",
-    event: 5,
-    topicSlug: null,
-    mediaType: "photo",
-    status: "ready",
-    storage: isPublic ? "public" : "private",
-    visibility: "community",
-    fileKey: `${stem}.jpg`,
-    thumbnailKey: `${stem}-thumb.jpg`,
-    width: 2048,
-    height: 1536,
-    bytes: 1_000_000,
-    durationSeconds: null,
-    caption: null,
-    alt: null,
-    uploaderId: "u1",
-    batch: 3,
-    uploadId: `u${id}`,
-    magazineConsent: true,
-    magazineConsentAt: "2026-11-10T12:00:00.000Z",
-    hiddenAt: null,
-    reportCount: 0,
-    createdAt: `2026-11-${String(10 + (id % 10)).padStart(2, "0")}T12:00:00.000Z`,
-    updatedAt: "2026-11-10T12:00:00.000Z",
-    ...over,
-  };
-}
-
-const USERS = [
-  { id: "u1", name: "Dana", image: null },
-  { id: "u2", name: "Ruben", image: null },
-  { id: "u4", name: null, image: null },
-];
-
-/**
- * Payload, the database and storage, all in memory. `role` is the reader's
- * membership in the community (none when null); `listed` whether outsiders
- * may read its content.
- */
-function fakes(
-  seed: {
-    items?: Doc[];
-    role?: string | null;
-    listed?: boolean;
-  } = {},
-) {
-  const store: Record<string, Doc[]> = {
-    "gallery-items": seed.items ?? [],
-    events: [
-      { id: 5, title: "Model night", slug: "model-night", communityId: "c1" },
-      { id: 6, title: "Demo day", slug: "demo-day", communityId: "c1" },
-    ],
-  };
-  const payload = {
-    find: vi.fn(
-      async (args: {
-        collection: string;
-        where?: Where;
-        sort?: string;
-        limit?: number;
-        select?: Doc;
-      }) => {
-        const found = sortDocs(
-          (store[args.collection] ?? []).filter((doc) =>
-            matchesWhere(doc, args.where),
-          ),
-          args.sort,
-        ).map((doc) => selectFields(doc, args.select));
-        return { docs: args.limit ? found.slice(0, args.limit) : found };
-      },
-    ),
-  };
-  const communityRead = vi.fn(async () => ({
-    id: "c1",
-    slug: "town",
-    isListedInDirectory: seed.listed ?? true,
-    joinPolicy: "open",
-  }));
-  const db = {
-    query: {
-      communities: { findFirst: communityRead },
-      communityMemberships: {
-        findFirst: vi.fn(async () =>
-          seed.role ? { role: seed.role, status: "active" } : undefined,
-        ),
-      },
-    },
-    select: vi.fn(() => ({
-      from: () => ({
-        where: async () => USERS,
-      }),
-    })),
-  };
-  const storage = {
-    presignUpload: vi.fn(),
-    inspect: vi.fn(),
-    signedGetUrl: vi.fn(async (key: string) => `https://signed.test/${key}`),
-    publicUrl: vi.fn((key: string) => `https://public.test/${key}`),
-    list: vi.fn(),
-    remove: vi.fn(),
-  };
-  const storageSource = vi.fn(() => storage);
-  return { payload, db, storage, storageSource, communityRead, store };
-}
-
-type Fakes = ReturnType<typeof fakes>;
-
-function context(
-  f: Fakes,
-  access: ItemContext["access"],
-  viewerId: string | null,
-): ItemContext {
-  return {
-    payload: f.payload as unknown as ItemContext["payload"],
-    db: f.db as unknown as ItemContext["db"],
-    storage: f.storageSource as never,
-    magazineId: 1,
-    issueId: 2,
-    community: COMMUNITY,
-    locale: "en",
-    access,
-    reader: {
-      viewerId,
-      hiddenCommunityIds: vi.fn(async () => new Set<string>()),
-      membersOnlyCommunityIds: vi.fn(async () => new Set<string>()),
-    },
-  };
-}
-
-function pickerContext(f: Fakes, viewerId = "editor"): PickerContext {
-  return {
-    deps: {
-      payload: f.payload as unknown as Deps["payload"],
-      db: f.db as unknown as Deps["db"],
-      storage: f.storageSource as never,
-    },
-    magazineId: 1,
-    community: COMMUNITY,
-    viewerId,
-    locale: "en",
-  };
-}
 
 const stored = (galleryItemId: number, over: Doc = {}) => ({
   id: `block-${galleryItemId}`,
@@ -533,18 +386,29 @@ describe("gallery item kind: validate", () => {
   });
 });
 
-describe("Review Focus 3: picker and acceptNew share one predicate", () => {
-  const seed = () => [
-    item(1),
-    item(2, { magazineConsent: false }),
-    item(3, { hiddenAt: "2026-11-13T12:00:00.000Z" }),
-    item(4, { status: "uploading" }),
-    item(5, { uploaderId: DELETED_AUTHOR_ID }),
-    item(6, { communityId: "c2" }),
-    item(7, { visibility: "public" }),
-    item(8, { visibility: "public", magazineConsent: null }),
-    item(9, { uploaderId: "u2", hiddenAt: "2026-11-13T12:00:00.000Z" }),
-  ];
+describe("Review Focus 3: picker, acceptNew and suggester share one predicate", () => {
+  // Each item belongs to its own event that ended in the window, so the
+  // suggester (one highlight per event) can offer every item it accepts.
+  const seed = () =>
+    [
+      item(1),
+      item(2, { magazineConsent: false }),
+      item(3, { hiddenAt: "2026-11-13T12:00:00.000Z" }),
+      item(4, { status: "uploading" }),
+      item(5, { uploaderId: DELETED_AUTHOR_ID }),
+      item(6, { communityId: "c2" }),
+      item(7, { visibility: "public" }),
+      item(8, { visibility: "public", magazineConsent: null }),
+      item(9, { uploaderId: "u2", hiddenAt: "2026-11-13T12:00:00.000Z" }),
+    ].map((doc): Doc => ({ ...doc, event: 100 + (doc.id as number) }));
+  const events = () =>
+    seed().map((doc) =>
+      event(
+        100 + (doc.id as number),
+        `Event ${String(doc.id)}`,
+        "2026-11-0" + String(doc.id),
+      ),
+    );
 
   it.each([
     ["a moderator", "u3", "moderator"],
@@ -553,7 +417,7 @@ describe("Review Focus 3: picker and acceptNew share one predicate", () => {
   ] as const)(
     "offers %s exactly what it would accept",
     async (_label, viewerId, role) => {
-      const f = fakes({ items: seed(), role });
+      const f = fakes({ items: seed(), events: events(), role });
       const ids = seed().map((doc) => doc.id as number);
 
       const problems = await galleryItemItemKind.validate(
@@ -570,6 +434,15 @@ describe("Review Focus 3: picker and acceptNew share one predicate", () => {
       );
       expect(
         picked.map((candidate) => candidate.input.galleryItemId).sort(),
+      ).toEqual(accepted.sort());
+
+      const suggested = await galleryItemSuggester.suggest(
+        suggestContext(f, viewerId),
+        WINDOW,
+        { limit: 10, exclude: [] },
+      );
+      expect(
+        suggested.map((candidate) => candidate.input.galleryItemId).sort(),
       ).toEqual(accepted.sort());
 
       const viewer: GalleryViewer = {

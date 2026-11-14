@@ -48,10 +48,13 @@ async function queryWhere(query: string, ctx: PickerContext): Promise<Where> {
   };
 }
 
+/**
+ * What the picker and the suggester show for an item, without file links:
+ * only the picker adds a thumbnail, so nothing a draft keeps holds a URL.
+ */
 export function galleryItemCandidate(
   item: GalleryItem,
   credit: GalleryItemCredit,
-  thumbnailUrl: string,
   communitySlug: string,
 ): PickerSourceCandidate<InputOf<"galleryItem">> {
   const facts: CandidateFact[] = [
@@ -65,7 +68,6 @@ export function galleryItemCandidate(
     input: { kind: "galleryItem", galleryItemId: item.id },
     title: credit.title,
     facts,
-    thumbnailUrl,
     openHref: galleryItemPath(communitySlug, item.id),
   };
 }
@@ -100,13 +102,9 @@ export const galleryItemPicker: ItemPickerSource<InputOf<"galleryItem">> = {
       loadGalleryItemCredits(ctx.deps, docs, ctx.locale),
       galleryItemThumbnailUrls(ctx.deps.storage, docs),
     ]);
-    return docs.map((item) =>
-      galleryItemCandidate(
-        item,
-        credits.get(item.id)!,
-        thumbnails.get(item.id)!,
-        ctx.community.slug,
-      ),
-    );
+    return docs.map((item) => ({
+      ...galleryItemCandidate(item, credits.get(item.id)!, ctx.community.slug),
+      thumbnailUrl: thumbnails.get(item.id)!,
+    }));
   },
 };

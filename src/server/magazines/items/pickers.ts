@@ -102,7 +102,11 @@ export async function pickerCandidatesFor<K extends PickableKindId>(
     for (const candidate of searched) {
       const existing = candidates.get(candidate.reference);
       if (existing) {
+        // Fill what the suggestion lacks (gallery suggestions carry no
+        // thumbnail) from the search, which made it for this editor.
         existing.openHref ??= candidate.openHref;
+        if (candidate.thumbnailUrl !== undefined)
+          existing.thumbnailUrl ??= candidate.thumbnailUrl;
       } else if (candidates.size < PICKER_LIMIT) {
         candidates.set(candidate.reference, { ...candidate, reason: null });
       }

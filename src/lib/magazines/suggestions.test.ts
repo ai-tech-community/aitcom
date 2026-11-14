@@ -12,6 +12,7 @@ describe("suggestion reasons", () => {
       { type: "mostReplies", count: 8 },
       { type: "mostUpvotes", count: 4 },
       { type: "newMembers", count: 3 },
+      { type: "galleryHighlight", eventTitle: "Model night", count: 6 },
     ];
     for (const reason of reasons) {
       expect(parseSuggestionReason(reason)).toEqual(reason);
@@ -19,7 +20,14 @@ describe("suggestion reasons", () => {
   });
 
   it("drops reasons it does not know", () => {
-    for (const reason of [{ type: "ai" }, { type: "topic" }, null, "x"]) {
+    for (const reason of [
+      { type: "ai" },
+      { type: "topic" },
+      { type: "galleryHighlight", eventTitle: "Model night", count: 0 },
+      { type: "galleryHighlight", count: 2 },
+      null,
+      "x",
+    ]) {
       expect(parseSuggestionReason(reason)).toBeNull();
     }
   });

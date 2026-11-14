@@ -7,7 +7,9 @@ export type SuggestionReason =
   | { type: "eventRecap"; at: string; going: number }
   | { type: "mostReplies"; count: number }
   | { type: "mostUpvotes"; count: number }
-  | { type: "newMembers"; count: number };
+  | { type: "newMembers"; count: number }
+  /** An event's highlight: its title and how many items could be featured. */
+  | { type: "galleryHighlight"; eventTitle: string; count: number };
 
 export const suggestionReasonSchema: z.ZodType<SuggestionReason> =
   z.discriminatedUnion("type", [
@@ -30,6 +32,11 @@ export const suggestionReasonSchema: z.ZodType<SuggestionReason> =
     z.object({
       type: z.literal("newMembers"),
       count: z.number().int().nonnegative(),
+    }),
+    z.object({
+      type: z.literal("galleryHighlight"),
+      eventTitle: z.string(),
+      count: z.number().int().positive(),
     }),
   ]);
 

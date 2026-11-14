@@ -172,6 +172,7 @@ describe("AutoDraftSettingsForm", () => {
           article: { enabled: true, max: 5 },
           storyline: { enabled: true, max: 3 },
           event: { enabled: false, max: 4 },
+          galleryItems: { enabled: true, max: 3 },
           forumThread: { enabled: true, max: 6 },
           launchpadProject: { enabled: true, max: 3 },
           newsItem: { enabled: true, max: 5 },
@@ -227,7 +228,7 @@ describe("AutoDraftSettingsForm", () => {
   it("shows Up to only where more than one item is allowed", () => {
     renderForm();
     expect(screen.getAllByRole("spinbutton", { name: /^Up to,/ })).toHaveLength(
-      6,
+      7,
     );
     expect(
       screen.queryByRole("spinbutton", { name: "Up to, Welcome new members" }),
@@ -427,6 +428,8 @@ describe("AutoDraftSettingsForm", () => {
       "AIT News stories": "Stories about your topics, newest updates first",
       "Community events":
         "Coming up soonest first, then past events with the most people going",
+      "Gallery highlights":
+        "The newest photo or video from each past event, events with the most photos and videos first. Only what members allowed in the magazine",
       "Forum threads": "Most replies, then most views",
       "Launchpad projects": "Most upvotes",
       "AIT News headlines": "Headlines about your topics, newest first",

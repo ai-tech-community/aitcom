@@ -30,6 +30,7 @@ export const AUTO_DRAFT_SOURCE_IDS = [
   "article",
   "storyline",
   "event",
+  "galleryItems",
   "forumThread",
   "launchpadProject",
   "newsItem",
@@ -63,6 +64,13 @@ export const AUTO_DRAFT_SOURCES = {
     maxLimit: AUTO_DRAFT_SOURCE_MAX,
     needsTopics: false,
     countsTowardMinimum: true,
+  },
+  galleryItems: {
+    kind: "galleryItem",
+    defaults: { enabled: true, max: 3 },
+    maxLimit: AUTO_DRAFT_SOURCE_MAX,
+    needsTopics: false,
+    countsTowardMinimum: false,
   },
   forumThread: {
     kind: "forumThread",

@@ -257,6 +257,46 @@ describe.skipIf(!isLocalDbConfigured())(
       expect((await f.issues()).docs).toEqual([]);
     });
 
+    it("adds a gallery highlight after the events, not counted toward the minimum", async () => {
+      await f.clearContent();
+      const ended = await f.event("2026-10-20");
+      await f.galleryItem(ended, 3);
+      const newest = await f.galleryItem(ended, 2);
+      await f.thread();
+      // The event's recap and the thread count; the highlight does not.
+      expect(await f.manual()).toMatchObject({
+        status: "skipped",
+        reason: "too_few",
+        found: 2,
+        needed: 3,
+      });
+      await f.thread();
+      expect(await f.manual()).toMatchObject({ status: "made", itemCount: 4 });
+      const issue = (await f.issues()).docs[0]!;
+      expect(issue.items!.map((item) => item.blockType)).toEqual([
+        "event",
+        "galleryItem",
+        "forumThread",
+        "forumThread",
+      ]);
+      const highlight = issue.items![1]!;
+      expect(highlight).toMatchObject({ galleryItemId: newest });
+      const view = await f.m.editing.loadIssueEditorView(f.m, issue, f.actor());
+      expect(view.autoDraft!.reasons[highlight.id!]).toEqual({
+        type: "galleryHighlight",
+        eventTitle: `Event 0 ${f.fx.suffix}`,
+        count: 2,
+      });
+      // Review Focus 4: neither the block nor its reason keeps a file link.
+      const picks = await f.m.db
+        .select()
+        .from(f.m.schema.magazineAutoPicks)
+        .where(eq(f.m.schema.magazineAutoPicks.issueId, issue.id));
+      expect(JSON.stringify([highlight, picks])).not.toMatch(
+        /https?:|private\/gallery|thumb/,
+      );
+    });
+
     it("a manual run with too little tells only the presser", async () => {
       await f.clearContent();
       await f.thread();

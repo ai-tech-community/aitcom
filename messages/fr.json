@@ -5442,6 +5442,7 @@
         "storyline": "Récits d’AIT News",
         "newsItem": "Titres d’AIT News",
         "event": "Événements de la communauté",
+        "galleryItems": "Moments forts de la galerie",
         "forumThread": "Discussions du forum",
         "launchpadProject": "Projets Launchpad",
         "welcome": "Accueillir les nouveaux membres"
@@ -5517,6 +5518,7 @@
         "article": "Articles approuvés en attente depuis le plus longtemps en premier",
         "storyline": "Récits sur vos sujets, mises à jour les plus récentes en premier",
         "event": "Événements à venir les plus proches d’abord, puis événements passés ayant le plus de participants",
+        "galleryItems": "La photo ou vidéo la plus récente de chaque événement passé, les événements ayant le plus de photos et vidéos d’abord. Uniquement ce que les membres ont autorisé pour le magazine",
         "forumThread": "Le plus de réponses, puis le plus de vues",
         "launchpadProject": "Le plus de votes positifs",
         "newsItem": "Titres sur vos sujets, les plus récents en premier",
@@ -5731,7 +5733,8 @@
         "eventRecap": "A eu lieu le <number>{date}</number>, {going, plural, one {<number>#</number> participant} other {<number>#</number> participants}}",
         "mostReplies": "Le plus commenté : {count, plural, one {<number>#</number> réponse} other {<number>#</number> réponses}}",
         "mostUpvotes": "Le plus apprécié : {count, plural, one {<number>#</number> vote positif} other {<number>#</number> votes positifs}}",
-        "newMembers": "{count, plural, one {<number>#</number> nouveau membre a rejoint la communauté} other {<number>#</number> nouveaux membres ont rejoint la communauté}}"
+        "newMembers": "{count, plural, one {<number>#</number> nouveau membre a rejoint la communauté} other {<number>#</number> nouveaux membres ont rejoint la communauté}}",
+        "galleryHighlight": "{eventTitle} : {count, plural, one {<number>#</number> photo ou vidéo partagée} other {<number>#</number> photos et vidéos partagées}}"
       },
       "autoDraft": {
         "label": "Créé automatiquement",

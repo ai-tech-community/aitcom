@@ -117,6 +117,48 @@ describe("picker suggestions", () => {
     ).toEqual([{ ...suggested, openHref: "/x" }]);
   });
 
+  it("a duplicate gets the search entry's thumbnail; a suggestion carries none", async () => {
+    const { ctx, loadSuggestion } = setup();
+    const galleryCandidate = (galleryItemId: number) => ({
+      input: { kind: "galleryItem" as const, galleryItemId },
+      title: `Photo ${galleryItemId}`,
+      facts: [],
+      openHref: `/communities/community/gallery?item=${galleryItemId}`,
+    });
+    const suggested = {
+      ...galleryCandidate(2),
+      reference: "galleryItem:2",
+      reason: {
+        type: "galleryHighlight" as const,
+        eventTitle: "Model night",
+        count: 4,
+      },
+    };
+    vi.mocked(suggestCandidates).mockResolvedValue([suggested]);
+    vi.spyOn(ITEM_PICKERS.galleryItem, "search").mockResolvedValue([
+      { ...galleryCandidate(2), thumbnailUrl: "https://signed.test/2-thumb" },
+      { ...galleryCandidate(3), thumbnailUrl: "https://signed.test/3-thumb" },
+    ]);
+
+    expect(
+      await pickerCandidatesFor("galleryItem", "", ctx, [], loadSuggestion),
+    ).toEqual([
+      { ...suggested, thumbnailUrl: "https://signed.test/2-thumb" },
+      {
+        ...galleryCandidate(3),
+        thumbnailUrl: "https://signed.test/3-thumb",
+        reference: "galleryItem:3",
+        reason: null,
+      },
+    ]);
+    expect(suggestCandidates).toHaveBeenCalledExactlyOnceWith(
+      "galleryItems",
+      expect.anything(),
+      expect.anything(),
+      { limit: PICKER_LIMIT, exclude: [] },
+    );
+  });
+
   it("keeps the limit", async () => {
     const { ctx, loadSuggestion, search } = setup();
     const suggestions = Array.from({ length: PICKER_LIMIT + 1 }, (_, i) =>

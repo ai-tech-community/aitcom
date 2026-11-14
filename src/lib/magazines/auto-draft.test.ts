@@ -16,6 +16,7 @@ describe("automatic draft settings", () => {
       "article",
       "storyline",
       "event",
+      "galleryItems",
       "forumThread",
       "launchpadProject",
       "newsItem",
@@ -27,20 +28,25 @@ describe("automatic draft settings", () => {
     expect([...AUTO_DRAFT_SOURCE_ORDER].sort()).toEqual(
       Object.keys(AUTO_DRAFT_SOURCE_DEFAULTS).sort(),
     );
-    expect(AUTO_DRAFT_SOURCE_ORDER).toHaveLength(7);
-    expect(new Set(AUTO_DRAFT_SOURCE_ORDER).size).toBe(7);
+    expect(AUTO_DRAFT_SOURCE_ORDER).toHaveLength(8);
+    expect(new Set(AUTO_DRAFT_SOURCE_ORDER).size).toBe(8);
   });
 
-  it("only the welcome counts nothing toward the minimum and allows one block", () => {
+  it("only the welcome and gallery highlights count nothing toward the minimum; the welcome allows one block", () => {
     for (const source of AUTO_DRAFT_SOURCE_ORDER) {
       expect(AUTO_DRAFT_SOURCES[source].countsTowardMinimum).toBe(
-        source !== "welcome",
+        source !== "welcome" && source !== "galleryItems",
       );
       expect(sourceMaxLimit(source)).toBe(source === "welcome" ? 1 : 10);
       expect(AUTO_DRAFT_SOURCES[source].needsTopics).toBe(
         source === "storyline" || source === "newsItem",
       );
     }
+    expect(AUTO_DRAFT_SOURCES.galleryItems.kind).toBe("galleryItem");
+    expect(AUTO_DRAFT_SOURCE_DEFAULTS.galleryItems).toEqual({
+      enabled: true,
+      max: 3,
+    });
   });
 
   it("fills missing sources with defaults and clamps counts", () => {

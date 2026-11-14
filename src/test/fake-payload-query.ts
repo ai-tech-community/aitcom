@@ -37,6 +37,8 @@ export function matchesWhere(doc: Doc, where: Where | undefined): boolean {
             return (value as number | string) < (operand as number | string);
           case "less_than_equal":
             return (value as number | string) <= (operand as number | string);
+          case "greater_than_equal":
+            return (value as number | string) >= (operand as number | string);
           default:
             throw new Error(`fake payload: unsupported operator ${op}`);
         }
