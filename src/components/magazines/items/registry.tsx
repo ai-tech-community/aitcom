@@ -14,6 +14,7 @@ import {
 } from "./launchpad-project-item";
 import { ForumThreadItem, forumThreadItemTitle } from "./forum-thread-item";
 import { EventItem, eventItemTitle } from "./event-item";
+import { GalleryItem, galleryItemTitle } from "./gallery-item";
 import { NewsItemCard, newsItemTitle } from "./news-item";
 import { ArticleItem, articleItemTitle } from "./article-item";
 import { EditorialItem, editorialItemTitle } from "./editorial-item";
@@ -25,9 +26,15 @@ import type {
   ItemTitle,
   ItemTeaser,
   ItemViewOfKind,
+  TranslateMessage,
 } from "./types";
 
-export type { ArticleHref, ItemRendererProps, ItemSize } from "./types";
+export type {
+  ArticleHref,
+  ItemRendererProps,
+  ItemSize,
+  TranslateMessage,
+} from "./types";
 
 /**
  * One renderer per item kind (ADR-0043), the client twin of the server's
@@ -44,9 +51,7 @@ export const ITEM_RENDERERS: {
   event: EventItem,
   forumThread: ForumThreadItem,
   launchpadProject: LaunchpadProjectItem,
-  // Stub so the registry compiles until the gallery item renderer lands
-  // (slice 4, Task 3); it renders nothing.
-  galleryItem: () => null,
+  galleryItem: GalleryItem,
 };
 
 /** Each kind's title for the issue's contents list. */
@@ -58,8 +63,7 @@ const ITEM_TITLES: { [K in ItemKindId]: ItemTitle<K> } = {
   event: eventItemTitle,
   forumThread: forumThreadItemTitle,
   launchpadProject: launchpadProjectItemTitle,
-  // Stub until the gallery item renderer lands (slice 4, Task 3).
-  galleryItem: (view) => ("text" in view.label ? view.label.text : null),
+  galleryItem: galleryItemTitle,
 };
 
 export function isUnavailableItem(
@@ -91,17 +95,22 @@ function renderKind<K extends ItemKindId>(
 /**
  * The item's title as the contents list shows it: the kind's own title,
  * or null when the item has none or is unavailable (callers fall back to
- * their own words).
+ * their own words). `translate` is a root-level translator, for titles that
+ * are messages.
  */
-export function itemTitle(view: EditorItemView): string | null {
-  return isUnavailableItem(view) ? null : titleOfKind(view);
+export function itemTitle(
+  view: EditorItemView,
+  translate: TranslateMessage,
+): string | null {
+  return isUnavailableItem(view) ? null : titleOfKind(view, translate);
 }
 
 function titleOfKind<K extends ItemKindId>(
   view: ItemViewOfKind<K>,
+  translate: TranslateMessage,
 ): string | null {
   const title: ItemTitle<K> = ITEM_TITLES[view.kind];
-  return title(view);
+  return title(view, translate);
 }
 
 /** Editors only: what stands in for an item whose content cannot be shown. */

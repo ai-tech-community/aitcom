@@ -202,8 +202,7 @@ export type GalleryItemLabel =
 /**
  * An item's accessible name: its caption, else its alt text, else a
  * generated description. The generated one is a message key plus values, so
- * the UI translates it (`"text" in label ? label.text : t(label.key,
- * label.values)`).
+ * the UI translates it (`galleryItemLabelText`).
  */
 export function galleryItemLabel(input: {
   caption: string | null | undefined;
@@ -234,6 +233,17 @@ export function galleryItemLabel(input: {
         : "gallery.label.photoBy",
     values: { name },
   };
+}
+
+/**
+ * A label in words: its own text, or its message translated by a root-level
+ * translator (the keys are fully qualified).
+ */
+export function galleryItemLabelText(
+  label: GalleryItemLabel,
+  translate: (key: string, values: Record<string, string>) => string,
+): string {
+  return "text" in label ? label.text : translate(label.key, label.values);
 }
 
 /**

@@ -8,9 +8,10 @@ import type { SuggestionReason } from "@/lib/magazines/suggestions";
 import { renderWithIntl } from "../../test-intl";
 
 type ArticleInput = { kind: "article"; articleId: number };
+type GalleryItemInput = { kind: "galleryItem"; galleryItemId: number };
 
 type Candidate = {
-  input: ArticleInput;
+  input: ArticleInput | GalleryItemInput;
   reference: string;
   title: string;
   facts: (
@@ -18,9 +19,12 @@ type Candidate = {
     | { type: "source"; host: string }
     | { type: "count"; what: "sources"; value: number }
     | { type: "date"; label: "updated"; at: string }
+    | { type: "mediaType"; mediaType: "photo" | "video" }
+    | { type: "event"; title: string }
   )[];
   openHref: string | null;
   reason?: SuggestionReason | null;
+  thumbnailUrl?: string;
 };
 
 const trpc = vi.hoisted(() => ({
@@ -95,6 +99,60 @@ afterEach(() => {
 });
 
 describe("PickerPanel", () => {
+  it("shows a picture's thumbnail, named by its title, and no broken image without one", () => {
+    trpc.candidates = [
+      {
+        input: { kind: "galleryItem", galleryItemId: 4 },
+        reference: "galleryItem:4",
+        title: "Robots on stage",
+        facts: [
+          { type: "mediaType", mediaType: "video" },
+          { type: "event", title: "Model night" },
+        ],
+        openHref: null,
+        thumbnailUrl: "https://files.example.test/4-thumb.jpg?signature=a",
+      },
+      {
+        input: { kind: "galleryItem", galleryItemId: 5 },
+        reference: "galleryItem:5",
+        title: "Photo by Sanne",
+        facts: [{ type: "mediaType", mediaType: "photo" }],
+        openHref: null,
+      },
+    ];
+    renderPanel({ kind: "galleryItem" });
+    const [withPicture, withoutPicture] = screen.getAllByRole("listitem");
+    const thumbnail = within(withPicture!).getByRole("img", {
+      name: "Robots on stage",
+    });
+    expect(thumbnail).toHaveAttribute(
+      "src",
+      "https://files.example.test/4-thumb.jpg?signature=a",
+    );
+    expect(thumbnail).toHaveAttribute("loading", "lazy");
+    expect(within(withPicture!).getByText("Video")).toBeVisible();
+    expect(within(withPicture!).getByText("Model night")).toBeVisible();
+    expect(within(withoutPicture!).queryByRole("img")).toBeNull();
+    expect(withoutPicture!.querySelector("img")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Add Photo by Sanne to the issue" }),
+    ).toBeVisible();
+  });
+
+  it("shows no picture for kinds without thumbnails", () => {
+    trpc.candidates = [
+      {
+        input: { kind: "article", articleId: 4 },
+        reference: "article:4",
+        title: "Evals",
+        facts: [{ type: "byline", name: "Ada" }],
+        openHref: null,
+      },
+    ];
+    const { container } = renderPanel();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
   it("shows why a suggestion is offered", async () => {
     trpc.candidates = [
       {
@@ -239,7 +297,7 @@ describe("PickerPanel", () => {
     }[] = [];
     const referenceOf = new Map(
       trpc.candidates.map((candidate) => [
-        candidate.input.articleId,
+        (candidate.input as ArticleInput).articleId,
         candidate.reference,
       ]),
     );

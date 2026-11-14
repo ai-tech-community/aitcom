@@ -5343,7 +5343,12 @@
       "projectKind": "Launchpad project",
       "upvotes": "{count, plural, one {# upvote} other {# upvotes}}",
       "articleKind": "Article",
-      "editorialKind": "Editorial"
+      "editorialKind": "Editorial",
+      "galleryKind": "From the gallery",
+      "galleryCredit": "{mediaType, select, video {Video by {name}} other {Photo by {name}}}",
+      "galleryEvent": "From <link>{event}</link>",
+      "galleryVideo": "Video",
+      "membersOnly": "Only members see this"
     },
     "rail": {
       "visitCommunity": "Visit {community}",

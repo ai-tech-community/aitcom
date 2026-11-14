@@ -1,7 +1,11 @@
 import { getTranslations } from "next-intl/server";
 
 import type { AppLocale } from "@/i18n/messages";
-import { galleryItemLabel, type GalleryItemLabel } from "@/lib/gallery-rules";
+import {
+  galleryItemLabel,
+  galleryItemLabelText,
+  type GalleryItemLabel,
+} from "@/lib/gallery-rules";
 import type { GalleryItem } from "@/payload-types";
 import { loadEventRefs, loadUploaders } from "@/server/gallery/items";
 import { relationId } from "@/server/gallery/relation-id";
@@ -65,7 +69,7 @@ export async function loadGalleryItemCredits(
         eventTitle: event?.title,
         uploaderName,
       });
-      const title = "text" in label ? label.text : t(label.key, label.values);
+      const title = galleryItemLabelText(label, t);
       return [item.id, { uploaderName, event, label, title }];
     }),
   );

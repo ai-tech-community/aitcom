@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 
-import { galleryItemLabel } from "@/lib/gallery-rules";
+import { galleryItemLabel, galleryItemLabelText } from "@/lib/gallery-rules";
 import type { GalleryItemView } from "@/server/gallery/items";
 
 /**
@@ -33,7 +33,7 @@ export function useGalleryItemLabel(): (item: GalleryItemView) => string {
         eventTitle: item.event?.title,
         uploaderName: uploaderName(item),
       });
-      return "text" in label ? label.text : t(label.key, label.values);
+      return galleryItemLabelText(label, t);
     },
     [t, uploaderName],
   );

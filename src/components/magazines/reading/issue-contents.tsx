@@ -77,6 +77,8 @@ export function IssueContents({
   articleHref: ArticleHref;
 }) {
   const t = useTranslations("magazines");
+  // Root-level, for item titles that are messages.
+  const translate = useTranslations();
   return (
     <nav aria-label={t("issue.contents")} className="flex flex-col gap-2">
       <SectionLabel as="p">{t("issue.contents")}</SectionLabel>
@@ -101,7 +103,7 @@ export function IssueContents({
             number={ordinal(index + 1)}
             thumbnail={itemThumbnail(view)}
           >
-            {itemTitle(view) ??
+            {itemTitle(view, translate) ??
               ("unavailable" in view
                 ? t("item.unavailable")
                 : t("item.untitledEditorial"))}

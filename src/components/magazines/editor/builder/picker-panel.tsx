@@ -184,6 +184,18 @@ export function PickerPanel({
             key={candidate.reference}
             className="flex items-center gap-3 px-3 py-2"
           >
+            {candidate.thumbnailUrl && (
+              // Signed per request after the editor's access check: never
+              // through the image optimizer, never kept.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={candidate.thumbnailUrl}
+                alt={candidate.title}
+                loading="lazy"
+                decoding="async"
+                className="bg-secondary size-12 shrink-0 rounded-sm object-cover"
+              />
+            )}
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-sm font-medium">
                 {candidate.title}

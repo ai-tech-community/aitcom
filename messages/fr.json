@@ -5343,7 +5343,12 @@
       "projectKind": "Projet Launchpad",
       "upvotes": "{count, plural, one {# vote positif} other {# votes positifs}}",
       "articleKind": "Article",
-      "editorialKind": "Éditorial"
+      "editorialKind": "Éditorial",
+      "galleryKind": "Depuis la galerie",
+      "galleryCredit": "{mediaType, select, video {Vidéo par {name}} other {Photo par {name}}}",
+      "galleryEvent": "Événement : <link>{event}</link>",
+      "galleryVideo": "Vidéo",
+      "membersOnly": "Visible uniquement par les membres"
     },
     "rail": {
       "visitCommunity": "Visiter {community}",

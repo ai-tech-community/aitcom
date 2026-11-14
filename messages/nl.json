@@ -5343,7 +5343,12 @@
       "projectKind": "Launchpad-project",
       "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
       "articleKind": "Artikel",
-      "editorialKind": "Van de redactie"
+      "editorialKind": "Van de redactie",
+      "galleryKind": "Uit de galerij",
+      "galleryCredit": "{mediaType, select, video {Video door {name}} other {Foto door {name}}}",
+      "galleryEvent": "Van <link>{event}</link>",
+      "galleryVideo": "Video",
+      "membersOnly": "Alleen leden zien dit"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",

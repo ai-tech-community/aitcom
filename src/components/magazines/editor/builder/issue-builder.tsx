@@ -233,6 +233,8 @@ function IssueWorkspace({
   const tItems = useTranslations("magazineEditor.builder.items");
   const tPublish = useTranslations("magazineEditor.builder.publishDialog");
   const tErrors = useTranslations("magazineEditor.errors");
+  // Root-level, for saved item titles that are messages.
+  const translate = useTranslations();
 
   const router = useRouter();
   const utils = api.useUtils();
@@ -511,6 +513,7 @@ function IssueWorkspace({
         saved: view,
         titleHint: titleHints.get(item.key),
         t: tItems,
+        translate,
       }),
       kindLabel: tItems(builderKindLabelKey(item)),
       reason: data.autoDraft?.reasons[item.key] ?? null,

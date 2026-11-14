@@ -87,7 +87,13 @@ export function builderPreviewView<K extends ItemKindId>(
 ): EditorItemView | null {
   const view = kindOf(item).previewView(item, saved);
   if (!view || "unavailable" in view) return view;
+  if (!acceptsBuilderItemImage(item)) return view;
   return { ...view, image: readItemImage(item.image) ?? undefined };
+}
+
+/** Whether the item may carry an issue-owned image (its image editor). */
+export function acceptsBuilderItemImage(item: BuilderItem): boolean {
+  return BUILDER_ITEM_KINDS[item.kind].acceptsImage ?? true;
 }
 
 /** The content the item references (at most once per issue), or null. */

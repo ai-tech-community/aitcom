@@ -25,7 +25,18 @@ export type ItemRendererProps<K extends ItemKindId> = {
   suppressSourceImage?: boolean;
 };
 
+/**
+ * Translates a fully qualified message key (a root-level `useTranslations()`),
+ * for kinds whose title can be a message (a gallery item without words of its
+ * own is "Photo by {name}").
+ */
+export type TranslateMessage = (
+  key: string,
+  values: Record<string, string>,
+) => string;
+
 /** The item's title in the issue's contents list, or null when it has none. */
 export type ItemTitle<K extends ItemKindId> = (
   view: ItemViewOfKind<K>,
+  translate: TranslateMessage,
 ) => string | null;

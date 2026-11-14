@@ -24,6 +24,7 @@ export function referenceBuilderKind<K extends PickableKindId>(opts: {
   labelKey: BuilderItemsMessage;
   referenceOf: (item: BuilderItemOf<K>) => string;
   openLabelKey?: BuilderItemsMessage;
+  acceptsImage?: boolean;
 }): BuilderItemKind<K> {
   function AddPanel(props: AddPanelProps) {
     return createElement(PickerPanel, { kind: opts.kind, ...props });
@@ -34,7 +35,7 @@ export function referenceBuilderKind<K extends PickableKindId>(opts: {
     rowTitle(_item, ctx) {
       const fromSaved =
         ctx.saved && !("unavailable" in ctx.saved)
-          ? itemTitle(ctx.saved)
+          ? itemTitle(ctx.saved, ctx.translate)
           : null;
       return fromSaved ?? ctx.titleHint ?? ctx.t(opts.labelKey);
     },
@@ -48,6 +49,7 @@ export function referenceBuilderKind<K extends PickableKindId>(opts: {
     },
     referenceKey: opts.referenceOf,
     openLabelKey: opts.openLabelKey,
+    acceptsImage: opts.acceptsImage,
     AddPanel,
   };
 }

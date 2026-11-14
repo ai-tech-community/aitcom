@@ -64,6 +64,38 @@ describe("ItemDetailsPanel", () => {
       image: newItemImage("https://example.test/source.jpg"),
     });
   });
+  it("offers an issue image for an article but never for a gallery item, which is the picture", () => {
+    const { unmount } = renderWithIntl(
+      <ItemDetailsPanel
+        item={article}
+        kindLabel="Article"
+        onChange={vi.fn()}
+        onDone={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Item image")).toBeVisible();
+    unmount();
+
+    renderWithIntl(
+      <ItemDetailsPanel
+        item={{ kind: "galleryItem", key: "g", galleryItemId: 7 }}
+        kindLabel="Photo or video"
+        // Even a source picture handed in by mistake is never offered.
+        sourceImageUrl="https://example.test/source.jpg"
+        onChange={vi.fn()}
+        onDone={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Intro line (optional)" }),
+    ).toBeVisible();
+    expect(screen.queryByText("Item image")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Use article image" }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Done" })).toBeVisible();
+  });
+
   it("edits the intro line of any item", () => {
     const onChange = vi.fn();
     renderWithIntl(<IntroHost onChange={onChange} />);
