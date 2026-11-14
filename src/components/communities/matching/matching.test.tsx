@@ -119,7 +119,22 @@ beforeEach(() => {
     data: { types: [type], profile: emptyMatchingProfile, canManage: true },
   };
   m.directory = {
-    data: { pages: [{ items: [{ ...a, bio: "Founder", role: "member" }] }] },
+    data: {
+      pages: [
+        {
+          items: [
+            {
+              ...a,
+              bio: "Founder",
+              role: "member",
+              joinedAt: new Date("2026-11-01T00:00:00Z"),
+              canOpenProfile: true,
+              profile: null,
+            },
+          ],
+        },
+      ],
+    },
   };
   m.suggestions = {
     data: {

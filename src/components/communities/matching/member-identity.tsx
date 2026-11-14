@@ -21,7 +21,12 @@ export function MemberIdentity({
         {member.image && <AvatarImage src={member.image} alt="" />}
         <AvatarFallback>{getInitials(name)}</AvatarFallback>
       </Avatar>
-      <span className="min-w-0 text-sm font-medium break-words">{name}</span>
+      <span
+        data-slot="member-name"
+        className="min-w-0 text-sm font-medium break-words"
+      >
+        {name}
+      </span>
     </div>
   );
 }
