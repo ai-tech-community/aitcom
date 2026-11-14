@@ -5324,7 +5324,8 @@
         "not_ready": "Lezers kunnen dit onderdeel nog niet zien.",
         "other_magazine": "Dit artikel hoort bij een ander magazine. Haal het uit het nummer.",
         "unpublished": "Dit is offline gehaald. Lezers slaan het over tot het weer online staat.",
-        "no_access": "Dit is alleen voor de community. Alleen mensen met toegang zien het."
+        "no_access": "Dit is alleen voor de community. Alleen mensen met toegang zien het.",
+        "withdrawn": "Wie dit heeft toegevoegd, deelt het niet meer met het magazine, of het is verborgen. Lezers zien het niet."
       },
       "editorsOnly": "Alleen redacteuren zien dit.",
       "storylineKind": "Uit AIT News",
@@ -5838,7 +5839,8 @@
         "event": "Evenement",
         "membersOnly": "Alleen leden zien dit",
         "forumThread": "Forumgesprek",
-        "launchpadProject": "Project"
+        "launchpadProject": "Project",
+        "galleryItem": "Foto of video"
       },
       "editorial": {
         "heading": "Kop (optioneel)",
@@ -5856,7 +5858,8 @@
           "newsItem": "Nieuws",
           "event": "Evenementen",
           "forumThread": "Forum",
-          "launchpadProject": "Projecten"
+          "launchpadProject": "Projecten",
+          "galleryItem": "Galerij"
         },
         "search": {
           "article": "Zoek artikelen die klaar zijn",
@@ -5899,7 +5902,9 @@
           "replies": "{count, plural, one {# reactie} other {# reacties}}",
           "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
           "cancelled": "Geannuleerd",
-          "completed": "Afgelopen"
+          "completed": "Afgelopen",
+          "photo": "Foto",
+          "video": "Video"
         },
         "results": "{count, plural, one {# resultaat} other {# resultaten}}"
       },

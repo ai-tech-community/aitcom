@@ -33,3 +33,9 @@ export function launchpadProjectInputReference(input: {
 }): string {
   return itemReference("launchpadProject", Number(input.projectId));
 }
+
+export function galleryItemInputReference(input: {
+  galleryItemId: number;
+}): string {
+  return itemReference("galleryItem", Number(input.galleryItemId));
+}

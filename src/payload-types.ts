@@ -794,6 +794,28 @@ export interface MagazineIssue {
             blockName?: string | null;
             blockType: 'launchpadProject';
           }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
+            galleryItemId: number;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'galleryItem';
+          }
       )[]
     | null;
   updatedAt: string;
@@ -3350,6 +3372,15 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
               intro?: T;
               image?: T;
               projectId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        galleryItem?:
+          | T
+          | {
+              intro?: T;
+              image?: T;
+              galleryItemId?: T;
               id?: T;
               blockName?: T;
             };

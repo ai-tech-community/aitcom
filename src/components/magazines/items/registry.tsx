@@ -44,6 +44,9 @@ export const ITEM_RENDERERS: {
   event: EventItem,
   forumThread: ForumThreadItem,
   launchpadProject: LaunchpadProjectItem,
+  // Stub so the registry compiles until the gallery item renderer lands
+  // (slice 4, Task 3); it renders nothing.
+  galleryItem: () => null,
 };
 
 /** Each kind's title for the issue's contents list. */
@@ -55,6 +58,8 @@ const ITEM_TITLES: { [K in ItemKindId]: ItemTitle<K> } = {
   event: eventItemTitle,
   forumThread: forumThreadItemTitle,
   launchpadProject: launchpadProjectItemTitle,
+  // Stub until the gallery item renderer lands (slice 4, Task 3).
+  galleryItem: (view) => ("text" in view.label ? view.label.text : null),
 };
 
 export function isUnavailableItem(

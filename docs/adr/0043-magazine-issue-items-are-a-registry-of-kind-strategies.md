@@ -8,8 +8,9 @@ An [[issue]] of a [[magazine]] is an ordered list of [[issue-item]]s. The core
 slice has two [[item-kind]]s: `article` (a [[magazine-article]]) and
 `editorial` (rich text owned by the issue). Slice 2 adds platform content
 (`storyline`, `newsItem`, `event`, `forumThread`, `launchpadProject`), slice 5
-adds auto-draft suggestions per kind, and later kinds (a challenge, a course)
-are already on the wish list. This ADR decides how kinds are modelled, where
+adds auto-draft suggestions per kind, the community gallery adds
+`galleryItem` (spec 2026-11-13, slice 4), and later kinds (a challenge, a
+course) are already on the wish list. This ADR decides how kinds are modelled, where
 magazine data is stored, and how magazine articles reuse `Articles` without
 branching on "is this a magazine article?" all over the code. Design:
 `docs/superpowers/specs/2026-10-26-community-magazines-design.md` ("Decided

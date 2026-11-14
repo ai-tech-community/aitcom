@@ -7,6 +7,7 @@ export const PICKABLE_ITEM_KINDS = [
   "event",
   "forumThread",
   "launchpadProject",
+  "galleryItem",
 ] as const satisfies readonly ItemKindId[];
 
 export type PickableKindId = (typeof PICKABLE_ITEM_KINDS)[number];
@@ -21,7 +22,9 @@ export type CandidateFact =
       at: string;
     }
   | { type: "count"; what: "sources" | "replies" | "upvotes"; value: number }
-  | { type: "eventStatus"; status: "cancelled" | "completed" };
+  | { type: "eventStatus"; status: "cancelled" | "completed" }
+  | { type: "event"; title: string }
+  | { type: "mediaType"; mediaType: "photo" | "video" };
 
 export const PICKER_LIMIT = 12;
 

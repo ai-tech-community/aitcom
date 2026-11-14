@@ -1,5 +1,6 @@
 import { forumThreadItemKind } from "./forumThread/kind";
 import { eventItemKind } from "./event/kind";
+import { galleryItemItemKind } from "./galleryItem/kind";
 import { z } from "zod";
 
 import { seesEditorLayer } from "@/lib/magazines/access";
@@ -38,6 +39,7 @@ const STRATEGIES = {
   event: eventItemKind,
   forumThread: forumThreadItemKind,
   launchpadProject: launchpadProjectItemKind,
+  galleryItem: galleryItemItemKind,
 };
 
 /** The builder input type a kind's strategy declares. */

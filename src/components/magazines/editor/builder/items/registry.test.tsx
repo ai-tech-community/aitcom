@@ -54,6 +54,7 @@ const referenceInputs: { [K in ItemKindId]: InputOf<K> } = {
   event: { kind: "event", eventId: 7 },
   forumThread: { kind: "forumThread", threadId: 7 },
   launchpadProject: { kind: "launchpadProject", projectId: 7 },
+  galleryItem: { kind: "galleryItem", galleryItemId: 7 },
 };
 
 function referenceParity<K extends ItemKindId>(kind: K) {
@@ -93,6 +94,7 @@ describe("builder item registry", () => {
       "storyline",
       "newsItem",
       "event",
+      "galleryItem",
       "forumThread",
       "launchpadProject",
       "editorial",
@@ -198,7 +200,7 @@ it("adds events after news and follows the saved event and edited intro", () => 
   expect(hasBuilderItemEditor(item)).toBe(false);
 });
 
-it("adds forum threads after events and follows the saved title and edited intro", () => {
+it("adds forum threads after gallery items and follows the saved title and edited intro", () => {
   const item: BuilderItem = {
     kind: "forumThread",
     key: "thread",
@@ -207,7 +209,7 @@ it("adds forum threads after events and follows the saved title and edited intro
   };
   const saved = forumThreadView();
   expect(ADD_TAB_ORDER.indexOf("forumThread")).toBe(
-    ADD_TAB_ORDER.indexOf("event") + 1,
+    ADD_TAB_ORDER.indexOf("galleryItem") + 1,
   );
   expect(builderKindLabelKey(item)).toBe("forumThread");
   expect(builderReferenceKey(item)).toBe("forumThread:7");

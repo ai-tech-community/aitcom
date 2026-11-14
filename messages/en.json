@@ -5324,7 +5324,8 @@
         "not_ready": "Readers cannot see this item yet.",
         "other_magazine": "This article belongs to another magazine. Remove it from the issue.",
         "unpublished": "This was taken offline. Readers skip it until it is back.",
-        "no_access": "This is private to its community. Only people who can open it see it."
+        "no_access": "This is private to its community. Only people who can open it see it.",
+        "withdrawn": "The person who added this no longer shares it with the magazine, or it was hidden. Readers do not see it."
       },
       "editorsOnly": "Only editors see this.",
       "storylineKind": "From AIT News",
@@ -5838,7 +5839,8 @@
         "event": "Event",
         "membersOnly": "Only members see this",
         "forumThread": "Forum thread",
-        "launchpadProject": "Project"
+        "launchpadProject": "Project",
+        "galleryItem": "Photo or video"
       },
       "editorial": {
         "heading": "Heading (optional)",
@@ -5856,7 +5858,8 @@
           "newsItem": "News",
           "event": "Events",
           "forumThread": "Forum",
-          "launchpadProject": "Projects"
+          "launchpadProject": "Projects",
+          "galleryItem": "Gallery"
         },
         "search": {
           "article": "Search ready articles",
@@ -5899,7 +5902,9 @@
           "replies": "{count, plural, one {# reply} other {# replies}}",
           "upvotes": "{count, plural, one {# upvote} other {# upvotes}}",
           "cancelled": "Cancelled",
-          "completed": "Took place"
+          "completed": "Took place",
+          "photo": "Photo",
+          "video": "Video"
         },
         "results": "{count, plural, one {# result} other {# results}}"
       },

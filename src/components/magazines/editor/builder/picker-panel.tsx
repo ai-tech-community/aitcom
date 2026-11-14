@@ -51,6 +51,10 @@ function Fact({ fact }: { fact: CandidateFact }) {
       );
     case "eventStatus":
       return <span>{t(fact.status)}</span>;
+    case "event":
+      return <span className="truncate">{fact.title}</span>;
+    case "mediaType":
+      return <span>{t(fact.mediaType)}</span>;
     default: {
       const unreachable: never = fact;
       return unreachable;

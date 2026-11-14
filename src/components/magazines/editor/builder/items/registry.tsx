@@ -8,6 +8,7 @@ import { storylineBuilderKind } from "./storyline";
 import { forumThreadBuilderKind } from "./forum-thread";
 import { launchpadProjectBuilderKind } from "./launchpad-project";
 import { eventBuilderKind } from "./event";
+import { galleryItemBuilderKind } from "./gallery-item";
 import { newsItemBuilderKind } from "./news-item";
 import { articleBuilderKind } from "./article";
 import { editorialBuilderKind } from "./editorial";
@@ -35,6 +36,7 @@ export const BUILDER_ITEM_KINDS: { [K in ItemKindId]: BuilderItemKind<K> } = {
   event: eventBuilderKind,
   forumThread: forumThreadBuilderKind,
   launchpadProject: launchpadProjectBuilderKind,
+  galleryItem: galleryItemBuilderKind,
 };
 
 /**
@@ -46,6 +48,7 @@ export const ADD_TAB_ORDER: readonly ItemKindId[] = [
   "storyline",
   "newsItem",
   "event",
+  "galleryItem",
   "forumThread",
   "launchpadProject",
   "editorial",

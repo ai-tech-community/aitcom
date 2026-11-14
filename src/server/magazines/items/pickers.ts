@@ -1,5 +1,6 @@
 import { forumThreadPicker } from "./forumThread/picker";
 import { eventPicker } from "./event/picker";
+import { galleryItemPicker } from "./galleryItem/picker";
 import {
   AUTO_DRAFT_SOURCES,
   AUTO_DRAFT_SOURCE_ORDER,
@@ -30,6 +31,7 @@ export const ITEM_PICKERS: {
   event: eventPicker,
   forumThread: forumThreadPicker,
   launchpadProject: launchpadProjectPicker,
+  galleryItem: galleryItemPicker,
 };
 
 /** Search one source and attach the kind strategy's content identity. */

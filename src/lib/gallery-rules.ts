@@ -235,3 +235,12 @@ export function galleryItemLabel(input: {
     values: { name },
   };
 }
+
+/**
+ * The item open in its community's gallery (locale-less, for the app's
+ * `Link`): where a notification, a magazine issue or any other page sends
+ * someone to see one item.
+ */
+export function galleryItemPath(slug: string, itemId: number): string {
+  return `/communities/${slug}/gallery?item=${itemId}`;
+}

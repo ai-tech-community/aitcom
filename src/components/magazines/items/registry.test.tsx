@@ -241,6 +241,7 @@ describe("issue item registry", () => {
       "editorial",
       "event",
       "forumThread",
+      "galleryItem",
       "launchpadProject",
       "newsItem",
       "storyline",

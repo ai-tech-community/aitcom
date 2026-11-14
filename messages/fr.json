@@ -5324,7 +5324,8 @@
         "not_ready": "Le lectorat ne peut pas encore voir cet élément.",
         "other_magazine": "Cet article appartient à un autre magazine. Retirez-le du numéro.",
         "unpublished": "Ce contenu a été retiré de la publication. Le lectorat ne le voit pas tant qu’il n’est pas rétabli.",
-        "no_access": "Ce contenu est privé au sein de sa communauté. Seules les personnes qui y ont accès peuvent le voir."
+        "no_access": "Ce contenu est privé au sein de sa communauté. Seules les personnes qui y ont accès peuvent le voir.",
+        "withdrawn": "La personne qui l’a ajouté ne le partage plus avec le magazine, ou il a été masqué. Le lectorat ne le voit pas."
       },
       "editorsOnly": "Visible uniquement par la rédaction.",
       "storylineKind": "Depuis AIT News",
@@ -5838,7 +5839,8 @@
         "event": "Événement",
         "membersOnly": "Visible uniquement par les membres",
         "forumThread": "Discussion du forum",
-        "launchpadProject": "Projet"
+        "launchpadProject": "Projet",
+        "galleryItem": "Photo ou vidéo"
       },
       "editorial": {
         "heading": "Titre de section (facultatif)",
@@ -5856,7 +5858,8 @@
           "newsItem": "Actualités",
           "event": "Événements",
           "forumThread": "Forum",
-          "launchpadProject": "Projets"
+          "launchpadProject": "Projets",
+          "galleryItem": "Galerie"
         },
         "search": {
           "article": "Rechercher des articles prêts",
@@ -5899,7 +5902,9 @@
           "replies": "{count, plural, one {# réponse} other {# réponses}}",
           "upvotes": "{count, plural, one {# vote positif} other {# votes positifs}}",
           "cancelled": "Annulé",
-          "completed": "A eu lieu"
+          "completed": "A eu lieu",
+          "photo": "Photo",
+          "video": "Vidéo"
         },
         "results": "{count, plural, one {# résultat} other {# résultats}}"
       },
