@@ -74,11 +74,14 @@ function CommunityHeading({
 }) {
   const tRoles = useTranslations("communities.roles");
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
       <h1
         ref={headingRef}
         tabIndex={-1}
-        className={cn("font-semibold tracking-tight outline-none", className)}
+        className={cn(
+          "min-w-0 font-semibold tracking-tight wrap-break-word outline-none",
+          className,
+        )}
       >
         {name}
       </h1>

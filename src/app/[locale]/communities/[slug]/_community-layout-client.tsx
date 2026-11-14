@@ -15,11 +15,9 @@ import {
 import { CommunityIdentity } from "@/components/communities/community-identity";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  resolveCommunityIdentityDensity,
-  resolveCommunityLayoutVariant,
-} from "@/lib/communities/layout-variant";
+import { resolveCommunityLayoutVariant } from "@/lib/communities/layout-variant";
 import { useJoinDeepLink } from "@/components/communities/use-community-join";
+import { useCommunityIdentityDensity } from "@/components/communities/use-community-identity-density";
 import { useRouter } from "@/i18n/navigation";
 
 export function CommunityLayoutClient({
@@ -49,6 +47,14 @@ export function CommunityLayoutClient({
     { enabled: !!user },
   );
 
+  const memberships = myCommunities ?? initialMemberships;
+  const membershipStatus = membershipStatusForSlug(memberships, slug);
+  const memberRole = memberRoleForSlug(memberships, slug);
+  const identityDensity = useCommunityIdentityDensity(
+    segments,
+    membershipStatus === "active",
+  );
+
   // `isLoading` is false while a query is pending but not yet fetching.
   // That is the first paint of a cold visit: the server took the missing
   // community as notFound() and the client took it as a spinner. The
@@ -68,14 +74,6 @@ export function CommunityLayoutClient({
     notFound();
   }
   const community = communityQuery.data;
-
-  const memberships = myCommunities ?? initialMemberships;
-  const membershipStatus = membershipStatusForSlug(memberships, slug);
-  const memberRole = memberRoleForSlug(memberships, slug);
-  const identityDensity = resolveCommunityIdentityDensity(
-    segments,
-    membershipStatus === "active",
-  );
 
   return (
     <PageDocumentAuthProvider user={initialUser}>
