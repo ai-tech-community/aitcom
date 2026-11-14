@@ -69,7 +69,8 @@ const DEFAULT_BUILTIN_LABELS: Record<BuiltinSurface, readonly string[]> = {
   gallery: ["Gallery", "Galerie", "Galerij"],
   classroom: ["Classrooms", "Espaces de formation", "Klaslokalen"],
   ideas: ["Ideas", "Idées", "Ideeën"],
-  members: ["Members", "Membres", "Leden"],
+  // Members was renamed People; the old labels still count as the default.
+  members: ["Members", "Membres", "Leden", "People", "Mensen", "Personnes"],
   magazine: ["Magazine"],
 };
 

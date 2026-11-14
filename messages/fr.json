@@ -3090,7 +3090,7 @@
       "submit": "Créer la communauté"
     },
     "profile": {
-      "members": "Membres",
+      "members": "Personnes",
       "links": "Liens",
       "events": "Événements",
       "gallery": "Galerie",
@@ -6308,10 +6308,10 @@
     "matchingSettings": "Paramètres de mise en relation",
     "setupMatching": "Configurer la mise en relation",
     "optionalQuestions": "La participation est facultative. Répondez uniquement aux questions qui vous concernent ; les questions sans réponse ne sont pas utilisées pour les suggestions automatiques. Vous pouvez modifier vos réponses ou vous retirer à tout moment.",
-    "title": "Membres et connexions",
+    "title": "Personnes",
     "description": "Découvrez les personnes de votre communauté et facilitez des rencontres utiles.",
     "navigation": "Membres et connexions",
-    "peopleTab": "Membres",
+    "peopleTab": "Annuaire",
     "matchesTab": "Suggestions",
     "profileTab": "Mon profil de mise en relation",
     "introductionsTab": "Présentations",

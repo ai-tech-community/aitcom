@@ -102,6 +102,41 @@ describe("resolveSpaceLabel", () => {
     expect(isDefaultBuiltinLabel("gallery", "Photos")).toBe(false);
   });
 
+  it("treats old and new Members labels as the default name", () => {
+    for (const label of [
+      "Members",
+      "Leden",
+      "Membres",
+      "People",
+      "Mensen",
+      "Personnes",
+    ]) {
+      expect(isDefaultBuiltinLabel("members", label), label).toBe(true);
+    }
+    expect(isDefaultBuiltinLabel("members", "Crew")).toBe(false);
+  });
+
+  it("labels the members surface People in every language", () => {
+    expect(en.communities.profile.members).toBe("People");
+    expect(nl.communities.profile.members).toBe("Mensen");
+    expect(fr.communities.profile.members).toBe("Personnes");
+  });
+
+  it("keeps an owner's own name for the members tab", () => {
+    expect(
+      resolveSpaceLabel(
+        { kind: "builtin", builtinSurface: "members", name: "Crew" },
+        t,
+      ),
+    ).toBe("Crew");
+    expect(
+      resolveSpaceLabel(
+        { kind: "builtin", builtinSurface: "members", name: "Members" },
+        t,
+      ),
+    ).toBe("T:members");
+  });
+
   it("localizes a stored default name for a builtin surface", () => {
     expect(
       resolveSpaceLabel(

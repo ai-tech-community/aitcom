@@ -3090,7 +3090,7 @@
       "submit": "Community aanmaken"
     },
     "profile": {
-      "members": "Leden",
+      "members": "Mensen",
       "links": "Links",
       "events": "Evenementen",
       "gallery": "Galerij",
@@ -6308,10 +6308,10 @@
     "matchingSettings": "Matchinginstellingen",
     "setupMatching": "Matching instellen",
     "optionalQuestions": "Deelname is optioneel. Beantwoord alleen de vragen die voor jou relevant zijn; onbeantwoorde vragen worden niet gebruikt voor automatische matches. Je kunt je antwoorden aanpassen of je deelname op elk moment stoppen.",
-    "title": "Leden & verbindingen",
+    "title": "Mensen",
     "description": "Ontdek de mensen in je community en help waardevolle contacten ontstaan.",
     "navigation": "Leden en verbindingen",
-    "peopleTab": "Leden",
+    "peopleTab": "Ledenlijst",
     "matchesTab": "Matches",
     "profileTab": "Mijn matchprofiel",
     "introductionsTab": "Introducties",
