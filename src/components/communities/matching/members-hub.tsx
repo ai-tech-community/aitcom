@@ -4,7 +4,6 @@ import { useDeferredValue, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,14 +11,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MemberIdentity } from "./member-identity";
+import { DirectoryMemberRow } from "./directory-member-row";
 import { MatchingProfileForm } from "./profile-form";
 import { CommunityMatches } from "./matches";
 import { IntroductionHistory } from "./introduction-history";
 
 export function MemberDirectory({ slug }: { slug: string }) {
   const t = useTranslations("communityMatching");
-  const roles = useTranslations("communities.roles");
   const [search, setSearch] = useState("");
   const q = useDeferredValue(search);
   const query = api.communities.getMembers.useInfiniteQuery(
@@ -55,25 +53,7 @@ export function MemberDirectory({ slug }: { slug: string }) {
       ) : (
         <ul className="divide-y border-y">
           {items.map((member) => (
-            <li
-              key={member.userId}
-              className="flex items-start justify-between gap-4 py-4"
-            >
-              <div className="min-w-0">
-                <MemberIdentity
-                  member={member}
-                  fallback={t("memberFallback")}
-                />
-                {member.bio && (
-                  <p className="text-muted-foreground mt-2 max-w-prose text-sm break-words">
-                    {member.bio}
-                  </p>
-                )}
-              </div>
-              {member.role !== "member" && (
-                <Badge variant="secondary">{roles(member.role)}</Badge>
-              )}
-            </li>
+            <DirectoryMemberRow key={member.userId} member={member} />
           ))}
         </ul>
       )}

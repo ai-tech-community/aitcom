@@ -1,4 +1,8 @@
 import { routing } from "@/i18n/routing";
+import {
+  directoryProfileColumns,
+  toDirectoryMember,
+} from "@/server/communities/directory-member";
 import { recordReferralEmailJoin } from "@/server/communities/referral-email/service";
 import { scrubJoinedReferralEmails } from "@/server/communities/referral-email/privacy";
 import {
@@ -348,6 +352,7 @@ export const communitiesRouter = createTRPCRouter({
           displayName: memberProfiles.displayName,
           bio: memberProfiles.bio,
           image: user.image,
+          ...directoryProfileColumns(),
         })
         .from(communityMemberships)
         .innerJoin(user, eq(communityMemberships.userId, user.id))
@@ -372,7 +377,11 @@ export const communitiesRouter = createTRPCRouter({
         };
       }
 
-      return { items, nextCursor };
+      const viewerId = ctx.session?.user?.id;
+      return {
+        items: items.map((row) => toDirectoryMember(row, viewerId)),
+        nextCursor,
+      };
     }),
 
   /** Stack faces + active total for a single community (header use). Never

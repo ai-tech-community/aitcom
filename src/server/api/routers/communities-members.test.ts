@@ -25,6 +25,10 @@ function fixture() {
     role: "member",
     bio: null,
     image: null,
+    profilePublic: false,
+    company: null as string | null,
+    skills: null as string[] | null,
+    xp: null as number | null,
   }));
   const filters: unknown[] = [];
   const chain = {
@@ -90,6 +94,32 @@ describe("Members directory used by the matching hub", () => {
       "%Greg\\_50\\%%",
       "%Greg\\_50\\%%",
     ]);
+  });
+  it("links public profiles and withholds private profile details", async () => {
+    const fake = fixture();
+    fake.chain.limit.mockResolvedValue([
+      {
+        ...fake.rows[0]!,
+        profilePublic: true,
+        company: "Acme",
+        skills: ["Go"],
+        xp: 0,
+      },
+      {
+        ...fake.rows[1]!,
+        profilePublic: false,
+        company: "Secret",
+        skills: ["X"],
+        xp: 900,
+      },
+    ]);
+    const { items } = await fake.caller.getMembers({ slug: "alpha" });
+    expect(items[0]).toMatchObject({
+      canOpenProfile: true,
+      profile: { company: "Acme", skills: ["Go"], level: 1, tier: "beginner" },
+    });
+    expect(items[1]).toMatchObject({ canOpenProfile: false, profile: null });
+    expect(JSON.stringify(items[1])).not.toContain("Secret");
   });
   it("preserves the existing roster visibility check before searching", async () => {
     visibility.roster.mockResolvedValue(false);
