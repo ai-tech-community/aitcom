@@ -117,7 +117,7 @@ export async function uploadMagazineImage(
       alt: alt && alt.length > 0 ? alt : "upload",
       uploadedBy: ownerId,
       // Stored beside the file so the S3 key is magazines/<id>/<uuid>-<name>.ext
-      // and a later read builds the same URL. Empty for every other upload.
+      // and a later read builds the same URL. Other uploads get `media`.
       prefix: file.prefix,
     },
     file: {

@@ -2,6 +2,10 @@ import type { CollectionConfig } from "payload";
 
 import { MEDIA_PURPOSES } from "@/lib/image-uploads";
 import { unlinkFeedPostsBeforeMediaDelete } from "@/server/communities/feed-post-image-url-hook";
+import {
+  readMissingPrefixAsBucketRoot,
+  storeNewFilesUnderAFolder,
+} from "@/server/media/media-prefix";
 
 import { adminsOnly } from "./shared/admins-only";
 
@@ -21,7 +25,11 @@ export const Media: CollectionConfig = {
       { name: "feed", width: 1200, withoutEnlargement: true },
     ],
   },
-  hooks: { beforeDelete: [unlinkFeedPostsBeforeMediaDelete()] },
+  hooks: {
+    // Runs before the storage plugin's hooks, which are appended after these.
+    beforeChange: [storeNewFilesUnderAFolder],
+    beforeDelete: [unlinkFeedPostsBeforeMediaDelete()],
+  },
   fields: [
     {
       name: "alt",
@@ -55,6 +63,14 @@ export const Media: CollectionConfig = {
         description:
           "What it was uploaded for. A feed post image belongs to one post and is deleted when the post stops using it. Empty for shared images (covers, logos).",
       },
+    },
+    // The S3 folder of the file. The storage plugin owns this field (hidden,
+    // read-only, default MEDIA_DEFAULT_PREFIX) and merges this definition
+    // into its own; only the read hook is added here.
+    {
+      name: "prefix",
+      type: "text",
+      hooks: { afterRead: [readMissingPrefixAsBucketRoot] },
     },
   ],
 };

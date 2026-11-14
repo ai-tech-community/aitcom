@@ -49,6 +49,7 @@ import { Magazines } from "./collections/Magazines";
 import { MagazineIssues } from "./collections/MagazineIssues";
 import { EmailTemplates } from "./collections/EmailTemplates";
 import { DatacenterFacilities } from "./collections/DatacenterFacilities";
+import { MEDIA_DEFAULT_PREFIX } from "./server/media/media-prefix";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -149,10 +150,13 @@ export default buildConfig({
     s3Storage({
       collections: {
         media: {
-          // Enables the prefix column. Magazine uploads set their own
-          // `magazines/<id>` prefix; every other upload leaves it empty and
-          // stays at the bucket root.
-          prefix: "",
+          // Every new file goes in a folder, never the bucket root: the
+          // caller's own prefix (magazine images: `magazines/<id>`), else
+          // `media`. The Media beforeChange hook enforces it on create and on
+          // file replacement; this default covers the admin form and the
+          // adapter's fallback. Files stored before the rule keep their
+          // empty or null prefix and stay at the root.
+          prefix: MEDIA_DEFAULT_PREFIX,
           disablePayloadAccessControl: true,
           generateFileURL: ({ filename, prefix }) => {
             const bucket = process.env.S3_BUCKET;
