@@ -2,7 +2,9 @@ import { createHash } from "crypto";
 
 /**
  * Get avatar URL for a user. Priority:
- * 1. GitHub OAuth image (user.image)
+ * 1. The member's picture (user.image): a profile photo they uploaded, or
+ *    the one their sign-in provider gave them
+
  * 2. Gravatar via email hash
  * 3. null (render initials in component)
  */

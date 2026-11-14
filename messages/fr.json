@@ -1158,7 +1158,21 @@
       "contributions": "{count, plural, one {# contribution} other {# contributions}}"
     },
     "profile": {
-      "title": "Profil"
+      "title": "Profil",
+      "photo": {
+        "label": "Photo de profil",
+        "hint": "JPG, PNG, WebP ou GIF. Visible sur votre profil, vos publications et vos messages.",
+        "choose": "Choisir une photo de profil",
+        "upload": "Importer une photo",
+        "change": "Changer la photo",
+        "uploading": "Envoi…",
+        "remove": "Supprimer",
+        "saved": "Photo de profil mise à jour",
+        "removed": "Photo de profil supprimée",
+        "errorType": "Utilisez une image JPG, PNG, WebP ou GIF.",
+        "errorSize": "Cette image est trop lourde. Utilisez-en une de moins de 2 Mo.",
+        "error": "Impossible de mettre à jour votre photo. Réessayez."
+      }
     },
     "deleteAccount": {
       "title": "Supprimer le compte",

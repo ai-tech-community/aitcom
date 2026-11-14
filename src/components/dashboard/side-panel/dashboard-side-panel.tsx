@@ -8,16 +8,10 @@ import { YouCard } from "./you-card";
  * states (through DashboardSection) and hides itself when it has nothing to
  * say, so the panel itself holds no data logic.
  */
-export function DashboardSidePanel({
-  fallbackName,
-  avatarUrl,
-}: {
-  fallbackName: string;
-  avatarUrl: string | null;
-}) {
+export function DashboardSidePanel({ fallbackName }: { fallbackName: string }) {
   return (
     <div className="space-y-4">
-      <YouCard fallbackName={fallbackName} avatarUrl={avatarUrl} />
+      <YouCard fallbackName={fallbackName} />
       <GetStartedCard />
       <PeopleToMeet />
     </div>

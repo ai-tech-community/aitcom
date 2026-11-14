@@ -1,6 +1,7 @@
 import * as migration_20261113c_gallery_reports from "./20261113c_gallery_reports";
 import * as migration_20261114a_drop_event_gallery_media from "./20261114a_drop_event_gallery_media";
 import * as migration_20261114c_offers_space from "./20261114c_offers_space";
+import * as migration_20261114d_media_avatar_purpose from "./20261114d_media_avatar_purpose";
 import * as migration_20261114b_magazine_gallery_items from "./20261114b_magazine_gallery_items";
 import * as migration_20261113b_gallery_feed_posts from "./20261113b_gallery_feed_posts";
 import * as migration_20261113a_community_gallery from "./20261113a_community_gallery";
@@ -1224,5 +1225,10 @@ export const migrations = [
     up: migration_20261114c_offers_space.up,
     down: migration_20261114c_offers_space.down,
     name: "20261114c_offers_space",
+  },
+  {
+    up: migration_20261114d_media_avatar_purpose.up,
+    down: migration_20261114d_media_avatar_purpose.down,
+    name: "20261114d_media_avatar_purpose",
   },
 ];

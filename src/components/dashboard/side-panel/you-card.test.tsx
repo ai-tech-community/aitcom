@@ -78,12 +78,13 @@ const PROFILE = {
   },
   badges: [{ slug: "regular", earnedAt: "2026-03-03T12:00:00Z" }],
   names: null,
+  photo: { url: null, isSet: false },
 };
 
 function renderCard() {
   return render(
     <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
-      <YouCard fallbackName="ada@example.com" avatarUrl={null} />
+      <YouCard fallbackName="ada@example.com" />
     </NextIntlClientProvider>,
   );
 }

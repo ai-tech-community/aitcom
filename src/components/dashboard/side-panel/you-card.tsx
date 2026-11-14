@@ -68,12 +68,9 @@ function YouSkeleton() {
  */
 export function YouCard({
   fallbackName,
-  avatarUrl,
 }: {
   /** Account name, shown until a profile display name exists. */
   fallbackName: string;
-  /** Resolved on the server (GitHub image or Gravatar). */
-  avatarUrl: string | null;
 }) {
   const t = useTranslations("dashboard.you");
   const profileQuery = api.members.getMyProfile.useQuery();
@@ -114,7 +111,7 @@ export function YouCard({
       {data && profile && (
         <YouSummary
           name={profile.displayName || fallbackName}
-          avatarUrl={avatarUrl}
+          avatarUrl={data.photo.url}
           company={profile.company}
           social={data.social}
           xp={profile.xp}
