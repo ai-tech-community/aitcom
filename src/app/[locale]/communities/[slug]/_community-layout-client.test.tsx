@@ -143,9 +143,9 @@ describe("CommunityLayoutClient frame", () => {
       expect(m.identityProps.at(-1)?.density).toBe("compact");
     });
 
-    it("is full on a member's Overview", async () => {
+    it("is compact on a member's Overview too", async () => {
       await renderLayout(owner);
-      expect(m.identityProps.at(-1)?.density).toBe("full");
+      expect(m.identityProps.at(-1)?.density).toBe("compact");
     });
 
     it("is full on a tab page for someone who has not joined", async () => {

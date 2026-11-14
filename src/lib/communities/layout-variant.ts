@@ -36,18 +36,16 @@ export function resolveCommunityLayoutVariant(
 /**
  * How much of the community's identity the standard frame's rail shows. The
  * tagline, member count and join control help someone decide to join, so a
- * visitor sees them on every page and a member sees them on the Overview. On
- * a member's other pages the rail shows only logo, name and role, so the
- * whole tab list stays in view.
+ * visitor sees them on every page. A member is already in: the rail shows
+ * one row of logo, name, role and their community menu (Leave lives there),
+ * so the whole tab list stays in view on every page, the Overview included.
  */
 export type CommunityIdentityDensity = "full" | "compact";
 
 export function resolveCommunityIdentityDensity(
-  segments: string[],
   isMember: boolean,
 ): CommunityIdentityDensity {
-  if (!isMember) return "full";
-  return routeSegments(segments).length === 0 ? "full" : "compact";
+  return isMember ? "compact" : "full";
 }
 
 /**
