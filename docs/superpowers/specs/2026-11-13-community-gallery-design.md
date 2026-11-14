@@ -394,6 +394,38 @@ lets the member retry or drop them.
 - Suggester for auto-drafts: consented, ready, not-hidden items from events in
   the window, best first (most items from the same event first, then newest);
   at most one per event.
+- Settled 14 Nov (slice 4):
+  - **Per-reader access uses the gallery's own read rule**, not only the
+    magazine's community-content rule (which knows nothing about an item's
+    `community` visibility): `load` builds the reader's gallery viewer for the
+    magazine's community and requires the item to be readable by it. Editors
+    see a "members only" marker on `community` items.
+  - Consent withdrawn or the item hidden → unavailable for **every** reader,
+    editors (even moderators) included, with an editor-visible reason; the
+    magazine never shows a hidden item. Missing → `missing`; not ready →
+    `not_ready`.
+  - **Videos** may be featured: rendered as their thumbnail with a play badge,
+    linking to the item in the gallery; no inline playback in the magazine.
+  - A `galleryItem` block never carries an issue-owned image: `validate`
+    refuses one and the builder hides the image editor for it. "Use source
+    image" is never wired for gallery items. Signed URLs are made only inside
+    `load`/picker after the access check and are never stored (blocks,
+    auto-pick reasons, agent output).
+  - Items whose uploader deleted their account (`DELETED_AUTHOR_ID`) can't be
+    newly picked or suggested; ones already placed keep rendering, credited as
+    "Deleted member".
+  - Picker, `acceptNew` and suggester share one predicate: same community,
+    ready, not hidden, consented, uploader not deleted, readable by the editor.
+  - The picker shows thumbnails (`PickerSourceCandidate.thumbnailUrl`); titles
+    for captionless items come from `galleryItemLabel`, translated server-side.
+  - The auto-draft source `galleryItems` is enabled by default like the other
+    sources (auto-draft itself is off by default), comes after events, and
+    does **not** count toward the 3-item minimum. It ranks events that ended
+    in the window by the number of eligible items, picks each event's newest
+    eligible item, ties broken by id; reason `galleryHighlight`.
+  - Agent/MCP magazine tools don't offer `galleryItem` (non-goal); agent issue
+    saves refuse it.
+  - This slice deletes `COMMUNITY_GALLERY_ENABLED` and every gate on it.
 
 ## Constraints
 
