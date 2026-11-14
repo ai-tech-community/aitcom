@@ -14,6 +14,11 @@
 //
 // Names are Payload's own (checked on production): `<table>_media_fk` and
 // `<table>_media_id_idx`. Every step is IF EXISTS, so a re-run is a no-op.
+//
+// Rollback note: once this ships, an instant Vercel rollback to a deploy
+// older than #570 (which still had Events.gallery) would fail to read
+// events, because that code selects `media_id`. Run `down` first if such a
+// rollback is ever needed.
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 import { sql } from "@payloadcms/db-postgres";
 

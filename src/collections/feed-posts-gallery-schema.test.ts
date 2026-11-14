@@ -84,6 +84,18 @@ describe("events without the old gallery", () => {
   });
 });
 
+describe("migration 20261114a_drop_event_gallery_media", () => {
+  it("is registered after the migration that kept media_id for the old deploy", () => {
+    const index = read("src/migrations/index.ts");
+    expect(index).toContain(
+      'import * as migration_20261114a_drop_event_gallery_media from "./20261114a_drop_event_gallery_media";',
+    );
+    expect(index.indexOf('name: "20261113b_gallery_feed_posts"')).toBeLessThan(
+      index.indexOf('name: "20261114a_drop_event_gallery_media"'),
+    );
+  });
+});
+
 describe("migration 20261113b_gallery_feed_posts", () => {
   const migration = () =>
     read("src/migrations/20261113b_gallery_feed_posts.ts");
