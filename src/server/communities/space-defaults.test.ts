@@ -40,7 +40,10 @@ describe("buildDefaultSpaceRows", () => {
       "members",
     ]);
     expect(rows.map((r) => r.position)).toEqual([0, 1, 2, 3, 4, 5, 6]);
-    expect(rows[0]).toMatchObject({ builtinSurface: "offers", archivedAt: now });
+    expect(rows[0]).toMatchObject({
+      builtinSurface: "offers",
+      archivedAt: now,
+    });
     expect(rows.slice(1).every((r) => r.archivedAt === null)).toBe(true);
     for (const r of rows) {
       expect(r.communityId).toBe("comm-1");

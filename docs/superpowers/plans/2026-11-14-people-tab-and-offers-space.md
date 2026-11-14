@@ -33,18 +33,27 @@
 ### Task 1: Rename Members to People
 
 **Files:**
+
 - Modify: `messages/en.json`, `messages/nl.json`, `messages/fr.json` (`communities.profile.members`, `communityMatching.title`, `communityMatching.peopleTab`)
 - Modify: `src/server/communities/space-defaults.ts` (`DEFAULT_BUILTIN_LABELS.members`)
 - Test: `src/server/communities/space-defaults.test.ts`
 
 **Interfaces:**
+
 - Produces: no new names. `isDefaultBuiltinLabel("members", x)` is true for Members, Membres, Leden, People, Mensen, Personnes.
 
 - [ ] **Step 1: Write the failing tests** in `space-defaults.test.ts`:
 
 ```ts
 it("treats old and new Members labels as the default name", () => {
-  for (const label of ["Members", "Leden", "Membres", "People", "Mensen", "Personnes"]) {
+  for (const label of [
+    "Members",
+    "Leden",
+    "Membres",
+    "People",
+    "Mensen",
+    "Personnes",
+  ]) {
     expect(isDefaultBuiltinLabel("members", label), label).toBe(true);
   }
   expect(isDefaultBuiltinLabel("members", "Crew")).toBe(false);
@@ -58,10 +67,16 @@ it("labels the members surface People in every language", () => {
 
 it("keeps an owner's own name for the members tab", () => {
   expect(
-    resolveSpaceLabel({ kind: "builtin", builtinSurface: "members", name: "Crew" }, t),
+    resolveSpaceLabel(
+      { kind: "builtin", builtinSurface: "members", name: "Crew" },
+      t,
+    ),
   ).toBe("Crew");
   expect(
-    resolveSpaceLabel({ kind: "builtin", builtinSurface: "members", name: "Members" }, t),
+    resolveSpaceLabel(
+      { kind: "builtin", builtinSurface: "members", name: "Members" },
+      t,
+    ),
   ).toBe("T:members");
 });
 ```
@@ -86,6 +101,7 @@ git commit -m "feat(communities): call the members tab People"
 ### Task 2: Offers is a builtin space, seeded hidden, rendered from spaces
 
 **Files:**
+
 - Modify: `src/server/communities/space-defaults.ts`
 - Modify: `src/server/communities/seed-default-spaces.ts` (doc comment only, if behaviour lives in `buildDefaultSpaceRows`)
 - Modify: `src/components/communities/community-nav.tsx` (remove the hard-coded `offers` item)
@@ -93,6 +109,7 @@ git commit -m "feat(communities): call the members tab People"
 - Test: `src/server/communities/space-defaults.test.ts`, `src/components/communities/community-nav.test.tsx`
 
 **Interfaces:**
+
 - Produces, in `space-defaults.ts`:
   - `BUILTIN_SURFACES` — unchanged: the six surfaces shown by default (still the menu's error fallback, so Offers stays out of it).
   - `HIDDEN_DEFAULT_SURFACES = ["offers"] as const` — seeded on every community, hidden.
@@ -107,7 +124,13 @@ it("seeds Offers first and hidden, then the six shown surfaces", () => {
   const now = new Date("2026-11-14T00:00:00Z");
   const rows = buildDefaultSpaceRows("comm-1", now);
   expect(rows.map((r) => r.slug)).toEqual([
-    "offers", "forum", "events", "gallery", "classroom", "ideas", "members",
+    "offers",
+    "forum",
+    "events",
+    "gallery",
+    "classroom",
+    "ideas",
+    "members",
   ]);
   expect(rows.map((r) => r.position)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   expect(rows[0]).toMatchObject({ builtinSurface: "offers", archivedAt: now });
@@ -123,26 +146,55 @@ In `community-nav.test.tsx`, replace the offers assertion in the first test and 
 it("shows Offers only when the community's spaces include it", () => {
   m.spacesError = false;
   m.spaces = [
-    { id: "s0", kind: "builtin", builtinSurface: "offers", name: null, slug: "offers", position: 0 },
-    { id: "s1", kind: "builtin", builtinSurface: "forum", name: null, slug: "forum", position: 1 },
+    {
+      id: "s0",
+      kind: "builtin",
+      builtinSurface: "offers",
+      name: null,
+      slug: "offers",
+      position: 0,
+    },
+    {
+      id: "s1",
+      kind: "builtin",
+      builtinSurface: "forum",
+      name: null,
+      slug: "forum",
+      position: 1,
+    },
   ];
   renderNav("member");
   const links = screen.getAllByRole("link").map((l) => l.textContent);
-  expect(links.slice(0, 3)).toEqual(["Overview", en.payments.offersTitle, "Forum"]);
+  expect(links.slice(0, 3)).toEqual([
+    "Overview",
+    en.payments.offersTitle,
+    "Forum",
+  ]);
 });
 
 it("leaves Offers out when it is hidden (not in the list)", () => {
   m.spacesError = false;
   m.spaces = [
-    { id: "s1", kind: "builtin", builtinSurface: "forum", name: null, slug: "forum", position: 1 },
+    {
+      id: "s1",
+      kind: "builtin",
+      builtinSurface: "forum",
+      name: null,
+      slug: "forum",
+      position: 1,
+    },
   ];
   renderNav("member");
-  expect(screen.queryByRole("link", { name: en.payments.offersTitle })).toBeNull();
+  expect(
+    screen.queryByRole("link", { name: en.payments.offersTitle }),
+  ).toBeNull();
 });
 
 it("leaves Offers out of the fallback menu", () => {
   renderNav("member"); // spacesError = true
-  expect(screen.queryByRole("link", { name: en.payments.offersTitle })).toBeNull();
+  expect(
+    screen.queryByRole("link", { name: en.payments.offersTitle }),
+  ).toBeNull();
 });
 ```
 
@@ -165,6 +217,7 @@ git commit -m "feat(communities): make Offers a builtin space owners can hide"
 ### Task 3: Backfill the Offers space for existing communities
 
 **Files:**
+
 - Create: `src/migrations/20261114c_offers_space.ts`
 - Modify: `src/migrations/index.ts` (import + entry after `20261114b_magazine_gallery_items`)
 - Test: `src/migrations/20261114c_offers_space.integration.test.ts`
@@ -172,6 +225,7 @@ git commit -m "feat(communities): make Offers a builtin space owners can hide"
 Before creating, re-check `origin/main` for a `20261114c_*` migration; take the next free letter if taken.
 
 **Interfaces:**
+
 - Produces: `up({ db }: MigrateUpArgs)`, `down({ db }: MigrateDownArgs)`.
 
 - [ ] **Step 1: Write the failing integration test**, modelled on `20261114a_drop_event_gallery_media.integration.test.ts` (same `isLocalDbConfigured` guard, every case in a rolled-back transaction, migration called as `migration.up({ db: tx } as never)`). Cases:
@@ -224,12 +278,14 @@ git commit -m "feat(communities): backfill the Offers space for existing communi
 ### Task 4: First published offer shows the Offers tab
 
 **Files:**
+
 - Create: `src/server/communities/offers-space.ts`
 - Create: `src/server/communities/offers-space.integration.test.ts`
 - Modify: `src/server/api/routers/community-payments.ts` (`publishOffer` transaction)
 - Test: `src/server/api/routers/community-payments.test.ts`
 
 **Interfaces:**
+
 - Produces: `showOffersSpaceOnFirstPublish(tx: Tx, communityId: string): Promise<boolean>` — when the community has **no** row in `payment_offer` with `published = true`, sets `archived_at = null` on its `offers` builtin space and returns `true`; otherwise changes nothing and returns `false`. `Tx` as exported from `activate-membership.ts`.
 
 - [ ] **Step 1: Write the failing integration tests** (same guard and rollback pattern as Task 3):
