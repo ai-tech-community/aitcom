@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isWorkspacePath,
+  resolveCommunityIdentityDensity,
   resolveCommunityLayoutVariant,
 } from "./layout-variant";
 
@@ -73,6 +74,28 @@ describe("isWorkspacePath", () => {
       "/events/x/classroom/c/edit",
     ]) {
       expect(isWorkspacePath(path)).toBe(false);
+    }
+  });
+});
+
+describe("resolveCommunityIdentityDensity", () => {
+  it("shows the full identity on the Overview, even to a member", () => {
+    expect(resolveCommunityIdentityDensity([], true)).toBe("full");
+    expect(resolveCommunityIdentityDensity(["(feed)"], true)).toBe("full");
+  });
+  it("keeps a member's other pages compact, so the whole tab list fits", () => {
+    for (const segs of [
+      ["insights"],
+      ["forum"],
+      ["settings", "spaces"],
+      ["events", "x"],
+    ]) {
+      expect(resolveCommunityIdentityDensity(segs, true)).toBe("compact");
+    }
+  });
+  it("shows the full identity to someone who is not a member, on every page", () => {
+    for (const segs of [[], ["forum"], ["events", "x"]]) {
+      expect(resolveCommunityIdentityDensity(segs, false)).toBe("full");
     }
   });
 });

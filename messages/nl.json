@@ -3114,6 +3114,7 @@
       "insights": "Insights",
       "rituals": "Rituelen",
       "referrals": "Vrienden uitnodigen",
+      "manageGroup": "Beheren",
       "membersSentence": "{count, plural, one {# lid} other {# leden}}",
       "activeSentence": "{count} actief deze week",
       "activeThisWeek": "{count, plural, one {persoon actief deze week} other {personen actief deze week}}",

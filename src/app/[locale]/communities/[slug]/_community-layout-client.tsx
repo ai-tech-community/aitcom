@@ -15,7 +15,10 @@ import {
 import { CommunityIdentity } from "@/components/communities/community-identity";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { Spinner } from "@/components/ui/spinner";
-import { resolveCommunityLayoutVariant } from "@/lib/communities/layout-variant";
+import {
+  resolveCommunityIdentityDensity,
+  resolveCommunityLayoutVariant,
+} from "@/lib/communities/layout-variant";
 import { useJoinDeepLink } from "@/components/communities/use-community-join";
 import { useRouter } from "@/i18n/navigation";
 
@@ -34,7 +37,8 @@ export function CommunityLayoutClient({
   const router = useRouter();
   // A guest who pressed Join here comes back from sign-in with ?join=.
   useJoinDeepLink(() => router.refresh());
-  const variant = resolveCommunityLayoutVariant(useSelectedLayoutSegments());
+  const segments = useSelectedLayoutSegments();
+  const variant = resolveCommunityLayoutVariant(segments);
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(null, initialUser, session?.user);
 
@@ -68,6 +72,10 @@ export function CommunityLayoutClient({
   const memberships = myCommunities ?? initialMemberships;
   const membershipStatus = membershipStatusForSlug(memberships, slug);
   const memberRole = memberRoleForSlug(memberships, slug);
+  const identityDensity = resolveCommunityIdentityDensity(
+    segments,
+    membershipStatus === "active",
+  );
 
   return (
     <PageDocumentAuthProvider user={initialUser}>
@@ -88,6 +96,7 @@ export function CommunityLayoutClient({
                 community={community}
                 membershipStatus={membershipStatus}
                 memberRole={memberRole}
+                density={identityDensity}
               />
               <CommunityNav slug={slug} memberRole={memberRole} />
             </div>

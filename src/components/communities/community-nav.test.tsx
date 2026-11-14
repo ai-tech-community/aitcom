@@ -275,4 +275,27 @@ describe("CommunityNav", () => {
       "/communities/mlops/settings",
     );
   });
+
+  it("groups the owner's tools under Manage, after every space", () => {
+    renderNav("owner");
+    const group = screen.getByRole("group", { name: /manage/i });
+    for (const name of ["Insights", "Rituals", "Settings"]) {
+      expect(within(group).getByRole("link", { name })).toBeInTheDocument();
+    }
+    expect(
+      within(group).queryByRole("link", { name: "Overview" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(group).queryByRole("link", {
+        name: en.communities.profile.referrals,
+      }),
+    ).not.toBeInTheDocument();
+    const links = screen.getAllByRole("link");
+    expect(links.at(-1)).toHaveTextContent("Settings");
+  });
+
+  it("has no Manage group for a member", () => {
+    renderNav("member");
+    expect(screen.queryByRole("group", { name: /manage/i })).toBeNull();
+  });
 });
