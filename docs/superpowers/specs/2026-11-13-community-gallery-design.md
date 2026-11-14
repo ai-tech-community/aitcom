@@ -39,7 +39,9 @@ instead of stock imagery.
 - Gallery photos as magazine issue covers or as another item's image: those
   are copied URLs owned by the issue and could not honour a withdrawn
   permission. Editors feature gallery photos as `galleryItem` items only.
-- MCP/agent tools for the gallery.
+- MCP/agent tools for the gallery (browsing, uploading or picking gallery
+  items). Agent issue saves may only keep or remove gallery items an editor
+  placed (see Magazine).
 
 ## Anti-goals
 
@@ -422,8 +424,12 @@ lets the member retry or drop them.
     does **not** count toward the 3-item minimum. It ranks events that ended
     in the window by the number of eligible items, picks each event's newest
     eligible item, ties broken by id; reason `galleryHighlight`.
-  - Agent/MCP magazine tools don't offer `galleryItem` (non-goal); agent issue
-    saves refuse it.
+  - Agents can't add gallery items to an issue. Agent issue saves (service
+    and the MCP `save-magazine-issue` tool) may keep a `galleryItem` an editor
+    already placed, by sending it back with the same `galleryItemId`, or
+    remove it by leaving it out; a new one is refused with a plain message.
+    The MCP item union lists every registry kind, `galleryItem` included, so
+    keeping one is possible (a test pins the union to the registry's kinds).
   - This slice deletes `COMMUNITY_GALLERY_ENABLED` and every gate on it
     (done: the gallery is on for every community).
 

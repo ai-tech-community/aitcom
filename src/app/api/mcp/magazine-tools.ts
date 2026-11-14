@@ -21,8 +21,12 @@ const itemBase = {
   intro: z.string().max(280).optional(),
 };
 
-/** The same item kinds the issue editor saves, as the MCP SDK's zod. */
-const issueItem = z.discriminatedUnion("kind", [
+/**
+ * The same item kinds the issue editor saves, as the MCP SDK's zod. Every
+ * registry kind is listed (a test pins this), so an agent can send back each
+ * item an issue holds; the service decides which kinds an agent may add.
+ */
+export const mcpIssueItemSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("article"),
     articleId: z.number().int().positive(),
@@ -59,6 +63,15 @@ const issueItem = z.discriminatedUnion("kind", [
     projectId: z.number().int().positive(),
     ...itemBase,
   }),
+  z
+    .object({
+      kind: z.literal("galleryItem"),
+      galleryItemId: z.number().int().positive(),
+      ...itemBase,
+    })
+    .describe(
+      "A community gallery photo or video an editor placed in the issue. Send it back unchanged to keep it, or leave it out to remove it. Agents can't add a gallery item: a galleryItemId the issue does not already hold is refused.",
+    ),
 ]);
 
 const httpUrl = z
@@ -227,7 +240,7 @@ export function registerMagazineTools(
     "save-magazine-issue",
     {
       description:
-        "Create or edit your issue draft. Set the title, cover (a media id from upload-image or an http(s) URL, plus alt text), editor's note, and ordered sections: articles, text sections, events, projects, storylines, news and forum threads — the same shapes the issue editor saves. articleIds is the short form for article sections only. Requires contribute scope and a claimed owner. The issue stays a draft. This tool cannot publish, schedule or email subscribers. Omit issueId to create. The response includes updatedAt, and browse-magazines returns updatedAt on each issue. When editing, send that value as expectedUpdatedAt. A published issue's cover and details are saved as a draft the owner approves; this tool cannot publish that change. Sections of a published issue stay on an open draft.",
+        "Create or edit your issue draft. Set the title, cover (a media id from upload-image or an http(s) URL, plus alt text), editor's note, and ordered sections: articles, text sections, events, projects, storylines, news and forum threads — the same shapes the issue editor saves. Gallery photos and videos an editor placed can be kept or removed, not added. articleIds is the short form for article sections only. Requires contribute scope and a claimed owner. The issue stays a draft. This tool cannot publish, schedule or email subscribers. Omit issueId to create. The response includes updatedAt, and browse-magazines returns updatedAt on each issue. When editing, send that value as expectedUpdatedAt. A published issue's cover and details are saved as a draft the owner approves; this tool cannot publish that change. Sections of a published issue stay on an open draft.",
       inputSchema: {
         magazineSlug: z.string().min(1).max(80),
         issueId: z.number().int().positive().optional(),
@@ -262,11 +275,11 @@ export function registerMagazineTools(
           .optional()
           .describe("Article ids in reading order. Omit when sending items."),
         items: z
-          .array(issueItem)
+          .array(mcpIssueItemSchema)
           .max(50)
           .optional()
           .describe(
-            "Sections in reading order, same kinds as the issue editor.",
+            "Sections in reading order, same kinds as the issue editor. The items you send replace the issue's sections, so send back every section you want to keep, gallery items included. You can keep or remove gallery items (kind galleryItem) already in the issue, but not add new ones; an editor adds them in the issue builder.",
           ),
         expectedUpdatedAt: z
           .string()

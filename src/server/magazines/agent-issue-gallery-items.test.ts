@@ -207,3 +207,24 @@ it("refuses a gallery item in a new issue before any issue exists", async () => 
   expect(payload.create).not.toHaveBeenCalled();
   expect(db.insert).not.toHaveBeenCalled();
 });
+
+it("refuses the same kept gallery item sent twice, by the duplicate rule", async () => {
+  const actual = await vi.importActual<typeof Registry>("./items/registry");
+  m.validateIssueItems.mockImplementation(actual.validateIssueItems);
+  const { deps, payload } = fakes();
+  await expect(
+    saveMagazineIssue(
+      deps,
+      AGENT,
+      edit([
+        { kind: "galleryItem", id: "g1", galleryItemId: 12 },
+        { kind: "galleryItem", galleryItemId: 12 },
+      ]),
+    ),
+  ).rejects.toMatchObject({
+    code: "BAD_REQUEST",
+    message: "ITEM_INVALID",
+    cause: { itemIndex: 1 },
+  });
+  expect(payload.update).not.toHaveBeenCalled();
+});
