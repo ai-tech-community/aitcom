@@ -7,7 +7,6 @@ import {
 
 import { isLinkableEvent, loadGalleryViewerById } from "./access";
 import { nowOf, type GalleryDeps } from "./deps";
-import { galleryEnabled } from "./flag";
 import { countItems, listItems, type GalleryItemView } from "./items";
 
 /**
@@ -43,8 +42,8 @@ type SectionEvent = Pick<
 
 /**
  * An event's photos and videos for one viewer: only the items that viewer
- * may see, under the gallery's own read rule. `null` — no section — while
- * the gallery is switched off, for a Hub event (no community), for an
+ * may see, under the gallery's own read rule. `null` — no section — for a
+ * Hub event (no community), for an
  * event its community's photos may not link to (`isLinkableEvent`: not
  * published or completed, or not started yet), for a deleted community,
  * and when there is nothing to show to someone who cannot add (anyone but
@@ -54,7 +53,6 @@ export async function loadEventGallerySection(
   deps: GalleryDeps,
   input: { event: SectionEvent; userId: string | null },
 ): Promise<EventGallerySection | null> {
-  if (!galleryEnabled()) return null;
   const { event, userId } = input;
   const communityId = event.communityId;
   if (!communityId || !isLinkableEvent(event, communityId, nowOf(deps))) {

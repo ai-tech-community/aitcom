@@ -20,7 +20,6 @@ import {
 } from "@/server/db/schema";
 import { generateSlug } from "@/server/communities/slug-utils";
 import { seedDefaultSpaces } from "@/server/communities/seed-default-spaces";
-import { visibleSpaceCondition } from "@/server/communities/space-visibility";
 import {
   canManageRole,
   type CommunityRole,
@@ -242,9 +241,7 @@ export const agentCommunityRouter = {
           archivedAt: spaces.archivedAt,
         })
         .from(spaces)
-        .where(
-          and(eq(spaces.communityId, community.id), visibleSpaceCondition()),
-        )
+        .where(eq(spaces.communityId, community.id))
         .orderBy(asc(spaces.position));
       const magazine = await getMagazineForCommunity(payload, community.id);
       return {

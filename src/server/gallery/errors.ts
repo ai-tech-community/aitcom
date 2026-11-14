@@ -12,7 +12,6 @@ export type { GalleryErrorCode } from "@/lib/gallery-rules";
  * listed in `gallery-rules.ts` (shared with the browser).
  */
 const GALLERY_ERROR_STATUS = {
-  GALLERY_DISABLED: "NOT_FOUND",
   NOT_A_MEMBER: "FORBIDDEN",
   EVENT_NOT_ALLOWED: "BAD_REQUEST",
   TOPIC_NOT_FOUND: "BAD_REQUEST",

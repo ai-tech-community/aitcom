@@ -88,7 +88,6 @@ export const GALLERY_STORAGE_LABELS: Record<VideoStorageClass, string> = {
  * code; the server's status table must cover exactly these.
  */
 export const GALLERY_ERROR_CODES = [
-  "GALLERY_DISABLED",
   "NOT_A_MEMBER",
   "EVENT_NOT_ALLOWED",
   "TOPIC_NOT_FOUND",

@@ -29,7 +29,6 @@ vi.mock("./access", async (importOriginal) => ({
 }));
 
 beforeEach(() => {
-  vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
   loadViewer.mockImplementation(
     async (
       _deps: unknown,
@@ -50,7 +49,6 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
-  vi.unstubAllEnvs();
   vi.clearAllMocks();
 });
 
@@ -315,20 +313,6 @@ describe("galleryViewsForPosts", () => {
     });
     const views = await galleryViewsForPosts(deps, [post(1, 7, "gone")], "u2");
     expect(views.get(1)).toBeNull();
-  });
-
-  it("shows nothing and asks nothing while the gallery is switched off", async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
-    const { deps, payload } = fakes({
-      items: [item(1, 7)],
-      batches: [batch(7)],
-    });
-
-    const views = await galleryViewsForPosts(deps, [post(1, 7)], "u2");
-
-    expect(views.get(1)).toBeNull();
-    expect(loadViewer).not.toHaveBeenCalled();
-    expect(payload.find).not.toHaveBeenCalled();
   });
 
   describe("query budget", () => {

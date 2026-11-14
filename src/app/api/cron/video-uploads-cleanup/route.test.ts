@@ -9,7 +9,6 @@ const m = vi.hoisted(() => ({
   gallery: vi.fn(),
   unusedGallery: vi.fn(),
   ownsStorage: vi.fn(),
-  galleryEnabled: vi.fn(),
   getVideoStorage: vi.fn(),
   getObjectStorage: vi.fn(),
   payload: { name: "payload" },
@@ -30,9 +29,6 @@ vi.mock("@/server/communities/unused-video-files-sweep", () => ({
 }));
 vi.mock("@/server/classroom/material-uploads-cleanup", () => ({
   cleanupAbandonedMaterialUploads: m.materials,
-}));
-vi.mock("@/server/gallery/flag", () => ({
-  galleryEnabled: m.galleryEnabled,
 }));
 vi.mock("@/server/gallery/cleanup", () => ({
   cleanupAbandonedGalleryUploads: m.gallery,
@@ -72,7 +68,6 @@ beforeEach(() => {
   });
   m.unusedGallery.mockResolvedValue({ scanned: 7, removed: 1, failed: 0 });
   m.ownsStorage.mockReturnValue(true);
-  m.galleryEnabled.mockReturnValue(true);
 });
 
 describe("video-uploads-cleanup cron", () => {
@@ -281,37 +276,5 @@ describe("video-uploads-cleanup cron", () => {
       expect.any(Error),
     );
     error.mockRestore();
-  });
-
-  it("skips both gallery sweeps while the gallery is switched off", async () => {
-    // Its S3 permissions arrive with the flag: listing the gallery folders
-    // before then is refused and would fail the whole run.
-    m.galleryEnabled.mockReturnValue(false);
-    const res = await GET(authorized());
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toMatchObject({
-      success: true,
-      gallery: { skipped: "gallery disabled" },
-      unusedGalleryFiles: { skipped: "gallery disabled" },
-      unusedVideoFiles: { scanned: 9, removed: 3, failed: 0 },
-      unusedFeedImages: { removed: 4, failed: 0 },
-    });
-    expect(m.gallery).not.toHaveBeenCalled();
-    expect(m.unusedGallery).not.toHaveBeenCalled();
-    expect(m.videos).toHaveBeenCalledTimes(1);
-    expect(m.unused).toHaveBeenCalledTimes(1);
-  });
-
-  it("reports the gallery off rather than not production when both apply", async () => {
-    m.galleryEnabled.mockReturnValue(false);
-    m.ownsStorage.mockReturnValue(false);
-    const res = await GET(authorized());
-    await expect(res.json()).resolves.toMatchObject({
-      success: true,
-      gallery: { skipped: "gallery disabled" },
-      unusedGalleryFiles: { skipped: "gallery disabled" },
-      unusedVideoFiles: { skipped: "not production" },
-    });
-    expect(m.unusedGallery).not.toHaveBeenCalled();
   });
 });

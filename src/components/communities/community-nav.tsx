@@ -6,7 +6,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import {
-  FALLBACK_NAV_SURFACES,
+  BUILTIN_SURFACES,
   resolveSpaceLabel,
   type BuiltinSurface,
 } from "@/server/communities/space-defaults";
@@ -39,7 +39,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   const { data: roomTabs } = api.spaces.listRooms.useQuery({ slug });
 
   const surfaceItems: NavItem[] = spaceTabsError
-    ? FALLBACK_NAV_SURFACES.map((s) => ({
+    ? BUILTIN_SURFACES.map((s) => ({
         key: `space-${s}`,
         href: `${basePath}/${s}`,
         label: t(s),

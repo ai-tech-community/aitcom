@@ -6648,7 +6648,6 @@
     },
     "errors": {
       "NOT_ALLOWED": "You can't change this photo or video.",
-      "GALLERY_DISABLED": "The gallery is switched off right now.",
       "NOT_FOUND": "This photo or video is no longer here.",
       "deleteFailed": "We couldn't delete it. Please try again.",
       "loadFailed": "We couldn't open this photo or video. Please try again.",

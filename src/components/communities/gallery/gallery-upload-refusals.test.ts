@@ -29,7 +29,6 @@ describe("gallery upload refusals", () => {
     "EVENT_NOT_ALLOWED",
     "TOPIC_NOT_FOUND",
     "NOT_A_MEMBER",
-    "GALLERY_DISABLED",
     "NOT_ALLOWED",
     "PUBLIC_NOT_AVAILABLE",
   ] as const)(

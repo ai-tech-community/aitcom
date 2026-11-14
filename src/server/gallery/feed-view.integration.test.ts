@@ -87,7 +87,6 @@ describe.skipIf(!RUN_DB)("gallery feed post views [DB integration]", () => {
 
   beforeEach(async () => {
     vi.stubEnv("COMMUNITY_PAYMENTS_ENABLED", "false");
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
     const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
     const uploaderId = `it-galfv-up-${suffix}`;
     const memberId = `it-galfv-mem-${suffix}`;

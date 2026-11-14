@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { db as Database } from "@/server/db";
 
@@ -159,50 +159,11 @@ function expectNothingTouched() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "true");
   services.getPayloadClient.mockResolvedValue(PAYLOAD);
   services.loadGalleryViewer.mockImplementation(
     async (_deps: unknown, input: { userId: string | null }) =>
       viewerFor(input.userId),
   );
-});
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
-describe("gallery router — flag off", () => {
-  it.each(Object.keys(EVERY_PROCEDURE) as (keyof typeof EVERY_PROCEDURE)[])(
-    "%s refuses GALLERY_DISABLED before touching anything",
-    async (name) => {
-      vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
-      await expect(EVERY_PROCEDURE[name](caller())).rejects.toMatchObject({
-        code: "NOT_FOUND",
-        message: "GALLERY_DISABLED",
-      });
-      expectNothingTouched();
-    },
-  );
-
-  it.each(PUBLIC_PROCEDURES)(
-    "%s refuses a signed-out visitor GALLERY_DISABLED too",
-    async (name) => {
-      vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "");
-      await expect(EVERY_PROCEDURE[name](caller(null))).rejects.toMatchObject({
-        code: "NOT_FOUND",
-        message: "GALLERY_DISABLED",
-      });
-      expectNothingTouched();
-    },
-  );
-
-  it("refuses before validating input, so a bad call says nothing more", async () => {
-    vi.stubEnv("COMMUNITY_GALLERY_ENABLED", "false");
-    await expect(
-      caller().startBatch({ ...START_BATCH, plannedFiles: 31 }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "GALLERY_DISABLED" });
-    expectNothingTouched();
-  });
 });
 
 describe("gallery router — input validation", () => {

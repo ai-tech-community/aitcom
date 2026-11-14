@@ -134,8 +134,9 @@ All reads and writes go through tRPC and the gallery service.
 - **Operational prerequisite (Greg):** the app's AWS credentials must be allowed
   `s3:PutObject`, `GetObject`, `DeleteObject` and `ListBucket` on
   `media/gallery/*` and `private/gallery/*`, and `media/gallery/public/*` must be
-  publicly readable like `media/videos/public/*`. `COMMUNITY_GALLERY_ENABLED`
-  stays off until this is done.
+  publicly readable like `media/videos/public/*`. This had to be in place
+  before the gallery went live (the `COMMUNITY_GALLERY_ENABLED` flag that held
+  it back was removed in slice 4).
 - **Media allowance:** gallery files count toward the same per-community
   allowance as classroom materials (`src/server/classroom/media-allowance.ts`).
   `usageFor` sums both sources in one SQL `SUM`. The allowance module moves out of `classroom/`
@@ -202,9 +203,8 @@ route next to the feed sweeps:
 - **Unused files sweep (production only, `ownsStorageContents`):** list both
   gallery prefixes; delete objects older than 7 days that no gallery item row
   references. Same safety rules as #388.
-- Both gallery passes run only while `COMMUNITY_GALLERY_ENABLED` is on (the S3
-  permissions for the gallery prefixes arrive with the flag) and report
-  themselves skipped otherwise.
+- Both gallery passes run on every cron run. (Until slice 4 they were skipped
+  while the `COMMUNITY_GALLERY_ENABLED` flag was off; the flag is removed.)
 - Deleting an item removes its files best effort; the sweep is the safety net.
 - When a member deletes their account (#568), their items and batches stay:
   `uploaderId` becomes the deleted-author marker, and the gallery shows the
@@ -246,8 +246,7 @@ their category (set to empty), the same moment feed posts move to `general`.
   leftover nullable column. A follow-up migration drops the column, index and
   foreign key once this deploy is live.
 - The section is not shown for Hub events (no community), for events that
-  can't be linked (draft, cancelled, rejected) or haven't started, or while
-  the flag is off.
+  can't be linked (draft, cancelled, rejected) or haven't started.
 
 ### Gallery tab (variant A · Wall)
 
@@ -257,8 +256,8 @@ their category (set to empty), the same moment feed posts move to `general`.
   tabs. New communities get it in canonical order; a backfill migration adds it
   to existing communities **at the end of their current order** so custom
   orders are kept (production: 19 communities, no room owns the slug
-  `gallery`, checked 13 Nov). While `COMMUNITY_GALLERY_ENABLED` is off, the
-  spaces list omits it and the route 404s.
+  `gallery`, checked 13 Nov). The tab is listed for every community (the
+  rollout flag that hid it and 404'd the route was removed in slice 4).
 - Header: `/ GALLERY` kicker, "Photos and videos", one line on who can see
   them, and **Add photos and videos** (the page's one orange action; members
   only, guests get the auth gate).
@@ -425,7 +424,8 @@ lets the member retry or drop them.
     eligible item, ties broken by id; reason `galleryHighlight`.
   - Agent/MCP magazine tools don't offer `galleryItem` (non-goal); agent issue
     saves refuse it.
-  - This slice deletes `COMMUNITY_GALLERY_ENABLED` and every gate on it.
+  - This slice deletes `COMMUNITY_GALLERY_ENABLED` and every gate on it
+    (done: the gallery is on for every community).
 
 ## Constraints
 
@@ -441,14 +441,16 @@ lets the member retry or drop them.
   Never Payload push against production.
 - `src/payload-types.ts` regenerated in the same change as each collection
   edit.
-- The flag `COMMUNITY_GALLERY_ENABLED` hides the tab, the event section and the
-  feed card until the last slice ships; then the flag is deleted.
+- The flag `COMMUNITY_GALLERY_ENABLED` hid the tab, the event section and the
+  feed card until the last slice shipped. Slice 4 deleted it: the gallery is on
+  for every community.
 
 ## Slices
 
 1. **Gallery core:** collection, migration, `gallery-rules`, storage, start/
    finish batch, quotas and allowance, cleanup, Gallery tab with wall, filters,
-   lightbox, upload dialog, owner edit/delete. Behind the flag.
+   lightbox, upload dialog, owner edit/delete. Behind the flag (removed in
+   slice 4).
 2. **Feed and events:** gallery-batch feed post with collage, event page
    section with "Add yours", removal of `Events.gallery`.
 3. **Reports and moderation:** `gallery-reports`, "This is me", hide/restore/

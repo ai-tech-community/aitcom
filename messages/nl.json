@@ -6648,7 +6648,6 @@
     },
     "errors": {
       "NOT_ALLOWED": "Je kunt deze foto of video niet wijzigen.",
-      "GALLERY_DISABLED": "De galerij staat nu uit.",
       "NOT_FOUND": "Deze foto of video is er niet meer.",
       "deleteFailed": "Verwijderen is niet gelukt. Probeer het opnieuw.",
       "loadFailed": "Deze foto of video kon niet worden geopend. Probeer het opnieuw.",

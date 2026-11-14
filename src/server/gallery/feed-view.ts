@@ -3,7 +3,6 @@ import type { FeedPost } from "@/payload-types";
 
 import { loadGalleryViewerById } from "./access";
 import type { GalleryDeps } from "./deps";
-import { galleryEnabled } from "./flag";
 import {
   loadEventRefs,
   previewBatches,
@@ -79,8 +78,7 @@ async function loadBatchDetails(
  * text only). Each post's items are read as a viewer of the post's own
  * community. The query count does not grow with the number of posts: one
  * viewer per community, two item reads per community (`previewBatches`),
- * and one read each for the batches shown and their events. Everything is
- * `null`, and nothing is read, while the gallery is switched off.
+ * and one read each for the batches shown and their events.
  */
 export async function galleryViewsForPosts(
   deps: GalleryDeps,
@@ -90,7 +88,6 @@ export async function galleryViewsForPosts(
   const views = new Map<number, FeedGalleryView | null>(
     posts.map((post) => [post.id, null]),
   );
-  if (!galleryEnabled()) return views;
 
   const batchesByCommunity = new Map<string, number[]>();
   for (const post of posts) {

@@ -474,7 +474,6 @@ describe("useGalleryUpload", () => {
   it.each([
     "UPLOAD_EXPIRED",
     "NOT_A_MEMBER",
-    "GALLERY_DISABLED",
     "STORAGE_FULL",
     "UPLOAD_LIMIT",
     "BATCH_TOO_LARGE",

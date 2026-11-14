@@ -24,8 +24,6 @@ import type { db } from "@/server/db";
 import { loadGalleryViewer } from "@/server/gallery/access";
 import { galleryAnnouncer } from "@/server/gallery/announce";
 import type { GalleryDeps } from "@/server/gallery/deps";
-import { galleryError } from "@/server/gallery/errors";
-import { galleryEnabled } from "@/server/gallery/flag";
 import {
   deleteItem,
   getItem,
@@ -76,24 +74,6 @@ async function viewerIn(
   return { deps, viewer };
 }
 
-/**
- * The rollout switch, checked first in every procedure (before input is
- * parsed): with the gallery off nothing is validated, loaded or written, and
- * every caller gets the same GALLERY_DISABLED answer.
- */
-function assertGalleryEnabled(): void {
-  if (!galleryEnabled()) throw galleryError("GALLERY_DISABLED");
-}
-
-const galleryPublicProcedure = publicProcedure.use(({ next }) => {
-  assertGalleryEnabled();
-  return next();
-});
-const galleryProtectedProcedure = protectedProcedure.use(({ next }) => {
-  assertGalleryEnabled();
-  return next();
-});
-
 /** Upper bounds for identifiers with no gallery rule of their own. */
 const SLUG_MAX = 100;
 const TOPIC_SLUG_MAX = 100;
@@ -116,7 +96,7 @@ export const galleryRouter = createTRPCRouter({
    * A page of the wall, or of one upload's items (a feed post's lightbox).
    * Signed-out visitors see what outsiders may see.
    */
-  list: galleryPublicProcedure
+  list: publicProcedure
     .input(
       inCommunity.extend({
         eventId: z.union([recordId, z.literal("none")]).optional(),
@@ -134,29 +114,25 @@ export const galleryRouter = createTRPCRouter({
     }),
 
   /** The wall's filter choices, from the items this viewer may see. */
-  facets: galleryPublicProcedure
-    .input(inCommunity)
-    .query(async ({ ctx, input }) => {
-      const { deps, viewer } = await viewerIn(ctx, input.slug);
-      return listFacets(deps, { viewer });
-    }),
+  facets: publicProcedure.input(inCommunity).query(async ({ ctx, input }) => {
+    const { deps, viewer } = await viewerIn(ctx, input.slug);
+    return listFacets(deps, { viewer });
+  }),
 
-  item: galleryPublicProcedure
-    .input(itemInCommunity)
-    .query(async ({ ctx, input }) => {
-      const { deps, viewer } = await viewerIn(ctx, input.slug);
-      return getItem(deps, { viewer, itemId: input.itemId });
-    }),
+  item: publicProcedure.input(itemInCommunity).query(async ({ ctx, input }) => {
+    const { deps, viewer } = await viewerIn(ctx, input.slug);
+    return getItem(deps, { viewer, itemId: input.itemId });
+  }),
 
   /** What the upload and edit dialogs offer: events, audience (members only). */
-  uploadChoices: galleryProtectedProcedure
+  uploadChoices: protectedProcedure
     .input(inCommunity)
     .query(async ({ ctx, input }) => {
       const { deps, viewer } = await viewerIn(ctx, input.slug);
       return uploadChoices(deps, { viewer });
     }),
 
-  startBatch: galleryProtectedProcedure
+  startBatch: protectedProcedure
     .input(
       inCommunity.extend({
         eventId: recordId.optional(),
@@ -180,7 +156,7 @@ export const galleryRouter = createTRPCRouter({
     ),
 
   /** One file's upload grants, asked for when that file is ready to send. */
-  startItem: galleryProtectedProcedure
+  startItem: protectedProcedure
     .input(
       z.object({
         batchId: recordId,
@@ -200,7 +176,7 @@ export const galleryRouter = createTRPCRouter({
       }),
     ),
 
-  finishItem: galleryProtectedProcedure
+  finishItem: protectedProcedure
     .input(z.object({ itemId: recordId }))
     .mutation(async ({ ctx, input }) =>
       finishItem(await depsFor(ctx.db), {
@@ -210,7 +186,7 @@ export const galleryRouter = createTRPCRouter({
     ),
 
   /** The browser transfer was cancelled or failed: give the space back. */
-  discardItem: galleryProtectedProcedure
+  discardItem: protectedProcedure
     .input(z.object({ itemId: recordId }))
     .mutation(async ({ ctx, input }) =>
       discardItem(await depsFor(ctx.db), {
@@ -220,7 +196,7 @@ export const galleryRouter = createTRPCRouter({
     ),
 
   /** Finishes the batch and announces it in the community feed. */
-  finishBatch: galleryProtectedProcedure
+  finishBatch: protectedProcedure
     .input(z.object({ batchId: recordId }))
     .mutation(async ({ ctx, input }) => {
       const deps = await depsFor(ctx.db);
@@ -232,7 +208,7 @@ export const galleryRouter = createTRPCRouter({
     }),
 
   /** Null clears a field; a missing field is left as it is. */
-  updateItem: galleryProtectedProcedure
+  updateItem: protectedProcedure
     .input(
       itemInCommunity.extend({
         caption: z.string().max(GALLERY_CAPTION_MAX).optional(),
@@ -252,7 +228,7 @@ export const galleryRouter = createTRPCRouter({
    * No membership gate here on purpose: an uploader may always delete their
    * own item, even after leaving the community (the service decides).
    */
-  deleteItem: galleryProtectedProcedure
+  deleteItem: protectedProcedure
     .input(itemInCommunity)
     .mutation(async ({ ctx, input }) => {
       const { deps, viewer } = await viewerIn(ctx, input.slug);
@@ -264,7 +240,7 @@ export const galleryRouter = createTRPCRouter({
    * the note are checked here, before anything is stored: the service reads
    * any refusal from the reports collection as a duplicate report.
    */
-  reportItem: galleryProtectedProcedure
+  reportItem: protectedProcedure
     .input(
       itemInCommunity.extend({
         reason: z.enum(GALLERY_REPORT_REASONS),
@@ -281,7 +257,7 @@ export const galleryRouter = createTRPCRouter({
     }),
 
   /** Why a hidden item was reported, for the community's moderators. */
-  itemReports: galleryProtectedProcedure
+  itemReports: protectedProcedure
     .input(itemInCommunity)
     .query(async ({ ctx, input }) => {
       const { deps, viewer } = await viewerIn(ctx, input.slug);
@@ -294,7 +270,7 @@ export const galleryRouter = createTRPCRouter({
    * open report stays open. It may name none: an item can stay hidden
    * after its reports were deleted in the admin.
    */
-  reviewItemReports: galleryProtectedProcedure
+  reviewItemReports: protectedProcedure
     .input(
       z.discriminatedUnion("action", [
         itemInCommunity.extend({
