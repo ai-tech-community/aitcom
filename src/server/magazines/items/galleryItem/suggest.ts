@@ -1,5 +1,6 @@
 import type { GalleryItem } from "@/payload-types";
 import { loadGalleryViewerById } from "@/server/gallery/access";
+import { loadEventRefs } from "@/server/gallery/items";
 import { relationId } from "@/server/gallery/relation-id";
 
 import { endedCommunityEvents } from "../event/suggest";
@@ -10,12 +11,19 @@ import { loadGalleryItemCredits } from "./credits";
 import { featurableByWhere } from "./featurable";
 import { galleryItemCandidate } from "./picker";
 
+type Ranked = Pick<GalleryItem, "id" | "createdAt">;
+
 /** Newest first, then the lower id. */
-function newerFirst(a: GalleryItem, b: GalleryItem): number {
+function newerFirst(a: Ranked, b: Ranked): number {
   return Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id - b.id;
 }
 
-type Highlight = { eventId: number; count: number; item: GalleryItem };
+type Highlight = {
+  eventId: number;
+  eventTitle: string;
+  count: number;
+  itemId: number;
+};
 
 /**
  * One highlight per community event that ended in the window (spec
@@ -45,7 +53,7 @@ export const galleryItemSuggester: ItemSuggestionSource<
       userId: ctx.viewerId,
     });
     if (!editor) return [];
-    const { docs } = await ctx.deps.payload.find({
+    const { docs: featurable } = await ctx.deps.payload.find({
       collection: "gallery-items",
       where: {
         and: [
@@ -53,6 +61,7 @@ export const galleryItemSuggester: ItemSuggestionSource<
           { event: { in: ended.map((event) => event.id) } },
         ],
       },
+      select: { event: true, createdAt: true },
       depth: 0,
       pagination: false,
     });
@@ -61,23 +70,29 @@ export const galleryItemSuggester: ItemSuggestionSource<
       excludedNumericReferenceIds("galleryItem", config.exclude),
     );
     const counts = new Map<number, number>();
-    const newest = new Map<number, GalleryItem>();
-    for (const item of docs) {
-      const eventId = relationId(item.event);
+    const newest = new Map<number, Ranked>();
+    for (const doc of featurable) {
+      const eventId = relationId(doc.event);
       if (eventId === null) continue;
       counts.set(eventId, (counts.get(eventId) ?? 0) + 1);
+      const item = { id: doc.id, createdAt: doc.createdAt };
       const best = newest.get(eventId);
       if (!excluded.has(item.id) && (!best || newerFirst(item, best) < 0))
         newest.set(eventId, item);
     }
+    if (newest.size === 0) return [];
     const endsAt = new Map(
       ended.map((event) => [event.id, event.endsAt.getTime()]),
     );
+    // Events gone since they were read are dropped before the limit applies.
+    const events = await loadEventRefs(ctx.deps, [...newest.keys()]);
     const highlights: Highlight[] = [...newest]
+      .filter(([eventId]) => events.has(eventId))
       .map(([eventId, item]) => ({
+        eventTitle: events.get(eventId)!.title,
         eventId,
         count: counts.get(eventId)!,
-        item,
+        itemId: item.id,
       }))
       .sort(
         (a, b) =>
@@ -88,23 +103,31 @@ export const galleryItemSuggester: ItemSuggestionSource<
       .slice(0, config.limit);
     if (highlights.length === 0) return [];
 
-    const credits = await loadGalleryItemCredits(
-      ctx.deps,
-      highlights.map((highlight) => highlight.item),
-      ctx.locale,
-    );
-    return highlights.flatMap(({ item, count }) => {
-      const credit = credits.get(item.id)!;
-      // The event was read a moment ago; skip it if it is gone since.
-      if (!credit.event) return [];
+    // Full rows only for the chosen items, still under the shared rule.
+    const { docs: chosen } = await ctx.deps.payload.find({
+      collection: "gallery-items",
+      where: {
+        and: [
+          featurableByWhere(editor),
+          { id: { in: highlights.map((highlight) => highlight.itemId) } },
+        ],
+      },
+      depth: 0,
+      pagination: false,
+    });
+    const items = new Map(chosen.map((item) => [item.id, item]));
+    const credits = await loadGalleryItemCredits(ctx.deps, chosen, ctx.locale);
+    return highlights.flatMap(({ itemId, eventTitle, count }) => {
+      const item = items.get(itemId);
+      if (!item) return [];
       return [
         {
-          ...galleryItemCandidate(item, credit, ctx.community.slug),
-          reason: {
-            type: "galleryHighlight" as const,
-            eventTitle: credit.event.title,
-            count,
-          },
+          ...galleryItemCandidate(
+            item,
+            credits.get(itemId)!,
+            ctx.community.slug,
+          ),
+          reason: { type: "galleryHighlight" as const, eventTitle, count },
         },
       ];
     });

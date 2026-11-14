@@ -23,7 +23,7 @@ import {
   plainTextToLexical,
 } from "@/server/challenge-engine/lexical";
 import type * as Schema from "@/server/db/schema";
-import type { ObjectStorage } from "@/server/media/object-storage";
+import { testObjectStorage } from "@/test/test-object-storage";
 
 import type { Deps } from "../deps";
 import type * as Context from "./context";
@@ -51,21 +51,6 @@ vi.mock("next-intl/server", async () => {
       }),
   };
 });
-
-/** File links without S3: these tests never fetch a file. */
-const testObjectStorage: ObjectStorage = {
-  presignUpload: async () => {
-    throw new Error("no uploads in these tests");
-  },
-  inspect: async () => null,
-  signedGetUrl: async (key: string) => `https://signed.test/${key}`,
-  publicUrl: (key: string) => `https://public.test/${key}`,
-  // An empty bucket: nothing to list.
-  async *list() {
-    yield* [];
-  },
-  remove: async () => undefined,
-};
 
 function isLocalDbConfigured(): boolean {
   if (process.env.RUN_DB_TESTS !== "1") return false;
@@ -613,10 +598,8 @@ describe.skipIf(!isLocalDbConfigured())(
         { type: "date", label: "starts", at: day(-5) },
         { type: "eventStatus", status: "completed" },
       ]);
-      expect(search.find((c) => c.input.eventId === cancelled)!.facts).toEqual([
-        { type: "date", label: "starts", at: day(-4) },
-        { type: "eventStatus", status: "cancelled" },
-      ]);
+      // The picker offers only published and completed events.
+      expect(search.map((c) => c.input.eventId)).not.toContain(cancelled);
       expect(
         (await suggest("event", 2, [`event:${today}`])).map(
           (c) => c.input.eventId,

@@ -117,7 +117,7 @@ describe("picker suggestions", () => {
     ).toEqual([{ ...suggested, openHref: "/x" }]);
   });
 
-  it("a duplicate gets the search entry's thumbnail; a suggestion carries none", async () => {
+  it("lets the kind decorate the suggestions shown, not the search results", async () => {
     const { ctx, loadSuggestion } = setup();
     const galleryCandidate = (galleryItemId: number) => ({
       input: { kind: "galleryItem" as const, galleryItemId },
@@ -125,25 +125,36 @@ describe("picker suggestions", () => {
       facts: [],
       openHref: `/communities/community/gallery?item=${galleryItemId}`,
     });
-    const suggested = {
-      ...galleryCandidate(2),
-      reference: "galleryItem:2",
+    const suggested = [1, 2].map((id) => ({
+      ...galleryCandidate(id),
+      reference: `galleryItem:${id}`,
       reason: {
         type: "galleryHighlight" as const,
         eventTitle: "Model night",
         count: 4,
       },
-    };
-    vi.mocked(suggestCandidates).mockResolvedValue([suggested]);
+    }));
+    vi.mocked(suggestCandidates).mockResolvedValue(suggested);
     vi.spyOn(ITEM_PICKERS.galleryItem, "search").mockResolvedValue([
-      { ...galleryCandidate(2), thumbnailUrl: "https://signed.test/2-thumb" },
+      { ...galleryCandidate(2), thumbnailUrl: "https://signed.test/2-search" },
       { ...galleryCandidate(3), thumbnailUrl: "https://signed.test/3-thumb" },
     ]);
+    const decorate = vi
+      .spyOn(ITEM_PICKERS.galleryItem, "decorate")
+      .mockImplementation(async (candidates) =>
+        candidates.map((candidate) =>
+          candidate.input.galleryItemId === 1
+            ? { ...candidate, thumbnailUrl: "https://signed.test/1-thumb" }
+            : candidate,
+        ),
+      );
 
     expect(
       await pickerCandidatesFor("galleryItem", "", ctx, [], loadSuggestion),
     ).toEqual([
-      { ...suggested, thumbnailUrl: "https://signed.test/2-thumb" },
+      { ...suggested[0], thumbnailUrl: "https://signed.test/1-thumb" },
+      // The search's duplicate adds nothing: only decorate links suggestions.
+      suggested[1],
       {
         ...galleryCandidate(3),
         thumbnailUrl: "https://signed.test/3-thumb",
@@ -151,12 +162,33 @@ describe("picker suggestions", () => {
         reason: null,
       },
     ]);
+    expect(decorate).toHaveBeenCalledExactlyOnceWith(suggested, ctx);
     expect(suggestCandidates).toHaveBeenCalledExactlyOnceWith(
       "galleryItems",
       expect.anything(),
       expect.anything(),
       { limit: PICKER_LIMIT, exclude: [] },
     );
+  });
+
+  it("decorates nothing for a typed search or a kind without decoration", async () => {
+    const { ctx, loadSuggestion, search } = setup();
+    const decorate = vi.spyOn(ITEM_PICKERS.galleryItem, "decorate");
+    vi.spyOn(ITEM_PICKERS.galleryItem, "search").mockResolvedValue([]);
+    await pickerCandidatesFor(
+      "galleryItem",
+      "keynote",
+      ctx,
+      [],
+      loadSuggestion,
+    );
+    expect(decorate).not.toHaveBeenCalled();
+    vi.mocked(suggestCandidates).mockResolvedValue([suggestion(1)]);
+    search.mockResolvedValue([]);
+    expect(
+      await pickerCandidatesFor("forumThread", "", ctx, [], loadSuggestion),
+    ).toEqual([suggestion(1)]);
+    expect("decorate" in ITEM_PICKERS.forumThread).toBe(false);
   });
 
   it("keeps the limit", async () => {

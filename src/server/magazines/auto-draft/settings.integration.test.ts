@@ -295,6 +295,7 @@ describe.skipIf(!isLocalDbConfigured())(
           article: { enabled: false, max: 8 },
           storyline: { enabled: true, max: 2 },
           event: { enabled: false, max: 7 },
+          galleryItems: { enabled: false, max: 5 },
           forumThread: { enabled: true, max: 6 },
           launchpadProject: { enabled: false, max: 9 },
           newsItem: { enabled: true, max: 4 },

@@ -102,15 +102,32 @@ export async function pickerCandidatesFor<K extends PickableKindId>(
     for (const candidate of searched) {
       const existing = candidates.get(candidate.reference);
       if (existing) {
-        // Fill what the suggestion lacks (gallery suggestions carry no
-        // thumbnail) from the search, which made it for this editor.
         existing.openHref ??= candidate.openHref;
-        if (candidate.thumbnailUrl !== undefined)
-          existing.thumbnailUrl ??= candidate.thumbnailUrl;
       } else if (candidates.size < PICKER_LIMIT) {
         candidates.set(candidate.reference, { ...candidate, reason: null });
       }
     }
   }
-  return [...candidates.values()].slice(0, PICKER_LIMIT);
+  const shown = [...candidates.values()].slice(0, PICKER_LIMIT);
+  return decorateSuggestions(kind, shown, ctx);
+}
+
+/** The kind's picker decoration for the suggestions shown, in place. */
+async function decorateSuggestions<K extends PickableKindId>(
+  kind: K,
+  shown: (PickerCandidate<InputOf<K>> & PickerSuggestion)[],
+  ctx: PickerContext,
+): Promise<(PickerCandidate<InputOf<K>> & PickerSuggestion)[]> {
+  const picker: ItemPickerSource<InputOf<K>> = ITEM_PICKERS[kind];
+  const suggested = shown.filter((candidate) => candidate.reason !== null);
+  if (!picker.decorate || suggested.length === 0) return shown;
+  const decorated = new Map(
+    (await picker.decorate(suggested, ctx)).map((candidate) => [
+      candidate.reference,
+      candidate,
+    ]),
+  );
+  return shown.map(
+    (candidate) => decorated.get(candidate.reference) ?? candidate,
+  );
 }

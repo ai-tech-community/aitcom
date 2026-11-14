@@ -73,6 +73,42 @@ export function galleryItemCandidate(
 }
 
 /**
+ * Thumbnails for suggested items, made per picker request after this
+ * editor's access was checked (`featurableByWhere`); an item the editor may
+ * not feature (any more) gets none. Suggestions themselves carry no link.
+ */
+async function decorateWithThumbnails<
+  C extends PickerSourceCandidate<InputOf<"galleryItem">>,
+>(candidates: C[], ctx: PickerContext): Promise<C[]> {
+  const editor = await loadGalleryViewerById(ctx.deps, {
+    communityId: ctx.community.id,
+    userId: ctx.viewerId,
+  });
+  if (!editor) return candidates;
+  const { docs } = await ctx.deps.payload.find({
+    collection: "gallery-items",
+    where: {
+      and: [
+        featurableByWhere(editor),
+        {
+          id: {
+            in: candidates.map((candidate) => candidate.input.galleryItemId),
+          },
+        },
+      ],
+    },
+    select: { storage: true, fileKey: true, thumbnailKey: true },
+    depth: 0,
+    pagination: false,
+  });
+  const thumbnails = await galleryItemThumbnailUrls(ctx.deps.storage, docs);
+  return candidates.map((candidate) => {
+    const thumbnailUrl = thumbnails.get(candidate.input.galleryItemId);
+    return thumbnailUrl ? { ...candidate, thumbnailUrl } : candidate;
+  });
+}
+
+/**
  * Gallery items this editor may newly feature (`featurableByWhere`: the
  * rule `acceptNew` and the suggester use too), newest first. Thumbnails are
  * linked only for the items found, so only after the editor's access was
@@ -107,4 +143,5 @@ export const galleryItemPicker: ItemPickerSource<InputOf<"galleryItem">> = {
       thumbnailUrl: thumbnails.get(item.id)!,
     }));
   },
+  decorate: decorateWithThumbnails,
 };

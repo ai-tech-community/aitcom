@@ -5518,7 +5518,7 @@
         "article": "Articles approuvés en attente depuis le plus longtemps en premier",
         "storyline": "Récits sur vos sujets, mises à jour les plus récentes en premier",
         "event": "Événements à venir les plus proches d’abord, puis événements passés ayant le plus de participants",
-        "galleryItems": "La photo ou vidéo la plus récente de chaque événement passé, les événements ayant le plus de photos et vidéos d’abord. Uniquement ce que les membres ont autorisé pour le magazine",
+        "galleryItems": "Photo ou vidéo la plus récente approuvée par les membres pour chaque événement passé, les plus animés d’abord",
         "forumThread": "Le plus de réponses, puis le plus de vues",
         "launchpadProject": "Le plus de votes positifs",
         "newsItem": "Titres sur vos sujets, les plus récents en premier",
@@ -5734,7 +5734,7 @@
         "mostReplies": "Le plus commenté : {count, plural, one {<number>#</number> réponse} other {<number>#</number> réponses}}",
         "mostUpvotes": "Le plus apprécié : {count, plural, one {<number>#</number> vote positif} other {<number>#</number> votes positifs}}",
         "newMembers": "{count, plural, one {<number>#</number> nouveau membre a rejoint la communauté} other {<number>#</number> nouveaux membres ont rejoint la communauté}}",
-        "galleryHighlight": "{eventTitle} : {count, plural, one {<number>#</number> photo ou vidéo partagée} other {<number>#</number> photos et vidéos partagées}}"
+        "galleryHighlight": "{eventTitle} : {count, plural, one {<number>#</number> photo ou vidéo} other {<number>#</number> photos et vidéos}} au choix"
       },
       "autoDraft": {
         "label": "Créé automatiquement",

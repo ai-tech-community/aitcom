@@ -5518,7 +5518,7 @@
         "article": "Goedgekeurde artikelen die het langst wachten eerst",
         "storyline": "Verhalen over je onderwerpen, nieuwste updates eerst",
         "event": "Komende evenementen eerst op datum, daarna afgelopen evenementen met de meeste deelnemers",
-        "galleryItems": "De nieuwste foto of video van elk afgelopen evenement, evenementen met de meeste foto’s en video’s eerst. Alleen wat leden voor het magazine hebben vrijgegeven",
+        "galleryItems": "Nieuwste door leden vrijgegeven foto of video van elk afgelopen evenement, drukste evenementen eerst",
         "forumThread": "Meeste reacties, daarna meeste weergaven",
         "launchpadProject": "Meeste stemmen",
         "newsItem": "Koppen over je onderwerpen, nieuwste eerst",
@@ -5734,7 +5734,7 @@
         "mostReplies": "Meest besproken: {count, plural, one {<number>#</number> reactie} other {<number>#</number> reacties}}",
         "mostUpvotes": "Meeste stemmen: {count, plural, one {<number>#</number> stem} other {<number>#</number> stemmen}}",
         "newMembers": "{count, plural, one {<number>#</number> nieuw lid erbij} other {<number>#</number> nieuwe leden erbij}}",
-        "galleryHighlight": "Van {eventTitle}: {count, plural, one {<number>#</number> foto of video gedeeld} other {<number>#</number> foto’s en video’s gedeeld}}"
+        "galleryHighlight": "Van {eventTitle}: {count, plural, one {<number>#</number> foto of video} other {<number>#</number> foto’s en video’s}} om uit te kiezen"
       },
       "autoDraft": {
         "label": "Automatisch gemaakt",

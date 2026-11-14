@@ -5518,7 +5518,7 @@
         "article": "Approved and waiting longest first",
         "storyline": "Stories about your topics, newest updates first",
         "event": "Coming up soonest first, then past events with the most people going",
-        "galleryItems": "The newest photo or video from each past event, events with the most photos and videos first. Only what members allowed in the magazine",
+        "galleryItems": "Newest member-approved photo or video from each past event, busiest events first",
         "forumThread": "Most replies, then most views",
         "launchpadProject": "Most upvotes",
         "newsItem": "Headlines about your topics, newest first",
@@ -5734,7 +5734,7 @@
         "mostReplies": "Most talked about: {count, plural, one {<number>#</number> reply} other {<number>#</number> replies}}",
         "mostUpvotes": "Most upvoted: {count, plural, one {<number>#</number> upvote} other {<number>#</number> upvotes}}",
         "newMembers": "{count, plural, one {<number>#</number> new member joined} other {<number>#</number> new members joined}}",
-        "galleryHighlight": "From {eventTitle}: {count, plural, one {<number>#</number> photo or video shared} other {<number>#</number> photos and videos shared}}"
+        "galleryHighlight": "From {eventTitle}: {count, plural, one {<number>#</number> photo or video} other {<number>#</number> photos and videos}} to choose from"
       },
       "autoDraft": {
         "label": "Made automatically",

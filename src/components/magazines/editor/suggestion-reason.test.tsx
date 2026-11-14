@@ -45,12 +45,12 @@ describe("SuggestionReasonText", () => {
     },
     {
       reason: { type: "galleryHighlight", eventTitle: "Model night", count: 6 },
-      text: "From Model night: 6 photos and videos shared",
+      text: "From Model night: 6 photos and videos to choose from",
       mono: ["6"],
     },
     {
       reason: { type: "galleryHighlight", eventTitle: "Model night", count: 1 },
-      text: "From Model night: 1 photo or video shared",
+      text: "From Model night: 1 photo or video to choose from",
       mono: ["1"],
     },
   ])(

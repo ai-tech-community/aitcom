@@ -429,7 +429,7 @@ describe("AutoDraftSettingsForm", () => {
       "Community events":
         "Coming up soonest first, then past events with the most people going",
       "Gallery highlights":
-        "The newest photo or video from each past event, events with the most photos and videos first. Only what members allowed in the magazine",
+        "Newest member-approved photo or video from each past event, busiest events first",
       "Forum threads": "Most replies, then most views",
       "Launchpad projects": "Most upvotes",
       "AIT News headlines": "Headlines about your topics, newest first",

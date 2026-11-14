@@ -74,7 +74,9 @@ for the acting person's rights, and
    then id; each event offers its newest such item, then the lower id.
    Excluded items still count for their event. Like the welcome, highlights do
    not count toward the minimum, and neither the candidate nor its reason
-   carries a file link. Other source defaults are 5, 3, 4, 3, 3, 3 and 5
+   carries a file link: the picker adds thumbnails per request through the
+   kind picker's optional `decorate` step, which re-checks the rule for the
+   editor before linking. Other source defaults are 5, 3, 4, 3, 3, 3 and 5
    items; their maximum is ten, while welcome allows one.
 
 3. **Reasons stay apart from reader content (plan Decision 3).** Structured

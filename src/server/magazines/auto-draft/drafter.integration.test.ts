@@ -503,6 +503,10 @@ describe.skipIf(!isLocalDbConfigured())(
           },
         });
         f.fx.projectIds.push(Number(project.id));
+        // Inside the window, whatever the real clock says.
+        await f.m.db.execute(
+          sql`update "public"."launchpad_projects" set "updated_at" = ${at(-60)} where "id" = ${project.id}`,
+        );
         const [news] = await f.m.db
           .insert(f.m.schema.newsItems)
           .values({

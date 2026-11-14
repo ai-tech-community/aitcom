@@ -18,22 +18,7 @@ import type { Event, Magazine } from "@/payload-types";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import type * as Schema from "@/server/db/schema";
 import type { Deps } from "@/server/magazines/deps";
-import type { ObjectStorage } from "@/server/media/object-storage";
-
-/** File links without S3: these tests never fetch a file. */
-const testObjectStorage: ObjectStorage = {
-  presignUpload: async () => {
-    throw new Error("no uploads in these tests");
-  },
-  inspect: async () => null,
-  signedGetUrl: async (key: string) => `https://signed.test/${key}`,
-  publicUrl: (key: string) => `https://public.test/${key}`,
-  // An empty bucket: nothing to list.
-  async *list() {
-    yield* [];
-  },
-  remove: async () => undefined,
-};
+import { testObjectStorage } from "@/test/test-object-storage";
 
 export function isLocalDbConfigured(): boolean {
   if (process.env.RUN_DB_TESTS !== "1") return false;

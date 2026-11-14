@@ -2,13 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
 
-import type { SuggestConfig } from "../types";
+import { PICKER_LIMIT } from "@/lib/magazines/picker";
+
+import { ITEM_PICKERS, pickerCandidatesFor } from "../pickers";
+import type { InputOf } from "../registry";
+import type { PickerSourceCandidate, SuggestConfig } from "../types";
 import { galleryItemSuggester } from "./suggest";
 import {
   event,
   fakes,
   item,
   NOW,
+  pickerContext,
   suggestContext,
   WINDOW,
   type Doc,
@@ -230,5 +235,103 @@ describe("gallery highlights for automatic drafts", () => {
       expect(JSON.stringify(candidate)).not.toMatch(/https?:|signed|thumb/);
     }
     expect(f.storageSource).not.toHaveBeenCalled();
+  });
+
+  it("counts on a light query and reads full rows only for the chosen items", async () => {
+    const f = fakes({ items: ITEMS, events: EVENTS, role: "member" });
+    await suggest(f, { limit: 2 });
+    const reads = f.payload.find.mock.calls
+      .map(([args]) => args)
+      .filter((args) => args.collection === "gallery-items");
+    expect(reads).toHaveLength(2);
+    expect(reads[0]!.select).toEqual({ event: true, createdAt: true });
+    expect(reads[1]!.select).toBeUndefined();
+    expect(JSON.stringify(reads[1]!.where)).toContain('"in":[2,10]');
+  });
+
+  it("drops an event that is gone before the limit applies", async () => {
+    const f = fakes({ items: ITEMS, events: EVENTS, role: "member" });
+    const find = f.payload.find.getMockImplementation()!;
+    // Model night disappears between the ended-events read and the titles.
+    f.payload.find.mockImplementation(async (args) => {
+      const found = await find(args);
+      return args.collection === "events" && args.select?.title
+        ? { docs: found.docs.filter((doc) => doc.id !== 5) }
+        : found;
+    });
+    expect(highlights(await suggest(f, { limit: 1 }))).toEqual([
+      { id: 10, type: "galleryHighlight", eventTitle: "Pizza talk", count: 1 },
+    ]);
+  });
+});
+
+describe("gallery highlights in the picker", () => {
+  const manyEvents = Array.from({ length: PICKER_LIMIT + 1 }, (_, i) =>
+    event(100 + i, `Night ${i}`, "2026-11-10"),
+  );
+  const oneEach = manyEvents.map((ev, i) =>
+    item(i + 1, { event: ev.id, createdAt: at("01") }),
+  );
+  // Newer items of no ended event fill the plain newest-first search.
+  const newer = Array.from({ length: PICKER_LIMIT }, (_, i) =>
+    item(200 + i, { event: null, createdAt: at("13") }),
+  );
+
+  it("links a thumbnail for every suggested highlight shown", async () => {
+    const f = fakes({
+      items: [...oneEach, ...newer],
+      events: manyEvents,
+      role: "member",
+    });
+    const search = vi.spyOn(ITEM_PICKERS.galleryItem, "search");
+    const shown = await pickerCandidatesFor(
+      "galleryItem",
+      "",
+      pickerContext(f, "u2"),
+      [],
+      async () => ({ ctx: suggestContext(f, "u2"), window: WINDOW }),
+    );
+    expect(shown).toHaveLength(PICKER_LIMIT);
+    for (const candidate of shown) {
+      expect(candidate.reason).toMatchObject({ type: "galleryHighlight" });
+      expect(candidate.thumbnailUrl).toBe(
+        `https://signed.test/private/gallery/c1/u${candidate.input.galleryItemId}-thumb.jpg`,
+      );
+    }
+    // Twelve highlights fill the picker: no search ran to lend thumbnails.
+    expect(search).not.toHaveBeenCalled();
+    expect(f.storage.signedGetUrl).toHaveBeenCalledTimes(PICKER_LIMIT);
+    search.mockRestore();
+  });
+
+  it("links no thumbnail for an item the editor may not feature", async () => {
+    const f = fakes({
+      items: [
+        item(1),
+        item(2, { visibility: "public" }),
+        item(3, { visibility: "public", hiddenAt: at("12") }),
+        item(4, { visibility: "public", magazineConsent: false }),
+      ],
+      role: null,
+    });
+    const candidate = (
+      galleryItemId: number,
+    ): PickerSourceCandidate<InputOf<"galleryItem">> => ({
+      input: { kind: "galleryItem" as const, galleryItemId },
+      title: `Item ${galleryItemId}`,
+      facts: [],
+      openHref: null,
+    });
+    const decorated = await ITEM_PICKERS.galleryItem.decorate!(
+      [1, 2, 3, 4].map(candidate),
+      pickerContext(f, "staff"),
+    );
+    expect(decorated.map((c) => c.thumbnailUrl ?? null)).toEqual([
+      null,
+      "https://public.test/media/gallery/public/c1/u2-thumb.jpg",
+      null,
+      null,
+    ]);
+    expect(f.storage.signedGetUrl).not.toHaveBeenCalled();
   });
 });

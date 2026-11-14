@@ -54,6 +54,16 @@ export interface ItemPickerSource<Input> {
     ctx: PickerContext,
     exclude: readonly string[],
   ): Promise<PickerSourceCandidate<Input>[]>;
+  /**
+   * Adds what the picker shows but a suggestion must never carry (a
+   * gallery item's thumbnail: suggestions end up stored as auto-pick
+   * reasons). Runs per picker request, for this editor, on the suggested
+   * candidates; returns them in the same order, none added or removed.
+   */
+  decorate?<C extends PickerSourceCandidate<Input>>(
+    candidates: C[],
+    ctx: PickerContext,
+  ): Promise<C[]>;
 }
 
 /** viewerId is the acting person; editor links follow that person's rights. */
