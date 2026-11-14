@@ -17,6 +17,7 @@ import { CommunityNav } from "@/components/communities/community-nav";
 import { Spinner } from "@/components/ui/spinner";
 import { resolveCommunityLayoutVariant } from "@/lib/communities/layout-variant";
 import { useJoinDeepLink } from "@/components/communities/use-community-join";
+import { useCommunityIdentityDensity } from "@/components/communities/use-community-identity-density";
 import { useRouter } from "@/i18n/navigation";
 
 export function CommunityLayoutClient({
@@ -34,7 +35,8 @@ export function CommunityLayoutClient({
   const router = useRouter();
   // A guest who pressed Join here comes back from sign-in with ?join=.
   useJoinDeepLink(() => router.refresh());
-  const variant = resolveCommunityLayoutVariant(useSelectedLayoutSegments());
+  const segments = useSelectedLayoutSegments();
+  const variant = resolveCommunityLayoutVariant(segments);
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(null, initialUser, session?.user);
 
@@ -43,6 +45,14 @@ export function CommunityLayoutClient({
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
     undefined,
     { enabled: !!user },
+  );
+
+  const memberships = myCommunities ?? initialMemberships;
+  const membershipStatus = membershipStatusForSlug(memberships, slug);
+  const memberRole = memberRoleForSlug(memberships, slug);
+  const identityDensity = useCommunityIdentityDensity(
+    segments,
+    membershipStatus === "active",
   );
 
   // `isLoading` is false while a query is pending but not yet fetching.
@@ -65,10 +75,6 @@ export function CommunityLayoutClient({
   }
   const community = communityQuery.data;
 
-  const memberships = myCommunities ?? initialMemberships;
-  const membershipStatus = membershipStatusForSlug(memberships, slug);
-  const memberRole = memberRoleForSlug(memberships, slug);
-
   return (
     <PageDocumentAuthProvider user={initialUser}>
       {variant === "workspace" ? (
@@ -88,6 +94,7 @@ export function CommunityLayoutClient({
                 community={community}
                 membershipStatus={membershipStatus}
                 memberRole={memberRole}
+                density={identityDensity}
               />
               <CommunityNav slug={slug} memberRole={memberRole} />
             </div>

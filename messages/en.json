@@ -3114,6 +3114,7 @@
       "insights": "Insights",
       "rituals": "Rituals",
       "referrals": "Invite friends",
+      "manageGroup": "Manage",
       "membersSentence": "{count, plural, one {# member} other {# members}}",
       "activeSentence": "{count} active this week",
       "activeThisWeek": "{count, plural, one {person active this week} other {people active this week}}",

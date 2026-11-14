@@ -162,4 +162,42 @@ describe("CommunityIdentity", () => {
     expect(screen.getByText(en.communities.roles.owner)).toBeInTheDocument();
     expect(screen.queryByText(en.communities.roles.member)).toBeNull();
   });
+
+  describe("compact", () => {
+    function renderCompact() {
+      m.joinProps = [];
+      return render(
+        <NextIntlClientProvider locale="en" messages={en}>
+          <CommunityIdentity
+            community={
+              {
+                ...community,
+                bannerUrl: "https://cdn.example.test/banner.png",
+                liveness: { activeContributors: 3 },
+              } as typeof community
+            }
+            membershipStatus="active"
+            memberRole="owner"
+            density="compact"
+          />
+        </NextIntlClientProvider>,
+      );
+    }
+
+    it("keeps the page's one h1 and the role badge", () => {
+      renderCompact();
+      expect(
+        screen.getByRole("heading", { level: 1, name: "MLOps Amsterdam" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(en.communities.roles.owner)).toBeInTheDocument();
+    });
+
+    it("leaves out the banner, tagline, members line and join control", () => {
+      renderCompact();
+      expect(document.querySelector("[data-community-banner]")).toBeNull();
+      expect(document.querySelector("[data-community-tagline]")).toBeNull();
+      expect(screen.queryByText(/42 members/)).toBeNull();
+      expect(m.joinProps).toHaveLength(0);
+    });
+  });
 });

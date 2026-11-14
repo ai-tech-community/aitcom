@@ -4,6 +4,7 @@ import { act, render, screen } from "@testing-library/react";
 
 const m = vi.hoisted(() => ({
   segments: [] as string[],
+  identityProps: [] as { density?: string }[],
   community: {
     data: { slug: "mlops", name: "MLOps" } as
       | { slug: string; name: string }
@@ -44,15 +45,19 @@ vi.mock("@/components/communities/use-community-join", () => ({
   useJoinDeepLink: () => undefined,
 }));
 vi.mock("@/components/communities/community-identity", () => ({
-  CommunityIdentity: () => <div data-testid="identity" />,
+  CommunityIdentity: (props: { density?: string }) => {
+    m.identityProps.push(props);
+    return <div data-testid="identity" />;
+  },
 }));
 vi.mock("@/components/communities/community-nav", () => ({
   CommunityNav: () => <nav data-testid="nav" />,
 }));
 
+import type { HubMembershipSeed } from "@/server/better-auth/hub-session";
 import { CommunityLayoutClient } from "./_community-layout-client";
 
-async function renderLayout() {
+async function renderLayout(initialMemberships: HubMembershipSeed[] = []) {
   const params = Promise.resolve({ slug: "mlops", locale: "en" });
   let result!: ReturnType<typeof render>;
   await act(async () => {
@@ -61,7 +66,7 @@ async function renderLayout() {
         <CommunityLayoutClient
           params={params}
           initialUser={null}
-          initialMemberships={[]}
+          initialMemberships={initialMemberships}
         >
           <p data-testid="page">page</p>
         </CommunityLayoutClient>
@@ -74,6 +79,7 @@ async function renderLayout() {
 
 beforeEach(() => {
   m.segments = [];
+  m.identityProps = [];
   m.community = {
     data: { slug: "mlops", name: "MLOps" },
     isPending: false,
@@ -124,5 +130,28 @@ describe("CommunityLayoutClient frame", () => {
     expect(screen.getByTestId("page")).toBeInTheDocument();
     expect(screen.queryByTestId("identity")).toBeNull();
     expect(container.querySelector("[data-community-rail]")).toBeNull();
+  });
+
+  describe("identity density", () => {
+    const owner: HubMembershipSeed[] = [
+      { slug: "mlops", status: "active", role: "owner" },
+    ];
+
+    it("is compact on a member's tab page", async () => {
+      m.segments = ["insights"];
+      await renderLayout(owner);
+      expect(m.identityProps.at(-1)?.density).toBe("compact");
+    });
+
+    it("is full on a member's Overview", async () => {
+      await renderLayout(owner);
+      expect(m.identityProps.at(-1)?.density).toBe("full");
+    });
+
+    it("is full on a tab page for someone who has not joined", async () => {
+      m.segments = ["insights"];
+      await renderLayout();
+      expect(m.identityProps.at(-1)?.density).toBe("full");
+    });
   });
 });
