@@ -93,7 +93,7 @@ function event(id: number, over: Doc = {}): Doc {
   };
 }
 
-const USERS = [
+const USERS: { id: string; name: string | null; image: string | null }[] = [
   { id: "u1", name: "Dana", image: "https://img.test/dana.png" },
   { id: "u2", name: "Ruben", image: null },
   { id: "u3", name: "Priya", image: null },
@@ -525,6 +525,17 @@ describe("listItems", () => {
     const { deps } = fakes({ items: [item(1, { uploaderId: "gone" })] });
     const [view] = (await listItems(deps, { viewer: await member() })).items;
     expect(view!.uploader).toBeNull();
+  });
+
+  it("leaves an uploader without a name unnamed, for the reader's language to fill", async () => {
+    const { deps, db } = fakes({ items: [item(1, { uploaderId: "u1" })] });
+    db.select.mockImplementation(() => ({
+      from: () => ({
+        where: vi.fn(async () => [{ id: "u1", name: null, image: null }]),
+      }),
+    }));
+    const [view] = (await listItems(deps, { viewer: await member() })).items;
+    expect(view!.uploader).toEqual({ id: "u1", name: null, image: null });
   });
 
   it("looks up only the uploaders who still have an account", async () => {

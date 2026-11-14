@@ -18,7 +18,11 @@ export type BuilderItemOf<K extends ItemKindId> = Extract<
  * label key by construction, so Tasks 4–8 need no edit here — each adds
  * `magazineEditor.builder.items.<kind>` in its copy step.
  */
-export type BuilderItemsMessage = ItemKindId | "editorialEmpty" | "openArticle";
+export type BuilderItemsMessage =
+  | ItemKindId
+  | "editorialEmpty"
+  | "openArticle"
+  | "openGalleryItem";
 
 /** What "Add more" knows about the content it just put in the issue. */
 export type AddedContent = {

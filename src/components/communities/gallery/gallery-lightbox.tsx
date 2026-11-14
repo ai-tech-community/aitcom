@@ -400,7 +400,7 @@ export function GalleryLightbox({
                 ) : null}
                 <AvatarFallback>
                   {item.uploader ? (
-                    getInitials(item.uploader.name)
+                    getInitials(uploaderName(item))
                   ) : (
                     // A deleted member: no initials of a person.
                     <UserRound aria-hidden="true" className="size-4" />

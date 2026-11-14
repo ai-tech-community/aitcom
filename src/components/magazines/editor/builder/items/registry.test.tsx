@@ -26,6 +26,7 @@ import {
   ADD_TAB_ORDER,
   BUILDER_ITEM_KINDS,
   builderKindLabelKey,
+  builderOpenLabelKey,
   builderPreviewView,
   builderReferenceKey,
   builderRowTitle,
@@ -221,6 +222,8 @@ it("adds gallery items after events, titled by their translated label and never 
   );
   expect(builderKindLabelKey(item)).toBe("galleryItem");
   expect(builderReferenceKey(item)).toBe("galleryItem:7");
+  // A saved item's row menu opens it in the gallery (the server's openHrefs).
+  expect(builderOpenLabelKey(item)).toBe("openGalleryItem");
   expect(
     builderRowTitle(item, { saved, titleHint: "Old title", t, translate }),
   ).toBe("Photo by Sanne");

@@ -7,12 +7,18 @@ import { galleryItemLabel, galleryItemLabelText } from "@/lib/gallery-rules";
 import type { GalleryItemView } from "@/server/gallery/items";
 
 /**
- * The name an item's uploader is shown by: theirs, or "Deleted member" once
- * they deleted their account.
+ * The name an item's uploader is shown by: theirs, "Member" when their
+ * account has no name, or "Deleted member" once they deleted their account.
  */
 export function useGalleryUploaderName(): (item: GalleryItemView) => string {
   const t = useTranslations("gallery");
-  return useCallback((item) => item.uploader?.name ?? t("deletedMember"), [t]);
+  return useCallback(
+    (item) =>
+      item.uploader
+        ? (item.uploader.name ?? t("unnamedMember"))
+        : t("deletedMember"),
+    [t],
+  );
 }
 
 /**

@@ -145,6 +145,26 @@ export const galleryItemItemKind: IssueItemKind<
     ...introInput(stored.intro),
   }),
   referenceOf,
+  /**
+   * "Open" links for saved items: the item in its community's gallery, for
+   * the items the gallery's own read rule lets this editor open.
+   */
+  async openHrefs(items, ctx) {
+    if (ctx.reader.viewerId === null || items.length === 0) return {};
+    const [galleryItems, editor] = await Promise.all([
+      loadGalleryItems(items, ctx),
+      loadViewer(ctx),
+    ]);
+    if (!editor) return {};
+    return Object.fromEntries(
+      [...galleryItems.values()]
+        .filter((item) => isGalleryReadable(editor, item))
+        .map((item) => [
+          referenceOf({ galleryItemId: item.id }),
+          galleryItemPath(ctx.community.slug, item.id),
+        ]),
+    );
+  },
   async validate(items, ctx) {
     const withImage = imageProblems(items);
     const refusedImage = new Set(withImage.map((p) => p.itemIndex));

@@ -92,8 +92,10 @@ export function builderPreviewView<K extends ItemKindId>(
 }
 
 /** Whether the item may carry an issue-owned image (its image editor). */
-export function acceptsBuilderItemImage(item: BuilderItem): boolean {
-  return BUILDER_ITEM_KINDS[item.kind].acceptsImage ?? true;
+export function acceptsBuilderItemImage<K extends ItemKindId>(
+  item: BuilderItemOf<K>,
+): boolean {
+  return kindOf(item).acceptsImage ?? true;
 }
 
 /** The content the item references (at most once per issue), or null. */

@@ -1,12 +1,17 @@
+import type { Where } from "payload";
+
 import type { GalleryItem } from "@/payload-types";
-import { loadGalleryViewerById } from "@/server/gallery/access";
+import {
+  loadGalleryViewerById,
+  type GalleryViewer,
+} from "@/server/gallery/access";
 import { loadEventRefs } from "@/server/gallery/items";
 import { relationId } from "@/server/gallery/relation-id";
 
 import { endedCommunityEvents } from "../event/suggest";
 import { excludedNumericReferenceIds } from "../picker-exclusions";
 import type { InputOf } from "../registry";
-import type { ItemSuggestionSource } from "../types";
+import type { ItemSuggestionSource, SuggestContext } from "../types";
 import { loadGalleryItemCredits } from "./credits";
 import { featurableByWhere } from "./featurable";
 import { galleryItemCandidate } from "./picker";
@@ -24,6 +29,21 @@ type Highlight = {
   count: number;
   itemId: number;
 };
+
+/** Full rows of the items this editor may feature, by id, among `where`. */
+async function featurableRows(
+  ctx: SuggestContext,
+  editor: GalleryViewer,
+  where: Where,
+): Promise<Map<number, GalleryItem>> {
+  const { docs } = await ctx.deps.payload.find({
+    collection: "gallery-items",
+    where: { and: [featurableByWhere(editor), where] },
+    depth: 0,
+    pagination: false,
+  });
+  return new Map(docs.map((item) => [item.id, item]));
+}
 
 /**
  * One highlight per community event that ended in the window (spec
@@ -104,19 +124,35 @@ export const galleryItemSuggester: ItemSuggestionSource<
     if (highlights.length === 0) return [];
 
     // Full rows only for the chosen items, still under the shared rule.
-    const { docs: chosen } = await ctx.deps.payload.find({
-      collection: "gallery-items",
-      where: {
-        and: [
-          featurableByWhere(editor),
-          { id: { in: highlights.map((highlight) => highlight.itemId) } },
-        ],
-      },
-      depth: 0,
-      pagination: false,
+    const items = await featurableRows(ctx, editor, {
+      id: { in: highlights.map((highlight) => highlight.itemId) },
     });
-    const items = new Map(chosen.map((item) => [item.id, item]));
-    const credits = await loadGalleryItemCredits(ctx.deps, chosen, ctx.locale);
+    // An item that stopped being featurable between the two reads: its event
+    // offers its next item instead (rare; one more read, of those events only).
+    const orphaned = highlights.filter(({ itemId }) => !items.has(itemId));
+    if (orphaned.length > 0) {
+      const fallbacks = await featurableRows(ctx, editor, {
+        event: { in: orphaned.map((highlight) => highlight.eventId) },
+      });
+      const next = new Map<number, GalleryItem>();
+      for (const item of fallbacks.values()) {
+        const eventId = relationId(item.event);
+        if (eventId === null || excluded.has(item.id)) continue;
+        const best = next.get(eventId);
+        if (!best || newerFirst(item, best) < 0) next.set(eventId, item);
+      }
+      for (const highlight of orphaned) {
+        const item = next.get(highlight.eventId);
+        if (!item) continue;
+        highlight.itemId = item.id;
+        items.set(item.id, item);
+      }
+    }
+    const credits = await loadGalleryItemCredits(
+      ctx.deps,
+      [...items.values()],
+      ctx.locale,
+    );
     return highlights.flatMap(({ itemId, eventTitle, count }) => {
       const item = items.get(itemId);
       if (!item) return [];

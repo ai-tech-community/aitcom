@@ -300,6 +300,57 @@ describe("gallery item kind: load", () => {
   });
 });
 
+describe("gallery item kind: openHrefs", () => {
+  it("links each saved item the editor may read to its place in the gallery", async () => {
+    const f = fakes({
+      items: [
+        item(1),
+        item(2, { hiddenAt: "2026-11-13T12:00:00.000Z" }),
+        item(3, { status: "uploading" }),
+        item(6, { communityId: "c2" }),
+      ],
+      role: "member",
+    });
+    const hrefs = await galleryItemItemKind.openHrefs!(
+      [1, 2, 3, 4, 6].map((id) => stored(id)),
+      context(f, "editor", "u2"),
+    );
+    // Keyed by the content reference, like the picker's openHref.
+    expect(hrefs).toEqual({
+      "galleryItem:1": "/communities/town/gallery?item=1",
+    });
+    expect(
+      f.payload.find.mock.calls.filter(
+        ([args]) => args.collection === "gallery-items",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("links a hidden item for a moderator, who can open it in the gallery", async () => {
+    const f = fakes({
+      items: [item(2, { hiddenAt: "2026-11-13T12:00:00.000Z" })],
+      role: "moderator",
+    });
+    expect(
+      await galleryItemItemKind.openHrefs!(
+        [stored(2)],
+        context(f, "editor", "u3"),
+      ),
+    ).toEqual({ "galleryItem:2": "/communities/town/gallery?item=2" });
+  });
+
+  it("links nothing for an editor who is not signed in, and reads nothing", async () => {
+    const f = fakes({ items: [item(1)], role: null });
+    expect(
+      await galleryItemItemKind.openHrefs!(
+        [stored(1)],
+        context(f, "editor", null),
+      ),
+    ).toEqual({});
+    expect(f.payload.find).not.toHaveBeenCalled();
+  });
+});
+
 describe("gallery item kind: validate", () => {
   // Item 1 is featurable; each other one fails one part of the rule.
   const seed = () => [

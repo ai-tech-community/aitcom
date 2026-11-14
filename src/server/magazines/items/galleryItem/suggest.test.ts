@@ -249,6 +249,52 @@ describe("gallery highlights for automatic drafts", () => {
     expect(JSON.stringify(reads[1]!.where)).toContain('"in":[2,10]');
   });
 
+  it("offers the event's next item when its newest stops being featurable between reads", async () => {
+    // Copies: the test changes a row in place.
+    const f = fakes({
+      items: ITEMS.map((doc) => ({ ...doc })),
+      events: EVENTS,
+      role: "member",
+    });
+    const find = f.payload.find.getMockImplementation()!;
+    // Item 2 is hidden after the counting read, before the full rows are read.
+    let galleryReads = 0;
+    f.payload.find.mockImplementation(async (args) => {
+      if (args.collection === "gallery-items" && ++galleryReads === 2) {
+        const two = f.store["gallery-items"]!.find((doc) => doc.id === 2)!;
+        two.hiddenAt = at("12");
+      }
+      return find(args);
+    });
+    expect(highlights(await suggest(f, { limit: 2 }))).toEqual([
+      { id: 3, type: "galleryHighlight", eventTitle: "Model night", count: 3 },
+      { id: 10, type: "galleryHighlight", eventTitle: "Pizza talk", count: 1 },
+    ]);
+  });
+
+  it("never falls back to an excluded item", async () => {
+    // Copies: the test changes a row in place.
+    const f = fakes({
+      items: ITEMS.map((doc) => ({ ...doc })),
+      events: EVENTS,
+      role: "member",
+    });
+    const find = f.payload.find.getMockImplementation()!;
+    let galleryReads = 0;
+    f.payload.find.mockImplementation(async (args) => {
+      if (args.collection === "gallery-items" && ++galleryReads === 2) {
+        const two = f.store["gallery-items"]!.find((doc) => doc.id === 2)!;
+        two.magazineConsent = false;
+      }
+      return find(args);
+    });
+    expect(
+      highlights(await suggest(f, { limit: 1, exclude: ["galleryItem:3"] })),
+    ).toEqual([
+      { id: 1, type: "galleryHighlight", eventTitle: "Model night", count: 3 },
+    ]);
+  });
+
   it("drops an event that is gone before the limit applies", async () => {
     const f = fakes({ items: ITEMS, events: EVENTS, role: "member" });
     const find = f.payload.find.getMockImplementation()!;

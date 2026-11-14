@@ -5828,6 +5828,7 @@
         "actions": "Actions for {title}",
         "edit": "Edit",
         "openArticle": "Open the article",
+        "openGalleryItem": "Open in the gallery",
         "opensInNewTab": "(opens in a new tab)",
         "moveUp": "Move up",
         "moveDown": "Move down",
