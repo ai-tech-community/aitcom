@@ -3,6 +3,8 @@ import type { CollectionConfig } from "payload";
 import { MEDIA_PURPOSES } from "@/lib/image-uploads";
 import { unlinkFeedPostsBeforeMediaDelete } from "@/server/communities/feed-post-image-url-hook";
 import {
+  holdBackCallerPrefix,
+  noPrefixWrites,
   readMissingPrefixAsBucketRoot,
   storeNewFilesUnderAFolder,
 } from "@/server/media/media-prefix";
@@ -26,6 +28,7 @@ export const Media: CollectionConfig = {
     ],
   },
   hooks: {
+    beforeOperation: [holdBackCallerPrefix],
     // Runs before the storage plugin's hooks, which are appended after these.
     beforeChange: [storeNewFilesUnderAFolder],
     beforeDelete: [unlinkFeedPostsBeforeMediaDelete()],
@@ -65,11 +68,12 @@ export const Media: CollectionConfig = {
       },
     },
     // The S3 folder of the file. The storage plugin owns this field (hidden,
-    // read-only, default MEDIA_DEFAULT_PREFIX) and merges this definition
-    // into its own; only the read hook is added here.
+    // read-only, default "") and merges this definition into its own. Only
+    // the Media hooks set it (see src/server/media/media-prefix.ts).
     {
       name: "prefix",
       type: "text",
+      access: { create: noPrefixWrites, update: noPrefixWrites },
       hooks: { afterRead: [readMissingPrefixAsBucketRoot] },
     },
   ],
