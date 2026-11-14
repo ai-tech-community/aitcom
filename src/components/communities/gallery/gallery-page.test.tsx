@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ReactQuery from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 import {
   fireEvent,
@@ -55,6 +56,8 @@ const m = vi.hoisted(() => ({
   editProps: [] as EditStandInProps[],
   invalidateList: vi.fn(),
   invalidateFacets: vi.fn(),
+  invalidateItem: vi.fn(),
+  removeQueries: vi.fn(),
   deleteFails: false,
   toastError: vi.fn(),
 }));
@@ -71,12 +74,20 @@ vi.mock("next/navigation", () => ({
       ),
     ),
 }));
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof ReactQuery>()),
+  useQueryClient: () => ({ removeQueries: m.removeQueries }),
+}));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
       gallery: {
         list: { invalidate: m.invalidateList },
         facets: { invalidate: m.invalidateFacets },
+        item: {
+          invalidate: m.invalidateItem,
+          queryOptions: (input: unknown) => ({ queryKey: ["item", input] }),
+        },
       },
     }),
     gallery: {
@@ -197,6 +208,41 @@ vi.mock("./gallery-edit-dialog", () => ({
       </div>
     ) : null;
   },
+}));
+vi.mock("./gallery-report-dialog", () => ({
+  GalleryReportDialog: (props: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onReported: () => void;
+  }) =>
+    props.open ? (
+      <div role="dialog" aria-label="Report stand-in">
+        <button
+          type="button"
+          onClick={() => {
+            props.onReported();
+            props.onOpenChange(false);
+          }}
+        >
+          Reported
+        </button>
+      </div>
+    ) : null,
+}));
+vi.mock("./gallery-review-banner", () => ({
+  GalleryReviewBanner: (props: {
+    onRestored: () => void;
+    onRemoved: () => void;
+  }) => (
+    <>
+      <button type="button" onClick={props.onRestored}>
+        Restored
+      </button>
+      <button type="button" onClick={props.onRemoved}>
+        Removed
+      </button>
+    </>
+  ),
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: m.toastError },
@@ -608,6 +654,113 @@ describe("GalleryPage", () => {
         screen.getByRole("heading", { name: "Photos and videos" }),
       ).toHaveFocus(),
     );
+  });
+
+  it("lets someone signed in report an item, then closes it and refreshes", async () => {
+    // Signed in, not a member: anyone who may see an item may report it.
+    m.signedIn = true;
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Report",
+      }),
+    );
+    // A stand-in, not a Radix dialog: the modal lightbox hides it from the
+    // accessibility tree, so it is found by its text.
+    fireEvent.click(screen.getByText("Reported"));
+    expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
+    // The reporter can no longer read it: its entry is dropped, never asked
+    // for again only to be told it is gone.
+    expect(m.invalidateItem).not.toHaveBeenCalled();
+    expect(m.removeQueries).toHaveBeenCalledWith({
+      queryKey: ["item", { slug: "mlops", itemId: 1 }],
+      exact: true,
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.search).toBe("");
+    expect(m.toastError).not.toHaveBeenCalled();
+  });
+
+  it("does not ask again for a linked item someone just reported", async () => {
+    m.signedIn = true;
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    // Linked, not on the wall: it is shown from its own query.
+    m.item = galleryItem({ id: 99, caption: "Linked" });
+    setUrl("item=99");
+    renderPage();
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Report",
+      }),
+    );
+    fireEvent.click(screen.getByText("Reported"));
+    expect(m.invalidateItem).not.toHaveBeenCalled();
+    expect(m.removeQueries).toHaveBeenCalledWith({
+      queryKey: ["item", { slug: "mlops", itemId: 99 }],
+      exact: true,
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.search).toBe("");
+    expect(m.toastError).not.toHaveBeenCalled();
+  });
+
+  it("reads an item a moderator reported again: they still see it, hidden", () => {
+    asMember("moderator");
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Report",
+      }),
+    );
+    fireEvent.click(screen.getByText("Reported"));
+    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 1 });
+    expect(m.removeQueries).not.toHaveBeenCalled();
+  });
+
+  it("offers a guest no Report", () => {
+    m.list.items = [galleryItem({ id: 1, caption: "One" })];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    expect(
+      within(screen.getByRole("dialog")).queryByRole("button", {
+        name: "Report",
+      }),
+    ).toBeNull();
+  });
+
+  it("refreshes a hidden item a moderator restored, and stays on it", () => {
+    asMember("moderator");
+    m.list.items = [galleryItem({ id: 1, caption: "One", hidden: true })];
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "One" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restored" }));
+    expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateItem).toHaveBeenCalledWith({ slug: "mlops", itemId: 1 });
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("One");
+  });
+
+  it("refreshes the wall and drops the item after a moderator removed it", async () => {
+    asMember("moderator");
+    // Linked, not on the wall: it is shown from its own query.
+    m.item = galleryItem({ id: 1, caption: "One", hidden: true });
+    setUrl("item=1");
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Removed" }));
+    expect(m.invalidateList).toHaveBeenCalledWith({ slug: "mlops" });
+    expect(m.invalidateFacets).toHaveBeenCalledWith({ slug: "mlops" });
+    // Not invalidated: that would ask for it again, only to hear it's gone.
+    expect(m.invalidateItem).not.toHaveBeenCalled();
+    expect(m.removeQueries).toHaveBeenCalledWith({
+      queryKey: ["item", { slug: "mlops", itemId: 1 }],
+      exact: true,
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("gives a plain member no Delete on someone else's item", () => {

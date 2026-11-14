@@ -1,5 +1,4 @@
 import { TRPCError } from "@trpc/server";
-import { ValidationError, type Where } from "payload";
 
 import type { PostReport } from "@/payload-types";
 import type { ObjectStorageSource } from "@/server/media/object-storage";
@@ -11,6 +10,12 @@ import {
   removeBatchItems,
 } from "@/server/gallery/feed-post-link";
 import { relationId } from "@/server/gallery/relation-id";
+import {
+  countOpenReports,
+  isDuplicateReportError,
+  openReportsWhere,
+  RESTORE_PATCH,
+} from "@/server/moderation/report-rules";
 import { canViewPost, type FeedViewer } from "./post-visibility";
 import { cleanUpPostImages } from "./feed-images";
 import { removedPostData } from "./post-media-fields";
@@ -52,16 +57,9 @@ export type PostReportView = {
 
 const ALREADY_REPORTED = "You already reported this post.";
 
-/**
- * Reports a moderator hasn't dismissed yet. A restore dismisses reports
- * instead of deleting them, so the one-report-per-person rule still holds
- * for them; only open reports count toward hiding and show to moderators.
- */
-function openReportsOf(postId: number): Where {
-  return {
-    and: [{ post: { equals: postId } }, { dismissedAt: { exists: false } }],
-  };
-}
+/** A post's open reports (see `openReportsWhere`). */
+const openReportsOf = (postId: number) =>
+  openReportsWhere("post-reports", postId);
 
 async function loadPost(payload: Payload, postId: number) {
   try {
@@ -73,18 +71,6 @@ async function loadPost(payload: Payload, postId: number) {
   } catch {
     return null;
   }
-}
-
-/**
- * True when creating a report failed on the one-report-per-reporter-per-post
- * unique index: a concurrent report by the same person won the race. Every
- * other field is validated before we get here, so a ValidationError from
- * this collection can only be that.
- */
-function isDuplicateReport(error: unknown): boolean {
-  return (
-    error instanceof ValidationError && error.data.collection === "post-reports"
-  );
 }
 
 /** The first report hides the post until a moderator reviews it. */
@@ -133,17 +119,16 @@ export async function reportPost(
       },
     });
   } catch (error) {
-    if (isDuplicateReport(error)) {
+    if (isDuplicateReportError(error, "post-reports")) {
       throw new TRPCError({ code: "CONFLICT", message: ALREADY_REPORTED });
     }
     throw error;
   }
-  // Count the stored open reports rather than adding one to the loaded
-  // post, so two reports landing at once can't both write the same number.
-  const { totalDocs: reportCount } = await deps.payload.count({
-    collection: "post-reports",
-    where: openReportsOf(post.id),
-  });
+  const reportCount = await countOpenReports(
+    deps.payload,
+    "post-reports",
+    post.id,
+  );
   const firstReport = !post.hiddenAt;
   await deps.payload.update({
     collection: "feed-posts",
@@ -209,7 +194,7 @@ export async function reviewReport(
     await deps.payload.update({
       collection: "feed-posts",
       id: post.id,
-      data: { hiddenAt: null, reportCount: 0 },
+      data: { ...RESTORE_PATCH },
     });
     return;
   }

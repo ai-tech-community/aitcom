@@ -11,6 +11,9 @@ export const REPORT_REASONS = [
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
+/** The longest note a reporter may add, in characters. */
+export const REPORT_NOTE_MAX = 500;
+
 /** Names for the admin panel (members see translated copy instead). */
 export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   spam: "Spam",

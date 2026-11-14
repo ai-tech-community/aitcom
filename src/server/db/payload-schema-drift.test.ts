@@ -12,6 +12,7 @@ describe("GUARDED_PAYLOAD_TABLES", () => {
         "feed_posts",
         "gallery_items",
         "gallery_batches",
+        "gallery_reports",
       ]),
     );
   });

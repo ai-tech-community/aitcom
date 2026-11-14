@@ -15,10 +15,10 @@ import { removeItemFiles } from "./item-files";
  *   too (`removeBatchItems`, called by `reviewReport`): the report is about
  *   that content.
  * - Deleting the last ready item of a batch removes its post when the post
- *   has no words left (`releaseEmptyGalleryPost`, called by `deleteItem`;
- *   every other way an item is removed, such as a moderator removing a
- *   reported item, must call it too), the way a feed post that showed only a
- *   deleted picture is removed. `editPost` calls it when an edit empties the
+ *   has no words left (`releaseEmptyGalleryPost`, called by `removeItem`,
+ *   the one path a deleted item and a moderator's removal of a reported one
+ *   both take), the way a feed post that showed only a deleted picture is
+ *   removed. `editPost` calls it when an edit empties the
  *   post's text, and `closeBatch` right after announcing, for an item
  *   deleted while the post was being made.
  * - Whenever a post lets go of its batch (`deletePost`, `reviewReport`,

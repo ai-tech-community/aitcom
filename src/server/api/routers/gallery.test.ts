@@ -18,6 +18,10 @@ const services = vi.hoisted(() => ({
   getPayloadClient: vi.fn(),
   getObjectStorage: vi.fn(),
   galleryAnnouncer: vi.fn(),
+  reportItem: vi.fn(),
+  listItemReports: vi.fn(),
+  reviewItemReports: vi.fn(),
+  galleryReportNotices: vi.fn(),
 }));
 
 // The real tRPC setup pulls in auth and server env; a minimal stand-in with
@@ -66,6 +70,14 @@ vi.mock("@/server/media/object-storage", () => ({
 vi.mock("@/server/gallery/announce", () => ({
   galleryAnnouncer: services.galleryAnnouncer,
 }));
+vi.mock("@/server/gallery/reports", () => ({
+  reportItem: services.reportItem,
+  listItemReports: services.listItemReports,
+  reviewItemReports: services.reviewItemReports,
+}));
+vi.mock("@/server/gallery/notifications", () => ({
+  galleryReportNotices: services.galleryReportNotices,
+}));
 
 import { galleryRouter } from "./gallery";
 
@@ -107,6 +119,9 @@ const START_ITEM = {
   height: 1536,
 };
 
+/** When a report was made, as the reports list shows it. */
+const CREATED_AT = "2026-11-13T12:00:00.000Z";
+
 /** One valid call per procedure, for the flag-off sweep. */
 const EVERY_PROCEDURE = {
   list: (c: ReturnType<typeof caller>) => c.list({ slug: "alpha" }),
@@ -123,6 +138,17 @@ const EVERY_PROCEDURE = {
     c.updateItem({ slug: "alpha", itemId: 1, caption: "Hi" }),
   deleteItem: (c: ReturnType<typeof caller>) =>
     c.deleteItem({ slug: "alpha", itemId: 1 }),
+  reportItem: (c: ReturnType<typeof caller>) =>
+    c.reportItem({ slug: "alpha", itemId: 1, reason: "spam" }),
+  itemReports: (c: ReturnType<typeof caller>) =>
+    c.itemReports({ slug: "alpha", itemId: 1 }),
+  reviewItemReports: (c: ReturnType<typeof caller>) =>
+    c.reviewItemReports({
+      slug: "alpha",
+      itemId: 1,
+      action: "restore",
+      reviewedReportIds: [3],
+    }),
 } as const;
 
 const PUBLIC_PROCEDURES = ["list", "facets", "item"] as const;
@@ -280,6 +306,81 @@ describe("gallery router — input validation", () => {
           contentType: "video/mp4",
           durationSeconds: Infinity,
         }),
+    ],
+    [
+      "an unknown report reason",
+      (c) =>
+        c.reportItem({
+          slug: "alpha",
+          itemId: 1,
+          reason: "rude" as "spam",
+        }),
+    ],
+    [
+      "a report note over 500",
+      (c) =>
+        c.reportItem({
+          slug: "alpha",
+          itemId: 1,
+          reason: "this_is_me",
+          note: "x".repeat(501),
+        }),
+    ],
+    [
+      "a report on itemId 0",
+      (c) => c.reportItem({ slug: "alpha", itemId: 0, reason: "spam" }),
+    ],
+    [
+      "an unknown review action",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "delete" as "remove",
+        }),
+    ],
+    [
+      "a restore that names no reports",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "restore",
+        } as never),
+    ],
+    [
+      "a restore that names report id 0",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "restore",
+          reviewedReportIds: [3, 0],
+        }),
+    ],
+    [
+      "a restore that names report id 1.5",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "restore",
+          reviewedReportIds: [1.5],
+        }),
+    ],
+    [
+      "a restore that names over 100 reports",
+      (c) =>
+        c.reviewItemReports({
+          slug: "alpha",
+          itemId: 1,
+          action: "restore",
+          reviewedReportIds: Array.from({ length: 101 }, (_, n) => n + 1),
+        }),
+    ],
+    [
+      "item reports for itemId 1.5",
+      (c) => c.itemReports({ slug: "alpha", itemId: 1.5 }),
     ],
     [
       "durationSeconds NaN",
@@ -509,4 +610,85 @@ describe("gallery router — signed-in work", () => {
       itemId: 5,
     });
   });
+});
+
+describe("gallery router — reports", () => {
+  it("reports an item as the caller's viewer, with the report notices", async () => {
+    const notices = { itemReported: vi.fn(), uploaderThisIsMe: vi.fn() };
+    services.galleryReportNotices.mockReturnValue(notices);
+    services.reportItem.mockResolvedValue({ hidden: true });
+
+    await expect(
+      caller().reportItem({
+        slug: "alpha",
+        itemId: 5,
+        reason: "this_is_me",
+        note: "That's me on the left",
+      }),
+    ).resolves.toEqual({ hidden: true });
+
+    expect(services.loadGalleryViewer).toHaveBeenCalledWith(expect.anything(), {
+      slug: "alpha",
+      userId: "user-1",
+    });
+    expect(services.galleryReportNotices).toHaveBeenCalledWith(DB);
+    expect(services.reportItem).toHaveBeenCalledWith(
+      expect.objectContaining({ db: DB, payload: PAYLOAD, notify: notices }),
+      {
+        viewer: viewerFor("user-1"),
+        itemId: 5,
+        reason: "this_is_me",
+        note: "That's me on the left",
+      },
+    );
+  });
+
+  it("accepts a report without a note", async () => {
+    services.reportItem.mockResolvedValue({ hidden: true });
+    await caller().reportItem({ slug: "alpha", itemId: 5, reason: "spam" });
+    expect(services.reportItem).toHaveBeenCalledWith(expect.anything(), {
+      viewer: viewerFor("user-1"),
+      itemId: 5,
+      reason: "spam",
+    });
+  });
+
+  it("lists an item's reports for the caller's viewer", async () => {
+    const reports = {
+      reports: [{ id: 3, reason: "spam", note: null, createdAt: CREATED_AT }],
+    };
+    services.listItemReports.mockResolvedValue(reports);
+    await expect(
+      caller().itemReports({ slug: "alpha", itemId: 5 }),
+    ).resolves.toBe(reports);
+    expect(services.listItemReports).toHaveBeenCalledWith(
+      expect.objectContaining({ db: DB, payload: PAYLOAD }),
+      { viewer: viewerFor("user-1"), itemId: 5 },
+    );
+  });
+
+  it.each([
+    ["restore", { action: "restore" as const, reviewedReportIds: [3, 4] }],
+    // An item hidden with no open report left (deleted in the admin).
+    [
+      "restore with no open reports",
+      { action: "restore" as const, reviewedReportIds: [] },
+    ],
+    ["remove", { action: "remove" as const }],
+  ])(
+    "reviews an item's reports: %s, with the report notices",
+    async (_, review) => {
+      const notices = { itemReported: vi.fn(), uploaderThisIsMe: vi.fn() };
+      services.galleryReportNotices.mockReturnValue(notices);
+      services.reviewItemReports.mockResolvedValue(undefined);
+      await expect(
+        caller().reviewItemReports({ slug: "alpha", itemId: 5, ...review }),
+      ).resolves.toBeUndefined();
+      expect(services.galleryReportNotices).toHaveBeenCalledWith(DB);
+      expect(services.reviewItemReports).toHaveBeenCalledWith(
+        expect.objectContaining({ db: DB, payload: PAYLOAD, notify: notices }),
+        { viewer: viewerFor("user-1"), itemId: 5, ...review },
+      );
+    },
+  );
 });

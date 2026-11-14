@@ -1,4 +1,4 @@
-import type { GalleryErrorCode } from "@/lib/gallery-rules";
+import type { GalleryUploadRefusalCode } from "@/lib/gallery-rules";
 
 /**
  * Why a file or the batch did not upload: a server refusal code, or one of
@@ -6,7 +6,7 @@ import type { GalleryErrorCode } from "@/lib/gallery-rules";
  * Anything unrecognised is `UPLOAD_FAILED`.
  */
 export type GalleryUploadErrorCode =
-  | GalleryErrorCode
+  | GalleryUploadRefusalCode
   /** The browser cannot read the photo (HEIC in Chrome, a damaged file). */
   | "UNDECODABLE_PHOTO"
   | "VIDEO_TOO_LONG"

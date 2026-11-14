@@ -28,6 +28,7 @@ export const GUARDED_PAYLOAD_TABLES = [
   "feed_posts",
   "gallery_items",
   "gallery_batches",
+  "gallery_reports",
 ];
 
 /** "table.column" for each expected column the database does not have. */

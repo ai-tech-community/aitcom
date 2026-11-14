@@ -70,20 +70,24 @@ function useBatchItems(slug: string, gallery: FeedGalleryView) {
  * lightbox over the whole batch. The items are only those this viewer may
  * see; the server picked them.
  *
- * Edit and delete follow the Gallery tab: the uploader (while a member)
- * may edit their item, moderators may delete any. `onChange` reloads the
- * post after either, since the collage's items come with the feed.
+ * Edit, delete, report and review follow the Gallery tab: the uploader
+ * (while a member) may edit their item, moderators may delete and review
+ * any, anyone signed in may report. `onChange` reloads the post after any
+ * of those, since the collage's items come with the feed.
  */
 export function GalleryCollage({
   slug,
   gallery,
   memberRole,
+  signedIn = false,
   onChange,
 }: {
   slug: string;
   gallery: FeedGalleryView;
   /** The viewer's role in the community; none for a non-member. */
   memberRole?: string | null;
+  /** Whether the viewer is signed in, member or not, and so may report. */
+  signedIn?: boolean;
   onChange?: () => void;
 }) {
   const t = useTranslations("gallery.collage");
@@ -97,6 +101,7 @@ export function GalleryCollage({
     deletedFocus: group,
     isMember: !!memberRole,
     canModerate: isModeratorRole(memberRole),
+    signedIn,
     onChange,
     more,
   });

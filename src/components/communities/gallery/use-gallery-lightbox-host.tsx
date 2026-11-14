@@ -4,10 +4,10 @@ import { useRef, useState, type ReactNode, type RefObject } from "react";
 
 import type { LoadMoreQuery } from "@/components/ui/load-more";
 import type { GalleryItemView } from "@/server/gallery/items";
-import { api } from "@/trpc/react";
 
 import { GalleryEditDialog } from "./gallery-edit-dialog";
 import { GalleryLightbox } from "./gallery-lightbox";
+import { useGalleryRefresh } from "./use-gallery-refresh";
 import { useOpening } from "./use-opening";
 
 /**
@@ -17,10 +17,12 @@ import { useOpening } from "./use-opening";
  * the opening tile in `scope`, or to `deletedFocus` when that tile's item
  * was deleted.
  *
- * Edit and delete follow the Gallery tab: a member may edit their own
- * item, a moderator may delete any. After a delete the gallery's own lists
- * are refreshed here; `onChange` (after a delete or a saved edit) reloads
- * whatever showed these items, since they came with it.
+ * Edit, delete, report and review follow the Gallery tab: a member may
+ * edit their own item, a moderator may delete any and review reported
+ * ones, anyone signed in may report. After a delete, a report or a review
+ * the gallery's own lists are refreshed here; `onChange` (after any of
+ * those or a saved edit) reloads whatever showed these items, since they
+ * came with it.
  */
 export function useGalleryLightboxHost({
   slug,
@@ -29,6 +31,7 @@ export function useGalleryLightboxHost({
   deletedFocus,
   isMember,
   canModerate,
+  signedIn,
   onChange,
   more,
 }: {
@@ -41,11 +44,12 @@ export function useGalleryLightboxHost({
   deletedFocus: RefObject<HTMLElement | null>;
   isMember: boolean;
   canModerate: boolean;
+  signedIn: boolean;
   onChange?: () => void;
   /** Paging past the given items, for Next at the last one. */
   more?: LoadMoreQuery;
 }): { open: (itemId: number) => void; host: ReactNode } {
-  const utils = api.useUtils();
+  const refresh = useGalleryRefresh(slug);
   const [openId, setOpenId] = useState<number | null>(null);
   const [editing, openEdit, closeEdit] = useOpening<{
     item: GalleryItemView;
@@ -61,6 +65,13 @@ export function useGalleryLightboxHost({
       ) ?? null;
     setOpenId(itemId);
   };
+  // The opener's item is gone (deleted, or reported out of the viewer's
+  // sight): focus will land on `deletedFocus` instead.
+  const forgetOpener = (itemId: number) => {
+    if (opener.current?.dataset.galleryItemId === String(itemId)) {
+      opener.current = deletedFocus.current;
+    }
+  };
 
   const host = (
     <>
@@ -72,14 +83,21 @@ export function useGalleryLightboxHost({
         onClose={() => setOpenId(null)}
         onEdit={isMember ? (item) => openEdit({ item }) : undefined}
         onDeleted={(itemId) => {
-          if (opener.current?.dataset.galleryItemId === String(itemId)) {
-            opener.current = deletedFocus.current;
+          forgetOpener(itemId);
+          refresh.deleted(itemId);
+          onChange?.();
+        }}
+        onChanged={(itemId, { gone }) => {
+          if (gone) {
+            forgetOpener(itemId);
+            refresh.deleted(itemId);
+          } else {
+            refresh.changed(itemId);
           }
-          void utils.gallery.list.invalidate({ slug });
-          void utils.gallery.facets.invalidate({ slug });
           onChange?.();
         }}
         canModerate={canModerate}
+        signedIn={signedIn}
         fallbackFocus={opener}
         focusScope={scope}
         more={more}

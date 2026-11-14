@@ -6503,7 +6503,8 @@
     },
     "tile": {
       "video": "Video, {duration}",
-      "videoNoLength": "Video"
+      "videoNoLength": "Video",
+      "hidden": "Hidden"
     },
     "lightbox": {
       "previous": "Previous",
@@ -6529,7 +6530,30 @@
       "deleteBody": "It will be gone from the gallery for everyone. You can't undo this.",
       "deleteConfirm": "Delete",
       "deleting": "Deleting…",
-      "deleted": "Deleted"
+      "deleted": "Deleted",
+      "report": "Report"
+    },
+    "report": {
+      "photoTitle": "Report this photo",
+      "videoTitle": "Report this video",
+      "description": "Tell the community's moderators what's wrong. It's hidden from others while they look at it.",
+      "this_is_me": "This is me, please remove it",
+      "sent": "Thanks. It's hidden while a moderator reviews it.",
+      "done": "Done"
+    },
+    "review": {
+      "hiddenForModerator": "Hidden after a report",
+      "hiddenForUploader": "Hidden while a moderator reviews it.",
+      "reasons": "Why it was reported",
+      "noReports": "No open reports.",
+      "retry": "Try again",
+      "restore": "Restore",
+      "remove": "Remove",
+      "removePhotoTitle": "Remove this photo?",
+      "removeVideoTitle": "Remove this video?",
+      "removeBody": "It will be deleted for everyone, with its reports. You can't undo this.",
+      "restored": "Restored",
+      "removed": "Removed"
     },
     "upload": {
       "title": "Add photos and videos",
@@ -6623,7 +6647,12 @@
       "UPLOAD_FAILED": "It didn't upload. Try again.",
       "UNDECODABLE_PHOTO": "We can't read this photo. Try saving it as a JPEG first.",
       "PUBLIC_NOT_AVAILABLE": "Only members can see this community's content, so these can't be shared with everyone. Choose Members instead.",
-      "saveFailed": "We couldn't save your changes. Please try again."
+      "OWN_ITEM": "You can't report your own photo or video. You can delete it instead.",
+      "ALREADY_REPORTED": "You already reported this.",
+      "saveFailed": "We couldn't save your changes. Please try again.",
+      "reportFailed": "We couldn't send your report. Please try again.",
+      "reportsLoadFailed": "We couldn't load why it was reported.",
+      "reviewFailed": "We couldn't finish the review. Please try again."
     }
   }
 }

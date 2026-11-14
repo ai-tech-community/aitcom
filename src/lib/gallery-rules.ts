@@ -102,8 +102,35 @@ export const GALLERY_ERROR_CODES = [
   "NOT_ALLOWED",
   /** "Everyone" asked for where outsiders cannot read the community. */
   "PUBLIC_NOT_AVAILABLE",
+  /** The uploader reporting their own item (they delete it instead). */
+  "OWN_ITEM",
+  /** A second report of the same item by the same person. */
+  "ALREADY_REPORTED",
 ] as const;
 export type GalleryErrorCode = (typeof GALLERY_ERROR_CODES)[number];
+
+/** The refusals only reporting gives: no upload call ever sends them. */
+export const GALLERY_REPORT_ERROR_CODES = [
+  "OWN_ITEM",
+  "ALREADY_REPORTED",
+] as const satisfies readonly GalleryErrorCode[];
+export type GalleryReportErrorCode =
+  (typeof GALLERY_REPORT_ERROR_CODES)[number];
+
+/** A refusal an upload call may send: every code but the report-only ones. */
+export type GalleryUploadRefusalCode = Exclude<
+  GalleryErrorCode,
+  GalleryReportErrorCode
+>;
+
+export function isGalleryUploadRefusalCode(
+  value: unknown,
+): value is GalleryUploadRefusalCode {
+  return (
+    isGalleryErrorCode(value) &&
+    !(GALLERY_REPORT_ERROR_CODES as readonly string[]).includes(value)
+  );
+}
 
 export function isGalleryErrorCode(value: unknown): value is GalleryErrorCode {
   return (

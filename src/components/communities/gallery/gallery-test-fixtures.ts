@@ -23,6 +23,7 @@ export function galleryItem(
     createdAt: "2026-11-12T10:00:00.000Z",
     isOwn: false,
     batchId: 1,
+    hidden: false,
     ...overrides,
   };
 }

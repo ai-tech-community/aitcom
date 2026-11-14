@@ -204,6 +204,32 @@ describe("loadActivityStream across communities", () => {
     ).toEqual({ "thread:1": "c1", "thread:2": "hub", "idea:3": "c1" });
   });
 
+  it("leaves out a gallery post with no words that shows the viewer nothing", async () => {
+    // The gallery is switched off in tests, so no batch shows anything.
+    const at = "2026-09-23T12:00:00.000Z";
+    const post = (id: number, content: string) => ({
+      id,
+      content,
+      authorId: "",
+      communityId: "c1",
+      galleryBatch: id,
+      createdAt: at,
+    });
+    const { page } = await streamQueries(
+      [{ id: "c1", slug: "makers", viewer: member("u1") }],
+      {
+        "feed-posts": [post(1, ""), post(2, "Our picnic")],
+        "community-ideas": [
+          { id: 3, title: "Idea", communityId: "c1", createdAt: at },
+        ],
+      },
+    );
+    expect(page.items.map((item) => item.key).sort()).toEqual([
+      "idea:3",
+      "post:2",
+    ]);
+  });
+
   it("reads nothing for an empty set", async () => {
     const { find, page } = await streamQueries([]);
     expect(find).not.toHaveBeenCalled();

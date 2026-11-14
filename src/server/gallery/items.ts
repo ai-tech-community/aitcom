@@ -63,6 +63,11 @@ export type GalleryItemView = {
   createdAt: string;
   isOwn: boolean;
   batchId: number;
+  /**
+   * A report hid it until a moderator reviews it. Only moderators and the
+   * uploader can read a hidden item, so only they ever see `true`.
+   */
+  hidden: boolean;
 };
 
 export type GalleryFacets = {
@@ -97,32 +102,31 @@ const UNNAMED_UPLOADER = "Member";
 /**
  * The items this viewer may see: ready items of the viewer's community, and
  * of those —
- * - members: every item that is not hidden, plus their own hidden ones;
- *   moderators: every item, hidden or not;
+ * - moderators: every item, hidden or not;
+ * - anyone signed in: their own items, hidden or not, whatever their
+ *   visibility, member or not — it is their content, so an uploader who
+ *   left can still open (and delete) what they added;
+ * - members: every other item that is not hidden;
  * - anyone else, when outsiders may read the community: public items that
  *   are not hidden;
- * - anyone else: nothing.
+ * - anyone else: nothing more.
  */
 export function galleryReadableWhere(viewer: GalleryViewer): Where {
   const base: Where[] = [
     { communityId: { equals: viewer.communityId } },
     { status: { equals: "ready" } },
   ];
-  const notHidden: Where = { hiddenAt: { exists: false } };
   if (viewer.isModerator) return { and: base };
-  if (viewer.isMember) {
-    const own: Where[] = viewer.userId
-      ? [{ uploaderId: { equals: viewer.userId } }]
-      : [];
-    return { and: [...base, { or: [notHidden, ...own] }] };
-  }
-  if (viewer.canSeePublic) {
-    return {
-      and: [...base, { visibility: { equals: "public" } }, notHidden],
-    };
+  const notHidden: Where = { hiddenAt: { exists: false } };
+  const readable: Where[] = [];
+  if (viewer.userId) readable.push({ uploaderId: { equals: viewer.userId } });
+  if (viewer.isMember) readable.push(notHidden);
+  else if (viewer.canSeePublic) {
+    readable.push({ and: [{ visibility: { equals: "public" } }, notHidden] });
   }
   // Every row has an id, so this matches nothing.
-  return { and: [...base, { id: { exists: false } }] };
+  if (readable.length === 0) readable.push({ id: { exists: false } });
+  return { and: [...base, { or: readable }] };
 }
 
 /**
@@ -214,40 +218,18 @@ async function toViews(
         createdAt: item.createdAt,
         isOwn: viewer.userId !== null && item.uploaderId === viewer.userId,
         batchId: relationId(item.batch)!,
+        hidden: item.hiddenAt != null,
       };
     }),
   );
 }
 
-/**
- * The items a viewer may ask to delete: those they may read, plus their own
- * ready items in the community whatever their visibility or hidden state and
- * whether or not they are still a member — an uploader can always take
- * their own photos down.
- */
-function galleryDeletableWhere(viewer: GalleryViewer): Where {
-  const readable = galleryReadableWhere(viewer);
-  if (!viewer.userId) return readable;
-  return {
-    or: [
-      readable,
-      {
-        and: [
-          { communityId: { equals: viewer.communityId } },
-          { status: { equals: "ready" } },
-          { uploaderId: { equals: viewer.userId } },
-        ],
-      },
-    ],
-  };
-}
-
-/** The item among those `where` matches; NOT_FOUND otherwise. */
-async function requireItemIn(
-  deps: GalleryDeps,
+/** The item among those `where` matches, or null. */
+async function findItemIn(
+  deps: Pick<GalleryDeps, "payload">,
   where: Where,
   itemId: number,
-): Promise<GalleryItem> {
+): Promise<GalleryItem | null> {
   const { docs } = await deps.payload.find({
     collection: "gallery-items",
     where: { and: [where, { id: { equals: itemId } }] },
@@ -255,14 +237,32 @@ async function requireItemIn(
     pagination: false,
     depth: 0,
   });
-  const item = docs[0];
+  return docs[0] ?? null;
+}
+
+/** The item among those `where` matches; NOT_FOUND otherwise. */
+async function requireItemIn(
+  deps: Pick<GalleryDeps, "payload">,
+  where: Where,
+  itemId: number,
+): Promise<GalleryItem> {
+  const item = await findItemIn(deps, where, itemId);
   if (!item) throw new TRPCError({ code: "NOT_FOUND" });
   return item;
 }
 
+/** The item, when this viewer may read it; null otherwise. */
+export function findReadableItem(
+  deps: Pick<GalleryDeps, "payload">,
+  viewer: GalleryViewer,
+  itemId: number,
+): Promise<GalleryItem | null> {
+  return findItemIn(deps, galleryReadableWhere(viewer), itemId);
+}
+
 /** The item, when this viewer may read it; an unreadable one is NOT_FOUND. */
-function requireReadableItem(
-  deps: GalleryDeps,
+export function requireReadableItem(
+  deps: Pick<GalleryDeps, "payload">,
   viewer: GalleryViewer,
   itemId: number,
 ): Promise<GalleryItem> {
@@ -274,7 +274,7 @@ function requireReadableItem(
  * failures instead of throwing): logged, and answered as a server error so
  * the member is never told it worked.
  */
-function writeFailed(
+export function writeFailed(
   deps: Pick<GalleryDeps, "log">,
   message: string,
   itemId: number,
@@ -645,28 +645,39 @@ export async function updateItem(
 }
 
 /**
- * The uploader or a moderator deletes an item: the row goes first, then its
- * two files, best effort (failures are logged; the unused-files sweep is the
- * net). The uploader may always delete their own item — hidden, members-only,
- * or after leaving the community or letting a paid membership lapse. The
- * item's batch stays, even when it is now empty: the cleanup owns batches.
- * The batch's feed post goes when it has no ready item and no words left
- * (`releaseEmptyGalleryPost`).
- * Anyone else is refused NOT_ALLOWED; an item they cannot see is NOT_FOUND.
- * A row Payload could not delete is a server error, and its files are kept.
+ * The uploader or a moderator deletes an item (`removeItem`). The uploader
+ * may always delete their own item — hidden, members-only, or after leaving
+ * the community or letting a paid membership lapse — since they may always
+ * read it (`galleryReadableWhere`). Anyone else is refused NOT_ALLOWED; an
+ * item they cannot see is NOT_FOUND.
  */
 export async function deleteItem(
   deps: GalleryDeps,
   input: { viewer: GalleryViewer; itemId: number },
 ): Promise<void> {
   const { viewer } = input;
-  const item = await requireItemIn(
-    deps,
-    galleryDeletableWhere(viewer),
-    input.itemId,
-  );
+  const item = await requireReadableItem(deps, viewer, input.itemId);
   const isOwn = viewer.userId !== null && item.uploaderId === viewer.userId;
   if (!isOwn && !viewer.isModerator) throw galleryError("NOT_ALLOWED");
+  await removeItem(deps, item, "deleteItem");
+}
+
+/**
+ * The one way an item leaves the gallery, whoever asked (a delete, a
+ * moderator removing a reported item): the row goes first — its reports go
+ * with it (ON DELETE CASCADE) — then its two files, best effort (failures
+ * are logged; the unused-files sweep is the net). The item's batch stays,
+ * even when it is now empty: the cleanup owns batches. The batch's feed
+ * post goes when it has no ready item and no words left
+ * (`releaseEmptyGalleryPost`).
+ * A row Payload could not delete is a server error, and its files are kept.
+ * The caller decides who may; `context` names it in the logs.
+ */
+export async function removeItem(
+  deps: GalleryDeps,
+  item: GalleryItem,
+  context: string,
+): Promise<void> {
   const { docs, errors } = await deps.payload.delete({
     collection: "gallery-items",
     where: { id: { equals: item.id } },
@@ -675,21 +686,21 @@ export async function deleteItem(
   if (errors.length > 0) {
     throw writeFailed(
       deps,
-      "[gallery.deleteItem] deleting an item failed",
+      `[gallery.${context}] deleting an item failed`,
       item.id,
       errors,
     );
   }
   // A concurrent delete removed the row first; it removes the files too.
   if (docs.length === 0) return;
-  await removeItemFiles(deps, item, "deleteItem");
+  await removeItemFiles(deps, item, context);
   const batchId = relationId(item.batch)!;
   // The item is gone either way: a post left showing nothing is logged.
   try {
     await releaseEmptyGalleryPost(deps, batchId);
   } catch (error) {
     (deps.log ?? console.error)(
-      "[gallery.deleteItem] removing the batch's empty feed post failed",
+      `[gallery.${context}] removing the batch's empty feed post failed`,
       { itemId: item.id, batchId, error },
     );
   }

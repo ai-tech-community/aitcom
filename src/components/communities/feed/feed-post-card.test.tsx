@@ -330,6 +330,7 @@ describe("FeedPostCard gallery post", () => {
         createdAt: "2026-09-24T10:00:00Z",
         isOwn: false,
         batchId: 3,
+        hidden: false,
       },
     ],
     total: 1,

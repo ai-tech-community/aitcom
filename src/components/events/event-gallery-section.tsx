@@ -89,6 +89,7 @@ export function EventGallerySection({ section }: { section: Section }) {
     deletedFocus: grid,
     isMember: viewer.kind === "member",
     canModerate: viewer.kind === "member" && viewer.canModerate,
+    signedIn: viewer.kind !== "guest",
     onChange: () => router.refresh(),
   });
 

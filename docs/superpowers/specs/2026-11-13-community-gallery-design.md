@@ -275,9 +275,12 @@ their category (set to empty), the same moment feed posts move to `general`.
   focus returned to the tile. Side panel: uploader, time, caption, event link,
   category, who can see it, magazine permission, description. Actions: owner →
   Edit details (caption, alt, category, event, magazine permission) and Delete;
-  others → "This is me, remove it" and Report; moderators → Restore/Remove on
-  reported items. Visibility stays fixed.
-- Non-members see only public items and the join prompt.
+  others → one **Report** action, whose dialog lists "This is me, please
+  remove it" first; moderators → Restore/Remove on reported items.
+  Visibility stays fixed.
+- Non-members see only public items (plus any items they uploaded themselves,
+  e.g. after leaving) and the join prompt. An uploader can always open and
+  delete their own items.
 
 ### Upload dialog (variant A)
 
@@ -316,7 +319,8 @@ lets the member retry or drop them.
 - The card renders a collage: first item large, two small, "+N" on the third.
   It shows the event as a link chip and the category badge. Clicking a tile
   opens the gallery lightbox for that batch. Each viewer sees only the batch's
-  items they may read; with none left, the card shows its text only.
+  items they may read; with none left, the card shows its text only, and a
+  post with no text is left out of that viewer's feed.
 - Editing a gallery post can change its text (which may be empty) but never
   its media.
 - Gallery items are owned by the gallery, not by the post:
@@ -352,6 +356,26 @@ lets the member retry or drop them.
 - Whether the report mechanics should become one generic, target-agnostic
   module is filed as a follow-up. This initiative keeps the second copy small by
   sharing the reasons list and the hide/recount rules as pure functions.
+- Settled 13 Nov (slice 3):
+  - The shared rules live in one server module used by **both** feed post
+    reports and gallery reports (feed behaviour unchanged); the moderator
+    recipient query is shared too.
+  - `GALLERY_REPORT_REASONS` = the feed's reasons + `this_is_me`; the feed's
+    list and its database enum stay unchanged.
+  - Anyone signed in who may read the item can report it, members or not —
+    `this_is_me` matters most for people pictured who aren't members. The
+    uploader can't report their own item (they delete it).
+  - The first report hides the item through one guarded write (`hidden_at IS
+    NULL`), so moderators are notified exactly once per hide; a restore and a
+    new report notify again. `this_is_me` notifies the uploader on every such
+    report (skipped for deleted accounts).
+  - Notifications carry `metadata.reviewPath` (the gallery `?item=` link) and a
+    link label, so the bell panel's button works.
+  - A moderator's **Remove** goes through the same item-removal path as Delete
+    (row, files, then releasing an emptied feed post); reports go with the item
+    (`ON DELETE CASCADE`).
+  - Items expose `hidden` to the viewers who can see a hidden item (moderators
+    and the uploader); reporter identities never reach the client.
 
 ### Magazine
 

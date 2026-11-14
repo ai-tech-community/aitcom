@@ -313,9 +313,10 @@ export type FeedPostDecorationDeps = {
 
 /**
  * The posts' collages (`galleryViewsForPosts`), or none when reading them
- * fails: the gallery is decoration, so the feed still shows every post,
- * a gallery post with its text only, as for a viewer who may see none of
- * its items. The failure is logged.
+ * fails: the gallery is decoration, so the feed still shows its posts, a
+ * gallery post with its text only, as for a viewer who may see none of its
+ * items (`showsNothing` then leaves out one with no text). The failure is
+ * logged.
  */
 async function galleryViewsOrNone(
   ...args: Parameters<typeof galleryViewsForPosts>
@@ -332,11 +333,32 @@ async function galleryViewsOrNone(
 }
 
 /**
+ * A live gallery post with no words whose batch shows this viewer nothing
+ * (every item hidden from them, or the collage could not be read): its card
+ * would be empty. A moderator, who may see hidden items, still gets it.
+ */
+function showsNothing(
+  post: FeedPost,
+  gallery: FeedGalleryView | null,
+): boolean {
+  return (
+    post.galleryBatch != null &&
+    !post.isDeleted &&
+    gallery === null &&
+    !post.content?.trim()
+  );
+}
+
+/**
  * Adds the author photo, whether the viewer liked each post, playback
  * links for a post's video (the raw storage keys never leave the server),
  * its pictures with their descriptions (never who uploaded them), whom
  * it mentions, its poll's counts (never who voted for what), and the
  * gallery items of its batch the viewer may see.
+ *
+ * A gallery post that would show this viewer nothing is left out
+ * (`showsNothing`), so the result may hold fewer posts than were given:
+ * callers page by the posts they read, not by this result.
  */
 export async function decorateFeedPosts(
   deps: FeedPostDecorationDeps,
@@ -359,9 +381,13 @@ export async function decorateFeedPosts(
       viewerId ?? null,
     ),
   ]);
+  const shown = posts.filter(
+    (post) => !showsNothing(post, galleries.get(post.id) ?? null),
+  );
+  if (shown.length === 0) return [];
   let liked = new Set<number>();
   if (viewerId) {
-    const postIds = posts.map((post) => post.id);
+    const postIds = shown.map((post) => post.id);
     const { docs } = await payload.find({
       collection: "feed-likes",
       where: {
@@ -380,7 +406,7 @@ export async function decorateFeedPosts(
     );
   }
   return Promise.all(
-    posts.map(async ({ reportCount: _reportCount, galleryBatch, ...post }) => ({
+    shown.map(async ({ reportCount: _reportCount, galleryBatch, ...post }) => ({
       ...post,
       isGalleryPost: galleryBatch != null,
       gallery: galleries.get(post.id) ?? null,

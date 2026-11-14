@@ -427,6 +427,29 @@ describe.skipIf(!RUN_DB)("gallery items [DB integration]", () => {
     expect(storage.remove).toHaveBeenCalledTimes(1);
   });
 
+  it("lets the uploader open their hidden members-only item after leaving, and no one else outside", async () => {
+    const { deps, readyItem, viewer } = await setup();
+    const id = await readyItem({
+      visibility: "community",
+      hiddenAt: new Date().toISOString(),
+    });
+    await m.db
+      .delete(m.schema.communityMemberships)
+      .where(m.eq(m.schema.communityMemberships.userId, fx.uploaderId));
+
+    await expect(
+      m.items.getItem(deps, {
+        viewer: await viewer(fx.uploaderId),
+        itemId: id,
+      }),
+    ).resolves.toMatchObject({ id, hidden: true, isOwn: true });
+    for (const userId of [fx.outsiderId, fx.memberId, null]) {
+      await expect(
+        m.items.getItem(deps, { viewer: await viewer(userId), itemId: id }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+  });
+
   it("lets the uploader delete an item and removes its files", async () => {
     const { payload, deps, storage, readyItem, viewer } = await setup();
     const id = await readyItem({ visibility: "community" });

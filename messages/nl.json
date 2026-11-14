@@ -6503,7 +6503,8 @@
     },
     "tile": {
       "video": "Video, {duration}",
-      "videoNoLength": "Video"
+      "videoNoLength": "Video",
+      "hidden": "Verborgen"
     },
     "lightbox": {
       "previous": "Vorige",
@@ -6529,7 +6530,30 @@
       "deleteBody": "Hij verdwijnt voor iedereen uit de galerij. Je kunt dit niet ongedaan maken.",
       "deleteConfirm": "Verwijderen",
       "deleting": "Verwijderen…",
-      "deleted": "Verwijderd"
+      "deleted": "Verwijderd",
+      "report": "Melden"
+    },
+    "report": {
+      "photoTitle": "Deze foto melden",
+      "videoTitle": "Deze video melden",
+      "description": "Vertel de moderators van de community wat er mis is. Hij is verborgen voor anderen terwijl zij ernaar kijken.",
+      "this_is_me": "Dit ben ik, haal het alsjeblieft weg",
+      "sent": "Bedankt. Hij is verborgen tot een moderator hem bekijkt.",
+      "done": "Klaar"
+    },
+    "review": {
+      "hiddenForModerator": "Verborgen na een melding",
+      "hiddenForUploader": "Verborgen tot een moderator hem bekijkt.",
+      "reasons": "Waarom het gemeld is",
+      "noReports": "Geen openstaande meldingen.",
+      "retry": "Opnieuw proberen",
+      "restore": "Herstellen",
+      "remove": "Verwijderen",
+      "removePhotoTitle": "Deze foto verwijderen?",
+      "removeVideoTitle": "Deze video verwijderen?",
+      "removeBody": "Hij wordt voor iedereen verwijderd, met de meldingen. Je kunt dit niet ongedaan maken.",
+      "restored": "Hersteld",
+      "removed": "Verwijderd"
     },
     "upload": {
       "title": "Foto's en video's toevoegen",
@@ -6623,7 +6647,12 @@
       "UPLOAD_FAILED": "Het uploaden is niet gelukt. Probeer het opnieuw.",
       "UNDECODABLE_PHOTO": "We kunnen deze foto niet lezen. Sla hem eerst op als JPEG.",
       "PUBLIC_NOT_AVAILABLE": "Alleen leden kunnen de inhoud van deze community zien, dus deze kunnen niet met iedereen worden gedeeld. Kies Leden.",
-      "saveFailed": "Je wijzigingen konden niet worden opgeslagen. Probeer het opnieuw."
+      "OWN_ITEM": "Je kunt je eigen foto of video niet melden. Je kunt hem wel verwijderen.",
+      "ALREADY_REPORTED": "Je hebt dit al gemeld.",
+      "saveFailed": "Je wijzigingen konden niet worden opgeslagen. Probeer het opnieuw.",
+      "reportFailed": "Je melding kon niet worden verstuurd. Probeer het opnieuw.",
+      "reportsLoadFailed": "We konden niet laden waarom het gemeld is.",
+      "reviewFailed": "De beoordeling is niet gelukt. Probeer het opnieuw."
     }
   }
 }

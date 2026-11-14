@@ -9,7 +9,7 @@ import {
 } from "@/lib/gallery-photo";
 import {
   galleryMediaTypeOf,
-  isGalleryErrorCode,
+  isGalleryUploadRefusalCode,
   type GalleryMediaType,
 } from "@/lib/gallery-rules";
 import { uploadToGrant } from "@/lib/upload-to-grant";
@@ -145,7 +145,7 @@ function errorCodeFor(error: unknown): GalleryUploadErrorCode {
   if (error instanceof UnsupportedVideoError) return "UNSUPPORTED_VIDEO";
   // A gallery refusal travels as the tRPC error's message.
   const message = (error as { message?: unknown } | null)?.message;
-  return isGalleryErrorCode(message) ? message : "UPLOAD_FAILED";
+  return isGalleryUploadRefusalCode(message) ? message : "UPLOAD_FAILED";
 }
 
 const INITIAL_STATE: GalleryUploadState = {

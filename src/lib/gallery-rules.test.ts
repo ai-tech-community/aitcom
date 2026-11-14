@@ -14,6 +14,7 @@ import {
   galleryObjectKeys,
   isGalleryErrorCode,
   isGalleryKey,
+  isGalleryUploadRefusalCode,
 } from "./gallery-rules";
 
 describe("gallery limits", () => {
@@ -161,5 +162,16 @@ describe("isGalleryErrorCode", () => {
     expect(isGalleryErrorCode("Internal server error")).toBe(false);
     expect(isGalleryErrorCode(undefined)).toBe(false);
     expect(isGalleryErrorCode(42)).toBe(false);
+  });
+});
+
+describe("isGalleryUploadRefusalCode", () => {
+  it("leaves out the refusals only reporting gives", () => {
+    expect(isGalleryUploadRefusalCode("STORAGE_FULL")).toBe(true);
+    expect(isGalleryUploadRefusalCode("NOT_ALLOWED")).toBe(true);
+    expect(isGalleryErrorCode("OWN_ITEM")).toBe(true);
+    expect(isGalleryUploadRefusalCode("OWN_ITEM")).toBe(false);
+    expect(isGalleryUploadRefusalCode("ALREADY_REPORTED")).toBe(false);
+    expect(isGalleryUploadRefusalCode("Internal server error")).toBe(false);
   });
 });

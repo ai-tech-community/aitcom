@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ReactQuery from "@tanstack/react-query";
 import {
   fireEvent,
   render,
@@ -24,14 +25,24 @@ const m = vi.hoisted(() => ({
   editProps: vi.fn(),
   invalidateList: vi.fn(),
   invalidateFacets: vi.fn(),
+  invalidateItem: vi.fn(),
+  removeQueries: vi.fn(),
 }));
 
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof ReactQuery>()),
+  useQueryClient: () => ({ removeQueries: m.removeQueries }),
+}));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
       gallery: {
         list: { invalidate: m.invalidateList },
         facets: { invalidate: m.invalidateFacets },
+        item: {
+          invalidate: m.invalidateItem,
+          queryOptions: (input: unknown) => ({ queryKey: ["item", input] }),
+        },
       },
     }),
     topics: { list: { useQuery: () => ({ data: [] }) } },
@@ -270,6 +281,23 @@ describe("EventGallerySection", () => {
     const props = m.editProps.mock.calls.at(-1)![0] as { onSaved: () => void };
     props.onSaved();
     expect(m.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Report to a signed-in non-member, but not to a guest", () => {
+    const report = { name: "Report" };
+    const { unmount } = renderSection({
+      viewer: { kind: "outsider", canJoin: true },
+    });
+    fireEvent.click(within(region()).getByRole("button", { name: "Photo 20" }));
+    expect(
+      within(screen.getByRole("dialog")).getByRole("button", report),
+    ).toBeVisible();
+    unmount();
+    renderSection({ viewer: { kind: "guest", canJoin: true } });
+    fireEvent.click(within(region()).getByRole("button", { name: "Photo 20" }));
+    expect(
+      within(screen.getByRole("dialog")).queryByRole("button", report),
+    ).toBeNull();
   });
 
   it("offers no edit to someone who is not a member", () => {

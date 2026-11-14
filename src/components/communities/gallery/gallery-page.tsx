@@ -35,6 +35,7 @@ import {
 import { GalleryToolbar } from "./gallery-toolbar";
 import { GalleryWall, GalleryWallSkeleton } from "./gallery-wall";
 import { useOpening } from "./use-opening";
+import { useGalleryRefresh } from "./use-gallery-refresh";
 import { useGalleryUploadLink } from "./use-gallery-upload-link";
 
 /**
@@ -98,7 +99,7 @@ function useGalleryParams() {
 export function GalleryPage({ slug }: { slug: string }) {
   const t = useTranslations("gallery");
   const errorText = useGalleryErrorText();
-  const utils = api.useUtils();
+  const refresh = useGalleryRefresh(slug);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [params, setParams, uploadLink] = useGalleryParams();
   const viewer = useGalleryViewer(slug);
@@ -261,11 +262,12 @@ export function GalleryPage({ slug }: { slug: string }) {
         onNavigate={(itemId) => setParams({ item: itemId })}
         onClose={() => setParams({ item: null })}
         onEdit={isMember ? (item) => openEdit({ item }) : undefined}
-        onDeleted={() => {
-          void utils.gallery.list.invalidate({ slug });
-          void utils.gallery.facets.invalidate({ slug });
-        }}
+        onDeleted={refresh.deleted}
+        onChanged={(itemId, { gone }) =>
+          gone ? refresh.deleted(itemId) : refresh.changed(itemId)
+        }
         canModerate={canModerate}
+        signedIn={viewer.kind !== "guest"}
         fallbackFocus={headingRef}
         more={onWall ? list : undefined}
       />

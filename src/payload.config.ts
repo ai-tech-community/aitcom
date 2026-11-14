@@ -44,6 +44,7 @@ import { Modules } from "./collections/Modules";
 import { HostedMaterials } from "./collections/HostedMaterials";
 import { GalleryBatches } from "./collections/GalleryBatches";
 import { GalleryItems } from "./collections/GalleryItems";
+import { GalleryReports } from "./collections/GalleryReports";
 import { Magazines } from "./collections/Magazines";
 import { MagazineIssues } from "./collections/MagazineIssues";
 import { EmailTemplates } from "./collections/EmailTemplates";
@@ -121,6 +122,7 @@ export default buildConfig({
     HostedMaterials,
     GalleryBatches,
     GalleryItems,
+    GalleryReports,
     Magazines,
     MagazineIssues,
     EmailTemplates,

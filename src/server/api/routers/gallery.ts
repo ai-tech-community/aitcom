@@ -14,6 +14,11 @@ import {
   GALLERY_MEDIA_TYPES,
   GALLERY_PAGE_SIZE,
 } from "@/lib/gallery-rules";
+import {
+  GALLERY_REPORT_NOTE_MAX,
+  GALLERY_REPORT_REASONS,
+  GALLERY_REVIEW_REPORTS_MAX,
+} from "@/lib/gallery-report-reasons";
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import type { db } from "@/server/db";
 import { loadGalleryViewer } from "@/server/gallery/access";
@@ -29,6 +34,12 @@ import {
   updateItem,
   uploadChoices,
 } from "@/server/gallery/items";
+import { galleryReportNotices } from "@/server/gallery/notifications";
+import {
+  listItemReports,
+  reportItem,
+  reviewItemReports,
+} from "@/server/gallery/reports";
 import {
   discardItem,
   finishBatch,
@@ -246,5 +257,62 @@ export const galleryRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { deps, viewer } = await viewerIn(ctx, input.slug);
       return deleteItem(deps, { viewer, itemId: input.itemId });
+    }),
+
+  /**
+   * Anyone signed in who may read the item, members or not. The reason and
+   * the note are checked here, before anything is stored: the service reads
+   * any refusal from the reports collection as a duplicate report.
+   */
+  reportItem: galleryProtectedProcedure
+    .input(
+      itemInCommunity.extend({
+        reason: z.enum(GALLERY_REPORT_REASONS),
+        note: z.string().max(GALLERY_REPORT_NOTE_MAX).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { slug, ...report } = input;
+      const { deps, viewer } = await viewerIn(ctx, slug);
+      return reportItem(
+        { ...deps, notify: galleryReportNotices(deps.db) },
+        { viewer, ...report },
+      );
+    }),
+
+  /** Why a hidden item was reported, for the community's moderators. */
+  itemReports: galleryProtectedProcedure
+    .input(itemInCommunity)
+    .query(async ({ ctx, input }) => {
+      const { deps, viewer } = await viewerIn(ctx, input.slug);
+      return listItemReports(deps, { viewer, itemId: input.itemId });
+    }),
+
+  /**
+   * A moderator restores a reported item or removes it. A restore names
+   * the reports it was decided on (their ids from `itemReports`); any other
+   * open report stays open. It may name none: an item can stay hidden
+   * after its reports were deleted in the admin.
+   */
+  reviewItemReports: galleryProtectedProcedure
+    .input(
+      z.discriminatedUnion("action", [
+        itemInCommunity.extend({
+          action: z.literal("restore"),
+          reviewedReportIds: z
+            .array(recordId)
+            .min(0)
+            .max(GALLERY_REVIEW_REPORTS_MAX),
+        }),
+        itemInCommunity.extend({ action: z.literal("remove") }),
+      ]),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { slug, ...review } = input;
+      const { deps, viewer } = await viewerIn(ctx, slug);
+      return reviewItemReports(
+        { ...deps, notify: galleryReportNotices(deps.db) },
+        { viewer, ...review },
+      );
     }),
 });

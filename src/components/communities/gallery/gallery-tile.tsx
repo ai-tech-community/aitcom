@@ -2,7 +2,7 @@
 
 import { useId, type CSSProperties } from "react";
 import Image from "next/image";
-import { Play } from "lucide-react";
+import { EyeOff, Play } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
@@ -27,7 +27,9 @@ function tileRatio(item: Pick<GalleryItemView, "width" | "height">): number {
  * One photo or video on a wall: a button that opens it. Its accessible name
  * is the item's label; a video's badge (play glyph plus length, so the kind
  * is never told by colour) is its description. The caption shows on hover
- * and keyboard focus. `data-gallery-item-id` lets the lightbox hand focus
+ * and keyboard focus. A hidden (reported) item — only its uploader and the
+ * moderators get those — carries a "Hidden" badge, in words, also part of
+ * the description. `data-gallery-item-id` lets the lightbox hand focus
  * back to the tile of the item it showed last.
  *
  * On a wall the tile takes the item's shape; with `fill` it has no shape of
@@ -51,19 +53,23 @@ export function GalleryTile({
   const t = useTranslations("gallery.tile");
   const labelFor = useGalleryItemLabel();
   const badgeId = useId();
+  const hiddenId = useId();
   const isVideo = item.mediaType === "video";
   const length =
     isVideo && item.durationSeconds !== null
       ? formatClipLength(item.durationSeconds)
       : null;
   const caption = item.caption?.trim();
+  const describedBy = [isVideo && badgeId, item.hidden && hiddenId]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button
       type="button"
       data-gallery-item-id={item.id}
       aria-label={labelFor(item)}
-      aria-describedby={isVideo ? badgeId : undefined}
+      aria-describedby={describedBy || undefined}
       onClick={() => onOpen(item.id)}
       style={
         fill
@@ -96,6 +102,15 @@ export function GalleryTile({
             {length ? t("video", { duration: length }) : t("videoNoLength")}
           </span>
           <span aria-hidden="true">{length}</span>
+        </span>
+      ) : null}
+      {item.hidden ? (
+        <span
+          id={hiddenId}
+          className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/60 py-0.5 pr-2 pl-1.5 text-xs text-white"
+        >
+          <EyeOff aria-hidden="true" className="size-3" />
+          {t("hidden")}
         </span>
       ) : null}
       {showEvent && item.event ? (
