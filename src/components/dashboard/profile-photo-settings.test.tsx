@@ -125,11 +125,34 @@ describe("ProfilePhotoSettings", () => {
       screen.getByRole("button", { name: copy.change }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: copy.remove }));
+    // Asks first: nothing is removed until the member confirms.
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      copy.removeDescription,
+    );
+    expect(m.removeMutate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: copy.removeConfirm }));
     expect(m.removeMutate).toHaveBeenCalledTimes(1);
 
     await m.removeOptions.onSuccess?.();
     expect(m.invalidate).toHaveBeenCalled();
     expect(m.refetchSession).toHaveBeenCalled();
     expect(m.toast.success).toHaveBeenCalledWith(copy.removed);
+  });
+
+  it("keeps the picture when the member cancels the remove", () => {
+    renderRow({ url: "https://s3/t1.png", isSet: true });
+    fireEvent.click(screen.getByRole("button", { name: copy.remove }));
+    fireEvent.click(screen.getByRole("button", { name: copy.cancel }));
+    expect(m.removeMutate).not.toHaveBeenCalled();
+  });
+
+  it("says the photo did not update when a remove in another tab won", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ image: null }), { status: 200 }),
+    );
+    renderRow();
+    choose(png());
+    await waitFor(() => expect(m.toast.error).toHaveBeenCalledWith(copy.error));
+    expect(m.toast.success).not.toHaveBeenCalled();
   });
 });

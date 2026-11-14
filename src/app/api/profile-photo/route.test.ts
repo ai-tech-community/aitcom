@@ -60,16 +60,13 @@ describe("POST /api/profile-photo", () => {
     expect(m.setProfilePhoto).not.toHaveBeenCalled();
   });
 
-  it("sets the signed-in member's photo from the file's bytes and type", async () => {
+  it("sets the signed-in member's photo from the file's bytes", async () => {
     const res = await POST(request(picture()));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ image: "https://s3/t1.png" });
     expect(m.setProfilePhoto).toHaveBeenCalledWith(
       { db: { tag: "db" }, payload: { tag: "payload" } },
-      {
-        userId: "user-a",
-        file: { data: Buffer.from([1, 2, 3]), mimetype: "image/png" },
-      },
+      { userId: "user-a", data: Buffer.from([1, 2, 3]) },
     );
   });
 

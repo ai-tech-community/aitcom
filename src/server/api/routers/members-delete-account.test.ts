@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const deleteMemberAccount = vi.fn();
 const photos = vi.hoisted(() => ({
-  deleteProfilePhotoFiles: vi.fn(),
   removeProfilePhoto: vi.fn(),
 }));
 vi.mock("@/server/members/profile-photo", () => photos);
@@ -57,8 +56,6 @@ function caller(userId: string | null) {
 beforeEach(() => {
   deleteMemberAccount.mockReset();
   deleteMemberAccount.mockResolvedValue(undefined);
-  photos.deleteProfilePhotoFiles.mockReset();
-  photos.deleteProfilePhotoFiles.mockResolvedValue(undefined);
   photos.removeProfilePhoto.mockReset();
   photos.removeProfilePhoto.mockResolvedValue(undefined);
 });
@@ -103,12 +100,12 @@ describe("members.deleteAccount profile photos", () => {
   it("deletes the member's uploaded photos after the account", async () => {
     await caller("user-a").members.deleteAccount({ confirmation: "DELETE" });
 
-    expect(photos.deleteProfilePhotoFiles).toHaveBeenCalledWith(
+    expect(photos.removeProfilePhoto).toHaveBeenCalledWith(
       expect.anything(),
       "user-a",
     );
     expect(deleteMemberAccount.mock.invocationCallOrder[0]!).toBeLessThan(
-      photos.deleteProfilePhotoFiles.mock.invocationCallOrder[0]!,
+      photos.removeProfilePhoto.mock.invocationCallOrder[0]!,
     );
   });
 
@@ -117,11 +114,11 @@ describe("members.deleteAccount profile photos", () => {
     await expect(
       caller("user-a").members.deleteAccount({ confirmation: "DELETE" }),
     ).rejects.toThrow();
-    expect(photos.deleteProfilePhotoFiles).not.toHaveBeenCalled();
+    expect(photos.removeProfilePhoto).not.toHaveBeenCalled();
   });
 
   it("still reports the account deleted when a photo cannot be deleted", async () => {
-    photos.deleteProfilePhotoFiles.mockRejectedValue(new Error("s3 down"));
+    photos.removeProfilePhoto.mockRejectedValue(new Error("s3 down"));
     const error = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);

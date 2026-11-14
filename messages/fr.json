@@ -1171,7 +1171,11 @@
         "removed": "Photo de profil supprimée",
         "errorType": "Utilisez une image JPG, PNG, WebP ou GIF.",
         "errorSize": "Cette image est trop lourde. Utilisez-en une de moins de 2 Mo.",
-        "error": "Impossible de mettre à jour votre photo. Réessayez."
+        "error": "Impossible de mettre à jour votre photo. Réessayez.",
+        "removeTitle": "Supprimer votre photo de profil ?",
+        "removeDescription": "Les autres verront vos initiales ou votre Gravatar à la place. Une photo de GitHub, Google ou LinkedIn ne revient pas quand vous vous reconnectez. Vous pouvez en importer une nouvelle à tout moment.",
+        "removeConfirm": "Supprimer la photo",
+        "cancel": "Annuler"
       }
     },
     "deleteAccount": {

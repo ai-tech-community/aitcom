@@ -28,13 +28,8 @@ export async function POST(request: NextRequest) {
   try {
     const result = await setProfilePhoto(
       { db, payload: await getPayloadClient() },
-      {
-        userId: session.user.id,
-        file: {
-          data: Buffer.from(await file.arrayBuffer()),
-          mimetype: file.type,
-        },
-      },
+      // The picture's type is read from its bytes, not from `file.type`.
+      { userId: session.user.id, data: Buffer.from(await file.arrayBuffer()) },
     );
     return NextResponse.json(result);
   } catch (error) {

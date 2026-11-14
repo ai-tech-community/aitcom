@@ -2,13 +2,23 @@
 
 import { useTranslations } from "next-intl";
 
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import { ProfileEditForm } from "@/components/profile-edit-form";
 import { ProfilePhotoSettings } from "@/components/dashboard/profile-photo-settings";
 import {
   DashboardSection,
   statusFromQueries,
 } from "@/components/dashboard/dashboard-section";
+
+/**
+ * The name behind the photo's initials: the display name, or for a member
+ * without a profile yet, their first and last name.
+ */
+function photoName(data: RouterOutputs["members"]["getMyProfile"]): string {
+  const displayName = data.profile?.displayName.trim();
+  if (displayName) return displayName;
+  return [data.names.firstName, data.names.lastName].filter(Boolean).join(" ");
+}
 
 /**
  * The profile form on the Settings tab (anchor `#profile`), with the
@@ -28,7 +38,7 @@ export function ProfileSettings() {
       {query.data && (
         <div className="mb-6">
           <ProfilePhotoSettings
-            name={query.data.profile?.displayName ?? ""}
+            name={photoName(query.data)}
             photo={query.data.photo}
           />
         </div>

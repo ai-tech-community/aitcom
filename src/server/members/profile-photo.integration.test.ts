@@ -18,8 +18,15 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import type { db as Db } from "@/server/db";
+import type * as Drizzle from "drizzle-orm";
 import type { Payload } from "payload";
+
+import type { db as Db } from "@/server/db";
+import type * as Schema from "@/server/db/schema";
+
+import type { deleteMemberAccount as DeleteMemberAccount } from "./delete-account";
+import type * as ProfilePhoto from "./profile-photo";
+import type { sweepUnusedProfilePhotos as SweepUnusedProfilePhotos } from "./unused-profile-photos-sweep";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -39,9 +46,11 @@ type S3Call = { command: string; key: string };
 describe.skipIf(!RUN_DB)("profile photos [DB integration]", () => {
   let payload: Payload;
   let db: typeof Db;
-  let m: typeof import("./profile-photo");
-  let schema: typeof import("@/server/db/schema");
-  let drizzle: typeof import("drizzle-orm");
+  let m: typeof ProfilePhoto;
+  let sweep: typeof SweepUnusedProfilePhotos;
+  let deleteMemberAccount: typeof DeleteMemberAccount;
+  let schema: typeof Schema;
+  let drizzle: typeof Drizzle;
   let big: Buffer;
   let small: Buffer;
   const calls: S3Call[] = [];
@@ -59,11 +68,16 @@ describe.skipIf(!RUN_DB)("profile photos [DB integration]", () => {
         import("sharp"),
         import("@/migrations/20261114d_media_avatar_purpose"),
       ]);
-    [m, schema, drizzle] = await Promise.all([
+    let sweepModule, deleteModule;
+    [m, schema, drizzle, sweepModule, deleteModule] = await Promise.all([
       import("./profile-photo"),
       import("@/server/db/schema"),
       import("drizzle-orm"),
+      import("./unused-profile-photos-sweep"),
+      import("./delete-account"),
     ]);
+    sweep = sweepModule.sweepUnusedProfilePhotos;
+    deleteMemberAccount = deleteModule.deleteMemberAccount;
     // The storage adapter's only way out to S3. Record and answer locally.
     vi.spyOn(S3.prototype, "send").mockImplementation(((command: {
       constructor: { name: string };
@@ -141,14 +155,26 @@ describe.skipIf(!RUN_DB)("profile photos [DB integration]", () => {
     }[];
   }
 
-  const png = (data: Buffer) => ({ data, mimetype: "image/png" });
+  /** A profile photo row with no file, uploaded `hoursAgo`, shown by no one. */
+  async function strayPhoto(userId: string, hoursAgo: number) {
+    const name = `avatar-it-${Date.now()}-${Math.floor(Math.random() * 1e6)}.png`;
+    const res = await db.execute(drizzle.sql`
+      INSERT INTO "media" ("alt", "filename", "prefix", "url", "purpose", "uploaded_by", "updated_at", "created_at")
+      VALUES ('Profile photo', ${name}, 'media', ${"https://x.test/media/" + name},
+        'avatar', ${userId}, now(), now() - make_interval(hours => ${hoursAgo}))
+      RETURNING "id"`);
+    return Number((res.rows[0] as { id: number }).id);
+  }
+
+  async function backdate(userId: string, hours: number) {
+    await db.execute(drizzle.sql`
+      UPDATE "media" SET "created_at" = now() - make_interval(hours => ${hours})
+      WHERE "uploaded_by" = ${userId}`);
+  }
 
   it("shows an upload as the member's picture: its square crop, stored under media/", async () => {
     const userId = await member("https://avatars.githubusercontent.com/u/1");
-    const result = await m.setProfilePhoto(deps(), {
-      userId,
-      file: png(big),
-    });
+    const result = await m.setProfilePhoto(deps(), { userId, data: big });
 
     const [stored] = await photosOf(userId);
     expect(stored).toMatchObject({ purpose: "avatar", prefix: "media" });
@@ -167,7 +193,7 @@ describe.skipIf(!RUN_DB)("profile photos [DB integration]", () => {
 
   it("shows a picture smaller than the crop as it is", async () => {
     const userId = await member();
-    await m.setProfilePhoto(deps(), { userId, file: png(small) });
+    await m.setProfilePhoto(deps(), { userId, data: small });
     const [stored] = await photosOf(userId);
     expect(await imageOf(userId)).toBe(
       stored!.sizes_thumbnail_url ?? stored!.url,
@@ -176,11 +202,11 @@ describe.skipIf(!RUN_DB)("profile photos [DB integration]", () => {
 
   it("replaces the old photo and deletes its files", async () => {
     const userId = await member();
-    await m.setProfilePhoto(deps(), { userId, file: png(big) });
+    await m.setProfilePhoto(deps(), { userId, data: big });
     const [first] = await photosOf(userId);
     calls.length = 0;
 
-    await m.setProfilePhoto(deps(), { userId, file: png(big) });
+    await m.setProfilePhoto(deps(), { userId, data: big });
 
     const photos = await photosOf(userId);
     expect(photos).toHaveLength(1);
@@ -196,8 +222,8 @@ describe.skipIf(!RUN_DB)("profile photos [DB integration]", () => {
   it("settles two uploads at once on the newest, keeping only it", async () => {
     const userId = await member();
     await Promise.all([
-      m.setProfilePhoto(deps(), { userId, file: png(big) }),
-      m.setProfilePhoto(deps(), { userId, file: png(big) }),
+      m.setProfilePhoto(deps(), { userId, data: big }),
+      m.setProfilePhoto(deps(), { userId, data: big }),
     ]);
     const photos = await photosOf(userId);
     expect(photos).toHaveLength(1);
@@ -206,7 +232,7 @@ describe.skipIf(!RUN_DB)("profile photos [DB integration]", () => {
 
   it("removes the picture, a sign-in one too, and every upload", async () => {
     const userId = await member();
-    await m.setProfilePhoto(deps(), { userId, file: png(big) });
+    await m.setProfilePhoto(deps(), { userId, data: big });
 
     await m.removeProfilePhoto(deps(), userId);
 
@@ -214,14 +240,64 @@ describe.skipIf(!RUN_DB)("profile photos [DB integration]", () => {
     expect(await photosOf(userId)).toEqual([]);
   });
 
-  it("deletes uploads for account deletion without touching the picture", async () => {
+  it("deletes the photos after an account deletion, and stores none from a late upload", async () => {
     const userId = await member();
-    await m.setProfilePhoto(deps(), { userId, file: png(big) });
-    const image = await imageOf(userId);
+    await m.setProfilePhoto(deps(), { userId, data: big });
 
-    await m.deleteProfilePhotoFiles({ payload: payload as never }, userId);
-
+    await deleteMemberAccount(db, userId);
+    await m.removeProfilePhoto(deps(), userId);
     expect(await photosOf(userId)).toEqual([]);
-    expect(await imageOf(userId)).toBe(image);
+
+    // An upload from a tab still open when the account went.
+    await expect(
+      m.setProfilePhoto(deps(), { userId, data: big }),
+    ).resolves.toEqual({ image: null });
+    expect(await imageOf(userId)).toBeNull();
+    expect(await photosOf(userId)).toEqual([]);
+  });
+
+  describe("unused profile photos sweep", () => {
+    it("deletes old photos no member shows and keeps the shown and the young", async () => {
+      const userId = await member();
+      await m.setProfilePhoto(deps(), { userId, data: big });
+      await backdate(userId, 5);
+      const [shown] = await photosOf(userId);
+      const stray = await strayPhoto(userId, 5);
+      const young = await strayPhoto(userId, 0);
+
+      const result = await sweep({ db, payload: payload as never });
+
+      expect(result.failed).toBe(0);
+      expect(result.removed).toBeGreaterThanOrEqual(1);
+      const left = (await photosOf(userId)).map((p) => p.id);
+      expect(left).toContain(shown!.id);
+      expect(left).toContain(young);
+      expect(left).not.toContain(stray);
+    });
+
+    it("deletes the photos of a deleted account", async () => {
+      const userId = await member();
+      await m.setProfilePhoto(deps(), { userId, data: big });
+      await backdate(userId, 5);
+      // The account deletion's own cleanup failed (S3 down).
+      await deleteMemberAccount(db, userId);
+
+      await sweep({ db, payload: payload as never });
+
+      expect(await photosOf(userId)).toEqual([]);
+    });
+
+    it("leaves other uploads alone", async () => {
+      const userId = await member();
+      const res = await db.execute(drizzle.sql`
+        INSERT INTO "media" ("alt", "filename", "purpose", "uploaded_by", "updated_at", "created_at")
+        VALUES ('x', ${`it-shared-${Date.now()}.png`}, NULL, ${userId}, now(), now() - interval '5 hours')
+        RETURNING "id"`);
+      const shared = Number((res.rows[0] as { id: number }).id);
+
+      await sweep({ db, payload: payload as never });
+
+      expect((await photosOf(userId)).map((p) => p.id)).toContain(shared);
+    });
   });
 });

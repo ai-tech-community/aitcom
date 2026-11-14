@@ -66,10 +66,7 @@ import {
   type ProfileWork,
 } from "@/server/members/profile-work";
 import { memberActiveDays } from "@/server/members/active-days";
-import {
-  deleteProfilePhotoFiles,
-  removeProfilePhoto,
-} from "@/server/members/profile-photo";
+import { removeProfilePhoto } from "@/server/members/profile-photo";
 import { routing } from "@/i18n/routing";
 import {
   AccountNotFoundError,
@@ -762,9 +759,10 @@ export const membersRouter = createTRPCRouter({
         throw error;
       }
       // After the account is gone: files cannot join its transaction. A
-      // photo that fails to delete is logged; it is no longer shown.
-      await deleteProfilePhotoFiles(
-        { payload: await getPayloadClient() },
+      // photo that fails to delete is logged and no longer shown; the
+      // unused profile photos sweep deletes it later.
+      await removeProfilePhoto(
+        { db: ctx.db, payload: await getPayloadClient() },
         ctx.session.user.id,
       ).catch((error: unknown) => {
         console.error("[delete-account] deleting profile photos failed", {

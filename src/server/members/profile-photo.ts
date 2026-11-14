@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 
 import { eq, sql } from "drizzle-orm";
+import sharp from "sharp";
 
 import { MAX_IMAGE_BYTES, PROFILE_PHOTO_TYPES } from "@/lib/image-uploads";
 import type { Media } from "@/payload-types";
 import { type db } from "@/server/db";
 import { user } from "@/server/db/schema";
+import { deletedAccountEmail } from "@/server/members/delete-account";
 import type { getPayloadClient } from "@/server/payload";
 
 type Database = typeof db;
@@ -17,14 +19,20 @@ export type ProfilePhotoDeps = {
   log?: (message: string, detail: unknown) => void;
 };
 
-/** A picture as the upload route received it. */
-export type ProfilePhotoFile = { data: Buffer; mimetype: string };
-
 /** The description stored on every profile photo upload. */
 export const PROFILE_PHOTO_ALT = "Profile photo";
 
+/**
+ * The longest side a stored profile photo keeps. It is shown at most a few
+ * hundred pixels wide; more only costs storage and bandwidth.
+ */
+export const PROFILE_PHOTO_MAX_SIDE = 1024;
+
 /** `user.image` is varchar(255); a longer URL could not be saved. */
 const MAX_IMAGE_URL_LENGTH = 255;
+
+/** Pictures larger than this many pixels are refused before decoding. */
+const MAX_INPUT_PIXELS = 50_000_000;
 
 /** Why a picture cannot become a profile photo, for the route to explain. */
 export class ProfilePhotoRejectedError extends Error {
@@ -38,20 +46,65 @@ export class ProfilePhotoRejectedError extends Error {
   }
 }
 
+/** A profile photo ready to store: re-encoded, with its real type. */
+type PreparedPhoto = { data: Buffer; mimetype: string; extension: string };
+
 /**
- * Uploads `file` as the member's profile photo and shows it as their
+ * Re-encodes an uploaded picture before it is stored. Its type is read from
+ * its bytes, never from what the browser claims, so only JPEG, PNG, WebP
+ * and GIF pass (no SVG, which can carry script). Re-encoding drops every
+ * piece of metadata the file carried (a phone photo's EXIF can hold where
+ * it was taken), applies the EXIF rotation first so the picture stays
+ * upright, and brings the long side down to PROFILE_PHOTO_MAX_SIDE.
+ */
+export async function prepareProfilePhoto(
+  data: Buffer,
+): Promise<PreparedPhoto> {
+  if (data.length > MAX_IMAGE_BYTES) {
+    throw new ProfilePhotoRejectedError("size");
+  }
+  const options = { animated: true, limitInputPixels: MAX_INPUT_PIXELS };
+  let format: string | undefined;
+  try {
+    ({ format } = await sharp(data, options).metadata());
+  } catch {
+    throw new ProfilePhotoRejectedError("type");
+  }
+  const mimetype = `image/${format}`;
+  const extension = PROFILE_PHOTO_TYPES[mimetype];
+  if (!format || !extension) throw new ProfilePhotoRejectedError("type");
+
+  try {
+    // sharp writes no metadata unless asked to (withMetadata), so the
+    // output carries none of the input's.
+    const output = await sharp(data, options)
+      .rotate()
+      .resize({
+        width: PROFILE_PHOTO_MAX_SIDE,
+        height: PROFILE_PHOTO_MAX_SIDE,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .toFormat(format as keyof sharp.FormatEnum)
+      .toBuffer();
+    return { data: output, mimetype, extension };
+  } catch {
+    // Decodable header, broken picture.
+    throw new ProfilePhotoRejectedError("type");
+  }
+}
+
+/**
+ * Uploads `data` as the member's profile photo and shows it as their
  * picture (`user.image`) everywhere. Their earlier uploaded photos are
- * deleted. Returns the picture the member now has.
+ * deleted. Returns the picture the member now has: null when a remove (in
+ * another tab) or the account's deletion settled after this upload began.
  */
 export async function setProfilePhoto(
   deps: ProfilePhotoDeps,
-  input: { userId: string; file: ProfilePhotoFile },
+  input: { userId: string; data: Buffer },
 ): Promise<{ image: string | null }> {
-  const extension = PROFILE_PHOTO_TYPES[input.file.mimetype];
-  if (!extension) throw new ProfilePhotoRejectedError("type");
-  if (input.file.data.length > MAX_IMAGE_BYTES) {
-    throw new ProfilePhotoRejectedError("size");
-  }
+  const photo = await prepareProfilePhoto(input.data);
 
   await deps.payload.create({
     collection: "media",
@@ -61,13 +114,13 @@ export async function setProfilePhoto(
       purpose: "avatar",
     },
     file: {
-      data: input.file.data,
+      data: photo.data,
       // A random name: the member's own file name may say more than they
       // meant to share, and a fixed one would make Payload count up through
       // every earlier photo to find a free name.
-      name: `avatar-${randomUUID()}.${extension}`,
-      mimetype: input.file.mimetype,
-      size: input.file.data.length,
+      name: `avatar-${randomUUID()}.${photo.extension}`,
+      mimetype: photo.mimetype,
+      size: photo.data.length,
     },
   });
 
@@ -77,7 +130,8 @@ export async function setProfilePhoto(
 /**
  * Takes the member's picture away (`user.image` empty, so they get the
  * Gravatar or their initials) and deletes their uploaded photos. This also
- * clears a picture their sign-in provider gave them.
+ * clears a picture their sign-in provider gave them. Run after an account
+ * deletion too: it then deletes the photos and leaves the row as is.
  */
 export async function removeProfilePhoto(
   deps: ProfilePhotoDeps,
@@ -87,14 +141,11 @@ export async function removeProfilePhoto(
 }
 
 /**
- * Deletes every profile photo the member uploaded, without touching
- * `user.image`. For account deletion, which clears `user.image` itself.
+ * The lock every change to one member's profile photo takes, for the
+ * length of the caller's transaction. Exported for the unused photos sweep.
  */
-export async function deleteProfilePhotoFiles(
-  deps: Pick<ProfilePhotoDeps, "payload" | "log">,
-  userId: string,
-): Promise<void> {
-  await deletePhotos(deps, await photosOf(deps.payload, userId));
+export function profilePhotoLock(userId: string) {
+  return sql`SELECT pg_advisory_xact_lock(hashtextextended(${"profile-photo:" + userId}, 0))`;
 }
 
 /**
@@ -103,7 +154,9 @@ export async function deleteProfilePhotoFiles(
  *
  * Runs one at a time per member, so two uploads at once (two tabs) cannot
  * leave the picture pointing at a deleted file: each run reads every photo
- * uploaded before it, and the newest one always wins.
+ * uploaded before it, and the newest one always wins. A deleted account
+ * shows nothing: an upload that finishes after the deletion stores no
+ * picture on the anonymized row and its file is deleted.
  */
 async function settlePhotos(
   deps: ProfilePhotoDeps,
@@ -111,23 +164,31 @@ async function settlePhotos(
   show: "newest" | "none",
 ): Promise<{ image: string | null }> {
   return deps.db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${"profile-photo:" + userId}, 0))`,
-    );
+    await tx.execute(profilePhotoLock(userId));
+    const [account] = await tx
+      .select({ email: user.email, image: user.image })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    const deleted = !account || account.email === deletedAccountEmail(userId);
+
     // Newest first: media ids only grow.
     const photos = await photosOf(deps.payload, userId);
-    const shown = show === "newest" ? photos[0] : undefined;
+    const shown = show === "newest" && !deleted ? photos[0] : undefined;
 
-    if (show === "none") {
-      await tx.update(user).set({ image: null }).where(eq(user.id, userId));
+    let image = account?.image ?? null;
+    if (deleted) {
+      // Account deletion cleared the picture itself.
+    } else if (show === "none") {
+      image = null;
+      await tx.update(user).set({ image }).where(eq(user.id, userId));
     } else if (shown) {
-      await tx
-        .update(user)
-        .set({ image: photoUrl(shown) })
-        .where(eq(user.id, userId));
+      image = photoUrl(shown);
+      await tx.update(user).set({ image }).where(eq(user.id, userId));
+    } else {
+      // A remove in another tab took this upload: the picture stays as that
+      // remove set it.
     }
-    // With nothing to show (a remove in another tab took this upload), the
-    // picture is left as that remove set it.
 
     // Inside the lock: a later run must never find a photo this one is
     // about to delete and show it.
@@ -135,13 +196,7 @@ async function settlePhotos(
       deps,
       photos.filter((photo) => photo !== shown),
     );
-
-    const [row] = await tx
-      .select({ image: user.image })
-      .from(user)
-      .where(eq(user.id, userId))
-      .limit(1);
-    return { image: row?.image ?? null };
+    return { image: shown ? image : null };
   });
 }
 
@@ -176,7 +231,7 @@ export function photoUrl(photo: Media): string {
 
 /**
  * Deletes photos one by one. A failure is logged and skipped: the photo is
- * no longer shown, and the next change or the account deletion retries it.
+ * no longer shown, and the unused profile photos sweep deletes it later.
  */
 async function deletePhotos(
   deps: Pick<ProfilePhotoDeps, "payload" | "log">,

@@ -8,6 +8,17 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { getInitials } from "@/lib/avatar";
 import { PROFILE_PHOTO_TYPES } from "@/lib/image-uploads";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
@@ -22,7 +33,8 @@ const ACCEPT = Object.keys(PROFILE_PHOTO_TYPES).join(",");
  * The member's picture at the top of the profile form: upload a new one or
  * remove it. Each change saves at once (the form's Save button is for the
  * text fields), and the navbar, the side panel's "You" card and this row
- * all pick it up without a reload.
+ * all pick it up without a reload. Removing asks first: a picture from a
+ * sign-in provider does not come back by signing in again.
  */
 export function ProfilePhotoSettings({
   name,
@@ -62,9 +74,11 @@ export function ProfilePhotoSettings({
     if (!file) return;
     setUploading(true);
     try {
-      await uploadProfilePhoto(file);
+      const { image } = await uploadProfilePhoto(file);
       await showChange();
-      toast.success(t("saved"));
+      // No picture: a remove in another tab settled after this upload began.
+      if (image) toast.success(t("saved"));
+      else toast.error(t("error"));
     } catch (error) {
       const reason =
         error instanceof ProfilePhotoUploadError ? error.reason : "failed";
@@ -120,15 +134,27 @@ export function ProfilePhotoSettings({
                 : t("upload")}
           </Button>
           {photo.isSet && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => remove.mutate()}
-            >
-              {t("remove")}
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="ghost" size="sm" disabled={busy}>
+                  {t("remove")}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("removeTitle")}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("removeDescription")}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => remove.mutate()}>
+                    {t("removeConfirm")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </div>

@@ -1171,7 +1171,11 @@
         "removed": "Profielfoto verwijderd",
         "errorType": "Gebruik een JPG-, PNG-, WebP- of GIF-afbeelding.",
         "errorSize": "Die afbeelding is te groot. Gebruik er een kleiner dan 2 MB.",
-        "error": "Je foto kon niet worden bijgewerkt. Probeer het opnieuw."
+        "error": "Je foto kon niet worden bijgewerkt. Probeer het opnieuw.",
+        "removeTitle": "Je profielfoto verwijderen?",
+        "removeDescription": "Mensen zien dan je initialen of je Gravatar. Een foto van GitHub, Google of LinkedIn komt niet terug als je opnieuw inlogt. Je kunt altijd een nieuwe uploaden.",
+        "removeConfirm": "Foto verwijderen",
+        "cancel": "Annuleren"
       }
     },
     "deleteAccount": {

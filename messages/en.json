@@ -1171,7 +1171,11 @@
         "removed": "Profile photo removed",
         "errorType": "Use a JPG, PNG, WebP, or GIF picture.",
         "errorSize": "That picture is too large. Use one under 2 MB.",
-        "error": "Could not update your photo. Try again."
+        "error": "Could not update your photo. Try again.",
+        "removeTitle": "Remove your profile photo?",
+        "removeDescription": "People will see your initials or your Gravatar instead. A photo from GitHub, Google, or LinkedIn does not come back when you sign in again. You can upload a new one any time.",
+        "removeConfirm": "Remove photo",
+        "cancel": "Cancel"
       }
     },
     "deleteAccount": {
