@@ -702,7 +702,8 @@ describe.skipIf(!isLocalDbConfigured())(
     it("the events tab offers only this community's listed events", async () => {
       const { c, magazine, actor, issue } = await issueFixture();
       const listed = await event(c.id);
-      const cancelled = await event(c.id, "cancelled");
+      // Listed publicly, but never offered (asserted below).
+      await event(c.id, "cancelled");
       const completed = await event(c.id, "completed");
       const draft = await event(c.id, "draft");
       const rejected = await event(c.id, "rejected");
@@ -721,12 +722,12 @@ describe.skipIf(!isLocalDbConfigured())(
         "",
         ctx,
       );
+      // Cancelled events stay on the public events list but are not offered
+      // in the picker (event/picker.ts, PICKABLE_EVENT_STATUSES, since #518).
       expect(
         candidates.map((v) => Number(v.input.eventId)).sort((a, b) => a - b),
       ).toEqual(
-        [listed, cancelled, completed]
-          .map((v) => Number(v.id))
-          .sort((a, b) => a - b),
+        [listed, completed].map((v) => Number(v.id)).sort((a, b) => a - b),
       );
       expect(
         (
@@ -736,7 +737,7 @@ describe.skipIf(!isLocalDbConfigured())(
             ctx,
           )
         ).map((v) => Number(v.input.eventId)),
-      ).toEqual([Number(cancelled.id)]);
+      ).toEqual([]);
       for (const doc of [draft, rejected, otherEvent, unscoped]) {
         await expect(
           m.issues.setIssueItems(
