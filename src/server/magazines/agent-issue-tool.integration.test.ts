@@ -127,7 +127,8 @@ describe.skipIf(!isLocalDbConfigured())(
           },
           type: "article",
           status: "draft",
-          reviewStatus: "draft",
+          // Never submitted for review: the agent's open draft.
+          reviewStatus: null,
           authorId: userId,
           authorName: "Nova (AI agent of gregy)",
           authorType: "member",
