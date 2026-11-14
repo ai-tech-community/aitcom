@@ -97,7 +97,7 @@ export type GalleryUploadChoices = {
 };
 
 /** What an uploader whose account has no name is called. */
-export const UNNAMED_UPLOADER = "Member";
+const UNNAMED_UPLOADER = "Member";
 
 /**
  * The items this viewer may see: ready items of the viewer's community, and

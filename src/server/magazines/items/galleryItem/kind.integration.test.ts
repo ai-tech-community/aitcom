@@ -26,6 +26,7 @@ import type { eq as Eq, inArray as InArray, sql as Sql } from "drizzle-orm";
 import type { IssueReaderAccess } from "@/lib/magazines/access";
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
+import type { plainTextToLexical as PlainTextToLexical } from "@/server/challenge-engine/lexical";
 
 import type { PayloadClient } from "../../deps";
 import type * as Issues from "../../issue-service";
@@ -81,6 +82,7 @@ describe.skipIf(!isLocalDbConfigured())(
       sql: typeof Sql;
       eq: typeof Eq;
       inArray: typeof InArray;
+      plainTextToLexical: typeof PlainTextToLexical;
     };
     let fx: {
       sfx: string;
@@ -104,6 +106,7 @@ describe.skipIf(!isLocalDbConfigured())(
         context,
         { getPayloadClient },
         drizzle,
+        lexical,
       ] = await Promise.all([
         import("@/server/db"),
         import("@/server/db/schema"),
@@ -114,6 +117,7 @@ describe.skipIf(!isLocalDbConfigured())(
         import("../context"),
         import("@/server/payload"),
         import("drizzle-orm"),
+        import("@/server/challenge-engine/lexical"),
       ]);
       const { rows } = await database.db.execute<{ name: string }>(
         drizzle.sql`select current_database() as name`,
@@ -135,6 +139,7 @@ describe.skipIf(!isLocalDbConfigured())(
         sql: drizzle.sql,
         eq: drizzle.eq,
         inArray: drizzle.inArray,
+        plainTextToLexical: lexical.plainTextToLexical,
       };
     }, 120_000);
 
@@ -258,16 +263,7 @@ describe.skipIf(!isLocalDbConfigured())(
         data: {
           title: `Model night ${fx.sfx}`,
           slug: `gk-event-${fx.sfx}`,
-          description: {
-            root: {
-              type: "root",
-              version: 1,
-              direction: "ltr",
-              format: "",
-              indent: 0,
-              children: [],
-            },
-          },
+          description: m.plainTextToLexical("Meet together"),
           type: "meetup",
           status: "published",
           date: "2026-10-18T00:00:00Z",

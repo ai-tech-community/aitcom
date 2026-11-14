@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { galleryItemPath } from "@/lib/gallery-rules";
-import type { IssueReaderAccess } from "@/lib/magazines/access";
 import type { ItemProblem, UnavailableItem } from "@/lib/magazines/item-views";
 import { galleryItemInputReference } from "@/lib/magazines/references";
 import type { GalleryItem } from "@/payload-types";
@@ -33,8 +32,7 @@ type GalleryItemInput = z.infer<typeof galleryItemInput>;
 type GalleryItemStored = StoredItem<"galleryItem">;
 
 /** Why `validate` refuses an image on a gallery item: the item is the picture. */
-const GALLERY_ITEM_IMAGE_REFUSAL =
-  "gallery items can't carry their own image";
+const GALLERY_ITEM_IMAGE_REFUSAL = "gallery items can't carry their own image";
 
 const referenceOf = galleryItemInputReference;
 
@@ -57,11 +55,36 @@ async function loadGalleryItems(
  * the reader, or the editor. One read per issue; null once the community is
  * gone, which reads nothing.
  */
-function loadViewer(ctx: ItemContext): Promise<GalleryViewer | null> {
+function loadViewer(
+  ctx: ItemContext,
+  userId: string | null = ctx.reader.viewerId,
+): Promise<GalleryViewer | null> {
   return loadGalleryViewerById(
     { db: ctx.db },
-    { communityId: ctx.community.id, userId: ctx.reader.viewerId },
+    { communityId: ctx.community.id, userId },
   );
+}
+
+/**
+ * Whether an item's audience is narrower than a signed-out visitor: the
+ * editor's "members only" marker, which the Visitor preview also uses to
+ * leave the item out. Decided by the gallery's read rule for an anonymous
+ * viewer, so a `public` item in a members-only or paid community counts as
+ * members only too. Editors only (one more viewer read per issue); readers
+ * never get the marker.
+ */
+type MembersOnlyRule = (item: GalleryItem) => boolean;
+
+async function loadMembersOnlyRule(ctx: ItemContext): Promise<MembersOnlyRule> {
+  switch (ctx.access) {
+    case "editor": {
+      const visitor = await loadViewer(ctx, null);
+      return (item) => !visitor || !isGalleryReadable(visitor, item);
+    }
+    case "teaser":
+    case "full":
+      return () => false;
+  }
 }
 
 /**
@@ -82,17 +105,6 @@ function showable(
     return { reason: "no_access" };
   }
   return { item };
-}
-
-/** Editors see which items only members can see; readers never need to. */
-function membersOnlyFor(access: IssueReaderAccess, item: GalleryItem): boolean {
-  switch (access) {
-    case "editor":
-      return item.visibility === "community";
-    case "teaser":
-    case "full":
-      return false;
-  }
 }
 
 function imageProblems(
@@ -165,9 +177,10 @@ export const galleryItemItemKind: IssueItemKind<
       ItemViewOf<"galleryItem"> | UnavailableItem
     >();
     if (items.length === 0) return views;
-    const [galleryItems, viewer] = await Promise.all([
+    const [galleryItems, viewer, membersOnly] = await Promise.all([
       loadGalleryItems(items, ctx),
       loadViewer(ctx),
+      loadMembersOnlyRule(ctx),
     ]);
 
     const shown: { stored: GalleryItemStored; item: GalleryItem }[] = [];
@@ -199,7 +212,7 @@ export const galleryItemItemKind: IssueItemKind<
         kind: "galleryItem",
         itemId,
         intro: stored.intro ?? null,
-        membersOnly: membersOnlyFor(ctx.access, item),
+        membersOnly: membersOnly(item),
         galleryItemId: item.id,
         mediaType: item.mediaType,
         url: links.url,

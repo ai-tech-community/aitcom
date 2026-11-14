@@ -98,8 +98,10 @@ not copies", "Assemble", delivery slice 2); implementation plan:
 
 4. **Community-scoped views carry `membersOnly`.** Event, thread and project
    views set this flag when their community is in
-   `hiddenContentCommunityIds(db, null)`; a gallery item view sets it when
-   the item's own visibility is `community`, for editors only. It describes the content's audience,
+   `hiddenContentCommunityIds(db, null)`; a gallery item view sets it when a
+   signed-out gallery viewer of its community may not read the item (so a
+   `public` item in a members-only or paid community counts too), for
+   editors only. It describes the content's audience,
    even though the viewer receiving the view can read it. Editors see
    "Only members see this"; Visitor preview omits those items. The
    members-only set is requested only for `editor` access, with an exhaustive

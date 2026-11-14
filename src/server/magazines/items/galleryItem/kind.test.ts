@@ -90,6 +90,7 @@ function item(id: number, over: Doc = {}): Doc {
 const USERS = [
   { id: "u1", name: "Dana", image: null },
   { id: "u2", name: "Ruben", image: null },
+  { id: "u4", name: null, image: null },
 ];
 
 /**
@@ -314,6 +315,20 @@ describe("gallery item kind: load", () => {
       const views = await loaded(f, context(f, "editor", "u3"), [1, 2]);
       expect(views.get("block-1")).toMatchObject({ membersOnly: true });
       expect(views.get("block-2")).toMatchObject({ membersOnly: false });
+      // The editor's viewer and a signed-out visitor's: one read each.
+      expect(f.communityRead).toHaveBeenCalledTimes(2);
+    });
+
+    it("marks a public item members-only where visitors can't read the community", async () => {
+      const f = fakes({ items: items(), role: "moderator", listed: false });
+      const views = await loaded(f, context(f, "editor", "u3"), [1, 2]);
+      expect(views.get("block-1")).toMatchObject({ membersOnly: true });
+      expect(views.get("block-2")).toMatchObject({ membersOnly: true });
+      // Members reading the issue get no marker and no visitor read.
+      const reader = fakes({ items: items(), role: "member", listed: false });
+      const read = await loaded(reader, context(reader, "full", "u2"), [1, 2]);
+      expect(read.get("block-2")).toMatchObject({ membersOnly: false });
+      expect(reader.communityRead).toHaveBeenCalledTimes(1);
     });
 
     it("tells a non-member editor the item is no_access too", async () => {
@@ -393,6 +408,16 @@ describe("gallery item kind: load", () => {
         key: "gallery.label.videoFromEvent",
         values: { event: "Model night", name: "Deleted member" },
       },
+    });
+  });
+
+  it("names an uploader without a name in the issue's language", async () => {
+    const f = fakes({ items: [item(1, { uploaderId: "u4" })], role: "member" });
+    const ctx = { ...context(f, "full", "u2"), locale: "nl" as const };
+    const views = await loaded(f, ctx, [1]);
+    expect(views.get("block-1")).toMatchObject({
+      uploader: { name: "Lid" },
+      label: { values: { name: "Lid" } },
     });
   });
 

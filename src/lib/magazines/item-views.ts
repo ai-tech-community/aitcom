@@ -124,7 +124,10 @@ export type GalleryItemItemView = ItemImageMetadata & {
   kind: "galleryItem";
   itemId: string;
   intro: string | null;
-  /** Editors only: the item is shared with members, not everyone. */
+  /**
+   * Editors only: a signed-out visitor could not open the item (shared with
+   * members, or in a community outsiders cannot read).
+   */
   membersOnly: boolean;
   galleryItemId: number;
   mediaType: GalleryMediaType;

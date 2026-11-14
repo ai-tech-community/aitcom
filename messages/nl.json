@@ -5867,7 +5867,8 @@
           "newsItem": "Zoek nieuwsberichten",
           "event": "Zoek evenementen van je community",
           "forumThread": "Zoek in het forum van je community",
-          "launchpadProject": "Zoek projecten van je leden"
+          "launchpadProject": "Zoek projecten van je leden",
+          "galleryItem": "Zoek in de galerij van je community"
         },
         "empty": {
           "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
@@ -5875,7 +5876,8 @@
           "newsItem": "Geen nieuwsberichten gevonden.",
           "event": "Je community heeft nog geen evenementen.",
           "forumThread": "Geen gesprekken gevonden.",
-          "launchpadProject": "Geen projecten gevonden."
+          "launchpadProject": "Geen projecten gevonden.",
+          "galleryItem": "Nog geen foto's of video's om te kiezen. Leden kiezen bij het toevoegen of het magazine ze mag gebruiken."
         },
         "hint": {
           "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier.",
@@ -5883,7 +5885,8 @@
           "newsItem": "Nieuwsberichten linken naar het oorspronkelijke artikel.",
           "event": "Evenementen van je community. Lezers zien altijd de laatste informatie.",
           "forumThread": "Gesprekken gaan door: lezers zien ook nieuwe reacties.",
-          "launchpadProject": "Projecten van je community of van haar leden."
+          "launchpadProject": "Projecten van je community of van haar leden.",
+          "galleryItem": "Alleen foto's en video's waarvan de eigenaar zei dat het magazine ze mag gebruiken. Bedenkt iemand zich, dan verdwijnt het uit het nummer."
         },
         "noMatch": "Niets gevonden voor “{query}”.",
         "add": "Toevoegen",
@@ -6453,6 +6456,7 @@
   },
   "gallery": {
     "deletedMember": "Verwijderd lid",
+    "unnamedMember": "Lid",
     "label": {
       "photoFromEvent": "Foto van {event} door {name}",
       "photoBy": "Foto door {name}",

@@ -5867,7 +5867,8 @@
           "newsItem": "Rechercher des titres d’actualité",
           "event": "Rechercher les événements de votre communauté",
           "forumThread": "Rechercher dans le forum de votre communauté",
-          "launchpadProject": "Rechercher les projets de vos membres"
+          "launchpadProject": "Rechercher les projets de vos membres",
+          "galleryItem": "Rechercher dans la galerie de votre communauté"
         },
         "empty": {
           "article": "Aucun article n’est prêt. Les articles marqués comme prêts pour un numéro apparaissent ici.",
@@ -5875,7 +5876,8 @@
           "newsItem": "Aucun titre trouvé.",
           "event": "Votre communauté n’a pas encore d’événements.",
           "forumThread": "Aucune discussion trouvée.",
-          "launchpadProject": "Aucun projet trouvé."
+          "launchpadProject": "Aucun projet trouvé.",
+          "galleryItem": "Aucune photo ni vidéo à choisir pour l’instant. Les membres indiquent en les ajoutant si le magazine peut les utiliser."
         },
         "hint": {
           "article": "Seuls les articles marqués comme prêts et absents des autres numéros apparaissent ici.",
@@ -5883,7 +5885,8 @@
           "newsItem": "Les titres renvoient à l’article d’origine.",
           "event": "Les événements de votre communauté. Le lectorat voit les informations les plus récentes.",
           "forumThread": "Les discussions restent à jour : le lectorat voit aussi les nouvelles réponses.",
-          "launchpadProject": "Les projets de votre communauté ou de ses membres."
+          "launchpadProject": "Les projets de votre communauté ou de ses membres.",
+          "galleryItem": "Seules les photos et vidéos que leurs auteurs ont autorisées pour le magazine. S’ils changent d’avis, l’élément quitte le numéro."
         },
         "noMatch": "Aucun résultat pour « {query} ».",
         "add": "Ajouter",
@@ -6453,6 +6456,7 @@
   },
   "gallery": {
     "deletedMember": "Membre supprimé",
+    "unnamedMember": "Membre",
     "label": {
       "photoFromEvent": "Photo de {event} par {name}",
       "photoBy": "Photo par {name}",

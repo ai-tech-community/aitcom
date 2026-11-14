@@ -5867,7 +5867,8 @@
           "newsItem": "Search news headlines",
           "event": "Search your community's events",
           "forumThread": "Search your community's forum",
-          "launchpadProject": "Search your members' projects"
+          "launchpadProject": "Search your members' projects",
+          "galleryItem": "Search your community's gallery"
         },
         "empty": {
           "article": "No articles are ready. Articles marked ready for an issue show up here.",
@@ -5875,7 +5876,8 @@
           "newsItem": "No headlines found.",
           "event": "Your community has no events yet.",
           "forumThread": "No threads found.",
-          "launchpadProject": "No projects found."
+          "launchpadProject": "No projects found.",
+          "galleryItem": "No photos or videos to pick yet. Members choose when they add them whether the magazine may use them."
         },
         "hint": {
           "article": "Only articles marked ready and not in another issue show here.",
@@ -5883,7 +5885,8 @@
           "newsItem": "Headlines link to the original article.",
           "event": "Events of your community. Readers see the latest details.",
           "forumThread": "Threads stay live: readers see new replies too.",
-          "launchpadProject": "Projects from your community or by its members."
+          "launchpadProject": "Projects from your community or by its members.",
+          "galleryItem": "Only photos and videos whose owners said the magazine may use them. If they change their mind, the item leaves the issue."
         },
         "noMatch": "Nothing matches “{query}”.",
         "add": "Add",
@@ -6453,6 +6456,7 @@
   },
   "gallery": {
     "deletedMember": "Deleted member",
+    "unnamedMember": "Member",
     "label": {
       "photoFromEvent": "Photo from {event} by {name}",
       "photoBy": "Photo by {name}",
