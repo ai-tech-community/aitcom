@@ -18,9 +18,12 @@ gallery prefixes.
 ## Context
 
 - **Feed images are public by URL.** They go through Payload `Media`
-  (`/api/upload`), which stores at the bucket root with
-  `disablePayloadAccessControl` and `read: () => true`. A "members-only" gallery
-  photo stored that way could be opened by anyone with the link.
+  (`/api/upload`), which stores them with `disablePayloadAccessControl` and
+  `read: () => true`. A "members-only" gallery photo stored that way could be
+  opened by anyone with the link. (New `Media` files go under the `media/`
+  prefix, as flat names that never fall inside `media/gallery/`; files
+  uploaded before that rule stay at the bucket root. See
+  `src/server/media/media-prefix.ts`.)
 - **Feed cleanup only knows feed posts.** The unused-image sweep is SQL over
   `feed_posts` with `purpose = 'feed-post'`; the #388 video sweep builds its
   "in use" set from feed posts and deletes everything else under the feed video
