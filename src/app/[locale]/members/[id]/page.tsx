@@ -152,7 +152,10 @@ export default async function MemberOverviewPage({
           />
         }
       >
-        <p className="max-w-prose text-sm leading-relaxed whitespace-pre-line">
+        <p
+          dir="auto"
+          className="max-w-prose text-sm leading-relaxed whitespace-pre-line"
+        >
           {profile.bio}
         </p>
       </DashboardSection>

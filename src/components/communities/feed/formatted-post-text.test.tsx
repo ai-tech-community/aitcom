@@ -77,3 +77,52 @@ describe("FormattedPostText mentions", () => {
     );
   });
 });
+
+describe("FormattedPostText direction", () => {
+  it("lets each line and list take its direction from its own words", () => {
+    const { container } = render(
+      <FormattedPostText
+        text={"שלום לכולם\n\nHello all\n- איתור נכסים\n- ייעוץ\n1. ראשון"}
+      />,
+    );
+    const lists = container.querySelectorAll("ul, ol");
+    expect(lists).toHaveLength(2);
+    for (const list of lists) expect(list).toHaveAttribute("dir", "auto");
+
+    // A Hebrew line and an English line in one paragraph each get their own
+    // direction; the blank line between them keeps its height.
+    const lines = [...container.querySelectorAll("p > span")];
+    expect(lines.map((line) => line.textContent)).toEqual([
+      "שלום לכולם",
+      "",
+      "Hello all",
+    ]);
+    for (const line of lines) expect(line).toHaveAttribute("dir", "auto");
+    expect(lines[1]!.querySelector("br")).not.toBeNull();
+  });
+
+  it("indents lists on the starting side, so a right-to-left list keeps its bullets", () => {
+    const { container } = render(<FormattedPostText text={"- a\n\n1. b"} />);
+    for (const list of container.querySelectorAll("ul, ol")) {
+      expect(list.className).toContain("ps-5");
+      expect(list.className).not.toContain("pl-5");
+    }
+  });
+
+  it("isolates links and mentions so they never decide the paragraph's direction", () => {
+    render(
+      <FormattedPostText
+        text="@Jane Doe תודה https://x.test/a"
+        mentions={[{ userId: "u-jane", name: "Jane Doe", hasProfile: true }]}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "@Jane Doe" })).toHaveAttribute(
+      "dir",
+      "auto",
+    );
+    expect(screen.getByRole("link", { name: /x\.test/ })).toHaveAttribute(
+      "dir",
+      "ltr",
+    );
+  });
+});

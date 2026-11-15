@@ -139,7 +139,7 @@ function CommentItem({
         </div>
 
         {/* Content */}
-        <p className="text-foreground text-sm leading-relaxed">
+        <p dir="auto" className="text-foreground text-sm leading-relaxed">
           {comment.content}
         </p>
       </div>
@@ -234,7 +234,7 @@ function CommentItem({
                   </button>
                 )}
               </div>
-              <p className="text-foreground text-sm leading-relaxed">
+              <p dir="auto" className="text-foreground text-sm leading-relaxed">
                 {reply.content}
               </p>
             </div>

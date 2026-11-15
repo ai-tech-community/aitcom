@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { LexicalRenderer } from "./lexical";
+import { LexicalRenderer, renderLexicalDocument } from "./lexical";
 
 const content = {
   root: {
@@ -217,6 +217,51 @@ describe("LexicalRenderer block renderers", () => {
     expect(Image).not.toHaveBeenCalled();
     expect(container.querySelector("img")?.getAttribute("src")).toBe(
       "https://img.example.test/a.png",
+    );
+  });
+});
+
+describe("LexicalRenderer direction", () => {
+  const doc = {
+    root: {
+      children: [
+        {
+          type: "heading",
+          tag: "h2",
+          children: [{ type: "text", text: "כותרת" }],
+        },
+        // Documents built on the server say "ltr" even for Hebrew.
+        {
+          type: "paragraph",
+          direction: "ltr",
+          children: [{ type: "text", text: "שלום לכולם" }],
+        },
+        {
+          type: "list",
+          listType: "bullet",
+          children: [
+            { type: "listitem", children: [{ type: "text", text: "ייעוץ" }] },
+          ],
+        },
+        { type: "quote", children: [{ type: "text", text: "ציטוט" }] },
+        { type: "code", children: [{ type: "text", text: "const a = 1;" }] },
+      ],
+    },
+  };
+
+  it("lets every text block take its direction from its own words", () => {
+    const { container } = render(<>{renderLexicalDocument(doc)}</>);
+    for (const selector of ["h2", "p", "ul", "blockquote"]) {
+      expect(container.querySelector(selector)).toHaveAttribute("dir", "auto");
+    }
+  });
+
+  it("keeps code left to right and uses starting-side indents", () => {
+    const { container } = render(<>{renderLexicalDocument(doc)}</>);
+    expect(container.querySelector("pre")).toHaveAttribute("dir", "ltr");
+    expect(container.querySelector("ul")?.className).toContain("ps-6");
+    expect(container.querySelector("blockquote")?.className).toContain(
+      "border-s-4",
     );
   });
 });

@@ -14,7 +14,8 @@ export type ShownMention = PostMention & { hasProfile?: boolean };
  * Text with each "@Name" the post mentions shown as that member, in ink
  * (orange is kept for the one main action): a link to their profile,
  * always underlined so it reads as one without colour, or just the name in
- * medium weight when the profile is not open.
+ * medium weight when the profile is not open. A name reads in its own
+ * direction and does not decide the direction of the text around it.
  */
 function MentionedText({
   text,
@@ -31,13 +32,14 @@ function MentionedText({
         ) : part.mention.hasProfile ? (
           <Link
             key={index}
+            dir="auto"
             href={`/members/${encodeURIComponent(part.mention.userId)}`}
             className="decoration-primary/60 hover:decoration-primary font-medium underline underline-offset-4"
           >
             {part.text}
           </Link>
         ) : (
-          <span key={index} className="font-medium">
+          <span key={index} dir="auto" className="font-medium">
             {part.text}
           </span>
         ),
@@ -54,6 +56,10 @@ export const USER_LINK_REL = "noopener noreferrer nofollow ugc";
  * @mentions shown as members (never inside a link). Links open in a new
  * tab; everything else renders as text, so no user markup ever reaches the
  * DOM.
+ *
+ * Links and mentions carry their own `dir`: that isolates them, so a web
+ * address keeps its order inside Hebrew text, and the paragraph's
+ * `dir="auto"` takes its direction from the words around them.
  */
 export function LinkifiedText({
   text,
@@ -69,6 +75,7 @@ export function LinkifiedText({
         segment.kind === "link" ? (
           <a
             key={index}
+            dir="ltr"
             href={segment.href}
             target="_blank"
             rel={USER_LINK_REL}

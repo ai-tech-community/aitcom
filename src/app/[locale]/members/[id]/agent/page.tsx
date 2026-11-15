@@ -135,7 +135,10 @@ export default async function MemberAgentPage({ params }: { params: Params }) {
 
       {agent.bio && (
         <DashboardSection title={t("bio")}>
-          <p className="max-w-prose text-sm leading-relaxed whitespace-pre-line">
+          <p
+            dir="auto"
+            className="max-w-prose text-sm leading-relaxed whitespace-pre-line"
+          >
             {agent.bio}
           </p>
         </DashboardSection>

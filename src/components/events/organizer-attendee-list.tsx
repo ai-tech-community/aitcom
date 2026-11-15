@@ -293,7 +293,7 @@ function AttendeeRow({ row, eventId }: { row: Attendee; eventId: number }) {
               <dt className="text-muted-foreground text-xs">
                 {answer.question}
               </dt>
-              <dd className="break-words whitespace-pre-line">
+              <dd dir="auto" className="break-words whitespace-pre-line">
                 {Array.isArray(answer.value)
                   ? answer.value.join(", ")
                   : answer.value}

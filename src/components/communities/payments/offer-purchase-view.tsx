@@ -44,8 +44,13 @@ export function OfferPurchaseView({
     <section className="border-border space-y-5 border-t pt-6">
       <div className="space-y-2">
         <p className="text-muted-foreground text-sm">{t(offer.kind)}</p>
-        <h2 className="text-xl font-semibold">{offer.title}</h2>
-        <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+        <h2 dir="auto" className="text-xl font-semibold">
+          {offer.title}
+        </h2>
+        <p
+          dir="auto"
+          className="text-muted-foreground text-sm whitespace-pre-wrap"
+        >
           {offer.description}
         </p>
         <p className="text-2xl font-semibold tabular-nums">

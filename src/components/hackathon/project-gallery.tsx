@@ -135,7 +135,7 @@ export function ProjectGallery({
               </div>
 
               {project.artifactSummary ? (
-                <p className="mt-3 text-sm whitespace-pre-line">
+                <p dir="auto" className="mt-3 text-sm whitespace-pre-line">
                   {project.artifactSummary}
                 </p>
               ) : null}

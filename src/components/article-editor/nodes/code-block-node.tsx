@@ -172,6 +172,7 @@ function CodeBlockComponent({
         onChange={handleCodeChange}
         onKeyDown={handleKeyDown}
         spellCheck={false}
+        dir="ltr"
         className="w-full resize-none bg-transparent px-4 py-3 font-mono text-sm leading-relaxed focus:outline-none"
         rows={3}
       />

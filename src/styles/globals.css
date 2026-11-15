@@ -244,6 +244,19 @@
   body {
     @apply bg-background text-foreground;
   }
+  /*
+   * Fields where members write free text take each line's direction from
+   * its first letter, so Hebrew or Arabic is typed right to left in any
+   * locale. Same as the browser's own dir="auto" for a textarea, without
+   * marking every field. Addresses, emails and numbers keep left to right,
+   * and a field that sets its own dir (a code box: dir="ltr") keeps it.
+   */
+  textarea:not([dir]),
+  input:not([type], [dir]),
+  input[type="text"]:not([dir]),
+  input[type="search"]:not([dir]) {
+    unicode-bidi: plaintext;
+  }
 }
 
 /* Lexical DraggableBlockPlugin: portal wrapper needs absolute positioning */
@@ -282,9 +295,10 @@
   }
 }
 
+/* Logical sides: in a right-to-left article the drop cap sits on the right. */
 .editorial-body > p:first-of-type::first-letter {
-  float: left;
-  padding-right: 0.55rem;
+  float: inline-start;
+  padding-inline-end: 0.55rem;
   font-family: var(--magazine-serif), Georgia, serif;
   font-size: 4.6rem;
   font-weight: 500;
