@@ -27,6 +27,7 @@ import {
   COMMUNITY_VISIBILITY_COLUMNS,
   communityStanding,
   viewerCanReadContent,
+  viewerCanReadRoster,
   type CommunityRef,
 } from "./content-visibility-queries";
 import { isOnTheWayIn } from "./content-visibility";
@@ -103,6 +104,25 @@ export async function requireReadableCommunityBySlug(
   const community = await liveCommunityBySlug(db, slug);
   if (!community) throw notFound(options);
   await requireReadableCommunity(db, community, userId, options);
+  return community;
+}
+
+/**
+ * The live community with this slug, when the viewer may read its roster
+ * (member list, faces, counts). Missing, deleted and unreadable all answer
+ * NOT_FOUND.
+ */
+export async function requireReadableRosterBySlug(
+  db: DB,
+  slug: string,
+  userId: string | null | undefined,
+  options: GuardOptions = {},
+): Promise<CommunityRef> {
+  const community = await liveCommunityBySlug(db, slug);
+  if (!community) throw notFound(options);
+  if (!(await viewerCanReadRoster(db, community, userId))) {
+    throw notFound(options);
+  }
   return community;
 }
 

@@ -201,7 +201,12 @@ export async function loadPublicLiveness(
   return { activeContributors: contributors.size, recentThreads };
 }
 
-/** The set of community ids the user is an active member of. */
+/**
+ * The set of community ids the user has an active membership row in, paid
+ * or not: what recommendations leave out ("communities you are not yet
+ * in"). Not an access check: who may see a community's faces, counts or
+ * content is `activeMemberCommunityIds` in the read seam.
+ */
 export async function loadMemberCommunityIds(
   db: DB,
   userId: string,

@@ -23,6 +23,7 @@ import {
   requireReadableCommunity,
   requireReadableCommunityBySlug,
   requireReadableContentOf,
+  requireReadableRosterBySlug,
 } from "./content-access";
 import {
   activeMemberCommunityIds,
@@ -165,6 +166,31 @@ describe("requireReadableCommunityBySlug", () => {
     expect(communityRow).toHaveBeenCalledWith(
       expect.objectContaining({ columns: COMMUNITY_VISIBILITY_COLUMNS }),
     );
+  });
+});
+
+describe("requireReadableRosterBySlug", () => {
+  it("hides a members-only roster from outsiders, and the Hub's too", async () => {
+    for (const community of [INVITE_ONLY, APPROVAL, UNLISTED, HUB]) {
+      await expect(
+        requireReadableRosterBySlug(fakeDb(community).db, "x", "outsider"),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+  });
+
+  it("shows a members-only roster to a member, and a public one to anyone", async () => {
+    await expect(
+      requireReadableRosterBySlug(fakeDb(APPROVAL, MEMBER).db, "x", "u1"),
+    ).resolves.toEqual(APPROVAL);
+    await expect(
+      requireReadableRosterBySlug(fakeDb(PUBLIC).db, "x", null),
+    ).resolves.toEqual(PUBLIC);
+  });
+
+  it("answers NOT_FOUND for a missing community", async () => {
+    await expect(
+      requireReadableRosterBySlug(fakeDb(null).db, "x", "u1"),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
 
