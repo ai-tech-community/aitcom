@@ -7,6 +7,7 @@ import type { Event } from "@/payload-types";
 import { canReadContent } from "@/server/communities/content-visibility";
 import {
   COMMUNITY_VISIBILITY_COLUMNS,
+  communityRefOf,
   communityStanding,
   type CommunityRef,
 } from "@/server/communities/content-visibility-queries";
@@ -88,12 +89,7 @@ async function viewerIn(
     isMember,
     isModerator: isModeratorRole(activeRole),
     canSeePublic: isMember || (await outsidersMayRead(deps, community, userId)),
-    community: {
-      id: community.id,
-      slug: community.slug,
-      isListedInDirectory: community.isListedInDirectory,
-      joinPolicy: community.joinPolicy,
-    },
+    community: communityRefOf(community),
     membershipStatus: status,
   };
 }
