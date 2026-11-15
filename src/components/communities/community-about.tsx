@@ -83,7 +83,8 @@ function ClampedText({ text }: { text: string }) {
         ref={ref}
         data-community-description=""
         className={cn(
-          "text-muted-foreground text-sm leading-relaxed whitespace-pre-line",
+          // Full width so a long link breaks instead of widening the panel.
+          "text-muted-foreground w-full text-sm leading-relaxed wrap-break-word whitespace-pre-line",
           !open && "line-clamp-6",
         )}
       >
@@ -96,7 +97,7 @@ function ClampedText({ text }: { text: string }) {
           aria-controls={id}
           onClick={() => setOpen((value) => !value)}
           // Ink, not the link variant's orange: the page's one orange is Join.
-          className="text-foreground focus-visible:ring-ring rounded-sm text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
+          className="text-foreground focus-visible:ring-ring/50 min-h-6 rounded-sm py-0.5 text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
         >
           {open ? t("showLess") : t("showMore")}
         </button>

@@ -32,6 +32,11 @@ describe("MemberStackView", () => {
     expect(screen.queryByText(/^\+/)).not.toBeInTheDocument();
   });
 
+  it("is a labelled group, so screen readers hear the member count", () => {
+    render(<MemberStackView faces={faces} total={42} />);
+    expect(screen.getByRole("group", { name: "label" })).toBeInTheDocument();
+  });
+
   it("renders the '+N' overflow once the total exceeds the max", () => {
     render(<MemberStackView faces={faces} total={396} />);
     // Initials fallbacks render for image-less faces.

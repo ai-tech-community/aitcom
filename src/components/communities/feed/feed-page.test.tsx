@@ -110,16 +110,19 @@ describe("FeedPage side panel", () => {
     expect(panel?.className).not.toMatch(/\b(hidden|lg:sticky)\b/);
   });
 
-  it("opens with About, which moves above the feed below xl", () => {
+  it("puts About first in reading order, then the feed, then the panel", () => {
     const { container } = renderPage(false);
-    const panel = container.querySelector("[data-feed-side-panel]");
     const about = screen.getByTestId("community-about");
+    const panel = container.querySelector("[data-feed-side-panel]")!;
     expect(screen.getAllByTestId("community-about")).toHaveLength(1);
-    expect(panel?.firstElementChild).toBe(about);
-    // Below xl the panel's wrapper drops out, so its two parts become items
-    // of the page grid: About first, the rest after the feed.
-    expect(panel?.className).toMatch(/^contents\b/);
-    expect(about.className).toMatch(/\border-first\b/);
-    expect(about.className).toMatch(/\bxl:order-none\b/);
+    // Same order in code as on screen, so keyboard and screen-reader users
+    // meet About first at every size: no CSS `order` reshuffle.
+    const grid = about.parentElement!;
+    expect(grid.firstElementChild).toBe(about);
+    expect(grid.lastElementChild).toBe(panel);
+    expect(about.className).not.toMatch(/\border-/);
+    // From xl, About and the panel share the right column.
+    expect(about.className).toMatch(/\bxl:col-start-2\b/);
+    expect(panel.className).toMatch(/\bxl:col-start-2\b/);
   });
 });

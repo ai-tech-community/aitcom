@@ -48,6 +48,9 @@ export function MemberStackView({
     <TooltipProvider delayDuration={150}>
       <AvatarGroup
         className={className}
+        // A labelled group, so screen readers announce the member count:
+        // there is no visible "N members" line beside the faces.
+        role="group"
         aria-label={t("label", { count: total })}
         data-slot="member-stack"
       >
