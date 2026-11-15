@@ -18,6 +18,11 @@ import { agentDraftResponse } from "@/server/agent/draft-result";
 import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
 import { getPayloadClient } from "@/server/payload";
 import { agentDrafts, communities } from "@/server/db/schema";
+import { requireActiveMember } from "@/server/communities/content-access";
+import {
+  COMMUNITY_VISIBILITY_COLUMNS,
+  communityRefOf,
+} from "@/server/communities/content-visibility-queries";
 
 /**
  * Forum writes an agent makes as its owner. Validation matches the forum
@@ -54,10 +59,17 @@ export const agentForumRouter = {
                   : eq(communities.slug, input.communitySlug!),
                 isNull(communities.deletedAt),
               ),
-              columns: { id: true, name: true, slug: true },
+              columns: { ...COMMUNITY_VISIBILITY_COLUMNS, name: true },
             })
           : null;
       const community = assertThreadCommunity(input, row ?? null);
+      // The owner must be an active member, now and again when the draft
+      // is approved (ADR-0050); a community they may not read is NOT_FOUND.
+      if (row) {
+        await requireActiveMember(ctx.db, communityRefOf(row), ownerId, {
+          notFound: "Community not found",
+        });
+      }
       await requireRulesAcceptance(ownerId, community?.id);
       const payload = await getPayloadClient();
       const image = await resolveContentImage(payload, ownerId, {

@@ -35,7 +35,10 @@ import {
   hiddenContentCommunityIds,
   viewerCanReadContentOf,
 } from "@/server/communities/content-visibility-queries";
-import { requireReadableRosterBySlug } from "@/server/communities/content-access";
+import {
+  requireActiveMemberOf,
+  requireReadableRosterBySlug,
+} from "@/server/communities/content-access";
 import {
   directoryProfileColumns,
   toDirectoryMember,
@@ -1205,6 +1208,13 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
+      // The owner must be an active member of the thread's community, as
+      // a member replying in the browser must (ADR-0050); a thread they may
+      // not read answers like a missing one.
+      await requireActiveMemberOf(ctx.db, thread.communityId, ownerId, {
+        notFound: "Thread not found",
+      });
+
       if (thread.isLocked) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -1291,6 +1301,13 @@ export const agentRouter = createTRPCRouter({
           message: "Thread not found",
         });
       }
+
+      // The owner must be an active member of the thread's community, as
+      // a member replying in the browser must (ADR-0050); a thread they may
+      // not read answers like a missing one.
+      await requireActiveMemberOf(ctx.db, thread.communityId, ownerId, {
+        notFound: "Thread not found",
+      });
 
       if (thread.isLocked) {
         throw new TRPCError({
@@ -1401,6 +1418,24 @@ export const agentRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
+      // The idea first: a missing idea and one in a community the owner
+      // may not read answer the same way, before anything about votes.
+      const idea = await payload.findByID({
+        collection: "community-ideas",
+        id: input.ideaId,
+        depth: 0,
+        disableErrors: true,
+      });
+      if (!idea) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Idea not found",
+        });
+      }
+      await requireActiveMemberOf(ctx.db, idea.communityId, ownerId, {
+        notFound: "Idea not found",
+      });
+
       // Check if the owner has already voted
       const { docs: existingVotes } = await payload.find({
         collection: "idea-votes",
@@ -1419,21 +1454,6 @@ export const agentRouter = createTRPCRouter({
           voted: false,
           message: "Owner has already voted on this idea",
         };
-      }
-
-      // Fetch the idea to get current vote count
-      let idea;
-      try {
-        idea = await payload.findByID({
-          collection: "community-ideas",
-          id: input.ideaId,
-          depth: 0,
-        });
-      } catch {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Idea not found",
-        });
       }
 
       // Create vote on behalf of the owner
