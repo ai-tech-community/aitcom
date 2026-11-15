@@ -1,25 +1,20 @@
-import { and, eq, isNull } from "drizzle-orm";
-
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
 import type { db as Database } from "@/server/db";
-import { communities } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 
 import { forumBodyToLexical } from "./forum-body";
-import {
-  type ForumThreadDraft,
-  forumThreadSlug,
-  threadCommunityId,
-} from "./forum-thread-draft";
+import { requireActiveMemberBySlug } from "./content-access";
+import { type ForumThreadDraft, forumThreadSlug } from "./forum-thread-draft";
 import { requireRulesAcceptance } from "./rules-acceptance";
 
 type DB = typeof Database;
 
 /**
  * Create a forum thread the way the browser form does: same length limits,
- * categories, rules check, author fields, and XP. The author of record is
- * `author` (the signed-in member, or the agent owner's account).
+ * categories, membership and rules checks, author fields, and XP. The
+ * author of record is `author` (the signed-in member, or the reviewer who
+ * approves an agent's draft).
  */
 export async function createForumThread(
   db: DB,
@@ -27,17 +22,16 @@ export async function createForumThread(
   author: { id: string; name: string },
   input: ForumThreadDraft,
 ) {
-  let communityId: string | undefined;
-  if (input.communitySlug) {
-    const community = await db.query.communities.findFirst({
-      where: and(
-        eq(communities.slug, input.communitySlug),
-        isNull(communities.deletedAt),
-      ),
-      columns: { id: true },
-    });
-    communityId = threadCommunityId(input.communitySlug, community);
-  }
+  // A community's thread needs its author to be an active member in good
+  // standing (ADR-0050). An unknown slug, and a community the author may
+  // not read, are NOT_FOUND, never a silent Hub thread.
+  const communityId = input.communitySlug
+    ? (
+        await requireActiveMemberBySlug(db, input.communitySlug, author.id, {
+          notFound: "Community not found",
+        })
+      ).id
+    : undefined;
   await requireRulesAcceptance(author.id, communityId);
   const payload = await getPayloadClient();
   const slug = await forumThreadSlugToPublish(payload, input.title, input.slug);

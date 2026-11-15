@@ -33,6 +33,8 @@ import {
 } from "@/server/communities/live-forum-replies";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import {
+  requireActiveMemberBySlug,
+  requireActiveMemberOf,
   requireJoinTermsReader,
   requireReadableContentOf,
 } from "@/server/communities/content-access";
@@ -232,17 +234,18 @@ export const forumRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      let communityId: string | undefined;
-      if (input.communitySlug) {
-        const community = await ctx.db.query.communities.findFirst({
-          where: and(
-            eq(communities.slug, input.communitySlug),
-            isNull(communities.deletedAt),
-          ),
-          columns: { id: true },
-        });
-        communityId = community?.id;
-      }
+      // A community's idea needs an active member (ADR-0050); an unknown
+      // slug is NOT_FOUND, never a silent Hub idea.
+      const communityId = input.communitySlug
+        ? (
+            await requireActiveMemberBySlug(
+              ctx.db,
+              input.communitySlug,
+              ctx.session.user.id,
+              { notFound: "Community not found" },
+            )
+          ).id
+        : undefined;
       await requireRulesAcceptance(ctx.session.user.id, communityId);
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
@@ -284,6 +287,15 @@ export const forumRouter = createTRPCRouter({
         collection: "community-ideas",
         id: input.ideaId,
         depth: 0,
+        disableErrors: true,
+      });
+      if (!idea) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Idea not found" });
+      }
+      // Voting on a community's idea needs an active member; a hidden idea
+      // answers like a missing one.
+      await requireActiveMemberOf(ctx.db, idea.communityId, userId, {
+        notFound: "Idea not found",
       });
       await requireRulesAcceptance(
         ctx.session.user.id,
@@ -521,20 +533,29 @@ export const forumRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
 
-      let thread;
-      try {
-        thread = await payload.findByID({
-          collection: "forum-threads",
-          id: input.threadId,
-          depth: 0,
-          overrideAccess: true,
-        });
-      } catch {
+      const thread = await payload.findByID({
+        collection: "forum-threads",
+        id: input.threadId,
+        depth: 0,
+        overrideAccess: true,
+        disableErrors: true,
+      });
+      if (!thread) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Thread not found",
         });
       }
+
+      // Hub-wide threads (no communityId) are open to any signed-in member.
+      // A community's thread needs an active member in good standing; one
+      // the caller may not read answers like a missing thread (ADR-0050).
+      await requireActiveMemberOf(
+        ctx.db,
+        thread.communityId,
+        ctx.session.user.id,
+        { notFound: "Thread not found" },
+      );
 
       await requireRulesAcceptance(
         ctx.session.user.id,
@@ -546,25 +567,6 @@ export const forumRouter = createTRPCRouter({
           code: "FORBIDDEN",
           message: "This thread is locked",
         });
-      }
-
-      // Hub-wide threads (no communityId) are open to any signed-in member.
-      // Community-scoped threads require an *active* membership — member is
-      // enough; do not require a Payload CMS user or operator role.
-      if (thread.communityId) {
-        const membership = await ctx.db.query.communityMemberships.findFirst({
-          where: and(
-            eq(communityMemberships.communityId, thread.communityId),
-            eq(communityMemberships.userId, ctx.session.user.id),
-            eq(communityMemberships.status, "active"),
-          ),
-        });
-        if (!membership) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "You must be a community member to reply",
-          });
-        }
       }
 
       let reply;
