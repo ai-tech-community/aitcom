@@ -12,7 +12,8 @@ vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => ({ data: { user: { id: "ada" } } }) },
 }));
 
-import { MESSAGES_PAGE_SIZE, useSendMessage } from "./use-send-message";
+import { messagesQueryInput } from "./conversation-messages";
+import { useSendMessage } from "./use-send-message";
 
 type Page = RouterOutputs["inbox"]["getMessages"];
 
@@ -52,12 +53,15 @@ function setup() {
     </api.Provider>
   );
   return renderHook(
-    () => ({ composer: useSendMessage("c1"), utils: api.useUtils() }),
-    { wrapper },
+    ({ conversationId }: { conversationId: string }) => ({
+      composer: useSendMessage(conversationId),
+      utils: api.useUtils(),
+    }),
+    { wrapper, initialProps: { conversationId: "c1" } },
   );
 }
 
-const key = { conversationId: "c1", limit: MESSAGES_PAGE_SIZE };
+const key = messagesQueryInput("c1");
 
 const earlier = {
   id: "m1",
@@ -123,5 +127,43 @@ describe("useSendMessage", () => {
     });
 
     expect(result.current.utils.inbox.getMessages.getData(key)).toEqual(page);
+  });
+
+  it("takes the message back from its own conversation after the view moved on", async () => {
+    let fail!: (error: Error) => void;
+    answer = () =>
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      });
+    const { result, rerender } = setup();
+    const page = { messages: [earlier] } as Page;
+    const otherKey = messagesQueryInput("c2");
+    const otherPage = { messages: [] } as unknown as Page;
+    act(() => {
+      result.current.utils.inbox.getMessages.setData(key, page);
+      result.current.utils.inbox.getMessages.setData(otherKey, otherPage);
+    });
+
+    let sending!: Promise<void>;
+    act(() => {
+      sending = result.current.composer.send("hi");
+    });
+    await waitFor(() =>
+      expect(
+        result.current.utils.inbox.getMessages.getData(key)?.messages,
+      ).toHaveLength(2),
+    );
+
+    // The member opens another conversation while the send is in flight.
+    rerender({ conversationId: "c2" });
+    await act(async () => {
+      fail(new Error("offline"));
+      await expect(sending).rejects.toThrow("offline");
+    });
+
+    expect(result.current.utils.inbox.getMessages.getData(key)).toEqual(page);
+    expect(result.current.utils.inbox.getMessages.getData(otherKey)).toEqual(
+      otherPage,
+    );
   });
 });

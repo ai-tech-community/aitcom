@@ -20,11 +20,15 @@ vi.mock("@/components/composer/emoji-picker-button", () => ({
   ),
 }));
 
+import { MESSAGE_MAX_LENGTH } from "@/lib/message-rules";
+
 import { MessageComposer } from "./message-composer";
 
 function renderComposer() {
   render(<MessageComposer conversationId="c1" placeholder="Write…" />);
-  return screen.getByPlaceholderText<HTMLTextAreaElement>("Write…");
+  return screen.getByRole<HTMLTextAreaElement>("textbox", {
+    name: "messageLabel",
+  });
 }
 
 /** Lets PromptInput's async submit run to the end. */
@@ -57,6 +61,24 @@ describe("MessageComposer", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    // jsdom has no execCommand; drop the one a test put there.
+    Reflect.deleteProperty(document, "execCommand");
+  });
+
+  it("names the field and the send button in the member's language", () => {
+    const textarea = renderComposer();
+
+    expect(textarea).toHaveAttribute("placeholder", "Write…");
+    expect(screen.getByRole("button", { name: "send" })).toHaveAttribute(
+      "type",
+      "submit",
+    );
+  });
+
+  it("stops the field at the longest message the server takes", () => {
+    const textarea = renderComposer();
+
+    expect(textarea.maxLength).toBe(MESSAGE_MAX_LENGTH);
   });
 
   it("inserts a picked emoji at the end when the field was never focused", () => {
@@ -113,7 +135,14 @@ describe("MessageComposer", () => {
     expect(toast.error).toHaveBeenCalledWith("sendFailed");
   });
 
-  it("keeps newer text when a send fails after the member typed on", async () => {
+  it("puts the failed text back in front of newer text, as one undoable edit", async () => {
+    // Record the browser insert command applyEdit uses; report it missing
+    // so the value is set directly, as in browsers without it.
+    const execCommand = vi.fn(() => false);
+    Object.defineProperty(document, "execCommand", {
+      value: execCommand,
+      configurable: true,
+    });
     const pending = deferred();
     send.mockReturnValue(pending.promise);
     const textarea = renderComposer();
@@ -126,7 +155,12 @@ describe("MessageComposer", () => {
     pending.reject(new Error("offline"));
     await settle();
 
-    expect(textarea.value).toBe("and another thing");
+    const combined = "hello\nand another thing";
+    expect(textarea.value).toBe(combined);
+    expect(execCommand).toHaveBeenCalledWith("insertText", false, "hello\n");
+    expect(document.activeElement).toBe(textarea);
+    expect(textarea.selectionStart).toBe(combined.length);
+    expect(textarea.selectionEnd).toBe(combined.length);
     expect(toast.error).toHaveBeenCalledWith("sendFailed");
   });
 });

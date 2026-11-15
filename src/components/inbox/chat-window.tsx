@@ -10,7 +10,6 @@ import {
   XIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Spinner } from "@/components/ui/spinner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -27,9 +26,8 @@ import {
 } from "@/components/ai-elements/message";
 import { Link } from "@/i18n/navigation";
 import { useInbox } from "./inbox-provider";
-import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
+import { useConversationMessages } from "./conversation-messages";
 import { MessageComposer } from "./message-composer";
-import { MESSAGES_PAGE_SIZE } from "./use-send-message";
 import { useInboxStream } from "./use-inbox-stream";
 import { UiMessage } from "./ui-message";
 import { isChatUiEnabled } from "@/lib/chat/flags";
@@ -78,10 +76,7 @@ export function ChatWindow({
 
   const currentUserId = session?.user?.id;
 
-  const messagesQuery = api.inbox.getMessages.useQuery(
-    { conversationId, limit: MESSAGES_PAGE_SIZE },
-    { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
-  );
+  const messagesQuery = useConversationMessages(conversationId);
 
   // ── Derived data ────────────────────────────────────────────────────────
 

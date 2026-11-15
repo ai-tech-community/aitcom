@@ -1273,6 +1273,8 @@
     "noConversationsDescription": "Start een gesprek met een community-lid of je AI-agent.",
     "placeholder": "Typ een bericht...",
     "sendFailed": "Je bericht is niet verstuurd. Probeer het opnieuw.",
+    "send": "Versturen",
+    "messageLabel": "Bericht",
     "agentLabel": "Jouw Agent",
     "unreadBadge": "ongelezen berichten",
     "minimize": "Minimaliseren",

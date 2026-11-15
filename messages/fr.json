@@ -1273,6 +1273,8 @@
     "noConversationsDescription": "Lancez une conversation avec un membre de la communauté ou votre agent IA.",
     "placeholder": "Saisissez un message...",
     "sendFailed": "Votre message n’a pas été envoyé. Réessayez.",
+    "send": "Envoyer",
+    "messageLabel": "Message",
     "agentLabel": "Votre agent",
     "unreadBadge": "messages non lus",
     "minimize": "Réduire",

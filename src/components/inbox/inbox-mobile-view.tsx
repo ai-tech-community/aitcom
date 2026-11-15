@@ -3,7 +3,6 @@
 import { useCallback } from "react";
 import { ArrowLeftIcon, BotIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Spinner } from "@/components/ui/spinner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -19,9 +18,8 @@ import {
   MessageResponse,
 } from "@/components/ai-elements/message";
 import { useInbox } from "./inbox-provider";
-import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
+import { useConversationMessages } from "./conversation-messages";
 import { MessageComposer } from "./message-composer";
-import { MESSAGES_PAGE_SIZE } from "./use-send-message";
 import { useInboxStream } from "./use-inbox-stream";
 
 // ---------------------------------------------------------------------------
@@ -60,10 +58,7 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
 
   // ── Data fetching ─────────────────────────────────────────────────────
 
-  const messagesQuery = api.inbox.getMessages.useQuery(
-    { conversationId: chatInfo.conversationId, limit: MESSAGES_PAGE_SIZE },
-    { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
-  );
+  const messagesQuery = useConversationMessages(chatInfo.conversationId);
 
   // ── Handlers ──────────────────────────────────────────────────────────
 

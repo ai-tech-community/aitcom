@@ -8,7 +8,6 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,10 +24,9 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
-import { LIVE_MESSAGES_FALLBACK_MS } from "@/components/inbox/live-refetch";
+import { useConversationMessages } from "@/components/inbox/conversation-messages";
 import { MessageComposer } from "@/components/inbox/message-composer";
 import { UiMessage } from "@/components/inbox/ui-message";
-import { MESSAGES_PAGE_SIZE } from "@/components/inbox/use-send-message";
 import { isChatUiEnabled } from "@/lib/chat/flags";
 
 type ConversationViewProps = {
@@ -65,10 +63,7 @@ export function ConversationView({
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id;
 
-  const messagesQuery = api.inbox.getMessages.useQuery(
-    { conversationId, limit: MESSAGES_PAGE_SIZE },
-    { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
-  );
+  const messagesQuery = useConversationMessages(conversationId);
 
   const messages = useMemo(
     () => messagesQuery.data?.messages ?? [],

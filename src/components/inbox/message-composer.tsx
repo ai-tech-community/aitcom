@@ -12,17 +12,18 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import { EmojiPickerButton } from "@/components/composer/emoji-picker-button";
-import { insertAtCaret } from "@/components/composer/text-edit";
+import { applyEdit, insertAtCaret } from "@/components/composer/text-edit";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { MESSAGE_MAX_LENGTH } from "@/lib/message-rules";
 
 import { useSendMessage } from "./use-send-message";
 
 /**
- * The one message composer every inbox view renders (floating chat window,
- * /messages, mobile inbox): a text field, a toolbar of extras on the left
- * (emoji) and the send button on the right. Enter sends, Shift+Enter makes
- * a new line. The field is uncontrolled; PromptInput empties it on send,
- * and a failed send puts the text back.
+ * The one message composer every conversation view renders (floating chat
+ * window, /messages, mobile inbox, community rooms): a text field, a
+ * toolbar of extras on the left (emoji) and the send button on the right.
+ * Enter sends, Shift+Enter makes a new line. The field is uncontrolled;
+ * PromptInput empties it on send, and a failed send puts the text back.
  */
 export function MessageComposer({
   conversationId,
@@ -41,9 +42,20 @@ export function MessageComposer({
         await send(text);
       } catch (error) {
         // PromptInput emptied the field before sending. Give the text back,
-        // unless the member has started a new message since.
+        // in front of anything the member has typed since, as one undoable
+        // edit with the caret at the end.
         const field = textareaRef.current;
-        if (field?.value === "") field.value = text;
+        if (field) {
+          const typed = field.value;
+          const value = typed ? `${text}\n${typed}` : text;
+          applyEdit(
+            field,
+            { value, start: value.length, end: value.length },
+            (next) => {
+              field.value = next;
+            },
+          );
+        }
         toast.error(t("sendFailed"));
         // PromptInput keeps everything else as it was on a failed send.
         throw error;
@@ -64,6 +76,8 @@ export function MessageComposer({
       <PromptInput onSubmit={handleSubmit}>
         <PromptInputTextarea
           ref={textareaRef}
+          aria-label={t("messageLabel")}
+          maxLength={MESSAGE_MAX_LENGTH}
           placeholder={placeholder}
           className="min-h-10 text-sm"
         />
@@ -71,7 +85,7 @@ export function MessageComposer({
           <PromptInputTools>
             <EmojiPickerButton onPick={insertEmoji} />
           </PromptInputTools>
-          <PromptInputSubmit disabled={isPending} />
+          <PromptInputSubmit aria-label={t("send")} disabled={isPending} />
         </PromptInputFooter>
       </PromptInput>
     </TooltipProvider>

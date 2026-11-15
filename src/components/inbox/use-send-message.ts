@@ -5,12 +5,7 @@ import { useCallback } from "react";
 import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
 
-/**
- * How many messages a conversation view loads. Every `inbox.getMessages`
- * read uses it, so they share one cache entry, the one the optimistic row
- * is written to.
- */
-export const MESSAGES_PAGE_SIZE = 50;
+import { messagesQueryInput } from "./conversation-messages";
 
 /**
  * Sends a message in one conversation. The member's own message shows at
@@ -27,9 +22,12 @@ export function useSendMessage(conversationId: string): {
   const currentUserId = session?.user?.id;
 
   const sendMessage = api.inbox.sendMessage.useMutation({
-    onMutate: async ({ content }) => {
+    // The conversation comes from the mutation's own input, not from this
+    // render: a send that settles after the view moved to another
+    // conversation must still touch only its own conversation's messages.
+    onMutate: async ({ conversationId, content }) => {
       if (!currentUserId) return;
-      const key = { conversationId, limit: MESSAGES_PAGE_SIZE };
+      const key = messagesQueryInput(conversationId);
       await utils.inbox.getMessages.cancel(key);
       const previous = utils.inbox.getMessages.getData(key);
       utils.inbox.getMessages.setData(key, (old) => {
@@ -45,10 +43,10 @@ export function useSendMessage(conversationId: string): {
       });
       return { previous };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (_err, { conversationId }, ctx) => {
       if (ctx?.previous) {
         utils.inbox.getMessages.setData(
-          { conversationId, limit: MESSAGES_PAGE_SIZE },
+          messagesQueryInput(conversationId),
           ctx.previous,
         );
       }
