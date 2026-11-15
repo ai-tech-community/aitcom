@@ -26,6 +26,7 @@ import {
   challengeReplies,
   communities,
   communityMemberships,
+  user,
 } from "@/server/db/schema";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
@@ -34,6 +35,11 @@ import {
   hiddenContentCommunityIds,
   viewerCanReadContentOf,
 } from "@/server/communities/content-visibility-queries";
+import { requireReadableRosterBySlug } from "@/server/communities/content-access";
+import {
+  directoryProfileColumns,
+  toDirectoryMember,
+} from "@/server/communities/directory-member";
 import { getPayloadClient } from "@/server/payload";
 import {
   readableArticleWhere,
@@ -539,29 +545,28 @@ export const agentRouter = createTRPCRouter({
       requireScope(ctx.agent.scopes, "read");
 
       if (input.communitySlug) {
-        const community = await ctx.db.query.communities.findFirst({
-          where: and(
-            eq(communities.slug, input.communitySlug),
-            isNull(communities.deletedAt),
-          ),
-        });
-        if (!community)
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Community not found",
-          });
+        // A community's roster follows the roster rule for the agent's
+        // owner (ADR-0050); each member's details follow their profile
+        // visibility, the same way communities.getMembers shows them.
+        const community = await requireReadableRosterBySlug(
+          ctx.db,
+          input.communitySlug,
+          ctx.agent.ownerId,
+          { notFound: "Community not found" },
+        );
 
-        const members = await ctx.db
+        const rows = await ctx.db
           .select({
             userId: communityMemberships.userId,
             role: communityMemberships.role,
             joinedAt: communityMemberships.joinedAt,
             displayName: memberProfiles.displayName,
             bio: memberProfiles.bio,
-            xp: memberProfiles.xp,
-            level: memberProfiles.level,
+            image: user.image,
+            ...directoryProfileColumns(),
           })
           .from(communityMemberships)
+          .innerJoin(user, eq(communityMemberships.userId, user.id))
           .leftJoin(
             memberProfiles,
             eq(communityMemberships.userId, memberProfiles.userId),
@@ -575,16 +580,19 @@ export const agentRouter = createTRPCRouter({
           .orderBy(desc(communityMemberships.joinedAt))
           .limit(input.limit);
 
-        return members.map((m) => ({
-          userId: m.userId,
-          displayName: m.displayName ?? null,
-          bio: m.bio ?? null,
-          skills: null,
-          company: null,
-          xp: m.xp ?? 0,
-          level: m.level ?? 1,
-          role: m.role,
-        }));
+        return rows.map((row) => {
+          const { profile } = toDirectoryMember(row, ctx.agent.ownerId);
+          return {
+            userId: row.userId,
+            displayName: row.displayName ?? null,
+            bio: row.bio ?? null,
+            skills: profile?.skills ?? null,
+            company: profile?.company ?? null,
+            xp: profile ? (row.xp ?? 0) : null,
+            level: profile?.level ?? null,
+            role: row.role,
+          };
+        });
       }
 
       // Original global logic unchanged below

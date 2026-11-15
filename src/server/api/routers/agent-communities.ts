@@ -6,7 +6,17 @@
 import { publicImageUrlSchema } from "@/server/agent/public-image-url";
 import { z } from "zod";
 import { escapeLike } from "@/server/db/escape-like";
-import { and, asc, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  isNull,
+  ilike,
+  sql,
+  desc,
+  count,
+} from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { agentProcedure, requireScope, requireOwner } from "@/server/api/trpc";
@@ -16,6 +26,7 @@ import {
   communityInvites,
   agentSuggestions,
   spaces,
+  spaceMemberships,
   user,
 } from "@/server/db/schema";
 import { generateSlug } from "@/server/communities/slug-utils";
@@ -29,7 +40,11 @@ import { activateMembership } from "@/server/communities/activate-membership";
 import { consumeInviteUse } from "@/server/communities/invite-uses";
 import { canRedeemInvite } from "@/server/communities/invite-policy";
 import { cardShowsMemberCount } from "@/server/communities/content-visibility";
-import { loadMemberCommunityIds } from "@/server/communities/discovery-queries";
+import {
+  activeCommunityRole,
+  activeMemberCommunityIds,
+  viewerCommunityAccess,
+} from "@/server/communities/content-visibility-queries";
 import { canAdvise } from "@/server/agents/advisory";
 import {
   communityDescriptionSchema,
@@ -56,6 +71,7 @@ import {
   unknownMagazineLogoWarning,
   type SettingsFieldWarning,
 } from "@/server/communities/settings-field-warnings";
+import type { db as appDb } from "@/server/db";
 import { getPayloadClient } from "@/server/payload";
 import { membershipPaymentAllowed } from "@/server/payments/access";
 import { stopCommunityMembershipBilling } from "@/server/payments/management";
@@ -138,6 +154,57 @@ async function requireAdvisoryAdmin(
   return membership;
 }
 
+/**
+ * The community's spaces the owner may know about: every built-in surface
+ * and public room, and a private room only when the owner is in it or runs
+ * the community (owner or admin), as the room pages decide.
+ */
+async function ownerVisibleSpaces(
+  db: typeof appDb,
+  communityId: string,
+  ownerId: string,
+) {
+  const role = await activeCommunityRole(db, communityId, ownerId);
+  const seesEveryRoom = role === "owner" || role === "admin";
+  const rows = await db
+    .select({
+      id: spaces.id,
+      kind: spaces.kind,
+      builtinSurface: spaces.builtinSurface,
+      slug: spaces.slug,
+      visibility: spaces.visibility,
+      archivedAt: spaces.archivedAt,
+    })
+    .from(spaces)
+    .where(eq(spaces.communityId, communityId))
+    .orderBy(asc(spaces.position));
+  if (seesEveryRoom) return rows;
+  const privateRoomIds = rows
+    .filter((row) => row.kind === "room" && row.visibility === "private")
+    .map((row) => row.id);
+  const joined =
+    privateRoomIds.length === 0
+      ? new Set<string>()
+      : new Set(
+          (
+            await db
+              .select({ spaceId: spaceMemberships.spaceId })
+              .from(spaceMemberships)
+              .where(
+                and(
+                  eq(spaceMemberships.userId, ownerId),
+                  eq(spaceMemberships.status, "active"),
+                  inArray(spaceMemberships.spaceId, privateRoomIds),
+                ),
+              )
+          ).map((row) => row.spaceId),
+        );
+  return rows.filter(
+    (row) =>
+      row.kind !== "room" || row.visibility !== "private" || joined.has(row.id),
+  );
+}
+
 // ── Procedures ───────────────────────────────────────────────────────────────
 
 export const agentCommunityRouter = {
@@ -199,7 +266,7 @@ export const agentCommunityRouter = {
       // An agent reads as its owner: a private community's member count
       // only when the owner is a member (ADR-0050); null otherwise.
       const memberOf = ctx.agent.ownerId
-        ? await loadMemberCommunityIds(ctx.db, ctx.agent.ownerId)
+        ? await activeMemberCommunityIds(ctx.db, ctx.agent.ownerId)
         : new Set<string>();
       return items.map(({ isListedInDirectory, ...item }) => ({
         ...item,
@@ -212,24 +279,47 @@ export const agentCommunityRouter = {
       }));
     }),
 
-  /** Get community details + the owner's membership/role. */
+  /**
+   * Community details + the owner's membership/role, read as the owner
+   * (ADR-0050). Everyone gets the front door `communities.getBySlug` gives:
+   * who it is and how to join. The member count follows the roster rule;
+   * the spaces and the magazine follow the content rule, and a private
+   * room is listed only to its members and the community's owners and
+   * admins. Who created the community is never sent.
+   */
   getCommunityInfo: agentProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
       const ownerId = requireOwner(ctx.agent.ownerId);
 
-      const community = await resolveCommunity(ctx.db, input.slug);
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.slug),
+          isNull(communities.deletedAt),
+        ),
+        // Who created it is roster information, as on communities.getBySlug.
+        columns: { createdBy: false },
+      });
+      if (!community) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
+      }
+      const access = await viewerCommunityAccess(ctx.db, community, ownerId);
 
-      const [memberCountResult] = await ctx.db
-        .select({ count: count() })
-        .from(communityMemberships)
-        .where(
-          and(
-            eq(communityMemberships.communityId, community.id),
-            eq(communityMemberships.status, "active"),
-          ),
-        );
+      const [memberCountResult] = access.roster
+        ? await ctx.db
+            .select({ count: count() })
+            .from(communityMemberships)
+            .where(
+              and(
+                eq(communityMemberships.communityId, community.id),
+                eq(communityMemberships.status, "active"),
+              ),
+            )
+        : [];
 
       // Fetch the owner's membership (if any)
       const ownerMembership = await ctx.db.query.communityMemberships.findFirst(
@@ -250,22 +340,18 @@ export const agentCommunityRouter = {
           community.bannerUrl,
         ]),
       );
-      const spaceRows = await ctx.db
-        .select({
-          kind: spaces.kind,
-          builtinSurface: spaces.builtinSurface,
-          slug: spaces.slug,
-          archivedAt: spaces.archivedAt,
-        })
-        .from(spaces)
-        .where(eq(spaces.communityId, community.id))
-        .orderBy(asc(spaces.position));
-      const magazine = await getMagazineForCommunity(payload, community.id);
+      const spaceRows = access.content
+        ? await ownerVisibleSpaces(ctx.db, community.id, ownerId)
+        : [];
+      const magazine = access.content
+        ? await getMagazineForCommunity(payload, community.id)
+        : null;
       return {
         ...community,
         ...imageIds,
         bannerMediaId: community.bannerMediaId ?? imageIds.bannerMediaId,
         bannerAlt: community.bannerAlt ?? null,
+        viewerCanReadContent: access.content,
         magazine: magazine
           ? {
               id: magazine.id,
@@ -280,7 +366,7 @@ export const agentCommunityRouter = {
           : null,
         description: description.description,
         descriptionTruncated: description.descriptionTruncated,
-        memberCount: memberCountResult?.count ?? 0,
+        memberCount: access.roster ? (memberCountResult?.count ?? 0) : null,
         ownerMembership: ownerMembership
           ? {
               role: ownerMembership.role,
