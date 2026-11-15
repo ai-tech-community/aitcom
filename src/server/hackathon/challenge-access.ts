@@ -17,7 +17,11 @@ import { challengeChannels, challengeThreads, teams } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { requireReadableContentOf } from "@/server/communities/content-access";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
-import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
+import {
+  hiddenContentCommunityIds,
+  viewerCanReadContentOf,
+} from "@/server/communities/content-visibility-queries";
+import { ownerOnTeam } from "@/server/hackathon/team-membership";
 
 type DB = typeof appDb;
 
@@ -91,6 +95,53 @@ export async function requireReadableTeam(
     notFound: TEAM_NOT_FOUND,
   });
   return team;
+}
+
+/**
+ * Whether the user may take part in the challenge (the boolean form of
+ * `requireChallengeParticipant`), for lists and for checking someone
+ * other than the caller. A missing challenge is false.
+ */
+export async function mayTakePartInChallenge(
+  db: DB,
+  challengeId: number,
+  userId: string,
+): Promise<boolean> {
+  const payload = await getPayloadClient();
+  const challenge = await payload.findByID({
+    collection: "challenges",
+    id: challengeId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!challenge) return false;
+  return viewerCanReadContentOf(db, challenge.communityId, userId);
+}
+
+/**
+ * The team workspace's gate: the caller may take part in the team's
+ * challenge (a team of a challenge they may not read answers "Team not
+ * found", like a missing one) and is on the team (FORBIDDEN otherwise). A
+ * member who was banned, or whose paid membership lapsed, keeps the
+ * enrollment row but loses the workspace.
+ */
+export async function requireTeamWorkspaceMember(
+  db: DB,
+  teamId: string,
+  userId: string,
+): Promise<void> {
+  const [team] = await db
+    .select({ challengeId: teams.challengeId })
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+  await requireTeamParticipant(db, team, userId);
+  if (!(await ownerOnTeam(db, userId, teamId))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You are not a member of this team.",
+    });
+  }
 }
 
 /** The challenge a channel belongs to; NOT_FOUND for a missing channel. */

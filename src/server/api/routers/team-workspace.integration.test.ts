@@ -655,5 +655,87 @@ describe.skipIf(!RUN_DB)(
         .where(eq(schema.challengeEnrollments.id, enrollmentId));
       expect(afterComplete!.status).toBe("completed");
     });
+
+    // ── Members-only community: enrollment alone does not open the workspace ──
+
+    it("closes the workspace to a team member who lost access to a members-only community, answering like a missing team", async () => {
+      const { db, schema, eq, and, getPayloadClient } = m;
+      // The challenge belongs to an unlisted (members-only) community; the
+      // first member was banned, the second is still an active member.
+      const [community] = await db
+        .insert(schema.communities)
+        .values({
+          name: `Team WS private ${fx.suffix}`,
+          slug: `team-ws-private-${fx.suffix}`,
+          createdBy: fx.sponsorId,
+          isListedInDirectory: false,
+        })
+        .returning({ id: schema.communities.id });
+      await db.insert(schema.communityMemberships).values([
+        {
+          communityId: community!.id,
+          userId: fx.memberUserId,
+          status: "banned",
+        },
+        {
+          communityId: community!.id,
+          userId: fx.otherMemberUserId,
+          status: "active",
+        },
+      ]);
+      const payload = await getPayloadClient();
+      await payload.update({
+        collection: "challenges",
+        id: fx.challengeId,
+        data: { communityId: community!.id },
+      });
+      try {
+        const [cell] = await db
+          .select({ id: schema.workCells.id })
+          .from(schema.workCells)
+          .where(eq(schema.workCells.gridId, fx.gridId))
+          .limit(1);
+        const banned = userCaller(fx.memberUserId);
+        for (const call of [
+          () => banned.teamWorkspace.cells({ teamId: fx.teamId }),
+          () => banned.teamWorkspace.activity({ teamId: fx.teamId }),
+          () => banned.teamWorkspace.presence({ teamId: fx.teamId }),
+          () => banned.teamWorkspace.heartbeat({ teamId: fx.teamId }),
+          () =>
+            banned.teamWorkspace.claimCellAsMember({
+              cellId: cell!.id,
+              teamId: fx.teamId,
+            }),
+        ]) {
+          await expect(call()).rejects.toMatchObject({ code: "NOT_FOUND" });
+        }
+        const active = userCaller(fx.otherMemberUserId);
+        await expect(
+          active.teamWorkspace.cells({ teamId: fx.teamId }),
+        ).resolves.toBeTruthy();
+        // A teammate who lost access cannot be handed a cell either.
+        await expect(
+          active.teamWorkspace.assignCell({
+            cellId: cell!.id,
+            teamId: fx.teamId,
+            userId: fx.memberUserId,
+          }),
+        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      } finally {
+        await db
+          .delete(schema.communityMemberships)
+          .where(
+            and(eq(schema.communityMemberships.communityId, community!.id)),
+          );
+        await payload.update({
+          collection: "challenges",
+          id: fx.challengeId,
+          data: { communityId: null },
+        });
+        await db
+          .delete(schema.communities)
+          .where(eq(schema.communities.id, community!.id));
+      }
+    });
   },
 );
