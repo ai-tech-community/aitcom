@@ -12,8 +12,22 @@ import {
 
 const NOW = new Date("2026-10-26T12:00:00.000Z");
 const ACTOR = "editor-1";
-const listed = { slug: "garden-club", isListedInDirectory: true };
-const unlisted = { slug: "garden-club", isListedInDirectory: false };
+const open = "open" as const;
+const listed = {
+  slug: "garden-club",
+  isListedInDirectory: true,
+  joinPolicy: open,
+};
+const unlisted = {
+  slug: "garden-club",
+  isListedInDirectory: false,
+  joinPolicy: open,
+};
+const privateListed = {
+  slug: "garden-club",
+  isListedInDirectory: true,
+  joinPolicy: "approval_required" as const,
+};
 const membersRecord: VisibilityRecord = {
   visibility: "members",
   publicConfirmedBy: null,
@@ -135,7 +149,7 @@ describe("planVisibilityChange", () => {
   it("preview in a content-public community stores no confirmation", () => {
     for (const community of [
       listed,
-      { slug: "ait", isListedInDirectory: false },
+      { slug: "ait", isListedInDirectory: false, joinPolicy: open },
     ]) {
       expect(
         planVisibilityChange({
@@ -153,6 +167,46 @@ describe("planVisibilityChange", () => {
       });
     }
   });
+
+  it.each([
+    ["invite-only", { ...privateListed, joinPolicy: "invite_only" as const }],
+    ["approval", privateListed],
+  ])(
+    "outsider access in a listed %s community needs a leader's confirmation",
+    (_label, community) => {
+      for (const next of ["teaser", "public"] as const) {
+        expect(
+          planVisibilityChange({
+            next,
+            current: membersRecord,
+            community,
+            confirmUnlistedPublic: false,
+            actorId: ACTOR,
+            actorLeadsCommunity: true,
+            now: NOW,
+          }),
+        ).toEqual({ ok: false, code: "CONFIRM_UNLISTED_PUBLIC" });
+      }
+      expect(
+        planVisibilityChange({
+          next: "public",
+          current: membersRecord,
+          community,
+          confirmUnlistedPublic: true,
+          actorId: ACTOR,
+          actorLeadsCommunity: true,
+          now: NOW,
+        }),
+      ).toEqual({
+        ok: true,
+        record: {
+          visibility: "public",
+          publicConfirmedBy: ACTOR,
+          publicConfirmedAt: NOW.toISOString(),
+        },
+      });
+    },
+  );
 
   it("public in an unlisted community without confirmation is refused", () => {
     expect(
@@ -285,8 +339,19 @@ describe("effectiveVisibility", () => {
     visibility,
     publicConfirmedAt: confirmedAt,
   });
-  const listed = { slug: "garden-club", isListedInDirectory: true };
-  const unlisted = { slug: "garden-club", isListedInDirectory: false };
+  it("counts preview and public as members in a listed private community until confirmed", () => {
+    for (const visibility of ["teaser", "public"] as const) {
+      expect(effectiveVisibility(issue(visibility, null), privateListed)).toBe(
+        "members",
+      );
+      expect(
+        effectiveVisibility(
+          issue(visibility, "2026-10-20T09:00:00.000Z"),
+          privateListed,
+        ),
+      ).toBe(visibility);
+    }
+  });
 
   it("is the stored value in a content-public community", () => {
     expect(effectiveVisibility(issue("teaser", null), listed)).toBe("teaser");
@@ -294,6 +359,7 @@ describe("effectiveVisibility", () => {
       effectiveVisibility(issue("teaser", null), {
         slug: "ait",
         isListedInDirectory: false,
+        joinPolicy: open,
       }),
     ).toBe("teaser");
     expect(effectiveVisibility(issue("public", null), listed)).toBe("public");

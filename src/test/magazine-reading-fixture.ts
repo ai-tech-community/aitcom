@@ -207,7 +207,7 @@ export function readingFixture() {
 
   // ── Fixtures ──────────────────────────────────────────────────────────
 
-  type Community = { id: string; slug: string; isListedInDirectory: boolean };
+  type Community = MagazineService.MagazineCommunity;
 
   /** A community where the editor is owner and the member is a member. */
   async function community(
@@ -237,6 +237,7 @@ export function readingFixture() {
       id: row!.id,
       slug: row!.slug,
       isListedInDirectory: row!.isListedInDirectory,
+      joinPolicy: row!.joinPolicy,
     };
   }
 

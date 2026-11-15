@@ -46,7 +46,12 @@ describe("issue editor view", () => {
 
     const view = await loadIssueEditorView(deps, issue, {
       userId: "editor",
-      community: { id: "community", slug: "town", isListedInDirectory: true },
+      community: {
+        id: "community",
+        slug: "town",
+        isListedInDirectory: true,
+        joinPolicy: "open",
+      },
     });
 
     expect(view.autoDraft).toBeNull();

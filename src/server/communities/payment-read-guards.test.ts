@@ -12,7 +12,12 @@ import { requireViewablePost } from "./feed-posts";
 
 describe("paid community public read shortcuts", () => {
   it("does not expose listed content or roster before paid admission", async () => {
-    const community = { id: "paid", slug: "paid", isListedInDirectory: true };
+    const community = {
+      id: "paid",
+      slug: "paid",
+      isListedInDirectory: true,
+      joinPolicy: "open" as const,
+    };
     expect(
       await viewerCanReadContent({} as never, community, "expired-member"),
     ).toBe(false);

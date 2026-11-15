@@ -77,7 +77,12 @@ describe.skipIf(!isLocalDbConfigured())(
       member: string;
       outsider: string;
       pending: string;
-      community: { id: string; slug: string; isListedInDirectory: boolean };
+      community: {
+        id: string;
+        slug: string;
+        isListedInDirectory: boolean;
+        joinPolicy: "open" | "invite_only" | "approval_required";
+      };
       magazine: Magazine;
       x: string;
       w: string;

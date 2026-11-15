@@ -1,10 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import { sql } from "@payloadcms/db-postgres";
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { routing } from "@/i18n/routing";
-import { HUB_SLUG } from "@/server/communities/hub";
 import { isContentPublic } from "@/server/communities/content-visibility";
+import {
+  COMMUNITY_VISIBILITY_COLUMNS,
+  communityRefOf,
+  contentPublicCommunitySql,
+  type CommunityRef,
+} from "@/server/communities/content-visibility-queries";
 import { agentDrafts, agentProfiles, communities } from "@/server/db/schema";
 import {
   memberDisplayName,
@@ -116,13 +121,16 @@ type DraftMeta = {
   slug?: string;
 };
 
-type LiveCommunity = {
-  id: string;
-  slug: string;
+type LiveCommunity = CommunityRef & {
   name: string;
-  isListedInDirectory: boolean;
   deletedAt: Date | null;
 };
+
+const LIVE_COMMUNITY_COLUMNS = {
+  ...COMMUNITY_VISIBILITY_COLUMNS,
+  name: true,
+  deletedAt: true,
+} as const;
 
 function metaOf(value: unknown): DraftMeta {
   if (!value || typeof value !== "object") return {};
@@ -158,13 +166,7 @@ async function liveCommunity(
 ): Promise<LiveCommunity | null> {
   const row = await deps.db.query.communities.findFirst({
     where: and(eq(communities.id, communityId), isNull(communities.deletedAt)),
-    columns: {
-      id: true,
-      slug: true,
-      name: true,
-      isListedInDirectory: true,
-      deletedAt: true,
-    },
+    columns: LIVE_COMMUNITY_COLUMNS,
   });
   return row ?? null;
 }
@@ -373,11 +375,7 @@ function liveEffects(deps: Deps): MagazinePublishEffects {
       }
       const saved = await publishIssue(deps, issue, issue.updatedAt, {
         userId: approverId,
-        community: {
-          id: community.id,
-          slug: community.slug,
-          isListedInDirectory: community.isListedInDirectory,
-        },
+        community: communityRefOf(community),
       });
       return { status: saved.status };
     },
@@ -1211,11 +1209,7 @@ export async function saveMagazineIssue(
   );
   const actor = {
     userId: identity.ownerId,
-    community: {
-      id: community.id,
-      slug: community.slug,
-      isListedInDirectory: community.isListedInDirectory,
-    },
+    community: communityRefOf(community),
   };
   if (input.items && input.articleIds) {
     throw new TRPCError({
@@ -1655,15 +1649,7 @@ async function listVisibleMagazines(
   const listed = await deps.db
     .select({ id: communities.id, slug: communities.slug })
     .from(communities)
-    .where(
-      and(
-        isNull(communities.deletedAt),
-        or(
-          eq(communities.isListedInDirectory, true),
-          eq(communities.slug, HUB_SLUG),
-        ),
-      ),
-    );
+    .where(and(isNull(communities.deletedAt), contentPublicCommunitySql()));
   let ids = [
     ...new Set([
       ...listed.map((row) => row.id),
@@ -1677,13 +1663,7 @@ async function listVisibleMagazines(
         eq(communities.slug, communitySlug),
         isNull(communities.deletedAt),
       ),
-      columns: {
-        id: true,
-        slug: true,
-        name: true,
-        isListedInDirectory: true,
-        deletedAt: true,
-      },
+      columns: LIVE_COMMUNITY_COLUMNS,
     });
     if (!match || !maySeeCommunity(match, scope)) {
       throw new TRPCError({

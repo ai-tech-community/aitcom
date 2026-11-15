@@ -32,6 +32,7 @@ import {
   canReadContent,
   type CommunityVisibility,
 } from "@/server/communities/content-visibility";
+import { COMMUNITY_VISIBILITY_COLUMNS } from "@/server/communities/content-visibility-queries";
 import { communities } from "@/server/db/schema";
 import {
   authorBylineAtReadTime,
@@ -107,7 +108,7 @@ export type IssueCard = {
   visibility: IssueVisibility;
   /**
    * What non-members actually get: an unconfirmed public issue in an
-   * unlisted community is members-only. Used for badges only.
+   * unlisted or private community is members-only. Used for badges only.
    */
   effectiveVisibility: IssueVisibility;
   /** The resolver's anonymous access, for indexing and sharing (Decision 9). */
@@ -142,10 +143,8 @@ export type MagazineCommunityRow = CommunityVisibility & {
 };
 
 const COMMUNITY_COLUMNS = {
-  id: true,
+  ...COMMUNITY_VISIBILITY_COLUMNS,
   name: true,
-  slug: true,
-  isListedInDirectory: true,
 } as const;
 
 function liveCommunityWhere(ids: readonly string[]) {
@@ -165,14 +164,14 @@ async function liveCommunitiesById(
   return new Map(rows.map((row) => [row.id, row]));
 }
 
-/** Only issue and article pages need the community's join rule. */
+/** A live community by id, for the issue and article pages. */
 async function liveReadingCommunityById(
   database: Deps["db"],
   id: string,
-): Promise<(MagazineCommunityRow & { joinPolicy: JoinPolicy }) | null> {
+): Promise<MagazineCommunityRow | null> {
   const row = await database.query.communities.findFirst({
     where: liveCommunityWhere([id]),
-    columns: { ...COMMUNITY_COLUMNS, joinPolicy: true },
+    columns: COMMUNITY_COLUMNS,
   });
   return row ?? null;
 }
@@ -847,7 +846,7 @@ export type CommunityMagazineTabData = NonNullable<
 type ReadableIssue = {
   access: IssueReaderAccess;
   magazine: Magazine;
-  community: MagazineCommunityRow & { joinPolicy: JoinPolicy };
+  community: MagazineCommunityRow;
   issue: MagazineIssue;
 };
 

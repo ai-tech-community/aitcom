@@ -26,18 +26,53 @@ const PUBLIC = { visibility: { equals: "public" } };
 describe("issueReadScopeForCommunity", () => {
   const communities = [
     {
-      label: "listed community",
-      row: { id: "listed", slug: "listed", isListedInDirectory: true },
+      label: "listed open community",
+      row: {
+        id: "listed",
+        slug: "listed",
+        isListedInDirectory: true,
+        joinPolicy: "open" as const,
+      },
       privateCommunityIds: [],
     },
     {
+      label: "listed invite-only community",
+      row: {
+        id: "invite",
+        slug: "invite",
+        isListedInDirectory: true,
+        joinPolicy: "invite_only" as const,
+      },
+      privateCommunityIds: ["invite"],
+    },
+    {
+      label: "listed community that approves requests",
+      row: {
+        id: "approval",
+        slug: "approval",
+        isListedInDirectory: true,
+        joinPolicy: "approval_required" as const,
+      },
+      privateCommunityIds: ["approval"],
+    },
+    {
       label: "unlisted community",
-      row: { id: "unlisted", slug: "unlisted", isListedInDirectory: false },
+      row: {
+        id: "unlisted",
+        slug: "unlisted",
+        isListedInDirectory: false,
+        joinPolicy: "open" as const,
+      },
       privateCommunityIds: ["unlisted"],
     },
     {
       label: "unlisted Hub",
-      row: { id: "hub", slug: HUB_SLUG, isListedInDirectory: false },
+      row: {
+        id: "hub",
+        slug: HUB_SLUG,
+        isListedInDirectory: false,
+        joinPolicy: "open" as const,
+      },
       privateCommunityIds: [],
     },
   ];
@@ -198,9 +233,31 @@ describe("readableIssueWhere", () => {
 });
 
 describe("buildIssueReadScope", () => {
-  const listed = { id: "c-listed", slug: "listed", isListedInDirectory: true };
-  const unlisted = { id: "c-unl", slug: "unl", isListedInDirectory: false };
-  const hub = { id: "c-hub", slug: HUB_SLUG, isListedInDirectory: false };
+  const open = "open" as const;
+  const listed = {
+    id: "c-listed",
+    slug: "listed",
+    isListedInDirectory: true,
+    joinPolicy: open,
+  };
+  const unlisted = {
+    id: "c-unl",
+    slug: "unl",
+    isListedInDirectory: false,
+    joinPolicy: open,
+  };
+  const hub = {
+    id: "c-hub",
+    slug: HUB_SLUG,
+    isListedInDirectory: false,
+    joinPolicy: open,
+  };
+  const privateListed = {
+    id: "c-private",
+    slug: "private",
+    isListedInDirectory: true,
+    joinPolicy: "invite_only" as const,
+  };
 
   it("the Hub is content-public although it is unlisted", () => {
     const s = buildIssueReadScope(editorScopeOf([], []), [
@@ -210,6 +267,14 @@ describe("buildIssueReadScope", () => {
     ]);
     expect(s.privateCommunityIds).toEqual(["c-unl"]);
     expect(s.deletedCommunityIds).toEqual([]);
+  });
+
+  it("a listed private community is content-private", () => {
+    const s = buildIssueReadScope(editorScopeOf([], []), [
+      { ...privateListed, deletedAt: null },
+      { ...listed, deletedAt: null },
+    ]);
+    expect(s.privateCommunityIds).toEqual(["c-private"]);
   });
 
   it("takes the editor and member ids from the editorship seam", () => {

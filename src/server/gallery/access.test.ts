@@ -29,7 +29,12 @@ beforeEach(() => {
 });
 
 function fakeDb(
-  over: { community?: boolean; role?: string | null; listed?: boolean } = {},
+  over: {
+    community?: boolean;
+    role?: string | null;
+    listed?: boolean;
+    joinPolicy?: string;
+  } = {},
 ): never {
   return {
     query: {
@@ -41,7 +46,7 @@ function fakeDb(
                 id: "c1",
                 slug: "town",
                 isListedInDirectory: over.listed ?? true,
-                joinPolicy: "open",
+                joinPolicy: over.joinPolicy ?? "open",
               },
         ),
       },
@@ -93,6 +98,18 @@ describe("loadGalleryViewer", () => {
         .communityMemberships.findFirst,
     ).not.toHaveBeenCalled();
   });
+
+  it.each(["invite_only", "approval_required"])(
+    "shows outsiders nothing of a listed %s community",
+    async (joinPolicy) => {
+      await expect(
+        loadGalleryViewer(
+          { db: fakeDb({ joinPolicy, role: null }) },
+          { slug: "town", userId: "u1" },
+        ),
+      ).resolves.toMatchObject({ isMember: false, canSeePublic: false });
+    },
+  );
 
   it("sees an active member whose membership is paid up", async () => {
     await expect(
@@ -191,10 +208,14 @@ describe("what a viewer may see", () => {
 });
 
 describe("publicItemsReachOutsiders", () => {
-  const community = (listed: boolean) => ({
+  const community = (
+    listed: boolean,
+    joinPolicy: "open" | "invite_only" | "approval_required" = "open",
+  ) => ({
     id: "c1",
     slug: "town",
     isListedInDirectory: listed,
+    joinPolicy,
   });
 
   it("is true where signed-out visitors may read the community", async () => {
@@ -214,6 +235,16 @@ describe("publicItemsReachOutsiders", () => {
     ).resolves.toBe(false);
     expect(payments.canReadPaidCommunity).not.toHaveBeenCalled();
   });
+
+  it.each(["invite_only", "approval_required"] as const)(
+    "is false for a listed %s community, without a payment lookup",
+    async (policy) => {
+      await expect(
+        publicItemsReachOutsiders({ db: fakeDb() }, community(true, policy)),
+      ).resolves.toBe(false);
+      expect(payments.canReadPaidCommunity).not.toHaveBeenCalled();
+    },
+  );
 
   it("is false for a paid community", async () => {
     payments.canReadPaidCommunity.mockResolvedValue(false);

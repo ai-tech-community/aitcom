@@ -1,6 +1,15 @@
 /** Thin DB glue for community visibility. Policy lives in ./content-visibility. */
 
-import { and, eq, isNull, isNotNull, ne, notInArray } from "drizzle-orm";
+import {
+  and,
+  eq,
+  isNull,
+  isNotNull,
+  not,
+  notInArray,
+  or,
+  type SQL,
+} from "drizzle-orm";
 
 import {
   communities,
@@ -12,6 +21,7 @@ import type { db as _db } from "@/server/db";
 import {
   canReadContent,
   canReadRoster,
+  communityVisibilityOf,
   type CommunityVisibility,
 } from "./content-visibility";
 import { HUB_SLUG } from "./hub";
@@ -24,7 +34,49 @@ import {
 
 type DB = typeof _db;
 
-type CommunityRef = CommunityVisibility & { id: string };
+export type CommunityRef = CommunityVisibility & { id: string };
+
+/**
+ * Just the visibility facts of a community row, for callers that hand a
+ * community on to the seam. Copying them here, not field by field at each
+ * call site, means a new visibility fact reaches every caller at once.
+ */
+export function communityRefOf(row: CommunityRef): CommunityRef {
+  return { id: row.id, ...communityVisibilityOf(row) };
+}
+
+/** The `community` columns every visibility decision reads. */
+export const COMMUNITY_VISIBILITY_COLUMNS = {
+  id: true,
+  slug: true,
+  isListedInDirectory: true,
+  joinPolicy: true,
+} as const;
+
+/**
+ * SQL twin of `isPublicCommunity` over the `community` table: listed and
+ * open. Queries that select communities by visibility use these twins, so
+ * the rule keeps one definition in SQL as in code.
+ */
+export function publicCommunitySql(): SQL {
+  return and(
+    eq(communities.isListedInDirectory, true),
+    eq(communities.joinPolicy, "open"),
+  )!;
+}
+
+/** SQL twin of `isContentPublic`: the Hub, or a public community. */
+export function contentPublicCommunitySql(): SQL {
+  return or(eq(communities.slug, HUB_SLUG), publicCommunitySql())!;
+}
+
+/**
+ * SQL twin of `!isContentPublic`: not the Hub, and unlisted or private.
+ * Both columns are NOT NULL, so the negation is exact.
+ */
+export function contentPrivateCommunitySql(): SQL {
+  return not(contentPublicCommunitySql());
+}
 
 /**
  * The user's role in the community when they are an active member whose
@@ -116,7 +168,7 @@ export async function viewerCanReadContent(
 /**
  * The live community with this slug, or null when it does not exist or the
  * viewer may not read its content. Callers answer both cases the same way
- * (NOT_FOUND), so an unlisted community is not confirmed to exist.
+ * (NOT_FOUND), so a members-only community is not confirmed to exist.
  */
 export async function findReadableCommunityBySlug(
   db: DB,
@@ -125,7 +177,7 @@ export async function findReadableCommunityBySlug(
 ): Promise<CommunityRef | null> {
   const community = await db.query.communities.findFirst({
     where: and(eq(communities.slug, slug), isNull(communities.deletedAt)),
-    columns: { id: true, slug: true, isListedInDirectory: true },
+    columns: COMMUNITY_VISIBILITY_COLUMNS,
   });
   if (!community) return null;
   return (await viewerCanReadContent(db, community, userId)) ? community : null;
@@ -143,7 +195,7 @@ export async function viewerCanReadContentOf(
   if (!communityId) return true;
   const community = await db.query.communities.findFirst({
     where: eq(communities.id, communityId),
-    columns: { id: true, slug: true, isListedInDirectory: true },
+    columns: COMMUNITY_VISIBILITY_COLUMNS,
   });
   if (!community) return false;
   return viewerCanReadContent(db, community, userId);
@@ -160,22 +212,21 @@ export async function viewerCanReadRoster(
 }
 
 /**
- * Ids of communities whose content the viewer may not read: unlisted, not the
- * Hub, and no active membership. Soft-deleted unlisted communities are
- * included; soft-deletion itself does not hide content.
+ * Ids of communities whose content the viewer may not read: not the Hub,
+ * unlisted or private (`contentPrivateCommunitySql`), and no active
+ * membership. Soft-deleted members-only communities are included;
+ * soft-deletion itself does not hide content.
  *
  * Callers pass the ids to Payload as a `NOT IN` list (a Payload `where`
- * cannot hold a subquery), so the list grows with the number of unlisted
- * communities. Fine at today's scale; keep it off per-row hot paths.
+ * cannot hold a subquery), so the list grows with the number of
+ * members-only communities. Fine at today's scale; keep it off per-row hot
+ * paths.
  */
 export async function hiddenContentCommunityIds(
   db: DB,
   userId: string | null | undefined,
 ): Promise<string[]> {
-  const conditions = [
-    eq(communities.isListedInDirectory, false),
-    ne(communities.slug, HUB_SLUG),
-  ];
+  const conditions = [contentPrivateCommunitySql()];
   if (userId) {
     const memberOf = db
       .select({ id: communityMemberships.communityId })

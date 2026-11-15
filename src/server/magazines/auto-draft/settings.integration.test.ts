@@ -55,7 +55,12 @@ describe.skipIf(!isLocalDbConfigured())(
       adminId: string;
       editorId: string;
       memberId: string;
-      community: { id: string; slug: string; isListedInDirectory: boolean };
+      community: {
+        id: string;
+        slug: string;
+        isListedInDirectory: boolean;
+        joinPolicy: "open" | "invite_only" | "approval_required";
+      };
       magazine: Magazine;
     };
     let communityIds: string[];

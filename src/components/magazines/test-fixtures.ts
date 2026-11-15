@@ -51,7 +51,11 @@ export function autoDraftSettings(
     magazineDefaultVisibility: "members",
     hasTopics: true,
     communityIsPrivate: false,
-    community: { slug: "night-owls", isListedInDirectory: true },
+    community: {
+      slug: "night-owls",
+      isListedInDirectory: true,
+      joinPolicy: "open",
+    },
     ...overrides,
   };
 }

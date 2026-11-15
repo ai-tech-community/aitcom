@@ -239,7 +239,12 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
 
   // ── Fixtures ──────────────────────────────────────────────────────────
 
-  type Community = { id: string; slug: string; isListedInDirectory: boolean };
+  type Community = {
+    id: string;
+    slug: string;
+    isListedInDirectory: boolean;
+    joinPolicy: "open" | "invite_only" | "approval_required";
+  };
 
   async function community(
     label: string,
@@ -265,6 +270,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       id: row!.id,
       slug: row!.slug,
       isListedInDirectory: row!.isListedInDirectory,
+      joinPolicy: row!.joinPolicy,
     };
   }
 

@@ -24,7 +24,11 @@ import {
 import type { Magazine } from "@/payload-types";
 import { communityProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { withAuthorBylines } from "@/server/members/display-name";
-import { isContentPublic } from "@/server/communities/content-visibility";
+import {
+  communityVisibilityOf,
+  isContentPublic,
+} from "@/server/communities/content-visibility";
+import { communityRefOf } from "@/server/communities/content-visibility-queries";
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
 import {
   listPendingArticles,
@@ -190,7 +194,7 @@ type EditorCtx = {
   db: Deps["db"];
   payload: PayloadClient;
   session: { user: { id: string } };
-  community: { id: string; slug: string; isListedInDirectory: boolean };
+  community: MagazineCommunity;
 };
 
 function depsOf(ctx: EditorCtx): Deps {
@@ -198,11 +202,7 @@ function depsOf(ctx: EditorCtx): Deps {
 }
 
 function communityOf(ctx: EditorCtx): MagazineCommunity {
-  return {
-    id: ctx.community.id,
-    slug: ctx.community.slug,
-    isListedInDirectory: ctx.community.isListedInDirectory,
-  };
+  return communityRefOf(ctx.community);
 }
 
 function actorOf(ctx: EditorCtx): IssueActor {
@@ -268,10 +268,7 @@ export const magazinesRouter = createTRPCRouter({
         magazineDefaultVisibility: ctx.magazine.defaultVisibility,
         hasTopics: normalizeTopics(magazineTopicsOf(ctx.magazine)).length > 0,
         communityIsPrivate: !isContentPublic(ctx.community),
-        community: {
-          slug: ctx.community.slug,
-          isListedInDirectory: ctx.community.isListedInDirectory,
-        },
+        community: communityVisibilityOf(ctx.community),
       };
     }),
 
@@ -300,10 +297,7 @@ export const magazinesRouter = createTRPCRouter({
       communityIsPrivate: !isContentPublic(ctx.community),
       // What the settings form runs `planVisibilityChange` against, so it
       // asks for the opt-in exactly when the save would.
-      community: {
-        slug: ctx.community.slug,
-        isListedInDirectory: ctx.community.isListedInDirectory,
-      },
+      community: communityVisibilityOf(ctx.community),
     })),
 
   deleteMagazine: managerProcedure
@@ -418,9 +412,8 @@ export const magazinesRouter = createTRPCRouter({
       // for the opt-in exactly when the save would. The name heads the
       // builder's preview.
       community: {
+        ...communityVisibilityOf(ctx.community),
         name: ctx.community.name,
-        slug: ctx.community.slug,
-        isListedInDirectory: ctx.community.isListedInDirectory,
       },
     };
   }),

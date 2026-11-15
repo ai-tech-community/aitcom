@@ -91,7 +91,11 @@ describe("AutoDraftSettingsForm", () => {
   it("offers preview for drafts and asks for the opt-in in an unlisted community", () => {
     trpc.data = autoDraftSettings({
       communityIsPrivate: true,
-      community: { slug: "night-owls", isListedInDirectory: false },
+      community: {
+        slug: "night-owls",
+        isListedInDirectory: false,
+        joinPolicy: "open",
+      },
       magazineDefaultVisibility: "teaser",
     });
     renderForm();
@@ -270,7 +274,11 @@ describe("AutoDraftSettingsForm", () => {
   it("asks an unlisted community to confirm Everyone", () => {
     trpc.data = autoDraftSettings({
       communityIsPrivate: true,
-      community: { slug: "night-owls", isListedInDirectory: false },
+      community: {
+        slug: "night-owls",
+        isListedInDirectory: false,
+        joinPolicy: "open",
+      },
     });
     renderForm();
     fireEvent.change(screen.getByLabelText("Visibility"), {
@@ -299,7 +307,11 @@ describe("AutoDraftSettingsForm", () => {
   it("does not ask again for a saved confirmation or an inherited default", () => {
     trpc.data = autoDraftSettings({
       communityIsPrivate: true,
-      community: { slug: "night-owls", isListedInDirectory: false },
+      community: {
+        slug: "night-owls",
+        isListedInDirectory: false,
+        joinPolicy: "open",
+      },
       magazineDefaultVisibility: "public",
     });
     trpc.data.settings = {

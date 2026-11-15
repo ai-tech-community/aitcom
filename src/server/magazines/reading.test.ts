@@ -32,6 +32,7 @@ const community = {
   name: "Night Owls",
   slug: "night-owls",
   isListedInDirectory: false,
+  joinPolicy: "open" as const,
 };
 const magazine: Magazine = {
   id: 42,

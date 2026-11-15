@@ -1,6 +1,10 @@
 import { and, eq, isNull } from "drizzle-orm";
 
 import type { Magazine } from "@/payload-types";
+import {
+  COMMUNITY_VISIBILITY_COLUMNS,
+  type CommunityRef,
+} from "@/server/communities/content-visibility-queries";
 import { communities } from "@/server/db/schema";
 
 import type { Deps } from "./deps";
@@ -8,12 +12,7 @@ import { loadMagazineEditorship, type MagazineStanding } from "./editorship";
 import { getMagazineForCommunity } from "./magazine-service";
 
 export type MagazineDesk = {
-  community: {
-    id: string;
-    slug: string;
-    name: string;
-    isListedInDirectory: boolean;
-  };
+  community: CommunityRef & { name: string };
   magazine: Magazine | null;
   standing: MagazineStanding;
 };
@@ -28,7 +27,7 @@ export async function loadMagazineDesk(
       eq(communities.slug, opts.communitySlug),
       isNull(communities.deletedAt),
     ),
-    columns: { id: true, slug: true, name: true, isListedInDirectory: true },
+    columns: { ...COMMUNITY_VISIBILITY_COLUMNS, name: true },
   });
   if (!community) return null;
   const magazine = await getMagazineForCommunity(deps.payload, community.id);

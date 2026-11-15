@@ -37,7 +37,11 @@ function DetailsEditor() {
           publicConfirmedAt: null,
           publicConfirmedBy: null,
         },
-        community: { slug: "night-owls", isListedInDirectory: false },
+        community: {
+          slug: "night-owls",
+          isListedInDirectory: false,
+          joinPolicy: "open",
+        },
       })}
       confirmed={confirmed}
       onConfirmedChange={setConfirmed}

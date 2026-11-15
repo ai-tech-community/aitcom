@@ -11,6 +11,10 @@ import {
   MAX_MAGAZINE_TOPICS,
 } from "@/lib/magazines/values";
 import { agentProcedure, requireOwner, requireScope } from "@/server/api/trpc";
+import {
+  COMMUNITY_VISIBILITY_COLUMNS,
+  communityRefOf,
+} from "@/server/communities/content-visibility-queries";
 import { communities } from "@/server/db/schema";
 import { uploadMagazineImage } from "@/server/magazines/agent-image";
 import {
@@ -237,12 +241,7 @@ export const agentMagazineRouter = {
           eq(communities.slug, input.communitySlug),
           isNull(communities.deletedAt),
         ),
-        columns: {
-          id: true,
-          slug: true,
-          name: true,
-          isListedInDirectory: true,
-        },
+        columns: { ...COMMUNITY_VISIBILITY_COLUMNS, name: true },
       });
       if (!community) {
         throw new TRPCError({
@@ -274,11 +273,7 @@ export const agentMagazineRouter = {
       });
       const magazine = await saveMagazineSettings(
         deps,
-        {
-          id: community.id,
-          slug: community.slug,
-          isListedInDirectory: community.isListedInDirectory,
-        },
+        communityRefOf(community),
         {
           name: input.name,
           slug: input.magazineSlug,

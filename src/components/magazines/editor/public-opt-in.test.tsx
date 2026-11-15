@@ -65,8 +65,16 @@ describe("PublicOptIn", () => {
 });
 
 describe("publicOptInRequired", () => {
-  const unlisted = { slug: "night-owls", isListedInDirectory: false };
-  const listed = { slug: "amsterdam-ai", isListedInDirectory: true };
+  const unlisted = {
+    slug: "night-owls",
+    isListedInDirectory: false,
+    joinPolicy: "open" as const,
+  };
+  const listed = {
+    slug: "amsterdam-ai",
+    isListedInDirectory: true,
+    joinPolicy: "open" as const,
+  };
   const members = {
     visibility: "members" as const,
     publicConfirmedBy: null,
@@ -87,6 +95,19 @@ describe("publicOptInRequired", () => {
       }),
     ).toBe(true);
   });
+
+  it.each(["invite_only", "approval_required"] as const)(
+    "asks for public in a listed %s community: it is private",
+    (joinPolicy) => {
+      expect(
+        publicOptInRequired({
+          next: "public",
+          saved: members,
+          community: { ...listed, joinPolicy },
+        }),
+      ).toBe(true);
+    },
+  );
 
   it("does not ask for members, in a listed community, or when already confirmed", () => {
     expect(

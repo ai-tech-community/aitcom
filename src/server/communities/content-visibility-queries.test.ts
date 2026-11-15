@@ -1,23 +1,148 @@
+import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as PaymentsAccess from "@/server/payments/access";
 
 const payments = vi.hoisted(() => ({
   membershipPaymentAllowed: vi.fn(),
+  canReadPaidCommunity: vi.fn(),
 }));
 vi.mock("@/server/payments/access", async (importOriginal) => ({
   ...(await importOriginal<typeof PaymentsAccess>()),
   membershipPaymentAllowed: payments.membershipPaymentAllowed,
+  canReadPaidCommunity: payments.canReadPaidCommunity,
 }));
 
 import {
   activeCommunityRole,
+  COMMUNITY_VISIBILITY_COLUMNS,
   communityStanding,
+  contentPrivateCommunitySql,
+  contentPublicCommunitySql,
+  findReadableCommunityBySlug,
   isActiveCommunityMember,
+  publicCommunitySql,
+  viewerCanReadContent,
+  viewerCanReadContentOf,
+  viewerCanReadRoster,
 } from "./content-visibility-queries";
 
 beforeEach(() => {
   payments.membershipPaymentAllowed.mockReset().mockResolvedValue(true);
+  payments.canReadPaidCommunity.mockReset().mockResolvedValue(true);
+});
+
+function render(query: ReturnType<typeof publicCommunitySql>) {
+  return new PgDialect().sqlToQuery(query);
+}
+
+describe("visibility SQL twins", () => {
+  it("makes a community public only when it is listed and open", () => {
+    const { sql, params } = render(publicCommunitySql());
+    expect(sql).toBe(
+      '("app"."community"."isListedInDirectory" = $1 and "app"."community"."joinPolicy" = $2)',
+    );
+    expect(params).toEqual([true, "open"]);
+  });
+
+  it("makes content public on the Hub or a public community", () => {
+    const { sql, params } = render(contentPublicCommunitySql());
+    expect(sql).toBe(
+      '("app"."community"."slug" = $1 or ("app"."community"."isListedInDirectory" = $2 and "app"."community"."joinPolicy" = $3))',
+    );
+    expect(params).toEqual(["ait", true, "open"]);
+  });
+
+  it("hides content everywhere else, as the exact negation", () => {
+    const { sql, params } = render(contentPrivateCommunitySql());
+    expect(sql).toBe(
+      'not ("app"."community"."slug" = $1 or ("app"."community"."isListedInDirectory" = $2 and "app"."community"."joinPolicy" = $3))',
+    );
+    expect(params).toEqual(["ait", true, "open"]);
+  });
+});
+
+describe("content and roster reads", () => {
+  const PRIVATE_LISTED = {
+    id: "c1",
+    slug: "connect-inspire",
+    isListedInDirectory: true,
+    joinPolicy: "invite_only" as const,
+  };
+  const PUBLIC_LISTED = { ...PRIVATE_LISTED, joinPolicy: "open" as const };
+
+  function membershipDb(
+    role: string | null,
+    community: typeof PRIVATE_LISTED | null = PRIVATE_LISTED,
+  ) {
+    const membership = vi
+      .fn()
+      .mockResolvedValue(role === null ? undefined : { role });
+    const communityRow = vi.fn().mockResolvedValue(community ?? undefined);
+    return {
+      db: {
+        query: {
+          communityMemberships: { findFirst: membership },
+          communities: { findFirst: communityRow },
+        },
+      } as never,
+      membership,
+      communityRow,
+    };
+  }
+
+  it("refuses a private listed community's content to an outsider", async () => {
+    const { db } = membershipDb(null);
+    await expect(viewerCanReadContent(db, PRIVATE_LISTED, "u1")).resolves.toBe(
+      false,
+    );
+    await expect(viewerCanReadContent(db, PRIVATE_LISTED, null)).resolves.toBe(
+      false,
+    );
+  });
+
+  it("serves a private listed community's content to an active member", async () => {
+    const { db } = membershipDb("member");
+    await expect(viewerCanReadContent(db, PRIVATE_LISTED, "u1")).resolves.toBe(
+      true,
+    );
+  });
+
+  it("serves a public community without a membership lookup", async () => {
+    const { db, membership } = membershipDb(null);
+    await expect(viewerCanReadContent(db, PUBLIC_LISTED, null)).resolves.toBe(
+      true,
+    );
+    expect(membership).not.toHaveBeenCalled();
+  });
+
+  it("keeps a private listed roster members-only", async () => {
+    await expect(
+      viewerCanReadRoster(membershipDb(null).db, PRIVATE_LISTED, "u1"),
+    ).resolves.toBe(false);
+    await expect(
+      viewerCanReadRoster(membershipDb("member").db, PRIVATE_LISTED, "u1"),
+    ).resolves.toBe(true);
+  });
+
+  it("reads the join policy when it looks a community up", async () => {
+    const bySlug = membershipDb(null);
+    await expect(
+      findReadableCommunityBySlug(bySlug.db, PRIVATE_LISTED.slug, null),
+    ).resolves.toBeNull();
+    expect(bySlug.communityRow).toHaveBeenCalledWith(
+      expect.objectContaining({ columns: COMMUNITY_VISIBILITY_COLUMNS }),
+    );
+
+    const byId = membershipDb(null);
+    await expect(viewerCanReadContentOf(byId.db, "c1", null)).resolves.toBe(
+      false,
+    );
+    expect(byId.communityRow).toHaveBeenCalledWith(
+      expect.objectContaining({ columns: COMMUNITY_VISIBILITY_COLUMNS }),
+    );
+    expect(COMMUNITY_VISIBILITY_COLUMNS).toMatchObject({ joinPolicy: true });
+  });
 });
 
 function fakeDb(role: string | null) {

@@ -91,6 +91,7 @@ beforeEach(() => {
       slug: "night-owls",
       name: "Night Owls",
       isListedInDirectory: true,
+      joinPolicy: "open",
     },
     magazine: {
       id: 42,

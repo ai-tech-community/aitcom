@@ -249,6 +249,7 @@ function fakes(over: Over = {}) {
                 id: "c1",
                 slug: "town",
                 isListedInDirectory: over.listed ?? false,
+                joinPolicy: "open",
               },
         ),
       },

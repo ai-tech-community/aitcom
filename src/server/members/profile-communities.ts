@@ -21,8 +21,8 @@ export interface ProfileCommunity {
  * The communities a member belongs to that this viewer may see them in.
  *
  * Membership is roster information, so the roster rule decides
- * (`canReadRoster`): a listed community always, an unlisted one only when the
- * viewer is an active member too. Only active memberships of live
+ * (`canReadRoster`): a public (listed and open) community always, any other
+ * one only when the viewer is an active member too. Only active memberships of live
  * communities count, and the Hub is never listed (ADR-0019: everyone belongs
  * to it, so it says nothing about the member).
  *
@@ -39,6 +39,7 @@ export async function loadProfileCommunities(
       name: communities.name,
       logoUrl: communities.logoUrl,
       isListedInDirectory: communities.isListedInDirectory,
+      joinPolicy: communities.joinPolicy,
     })
     .from(communityMemberships)
     .innerJoin(

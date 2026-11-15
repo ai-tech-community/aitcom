@@ -4,15 +4,13 @@ import { and, eq, isNull } from "drizzle-orm";
 import { isModeratorRole } from "@/lib/communities/moderator-roles";
 import { eventStartInstant } from "@/lib/event-time";
 import type { Event } from "@/payload-types";
+import { canReadContent } from "@/server/communities/content-visibility";
 import {
-  canReadContent,
-  type CommunityVisibility,
-} from "@/server/communities/content-visibility";
-import { communityStanding } from "@/server/communities/content-visibility-queries";
-import type {
-  JoinPolicy,
-  MembershipStatus,
-} from "@/server/communities/invite-policy";
+  COMMUNITY_VISIBILITY_COLUMNS,
+  communityStanding,
+  type CommunityRef,
+} from "@/server/communities/content-visibility-queries";
+import type { MembershipStatus } from "@/server/communities/invite-policy";
 import { DEFAULT_TOPIC } from "@/server/communities/post-topics";
 import { communities } from "@/server/db/schema";
 import { canReadPaidCommunity } from "@/server/payments/access";
@@ -39,7 +37,7 @@ export type GalleryViewer = {
 };
 
 /** What the access rules need to know about a community. */
-export type GalleryCommunity = CommunityVisibility & { id: string };
+export type GalleryCommunity = CommunityRef;
 
 /**
  * A viewer as the loaders give it: with the community (its slug, for links
@@ -48,19 +46,10 @@ export type GalleryCommunity = CommunityVisibility & { id: string };
  * again (`viewerJoinAction`).
  */
 export type LoadedGalleryViewer = GalleryViewer & {
-  community: GalleryCommunity & { joinPolicy: JoinPolicy };
+  community: GalleryCommunity;
   /** The membership row's status; null without one, or signed out. */
   membershipStatus: MembershipStatus | null;
 };
-
-const VIEWER_COMMUNITY_COLUMNS = {
-  id: true,
-  slug: true,
-  isListedInDirectory: true,
-  joinPolicy: true,
-} as const;
-
-type ViewerCommunityRow = GalleryCommunity & { joinPolicy: JoinPolicy };
 
 /**
  * Whether someone who is not an active member may read the community's
@@ -84,7 +73,7 @@ async function outsidersMayRead(
  */
 async function viewerIn(
   deps: Pick<GalleryDeps, "db">,
-  community: ViewerCommunityRow,
+  community: GalleryCommunity,
   userId: string | null,
 ): Promise<LoadedGalleryViewer> {
   const { status, activeRole } = await communityStanding(
@@ -119,7 +108,7 @@ export async function loadGalleryViewer(
 ): Promise<LoadedGalleryViewer> {
   const community = await deps.db.query.communities.findFirst({
     where: and(eq(communities.slug, input.slug), isNull(communities.deletedAt)),
-    columns: VIEWER_COMMUNITY_COLUMNS,
+    columns: COMMUNITY_VISIBILITY_COLUMNS,
   });
   if (!community) throw new TRPCError({ code: "NOT_FOUND" });
   return viewerIn(deps, community, input.userId);
@@ -152,7 +141,7 @@ export async function loadGalleryViewerById(
       eq(communities.id, input.communityId),
       isNull(communities.deletedAt),
     ),
-    columns: VIEWER_COMMUNITY_COLUMNS,
+    columns: COMMUNITY_VISIBILITY_COLUMNS,
   });
   if (!community) return null;
   return viewerIn(deps, community, input.userId);

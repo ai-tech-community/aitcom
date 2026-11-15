@@ -12,6 +12,7 @@ import {
   type VisibilityRecord,
 } from "@/lib/magazines/visibility";
 import type { Magazine } from "@/payload-types";
+import type { CommunityRef } from "@/server/communities/content-visibility-queries";
 import type { db } from "@/server/db";
 import { spaces } from "@/server/db/schema";
 
@@ -37,11 +38,8 @@ export type MagazineSettingsInput = {
   themeAccent?: string;
 };
 
-export type MagazineCommunity = {
-  id: string;
-  slug: string;
-  isListedInDirectory: boolean;
-};
+/** The community a magazine belongs to: its id and visibility facts. */
+export type MagazineCommunity = CommunityRef;
 
 /** The slug of the Magazine tab; also its builtin surface id. */
 const MAGAZINE_SPACE = "magazine";
@@ -184,8 +182,8 @@ function mapMagazineWriteError(error: unknown): unknown {
 /**
  * Creates the community's magazine, or updates it when it exists. The
  * default visibility is written through `planVisibilityChange`, so `public`
- * in an unlisted community needs `confirmUnlistedPublic` and records who
- * confirmed it.
+ * in a members-only community (unlisted, or private: ADR-0050) needs
+ * `confirmUnlistedPublic` and records who confirmed it.
  *
  * Order (preflight F15): the Magazine tab's slug is checked before the
  * magazine is created, so a room called "magazine" refuses the whole save

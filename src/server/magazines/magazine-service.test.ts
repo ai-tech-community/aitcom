@@ -44,6 +44,7 @@ const community = {
   id: "community",
   slug: "builders",
   isListedInDirectory: true,
+  joinPolicy: "open" as const,
 };
 const settings = {
   name: "The Gazette",

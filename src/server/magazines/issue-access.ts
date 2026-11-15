@@ -8,7 +8,10 @@ import {
   type IssueVisibility,
 } from "@/lib/magazines/values";
 import { effectiveVisibility } from "@/lib/magazines/visibility";
-import type { CommunityVisibility } from "@/server/communities/content-visibility";
+import {
+  communityVisibilityOf,
+  type CommunityVisibility,
+} from "@/server/communities/content-visibility";
 import type { db } from "@/server/db";
 import { communities } from "@/server/db/schema";
 
@@ -109,7 +112,12 @@ export async function loadMagazineIssueAccess(
 
   const community = await database.query.communities.findFirst({
     where: eq(communities.id, issue.communityId),
-    columns: { slug: true, isListedInDirectory: true, deletedAt: true },
+    columns: {
+      slug: true,
+      isListedInDirectory: true,
+      joinPolicy: true,
+      deletedAt: true,
+    },
   });
   const viewer = community
     ? await loadMagazineEditorship(
@@ -126,8 +134,7 @@ export async function loadMagazineIssueAccess(
     viewer,
     community: community
       ? {
-          slug: community.slug,
-          isListedInDirectory: community.isListedInDirectory,
+          ...communityVisibilityOf(community),
           deleted: community.deletedAt !== null,
         }
       : null,

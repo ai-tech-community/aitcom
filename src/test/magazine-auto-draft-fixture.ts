@@ -18,6 +18,7 @@ import type { Event, Magazine } from "@/payload-types";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import type * as Schema from "@/server/db/schema";
 import type { Deps } from "@/server/magazines/deps";
+import type { MagazineCommunity } from "@/server/magazines/magazine-service";
 import { testObjectStorage } from "@/test/test-object-storage";
 
 export function isLocalDbConfigured(): boolean {
@@ -45,12 +46,7 @@ type Modules = Deps & {
   picks: typeof Picks;
   jobs: typeof Jobs;
 };
-type Community = {
-  id: string;
-  slug: string;
-  name: string;
-  isListedInDirectory: boolean;
-};
+type Community = MagazineCommunity & { name: string };
 
 /** Shared DB fixture for the real drafter and isolated failure-injection suite. */
 export function drafterFixture() {

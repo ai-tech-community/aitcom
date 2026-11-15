@@ -97,7 +97,12 @@ describe.skipIf(!isLocalDbConfigured())(
       communityId = community!.id;
       const magazine = await saveMagazineSettings(
         { db, payload },
-        { id: communityId, slug: community!.slug, isListedInDirectory: true },
+        {
+          id: communityId,
+          slug: community!.slug,
+          isListedInDirectory: true,
+          joinPolicy: "open",
+        },
         {
           name: "Town",
           slug: `town-${sfx}`,

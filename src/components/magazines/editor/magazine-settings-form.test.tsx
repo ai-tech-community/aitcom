@@ -67,7 +67,11 @@ vi.mock("@/trpc/react", () => ({
 
 import { MagazineSettingsForm } from "./magazine-settings-form";
 
-const UNLISTED = { slug: "night-owls", isListedInDirectory: false };
+const UNLISTED = {
+  slug: "night-owls",
+  isListedInDirectory: false,
+  joinPolicy: "open" as const,
+};
 const CONFIRM = "I understand, show this outside the community";
 
 function existingMagazine(overrides: Partial<Magazine> = {}): Magazine {
@@ -284,7 +288,11 @@ describe("MagazineSettingsForm", () => {
     trpc.settings = {
       magazine: existingMagazine(),
       communityIsPrivate: false,
-      community: { slug: "amsterdam-ai", isListedInDirectory: true },
+      community: {
+        slug: "amsterdam-ai",
+        isListedInDirectory: true,
+        joinPolicy: "open",
+      },
     };
     trpc.saveOutcome = { message: "MAGAZINE_SLUG_TAKEN" };
     renderWithIntl(<MagazineSettingsForm slug="amsterdam-ai" />);
@@ -300,7 +308,11 @@ describe("MagazineSettingsForm", () => {
     trpc.settings = {
       magazine: existingMagazine(),
       communityIsPrivate: false,
-      community: { slug: "amsterdam-ai", isListedInDirectory: true },
+      community: {
+        slug: "amsterdam-ai",
+        isListedInDirectory: true,
+        joinPolicy: "open",
+      },
     };
     renderWithIntl(<MagazineSettingsForm slug="amsterdam-ai" />);
 
@@ -329,7 +341,11 @@ describe("MagazineSettingsForm", () => {
     trpc.settings = {
       magazine: existingMagazine(),
       communityIsPrivate: false,
-      community: { slug: "amsterdam-ai", isListedInDirectory: true },
+      community: {
+        slug: "amsterdam-ai",
+        isListedInDirectory: true,
+        joinPolicy: "open",
+      },
     };
     let finish: (res: Response) => void = () => undefined;
     const fetchMock = vi.fn(

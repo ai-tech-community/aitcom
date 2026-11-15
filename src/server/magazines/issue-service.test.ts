@@ -113,6 +113,7 @@ describe("saving issue items", () => {
             id: "community",
             slug: "community",
             isListedInDirectory: true,
+            joinPolicy: "open",
           },
         },
       );
@@ -169,6 +170,7 @@ describe("saving issue items", () => {
           id: "community",
           slug: "community",
           isListedInDirectory: true,
+          joinPolicy: "open",
         },
       },
     );

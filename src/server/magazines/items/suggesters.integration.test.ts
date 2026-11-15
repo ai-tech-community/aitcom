@@ -85,6 +85,7 @@ describe.skipIf(!isLocalDbConfigured())(
         slug: string;
         name: string;
         isListedInDirectory: boolean;
+        joinPolicy: "open" | "invite_only" | "approval_required";
       };
       communityIds: string[];
       magazine: Magazine;

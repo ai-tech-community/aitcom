@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { IssueStatus, IssueVisibility } from "@/lib/magazines/values";
+import type { JoinPolicy } from "@/server/communities/invite-policy";
 
 import { type MagazineStanding, NO_STANDING } from "./editorship";
 import {
@@ -34,6 +35,7 @@ const STANDING: Record<Who, MagazineStanding> = {
 function input(over: {
   who?: Who;
   listed?: boolean;
+  joinPolicy?: JoinPolicy;
   slug?: string;
   deleted?: boolean;
   community?: null;
@@ -49,6 +51,7 @@ function input(over: {
         : {
             slug: over.slug ?? "garden-club",
             isListedInDirectory: over.listed ?? true,
+            joinPolicy: over.joinPolicy ?? "open",
             deleted: over.deleted ?? false,
           },
     issue: {
@@ -222,6 +225,32 @@ describe("resolveMagazineIssueAccess", () => {
     }
   });
 
+  it.each<JoinPolicy>(["invite_only", "approval_required"])(
+    "a listed %s community is private: outsiders need a leader's confirmation",
+    (joinPolicy) => {
+      for (const visibility of ["teaser", "public"] as const) {
+        expect(
+          resolveMagazineIssueAccess(input({ joinPolicy, visibility })),
+        ).toBe("none");
+      }
+      expect(
+        resolveMagazineIssueAccess(
+          input({ joinPolicy, visibility: "teaser", confirmedAt: CONFIRMED }),
+        ),
+      ).toBe("teaser");
+      expect(
+        resolveMagazineIssueAccess(
+          input({ joinPolicy, visibility: "public", confirmedAt: CONFIRMED }),
+        ),
+      ).toBe("full");
+      expect(
+        resolveMagazineIssueAccess(
+          input({ joinPolicy, who: "member", visibility: "members" }),
+        ),
+      ).toBe("full");
+    },
+  );
+
   it("the Hub counts as content-public (slug 'ait', unlisted)", () => {
     expect(
       resolveMagazineIssueAccess(
@@ -243,6 +272,8 @@ describe("issueAudience", () => {
       ],
       [{ listed: false }, "members"],
       [{ listed: false, confirmedAt: CONFIRMED }, "everyone"],
+      [{ joinPolicy: "invite_only" }, "members"],
+      [{ joinPolicy: "approval_required", confirmedAt: CONFIRMED }, "everyone"],
       [{ visibility: "members" }, "members"],
       [{ status: "scheduled" }, "nobody"],
       [{ status: "draft" }, "nobody"],

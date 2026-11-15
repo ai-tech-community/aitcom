@@ -27,7 +27,12 @@ type EditingData = {
   problems: ItemProblem[];
   magazine: { name: string; slug: string };
   communityIsPrivate: boolean;
-  community: { name: string; slug: string; isListedInDirectory: boolean };
+  community: {
+    name: string;
+    slug: string;
+    isListedInDirectory: boolean;
+    joinPolicy: "open" | "invite_only" | "approval_required";
+  };
   openHrefs: Record<string, string>;
 };
 
@@ -213,6 +218,7 @@ function twoArticles(overrides: Partial<EditingData> = {}): EditingData {
       name: "Night Owls",
       slug: "night-owls",
       isListedInDirectory: true,
+      joinPolicy: "open",
     },
     openHrefs: {},
     ...overrides,
@@ -447,6 +453,7 @@ describe("IssueBuilder", () => {
         name: "Night Owls",
         slug: "night-owls",
         isListedInDirectory: false,
+        joinPolicy: "open",
       },
     });
     let finishPreview!: (saved: MagazineIssue) => void;
@@ -491,6 +498,7 @@ describe("IssueBuilder", () => {
           name: "Night Owls",
           slug: "night-owls",
           isListedInDirectory: false,
+          joinPolicy: "open",
         },
       });
       trpc.updateIssue.mockImplementation(async (input: object) =>
@@ -543,6 +551,7 @@ describe("IssueBuilder", () => {
         name: "Night Owls",
         slug: "night-owls",
         isListedInDirectory: false,
+        joinPolicy: "open",
       },
     });
     renderBuilder();
@@ -976,6 +985,7 @@ describe("IssueBuilder", () => {
           name: "Night Owls",
           slug: "night-owls",
           isListedInDirectory: false,
+          joinPolicy: "open",
         },
       });
       renderBuilder();
@@ -1018,6 +1028,7 @@ describe("IssueBuilder", () => {
           name: "Night Owls",
           slug: "night-owls",
           isListedInDirectory: false,
+          joinPolicy: "open",
         },
       });
       trpc.updateIssue.mockImplementation(async (input: object) =>
@@ -1596,6 +1607,7 @@ describe("IssueBuilder", () => {
         name: "Night Owls",
         slug: "night-owls",
         isListedInDirectory: false,
+        joinPolicy: "open",
       },
     });
     renderBuilder();

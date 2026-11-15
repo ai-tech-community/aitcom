@@ -253,7 +253,12 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
 
   // ── Fixtures ──────────────────────────────────────────────────────────
 
-  type Community = { id: string; slug: string; isListedInDirectory: boolean };
+  type Community = {
+    id: string;
+    slug: string;
+    isListedInDirectory: boolean;
+    joinPolicy: "open" | "invite_only" | "approval_required";
+  };
 
   /** A listed community: the editor owns it, the member is a member. */
   async function community(label: string): Promise<Community> {
@@ -276,6 +281,7 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
       id: row!.id,
       slug: row!.slug,
       isListedInDirectory: row!.isListedInDirectory,
+      joinPolicy: row!.joinPolicy,
     };
   }
 

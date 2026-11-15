@@ -1,7 +1,11 @@
-import { eq, isNotNull, or } from "drizzle-orm";
+import { isNotNull, or } from "drizzle-orm";
 import type { Where } from "payload";
 
-import { isContentPublic } from "@/server/communities/content-visibility";
+import {
+  type CommunityVisibility,
+  isContentPublic,
+} from "@/server/communities/content-visibility";
+import { contentPrivateCommunitySql } from "@/server/communities/content-visibility-queries";
 import type { db } from "@/server/db";
 import { communities } from "@/server/db/schema";
 
@@ -23,7 +27,7 @@ export type IssueReadScope = {
   editorCommunityIds: readonly string[];
   /** Active memberships: published issues at any visibility. */
   memberCommunityIds: readonly string[];
-  /** Content-private: unlisted and not the Hub. */
+  /** Content-private: not the Hub, and unlisted or private (ADR-0050). */
   privateCommunityIds: readonly string[];
   /** Soft-deleted: no access for anyone, editors included. */
   deletedCommunityIds: readonly string[];
@@ -32,10 +36,8 @@ export type IssueReadScope = {
 /** Listings accept previews; article surfaces need full reading access. */
 export type IssueReach = "teaser" | "full";
 
-export type ScopeCommunity = {
+export type ScopeCommunity = CommunityVisibility & {
   id: string;
-  slug: string;
-  isListedInDirectory: boolean;
   deletedAt: Date | null;
 };
 
@@ -43,8 +45,9 @@ export type ScopeCommunity = {
  * The pure half of `loadIssueReadScope`. The editor and member ids come
  * from the editorship seam (`loadEditorScope`), the private and deleted
  * ids from the same predicate as the resolver (`isContentPublic`), so the
- * Hub rule and the editor rule each have one definition. Communities that
- * are listed and live may be omitted from `rows`; they add nothing.
+ * Hub rule and the editor rule each have one definition. Communities whose
+ * content is public and that are live may be omitted from `rows`; they add
+ * nothing.
  */
 export function buildIssueReadScope(
   standing: EditorScope,
@@ -81,7 +84,8 @@ export function issueReadScopeForCommunity(
 
 /**
  * The viewer's issue read scope: the viewer's editorship across magazines
- * (one query) and one community query (unlisted or soft-deleted rows).
+ * (one query) and one community query (content-private or soft-deleted
+ * rows, `contentPrivateCommunitySql`).
  * Like `hiddenContentCommunityIds`, the id lists grow with the number of
  * such communities; fine at today's scale, keep it off per-row hot paths.
  */
@@ -96,14 +100,12 @@ export async function loadIssueReadScope(
         id: communities.id,
         slug: communities.slug,
         isListedInDirectory: communities.isListedInDirectory,
+        joinPolicy: communities.joinPolicy,
         deletedAt: communities.deletedAt,
       })
       .from(communities)
       .where(
-        or(
-          eq(communities.isListedInDirectory, false),
-          isNotNull(communities.deletedAt),
-        ),
+        or(contentPrivateCommunitySql(), isNotNull(communities.deletedAt)),
       ),
   ]);
   return buildIssueReadScope(standing, rows);

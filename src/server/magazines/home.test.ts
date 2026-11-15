@@ -29,6 +29,7 @@ const community = {
   name: "Community",
   slug: "public",
   isListedInDirectory: true,
+  joinPolicy: "open" as const,
 };
 function issue(id: number, magazine = id): MagazineIssue {
   return {
