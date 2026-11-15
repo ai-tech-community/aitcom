@@ -287,6 +287,55 @@ describe.skipIf(!RUN_DB)("feed.getHomeActivity [DB integration]", () => {
     });
   });
 
+  it("names every person on the page with the card their name links to", async () => {
+    await m.db.insert(m.schema.memberProfiles).values([
+      {
+        userId: authorId,
+        displayName: "Author",
+        bio: "Runs the place",
+        company: "Acme",
+        isPublic: true,
+        xp: 450,
+      },
+      // The viewer's own profile is private: only they may open it.
+      { userId: viewerId, displayName: "Viewer", isPublic: false, xp: 0 },
+    ]);
+    try {
+      const active = await community("cards", { status: "active" });
+      await post(active, "Hello");
+      await thread(active, "cards-thread");
+
+      const items = await allItems();
+      const authorCard = {
+        canOpenProfile: true,
+        bio: "Runs the place",
+        profile: { company: "Acme", skills: [], level: 3, tier: "beginner" },
+      };
+      const postItem = items.find((item) => item.kind === "post");
+      expect(postItem?.kind === "post" && postItem.post.authorCard).toEqual(
+        authorCard,
+      );
+      const threadItem = items.find((item) => item.kind === "thread");
+      expect(threadItem?.kind === "thread" && threadItem.thread).toMatchObject({
+        authorId,
+        authorCard,
+      });
+      const joined = items.flatMap((item) =>
+        item.kind === "joins" ? item.members : [],
+      );
+      expect(joined.find((member) => member.id === authorId)?.card).toEqual(
+        authorCard,
+      );
+      expect(
+        joined.find((member) => member.id === viewerId)?.card,
+      ).toMatchObject({ canOpenProfile: true });
+    } finally {
+      await m.db
+        .delete(m.schema.memberProfiles)
+        .where(m.inArray(m.schema.memberProfiles.userId, [viewerId, authorId]));
+    }
+  });
+
   it("says when the viewer belongs to no community", async () => {
     await community("invited", { status: "invited" });
     const page = await asViewer().feed.getHomeActivity({ limit: 15 });

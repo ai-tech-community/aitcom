@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useConfirm } from "@/components/confirm-dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MemberHoverName } from "@/components/members/member-hover-name";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
@@ -20,18 +21,6 @@ import {
 import { MoreHorizontal, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-interface FeedComment {
-  id: number;
-  content: string;
-  authorId: string;
-  authorName?: string | null;
-  communityId: string;
-  isDeleted?: boolean | null;
-  isEdited?: boolean | null;
-  editedAt?: string | null;
-  createdAt: string;
-}
-
 interface FeedCommentsProps {
   postId: number;
   communitySlug: string;
@@ -46,6 +35,7 @@ export function FeedComments({
   memberRole,
 }: FeedCommentsProps) {
   const t = useTranslations("communities.feed");
+  const tCard = useTranslations("memberCard");
   const utils = api.useUtils();
   const confirm = useConfirm();
   const [newComment, setNewComment] = useState("");
@@ -123,7 +113,7 @@ export function FeedComments({
   return (
     <div className="space-y-3">
       {/* Comment list */}
-      {(comments as FeedComment[]).map((comment) => {
+      {comments.map((comment) => {
         const isAuthor = !!currentUserId && comment.authorId === currentUserId;
         const canModify = isAuthor || isPrivileged;
         const initials = getInitials(comment.authorName ?? "?");
@@ -142,14 +132,23 @@ export function FeedComments({
         return (
           <div key={comment.id} className="flex items-start gap-2">
             <Avatar className="mt-0.5 size-6 shrink-0">
+              {comment.authorImage ? (
+                <AvatarImage src={comment.authorImage} alt="" />
+              ) : null}
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-1">
                 <div>
-                  <span className="text-xs font-medium">
-                    {comment.authorName ?? "Member"}
-                  </span>
+                  <MemberHoverName
+                    className="text-xs"
+                    member={{
+                      userId: comment.authorId,
+                      name: comment.authorName ?? tCard("fallback"),
+                      image: comment.authorImage,
+                      card: comment.authorCard,
+                    }}
+                  />
                   <span className="text-muted-foreground ml-1.5 text-xs">
                     <RelativeTime
                       date={comment.createdAt}

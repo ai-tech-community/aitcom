@@ -3,11 +3,11 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
 import {
-  DIRECTORY_SKILL_LIMIT,
   directoryProfileColumns,
   toDirectoryMember,
   type DirectoryMemberRow,
 } from "./directory-member";
+import { MEMBER_CARD_SKILL_LIMIT } from "@/server/members/member-card";
 import { profileReadableBy } from "@/server/members/profile-access";
 
 function row(overrides: Partial<DirectoryMemberRow> = {}): DirectoryMemberRow {
@@ -81,7 +81,7 @@ describe("toDirectoryMember", () => {
     const skills = Array.from({ length: 9 }, (_, i) => `skill-${i}`);
     const member = toDirectoryMember(row({ skills }), null);
     expect(member.profile?.skills).toEqual(
-      skills.slice(0, DIRECTORY_SKILL_LIMIT),
+      skills.slice(0, MEMBER_CARD_SKILL_LIMIT),
     );
   });
 });

@@ -7,6 +7,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  MemberHoverName,
+  type NamedMember,
+} from "@/components/members/member-hover-name";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
 import {
@@ -18,7 +22,8 @@ import type { RouterOutputs } from "@/trpc/react";
 
 type FeedItem = RouterOutputs["feed"]["getActivity"]["items"][number];
 type ActivityItem = Exclude<FeedItem, { kind: "post" }>;
-type Member = { id: string; name: string; image: string | null };
+type Member = Extract<ActivityItem, { kind: "joins" }>["members"][number];
+type FeedT = ReturnType<typeof useTranslations<"communities.feed">>;
 
 /**
  * A non-post moment in the community feed: a question, an idea, an event,
@@ -39,14 +44,20 @@ export function ActivityRow({
     case "thread": {
       const { thread } = item;
       const name = thread.authorName ?? t("someone");
+      const person = personTag({
+        userId: thread.authorId,
+        name,
+        image: thread.authorImage,
+        card: thread.authorCard,
+      });
       const sentence =
         thread.category === "question"
-          ? t("activityAsked", { name })
+          ? t.rich("activityAsked", { name, person })
           : thread.category === "showcase"
-            ? t("activityShowcase", { name })
+            ? t.rich("activityShowcase", { name, person })
             : thread.category === "job"
-              ? t("activityJob", { name })
-              : t("activityDiscussion", { name });
+              ? t.rich("activityJob", { name, person })
+              : t.rich("activityDiscussion", { name, person });
       return (
         <RowFrame
           kind={item.kind}
@@ -88,7 +99,15 @@ export function ActivityRow({
         <RowFrame
           kind={item.kind}
           lead={<PersonAvatar name={name} image={idea.authorImage} />}
-          sentence={t("activityIdea", { name })}
+          sentence={t.rich("activityIdea", {
+            name,
+            person: personTag({
+              userId: idea.authorId,
+              name,
+              image: idea.authorImage,
+              card: idea.authorCard,
+            }),
+          })}
           at={item.at}
         >
           <Link
@@ -150,7 +169,7 @@ function RowFrame({
 }: {
   kind: string;
   lead: ReactNode;
-  sentence: string;
+  sentence: ReactNode;
   at: string;
   children?: ReactNode;
 }) {
@@ -240,18 +259,33 @@ function EventMeta({
   );
 }
 
-function joinedSentence(
-  members: readonly Member[],
-  t: ReturnType<typeof useTranslations<"communities.feed">>,
-): string {
-  const names = members.map((member) => member.name || t("someone"));
-  if (names.length === 1) return t("joinedOne", { first: names[0]! });
-  if (names.length === 2) {
-    return t("joinedTwo", { first: names[0]!, second: names[1]! });
-  }
-  return t("joinedMany", {
-    first: names[0]!,
-    second: names[1]!,
-    count: names.length - 2,
-  });
+/**
+ * A rich-text tag that renders as the member's linked name. The tag wraps
+ * the name in the message so translators see it; the link renders it.
+ */
+function personTag(member: NamedMember) {
+  return function PersonTag(): ReactNode {
+    return <MemberHoverName member={member} />;
+  };
+}
+
+/** "Naomi joined", "Naomi and Ben joined", "Naomi, Ben and 3 others joined". */
+function joinedSentence(members: readonly Member[], t: FeedT): ReactNode {
+  const [first, second] = members.map(
+    (member): NamedMember => ({
+      userId: member.id,
+      name: member.name || t("someone"),
+      image: member.image,
+      card: member.card,
+    }),
+  );
+  const firstValues = { first: first!.name, firstPerson: personTag(first!) };
+  if (members.length === 1) return t.rich("joinedOne", firstValues);
+  const values = {
+    ...firstValues,
+    second: second!.name,
+    secondPerson: personTag(second!),
+  };
+  if (members.length === 2) return t.rich("joinedTwo", values);
+  return t.rich("joinedMany", { ...values, count: members.length - 2 });
 }

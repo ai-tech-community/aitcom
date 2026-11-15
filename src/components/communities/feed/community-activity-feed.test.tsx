@@ -3,6 +3,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
+import {
+  openMemberCard,
+  PRIVATE_MEMBER_CARD,
+} from "@/test/member-card-fixture";
 import { CommunityActivityFeed } from "./community-activity-feed";
 
 const { query, fetchNextPage } = vi.hoisted(() => ({
@@ -42,6 +46,12 @@ vi.mock("@/trpc/react", () => ({
 
 const AT = "2026-09-23T10:00:00.000Z";
 
+/** The "who did what" line of an activity row, as one reads it. */
+function sentenceOf(container: HTMLElement, kind: string) {
+  return container.querySelector(`[data-activity-row="${kind}"] p > span`)
+    ?.textContent;
+}
+
 function post(id: number, content: string) {
   return {
     id,
@@ -49,6 +59,7 @@ function post(id: number, content: string) {
     authorId: "u1",
     authorName: "Greg",
     authorImage: null,
+    authorCard: openMemberCard(),
     communityId: "c1",
     createdAt: AT,
     updatedAt: AT,
@@ -99,8 +110,10 @@ describe("CommunityActivityFeed", () => {
               slug: "help-with-3d-artist",
               title: "Help with 3D Artist",
               category: "question",
+              authorId: "u-greg",
               authorName: "Greg",
               authorImage: null,
+              authorCard: openMemberCard(),
               replyCount: 2,
             },
           },
@@ -128,8 +141,10 @@ describe("CommunityActivityFeed", () => {
             idea: {
               id: 5,
               title: "Monthly paper club",
+              authorId: "u-ann",
               authorName: "Ann",
               authorImage: null,
+              authorCard: PRIVATE_MEMBER_CARD,
               voteCount: 4,
               status: "open",
             },
@@ -139,9 +154,9 @@ describe("CommunityActivityFeed", () => {
             key: "join:a",
             at: AT,
             members: [
-              { id: "a", name: "Ann", image: null },
-              { id: "b", name: "Ben", image: null },
-              { id: "c", name: "Cas", image: null },
+              { id: "a", name: "Ann", image: null, card: openMemberCard() },
+              { id: "b", name: "Ben", image: null, card: openMemberCard() },
+              { id: "c", name: "Cas", image: null, card: openMemberCard() },
             ],
           },
         ],
@@ -157,7 +172,7 @@ describe("CommunityActivityFeed", () => {
     );
     expect(order).toEqual(["9", "thread", "3", "event", "idea", "joins"]);
 
-    expect(screen.getByText("Greg asked a question")).toBeInTheDocument();
+    expect(sentenceOf(container, "thread")).toBe("Greg asked a question");
     expect(
       screen.getByRole("link", { name: /Help with 3D Artist/ }),
     ).toHaveAttribute("href", "/communities/mlops/forum/help-with-3d-artist");
@@ -167,9 +182,83 @@ describe("CommunityActivityFeed", () => {
       "href",
       "/events/mlops-night",
     );
-    expect(screen.getByText("Ann suggested an idea")).toBeInTheDocument();
+    expect(sentenceOf(container, "idea")).toBe("Ann suggested an idea");
     expect(screen.getByText("4 votes")).toBeInTheDocument();
-    expect(screen.getByText("Ann, Ben and 1 other joined")).toBeInTheDocument();
+    expect(sentenceOf(container, "joins")).toBe("Ann, Ben and 1 other joined");
+  });
+
+  it("links every person's name to their profile, with a preview on hover", async () => {
+    const { container } = renderFeed([
+      {
+        pinned: [],
+        nextCursor: null,
+        items: [
+          {
+            kind: "thread",
+            key: "thread:1",
+            at: AT,
+            thread: {
+              id: 1,
+              slug: "welcome",
+              title: "Welcome",
+              category: "general",
+              authorId: "u-greg",
+              authorName: "Greg",
+              authorImage: null,
+              authorCard: openMemberCard(),
+              replyCount: 3,
+            },
+          },
+          {
+            kind: "idea",
+            key: "idea:5",
+            at: AT,
+            idea: {
+              id: 5,
+              title: "Monthly paper club",
+              authorId: "u-ann",
+              authorName: "Ann",
+              authorImage: null,
+              authorCard: PRIVATE_MEMBER_CARD,
+              voteCount: 4,
+              status: "open",
+            },
+          },
+          {
+            kind: "joins",
+            key: "join:a",
+            at: AT,
+            members: [
+              {
+                id: "u-naomi",
+                name: "Naomi",
+                image: null,
+                card: openMemberCard(),
+              },
+              { id: "u-ben", name: "Ben", image: null, card: openMemberCard() },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const greg = screen.getByRole("link", { name: "Greg" });
+    expect(greg).toHaveAttribute("href", "/members/u-greg");
+    expect(screen.getByRole("link", { name: "Naomi" })).toHaveAttribute(
+      "href",
+      "/members/u-naomi",
+    );
+    expect(screen.getByRole("link", { name: "Ben" })).toHaveAttribute(
+      "href",
+      "/members/u-ben",
+    );
+    // A private profile is named, never linked.
+    const ideaRow = container.querySelector('[data-activity-row="idea"]')!;
+    expect(ideaRow.querySelector('a[href^="/members/"]')).toBeNull();
+
+    fireEvent.pointerEnter(greg);
+    expect(await screen.findByText("@ Acme")).toBeInTheDocument();
+    expect(screen.getByText("Level 3 · Beginner")).toBeInTheDocument();
   });
 
   it("dates an event by its own day, even for a viewer west of UTC", () => {

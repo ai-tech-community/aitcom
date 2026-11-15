@@ -69,6 +69,10 @@ vi.mock("./report-dialog", () => ({
 }));
 
 import { FeedPostCard } from "./feed-post-card";
+import {
+  openMemberCard,
+  PRIVATE_MEMBER_CARD,
+} from "@/test/member-card-fixture";
 
 const video = {
   url: "https://v/1.mp4",
@@ -86,6 +90,7 @@ const basePost = {
   authorName: "Ada",
   createdAt: "2026-09-24T10:00:00Z",
   hasLiked: false,
+  authorCard: openMemberCard(),
 };
 
 function renderCard(
@@ -197,6 +202,38 @@ describe("FeedPostCard image", () => {
   });
 });
 
+/** Links the post's content makes: everything but the author's byline. */
+function contentLinks() {
+  return screen
+    .queryAllByRole("link")
+    .filter((a) => a.getAttribute("href") !== "/members/author-1");
+}
+
+describe("FeedPostCard author", () => {
+  it("links the author's name to their profile and previews them on hover", async () => {
+    renderCard();
+    const name = screen.getByRole("link", { name: "Ada" });
+    expect(name).toHaveAttribute("href", "/members/author-1");
+    fireEvent.pointerEnter(name);
+    expect(await screen.findByText("@ Acme")).toBeInTheDocument();
+    expect(screen.getByText("Level 3 · Beginner")).toBeInTheDocument();
+    expect(
+      screen.getByText("Connects founders across the Netherlands."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Skills" })).toHaveTextContent(
+      "Community building",
+    );
+  });
+
+  it("does not link a private author, and says the profile is private", async () => {
+    renderCard({ authorCard: PRIVATE_MEMBER_CARD });
+    expect(screen.queryByRole("link", { name: "Ada" })).toBeNull();
+    fireEvent.pointerEnter(screen.getByText("Ada"));
+    expect(await screen.findByText("Private profile")).toBeInTheDocument();
+    expect(screen.queryByText(/Level/)).not.toBeInTheDocument();
+  });
+});
+
 describe("FeedPostCard links", () => {
   const LINK = "https://claude.ai/artifact/QfGAfn6EPmuJngAgwsZoa9";
   const content = `Grok Bot cheat sheet ${LINK}`;
@@ -269,13 +306,13 @@ describe("FeedPostCard links", () => {
   it("lets attached media take the place of the link card", () => {
     renderCard({ content, video });
     // Only the inline link in the text: no card.
-    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(contentLinks()).toHaveLength(1);
     expect(screen.getByTestId("player")).toBeInTheDocument();
   });
 
   it("shows no card for a post without a link", () => {
     renderCard({ content: "Just words" });
-    expect(screen.queryByRole("link")).toBeNull();
+    expect(contentLinks()).toHaveLength(0);
   });
 });
 
@@ -358,7 +395,7 @@ describe("FeedPostCard gallery post", () => {
       memberRole: "moderator",
     });
     // Only the inline link in the text: no link card.
-    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(contentLinks()).toHaveLength(1);
     props.onChange();
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
@@ -371,7 +408,7 @@ describe("FeedPostCard gallery post", () => {
     });
     expect(screen.queryByTestId("collage")).toBeNull();
     expect(screen.getByText(/Our evening/)).toBeInTheDocument();
-    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(contentLinks()).toHaveLength(1);
   });
 
   it("says how many photos and videos the author added", () => {
