@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import type { db as Db } from "@/server/db";
-import { communities, user } from "@/server/db/schema";
+import { communities } from "@/server/db/schema";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { CommunityRole } from "@/server/communities/role-utils";
@@ -29,6 +29,11 @@ import {
   communityRefOf,
 } from "./content-visibility-queries";
 import { imageIdsOf } from "./feed-images";
+import {
+  CLOSED_MEMBER_CARD,
+  loadMemberCards,
+  type MemberCard,
+} from "@/server/members/member-card";
 import { loadMentionViews, type PostMentionView } from "./post-mentions";
 import { loadPollViews } from "./post-polls";
 import type { FeedPollView } from "@/lib/poll-rules";
@@ -204,6 +209,8 @@ export type FeedPostView = Omit<
    */
   gallery: FeedGalleryView | null;
   authorImage: string | null;
+  /** Whether the author's name links to their profile, and its preview. */
+  authorCard: MemberCard;
   hasLiked: boolean;
   video: FeedVideoView | null;
   images: FeedImageView[];
@@ -269,22 +276,6 @@ async function videoView(
     height: video.height ?? 0,
     visibility: post.visibility === "public" ? "public" : "community",
   };
-}
-
-/** Author photos for a set of user ids, in one query. */
-export async function loadUserImages(
-  database: Database,
-  userIds: readonly string[],
-): Promise<Map<string, string | null>> {
-  const ids = [...new Set(userIds.filter(Boolean))];
-  const images = new Map<string, string | null>();
-  if (ids.length === 0) return images;
-  const rows = await database
-    .select({ id: user.id, image: user.image })
-    .from(user)
-    .where(inArray(user.id, ids));
-  for (const row of rows) images.set(row.id, row.image);
-  return images;
 }
 
 /** What decorating posts needs from the outside world. */
@@ -353,10 +344,11 @@ export async function decorateFeedPosts(
 ): Promise<FeedPostView[]> {
   if (posts.length === 0) return [];
   const { database, payload, videoStorage, galleryStorage } = deps;
-  const [images, pictures, mentionsOf, pollOf, galleries] = await Promise.all([
-    loadUserImages(
+  const [authors, pictures, mentionsOf, pollOf, galleries] = await Promise.all([
+    loadMemberCards(
       database,
       posts.map((post) => post.authorId),
+      viewerId,
     ),
     loadImageViews(payload, posts),
     loadMentionViews(database, posts),
@@ -396,7 +388,8 @@ export async function decorateFeedPosts(
       ...post,
       isGalleryPost: galleryBatch != null,
       gallery: galleries.get(post.id) ?? null,
-      authorImage: images.get(post.authorId) ?? null,
+      authorImage: authors.get(post.authorId)?.image ?? null,
+      authorCard: authors.get(post.authorId)?.card ?? CLOSED_MEMBER_CARD,
       hasLiked: liked.has(post.id),
       video: await videoView(post, videoStorage),
       images: imageIdsOf(post)

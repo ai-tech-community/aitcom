@@ -35,6 +35,8 @@ import { FeedImageGallery, type GalleryImage } from "./feed-image-gallery";
 import { PostEditForm } from "./post-edit-form";
 import { GalleryCollage } from "../gallery/gallery-collage";
 import type { FeedGalleryView } from "@/server/gallery/feed-view";
+import type { MemberCard } from "@/server/members/member-card";
+import { MemberHoverName } from "@/components/members/member-hover-name";
 
 interface FeedPost {
   id: number;
@@ -44,6 +46,8 @@ interface FeedPost {
   authorId: string;
   authorName?: string | null;
   authorImage?: string | null;
+  /** Whether the author's name links to their profile, and its preview. */
+  authorCard: MemberCard;
   communityId?: string | null;
   likeCount?: number | null;
   commentCount?: number | null;
@@ -119,6 +123,7 @@ export function FeedPostCard({
   const t = useTranslations("communities.feed");
   const tReport = useTranslations("communities.report");
   const tVideo = useTranslations("communities.video");
+  const tCard = useTranslations("memberCard");
   const confirm = useConfirm();
   const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -228,8 +233,15 @@ export function FeedPostCard({
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm leading-tight font-medium">
-              {post.authorName ?? "Member"}
+            <p className="text-sm leading-tight">
+              <MemberHoverName
+                member={{
+                  userId: post.authorId,
+                  name: post.authorName ?? tCard("fallback"),
+                  image: post.authorImage ?? null,
+                  card: post.authorCard,
+                }}
+              />
             </p>
             {post.gallery ? (
               <p className="text-muted-foreground text-xs leading-tight">

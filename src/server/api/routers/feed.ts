@@ -137,6 +137,10 @@ import {
   pollFields,
 } from "@/server/communities/post-polls";
 import { getGiphyClient } from "@/server/giphy/giphy";
+import {
+  CLOSED_MEMBER_CARD,
+  loadMemberCards,
+} from "@/server/members/member-card";
 import { createPerUserLimit } from "@/server/rate-limit/per-user-window";
 
 /**
@@ -1107,7 +1111,16 @@ export const feedRouter = createTRPCRouter({
         depth: 0,
       });
 
-      return docs;
+      const authors = await loadMemberCards(
+        ctx.db,
+        docs.map((comment) => comment.authorId),
+        ctx.session.user.id,
+      );
+      return docs.map((comment) => ({
+        ...comment,
+        authorImage: authors.get(comment.authorId)?.image ?? null,
+        authorCard: authors.get(comment.authorId)?.card ?? CLOSED_MEMBER_CARD,
+      }));
     }),
 
   // ── addComment ──────────────────────────────────────────────────────────────

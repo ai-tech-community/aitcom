@@ -157,7 +157,7 @@ describe("feed.getComments", () => {
     hooks.membership = { role: "member" };
     payload.find.mockResolvedValueOnce({ docs: [{ id: 1, content: "hi" }] });
     await expect(caller().feed.getComments({ postId: 5 })).resolves.toEqual([
-      { id: 1, content: "hi" },
+      expect.objectContaining({ id: 1, content: "hi" }),
     ]);
   });
 

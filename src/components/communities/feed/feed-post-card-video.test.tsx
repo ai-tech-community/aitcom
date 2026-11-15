@@ -36,6 +36,7 @@ vi.mock("./report-dialog", () => ({ ReportDialog: () => null }));
 
 import { FeedPostCard } from "./feed-post-card";
 import { FRESH_LINK_SETTLE_MS } from "./feed-video-player";
+import { openMemberCard } from "@/test/member-card-fixture";
 
 const load = vi.fn();
 
@@ -76,6 +77,7 @@ const post = {
   authorName: "Ada",
   createdAt: "2026-09-24T10:00:00Z",
   hasLiked: false,
+  authorCard: openMemberCard(),
   video,
 };
 

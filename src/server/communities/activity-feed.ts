@@ -14,7 +14,6 @@ import type { getPayloadClient } from "@/server/payload";
 import { buildIdeasWhere } from "@/server/api/routers/ideas-filter";
 import {
   decorateFeedPosts,
-  loadUserImages,
   type FeedPostView,
 } from "@/server/communities/feed-posts";
 import {
@@ -26,6 +25,11 @@ import {
   postVisibilityWhere,
   type FeedViewer,
 } from "@/server/communities/post-visibility";
+import {
+  CLOSED_MEMBER_CARD,
+  loadMemberCards,
+  type MemberCard,
+} from "@/server/members/member-card";
 import type { ObjectStorageSource } from "@/server/media/object-storage";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 
@@ -44,16 +48,20 @@ export type ActivityThread = {
   slug: string;
   title: string;
   category: string | null;
+  authorId: string;
   authorName: string | null;
   authorImage: string | null;
+  authorCard: MemberCard;
   replyCount: number;
 };
 
 export type ActivityIdea = {
   id: number;
   title: string;
+  authorId: string;
   authorName: string | null;
   authorImage: string | null;
+  authorCard: MemberCard;
   voteCount: number;
   status: string | null;
 };
@@ -70,7 +78,15 @@ export type ActivityEvent = {
   location: string | null;
 };
 
-export type ActivityMember = { id: string; name: string; image: string | null };
+export type ActivityMember = {
+  id: string;
+  name: string;
+  image: string | null;
+  card: MemberCard;
+};
+
+/** A joined member as the stream reads it, before the page's cards load. */
+type JoinedMember = Omit<ActivityMember, "card">;
 
 /** Fields every feed item carries, whatever its kind. */
 type FeedItemBase = {
@@ -320,7 +336,7 @@ export async function loadActivityStream({
             id: row.userId,
             name: row.displayName ?? row.name ?? "",
             image: row.image,
-          } satisfies ActivityMember,
+          } satisfies JoinedMember,
           scope: row.communityId,
         }),
       ),
@@ -329,23 +345,27 @@ export async function loadActivityStream({
     limit,
   );
 
-  // Decorate only what made the page: posts get likes, others author photos.
+  // Decorate only what made the page: posts get likes, everyone else on it
+  // their photo and member card.
   const pagePosts = entries
     .filter((entry) => entry.kind === "post")
     .map((entry) => entry.data as (typeof posts.docs)[number]);
-  const [decorated, authorImages] = await Promise.all([
+  const [decorated, people] = await Promise.all([
     decorateFeedPosts(
       { database, payload, videoStorage: storage, galleryStorage },
       pagePosts,
       viewerId,
     ),
-    loadUserImages(
+    loadMemberCards(
       database,
       entries.flatMap((entry) =>
         entry.kind === "thread" || entry.kind === "idea"
           ? [(entry.data as { authorId: string }).authorId]
-          : [],
+          : entry.kind === "join"
+            ? [(entry.data as JoinedMember).id]
+            : [],
       ),
+      viewerId,
     ),
   ]);
   const postById = new Map(decorated.map((post) => [String(post.id), post]));
@@ -355,7 +375,10 @@ export async function loadActivityStream({
     (entry) => entry.kind !== "post" || postById.has(entry.id),
   );
 
-  const items = groupAdjacentJoins<ActivityMember>(shown).map(
+  const cardOf = (userId: string) =>
+    people.get(userId)?.card ?? CLOSED_MEMBER_CARD;
+
+  const items = groupAdjacentJoins<JoinedMember>(shown).map(
     (group): CommunityFeedItem => {
       if (group.kind === "joins") {
         return {
@@ -363,7 +386,10 @@ export async function loadActivityStream({
           key: group.key,
           at: group.at,
           communityId: group.scope!,
-          members: group.members,
+          members: group.members.map((member) => ({
+            ...member,
+            card: cardOf(member.id),
+          })),
         };
       }
       const { entry } = group;
@@ -385,8 +411,10 @@ export async function loadActivityStream({
               slug: doc.slug ?? "",
               title: doc.title,
               category: doc.category ?? null,
+              authorId: doc.authorId,
               authorName: doc.authorName ?? null,
-              authorImage: authorImages.get(doc.authorId) ?? null,
+              authorImage: people.get(doc.authorId)?.image ?? null,
+              authorCard: cardOf(doc.authorId),
               replyCount: doc.replyCount ?? 0,
             },
           };
@@ -399,8 +427,10 @@ export async function loadActivityStream({
             idea: {
               id: doc.id,
               title: doc.title,
+              authorId: doc.authorId,
               authorName: doc.authorName ?? null,
-              authorImage: authorImages.get(doc.authorId) ?? null,
+              authorImage: people.get(doc.authorId)?.image ?? null,
+              authorCard: cardOf(doc.authorId),
               voteCount: doc.voteCount ?? 0,
               status: doc.status ?? null,
             },
