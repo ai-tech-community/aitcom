@@ -3484,10 +3484,6 @@
         "joinToVote": "Rejoignez cette communauté pour voter."
       },
       "editor": {
-        "emoji": "Ajouter un emoji",
-        "emojiSearch": "Rechercher un emoji",
-        "emojiLoading": "Chargement des emojis…",
-        "emojiNone": "Aucun emoji trouvé.",
         "charactersLeft": "{count, plural, one {# caractère restant} other {# caractères restants}}",
         "dropImage": "Déposez l’image pour l’ajouter",
         "draftRestored": "Votre texte non envoyé a été restauré.",
@@ -3501,8 +3497,6 @@
         "oneMediaOnly": "Une publication contient une image, une vidéo ou un GIF. Supprimez d’abord la vidéo.",
         "waitForUpload": "Attendez la fin de l’importation de l’image.",
         "saveShortcut": "Ctrl+Entrée ou ⌘+Entrée pour enregistrer",
-        "emojiPickHint": "Choisissez un emoji",
-        "skinTone": "Changer la couleur de peau",
         "gif": "Ajouter un GIF",
         "gifs": "GIF",
         "gifSearch": "Rechercher sur GIPHY",
@@ -3924,6 +3918,14 @@
       "joinDescription": "Seuls les membres peuvent aimer et commenter les vidéos ici.",
       "inviteOnly": "Cette communauté est accessible sur invitation uniquement. Demandez une invitation à un membre."
     }
+  },
+  "composer": {
+    "emoji": "Ajouter un emoji",
+    "emojiSearch": "Rechercher un emoji",
+    "emojiLoading": "Chargement des emojis…",
+    "emojiNone": "Aucun emoji trouvé.",
+    "emojiPickHint": "Choisissez un emoji",
+    "skinTone": "Changer la couleur de peau"
   },
   "notificationPrefs": {
     "settingsTitle": "Notifications par e-mail",

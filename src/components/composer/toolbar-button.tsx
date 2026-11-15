@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 
 /**
- * One icon action in the post editor's toolbar: an icon-only ghost button
+ * One icon action in a composer's toolbar: an icon-only ghost button
  * whose name is both its accessible label and its tooltip.
  */
 export const ToolbarButton = forwardRef<

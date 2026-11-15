@@ -3484,10 +3484,6 @@
         "joinToVote": "Join this community to vote."
       },
       "editor": {
-        "emoji": "Add emoji",
-        "emojiSearch": "Search emoji",
-        "emojiLoading": "Loading emoji…",
-        "emojiNone": "No emoji found.",
         "charactersLeft": "{count, plural, one {# character left} other {# characters left}}",
         "dropImage": "Drop the picture to add it",
         "draftRestored": "Your unsent text is back.",
@@ -3501,8 +3497,6 @@
         "oneMediaOnly": "A post has one picture, video or GIF. Remove the video first.",
         "waitForUpload": "Wait for the picture to finish uploading.",
         "saveShortcut": "Ctrl+Enter or ⌘+Enter to save",
-        "emojiPickHint": "Pick an emoji",
-        "skinTone": "Change skin tone",
         "gif": "Add GIF",
         "gifs": "GIFs",
         "gifSearch": "Search GIPHY",
@@ -3924,6 +3918,14 @@
       "joinDescription": "Only members can like and comment on videos here.",
       "inviteOnly": "This community is invite only. Ask a member for an invite."
     }
+  },
+  "composer": {
+    "emoji": "Add emoji",
+    "emojiSearch": "Search emoji",
+    "emojiLoading": "Loading emoji…",
+    "emojiNone": "No emoji found.",
+    "emojiPickHint": "Pick an emoji",
+    "skinTone": "Change skin tone"
   },
   "notificationPrefs": {
     "settingsTitle": "Email notifications",

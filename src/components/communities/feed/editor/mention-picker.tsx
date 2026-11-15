@@ -6,6 +6,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { AtSign, Users } from "lucide-react";
 
+import { ToolbarButton } from "@/components/composer/toolbar-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getInitials } from "@/lib/avatar";
@@ -14,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import { caretPosition } from "./caret-position";
-import { ToolbarButton } from "./toolbar-button";
 import type { usePostText } from "./use-post-text";
 
 const SEARCH_DELAY_MS = 120;

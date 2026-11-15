@@ -22,13 +22,18 @@ import {
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { EmojiPickerButton } from "@/components/composer/emoji-picker-button";
+import {
+  SEND_SHORTCUTS,
+  ShortcutHint,
+  ToolbarButton,
+} from "@/components/composer/toolbar-button";
 import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
 import { FeedImageUploadError, uploadFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
-import { EmojiPickerButton } from "./editor/emoji-picker-button";
 import { FormatButtons } from "./editor/format-buttons";
 import { TopicSelect } from "./editor/topic-select";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
@@ -37,11 +42,6 @@ import { MAX_PICTURES, PictureAttachments } from "./editor/picture-attachments";
 import { MentionButton, useMentionPicker } from "./editor/mention-picker";
 import { CurrentPoll, emptyPoll, PollBuilder } from "./editor/poll-builder";
 import { PostEditor } from "./editor/post-editor";
-import {
-  SEND_SHORTCUTS,
-  ShortcutHint,
-  ToolbarButton,
-} from "./editor/toolbar-button";
 import { usePostDraft } from "./editor/use-post-draft";
 import { usePostText } from "./editor/use-post-text";
 
