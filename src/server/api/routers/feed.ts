@@ -8,8 +8,13 @@ import {
   requireHubOperator,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
+import {
+  requireReadableCommunityBySlug,
+  requireReadableContentOf,
+} from "@/server/communities/content-access";
+import { activeCommunityRole } from "@/server/communities/content-visibility-queries";
 import { logActivity } from "@/server/agent/activity";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { db as Db } from "@/server/db";
 import {
   communities,
@@ -153,9 +158,10 @@ type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
 /**
- * A community post and the caller's active membership in its community, for
- * the reporting and moderation procedures. Only community posts can be
- * reported, so a missing post or a hub-wide one is NOT_FOUND.
+ * A community post and the caller's active role in its community, for the
+ * reporting and moderation procedures. Only community posts can be
+ * reported, so a missing post or a hub-wide one is NOT_FOUND, and so is a
+ * post in a community whose content the caller may not read (ADR-0050).
  */
 async function loadCommunityPostForCaller(
   database: Database,
@@ -167,15 +173,9 @@ async function loadCommunityPostForCaller(
     .findByID({ collection: "feed-posts", id: postId, depth: 0 })
     .catch(() => null);
   if (!post?.communityId) throw new TRPCError({ code: "NOT_FOUND" });
-  const membership = await database.query.communityMemberships.findFirst({
-    where: and(
-      eq(communityMemberships.communityId, post.communityId),
-      eq(communityMemberships.userId, userId),
-      eq(communityMemberships.status, "active"),
-    ),
-    columns: { role: true },
-  });
-  return { post, viewer: feedViewerFor(userId, membership) };
+  await requireReadableContentOf(database, post.communityId, userId);
+  const role = await activeCommunityRole(database, post.communityId, userId);
+  return { post, viewer: feedViewerFor(userId, role ? { role } : null) };
 }
 
 /**
@@ -365,9 +365,10 @@ export const feedRouter = createTRPCRouter({
 
   // ── getReels ────────────────────────────────────────────────────────────────
   /**
-   * A community's videos for Reels mode. Public: signed-out visitors see
-   * public, non-hidden videos; members see what the member feed shows. A
-   * deep link the viewer may not open comes back as a notice, not a video.
+   * A community's videos for Reels mode. In a community whose content is
+   * public, signed-out visitors see public, non-hidden videos; members see
+   * what the member feed shows. A deep link the viewer may not open comes
+   * back as a notice, not a video.
    */
   getReels: publicProcedure
     .input(
@@ -381,27 +382,18 @@ export const feedRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.communitySlug),
-          isNull(communities.deletedAt),
-        ),
-        columns: { id: true },
-      });
-      if (!community) throw new TRPCError({ code: "NOT_FOUND" });
       const userId = ctx.session?.user?.id ?? null;
+      // A post's "public" visibility only widens access where the
+      // community's content is public (ADR-0050): an outsider of a
+      // members-only community gets NOT_FOUND, not its public videos.
+      const community = await requireReadableCommunityBySlug(
+        ctx.db,
+        input.communitySlug,
+        userId,
+      );
+      const role = await activeCommunityRole(ctx.db, community.id, userId);
       const viewer = userId
-        ? feedViewerFor(
-            userId,
-            await ctx.db.query.communityMemberships.findFirst({
-              where: and(
-                eq(communityMemberships.communityId, community.id),
-                eq(communityMemberships.userId, userId),
-                eq(communityMemberships.status, "active"),
-              ),
-              columns: { role: true },
-            }),
-          )
+        ? feedViewerFor(userId, role ? { role } : null)
         : OUTSIDE_VIEWER;
       return listReels(
         {

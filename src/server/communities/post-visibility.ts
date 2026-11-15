@@ -38,6 +38,11 @@ export function feedViewerFor(
  * The one visibility rule for community posts, as a Payload filter. Every
  * list (feed, activity, pinned, reels) applies it, so a hidden or
  * community-only post can't leak through a list that forgot a check.
+ *
+ * It is the rule *within* a community the viewer may read: "public" posts
+ * reach outsiders only where the community's content is public. Callers
+ * check that first, through the read seam (`requireReadableCommunity`,
+ * `requireReadableContentOf`, ADR-0050), and answer NOT_FOUND otherwise.
  */
 export function postVisibilityWhere(viewer: FeedViewer): Where {
   const clauses: Where[] = [{ isDeleted: { not_equals: true } }];

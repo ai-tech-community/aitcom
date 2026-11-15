@@ -2,9 +2,17 @@
 // post visibility rule as the feed lists.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const PUBLIC_COMMUNITY = {
+  id: "c-1",
+  slug: "makers",
+  isListedInDirectory: true,
+  joinPolicy: "open",
+};
+
 const hooks = {
   membership: undefined as { role: string } | undefined,
   post: null as Record<string, unknown> | null,
+  community: PUBLIC_COMMUNITY as Record<string, unknown> | undefined,
 };
 
 const payload = {
@@ -23,7 +31,7 @@ vi.mock("@/server/db", () => ({
     insert: () => ({ values: async () => undefined }),
     query: {
       communityMemberships: { findFirst: async () => hooks.membership },
-      communities: { findFirst: async () => undefined },
+      communities: { findFirst: async () => hooks.community },
     },
   },
 }));
@@ -76,6 +84,7 @@ const HIDDEN = "2026-09-24T12:00:00.000Z";
 beforeEach(() => {
   vi.clearAllMocks();
   hooks.membership = undefined;
+  hooks.community = PUBLIC_COMMUNITY;
   hooks.post = post();
   payload.findByID.mockImplementation(async () => {
     if (!hooks.post) throw Object.assign(new Error("nf"), { status: 404 });
@@ -189,5 +198,35 @@ describe("feed.addComment", () => {
     await expect(
       caller().feed.addComment({ postId: 5, content: "hi" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe.each([
+  ["listed invite_only", { joinPolicy: "invite_only" }],
+  ["listed approval_required", { joinPolicy: "approval_required" }],
+  ["unlisted", { isListedInDirectory: false }],
+])("a public post in a %s community (ADR-0050)", (_label, facts) => {
+  beforeEach(() => {
+    hooks.community = { ...PUBLIC_COMMUNITY, ...facts };
+    hooks.post = post({ visibility: "public" });
+  });
+
+  it("is not found for a non-member reading, liking or commenting", async () => {
+    await expect(
+      caller().feed.getComments({ postId: 5 }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(caller().feed.toggleLike({ postId: 5 })).rejects.toMatchObject(
+      { code: "NOT_FOUND" },
+    );
+    await expect(
+      caller().feed.addComment({ postId: 5, content: "hi" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(payload.find).not.toHaveBeenCalled();
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
+  it("is readable by a member", async () => {
+    hooks.membership = { role: "member" };
+    await expect(caller().feed.getComments({ postId: 5 })).resolves.toEqual([]);
   });
 });

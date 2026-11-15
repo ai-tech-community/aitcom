@@ -18,14 +18,13 @@ import {
   OUTSIDE_VIEWER,
   type FeedViewer,
 } from "@/server/communities/post-visibility";
+import { requireReadableContentOf } from "./content-access";
+import { activeCommunityRole } from "./content-visibility-queries";
 import { imageIdsOf } from "./feed-images";
 import { loadMentionViews, type PostMentionView } from "./post-mentions";
 import { loadPollViews } from "./post-polls";
 import type { FeedPollView } from "@/lib/poll-rules";
-import {
-  canReadPaidCommunity,
-  membershipPaymentAllowed,
-} from "@/server/payments/access";
+import { membershipPaymentAllowed } from "@/server/payments/access";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -90,8 +89,11 @@ export async function requireActiveFeedMember(
  * looking (a member, or an agent's owner; null for an unclaimed agent).
  *
  * - A missing or deleted post is NOT_FOUND.
- * - With `requireMembership` (liking, commenting), someone who isn't an
- *   active member of the post's community is FORBIDDEN, as before.
+ * - A post in a community whose content the viewer may not read is
+ *   NOT_FOUND, whatever its own visibility: "public" only widens access
+ *   within a community whose content is public (ADR-0050).
+ * - With `requireMembership` (liking, commenting), someone who may read but
+ *   isn't an active member in good standing is FORBIDDEN, as before.
  * - A community post the viewer may not see (hidden, or community-only for an
  *   outsider) is NOT_FOUND, so its existence doesn't leak.
  * - Hub-wide posts (no community) have no visibility rule to apply.
@@ -113,30 +115,13 @@ export async function requireViewablePost(
   if (!post || post.isDeleted) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
   }
-  if (
-    post.communityId &&
-    !(await canReadPaidCommunity(database, post.communityId, userId))
-  ) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-  }
-  let membership =
-    userId && post.communityId
-      ? ((await database.query.communityMemberships.findFirst({
-          where: and(
-            eq(communityMemberships.communityId, post.communityId),
-            eq(communityMemberships.userId, userId),
-            eq(communityMemberships.status, "active"),
-          ),
-          columns: { role: true },
-        })) ?? null)
-      : null;
-  if (
-    membership?.role === "member" &&
-    post.communityId &&
-    userId &&
-    !(await membershipPaymentAllowed(database, post.communityId, userId))
-  )
-    membership = null;
+  await requireReadableContentOf(database, post.communityId, userId, {
+    notFound: "Post not found",
+  });
+  const role = post.communityId
+    ? await activeCommunityRole(database, post.communityId, userId)
+    : null;
+  const membership = role ? { role } : null;
   if (options.requireMembership && !membership) {
     throw new TRPCError({
       code: "FORBIDDEN",

@@ -3,8 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as FeedPosts from "@/server/communities/feed-posts";
 
+const PUBLIC_COMMUNITY = {
+  id: "c-1",
+  slug: "town",
+  isListedInDirectory: true,
+  joinPolicy: "open",
+};
+
 const hooks = {
-  community: { id: "c-1" } as { id: string } | undefined,
+  community: PUBLIC_COMMUNITY as Record<string, unknown> | undefined,
   membership: undefined as { role: string } | undefined,
   membershipLookups: 0,
   post: null as Record<string, unknown> | null,
@@ -73,7 +80,7 @@ const hiddenVideo = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  hooks.community = { id: "c-1" };
+  hooks.community = PUBLIC_COMMUNITY;
   hooks.membership = undefined;
   hooks.membershipLookups = 0;
   hooks.post = hiddenVideo;
@@ -131,6 +138,27 @@ describe("feed.getReels", () => {
     expect(hooks.membershipLookups).toBe(1);
     expect(page.notice).toBe("unavailable");
   });
+
+  it.each([
+    ["listed invite_only", { joinPolicy: "invite_only" }],
+    ["listed approval_required", { joinPolicy: "approval_required" }],
+    ["unlisted", { isListedInDirectory: false }],
+  ])(
+    "says not found to an outsider of a %s community, public videos and all",
+    async (_label, facts) => {
+      hooks.community = { ...PUBLIC_COMMUNITY, ...facts };
+      for (const viewer of [null, "u-1"]) {
+        await expect(
+          caller(viewer).feed.getReels({ communitySlug: "town" }),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      }
+      expect(payload.find).not.toHaveBeenCalled();
+      hooks.membership = { role: "member" };
+      await expect(
+        caller("m-1").feed.getReels({ communitySlug: "town" }),
+      ).resolves.toMatchObject({ notice: null });
+    },
+  );
 
   it("says not found for an unknown community", async () => {
     hooks.community = undefined;
