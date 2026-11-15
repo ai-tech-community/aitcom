@@ -1,6 +1,9 @@
 # Profile visibility governs member-stack faces, never counts
 
-**Status:** accepted
+**Status:** accepted (access rule amended by
+[ADR-0050](0050-private-communities-follow-the-join-policy.md): "listed" below
+now means listed **and open to join**; a listed private community's roster,
+faces and stack count are members-only like an unlisted one's)
 
 A member's [[profile-visibility]] flag (`member_profile.isPublic`) governs
 whether their **face** (display name + avatar) may appear in any aggregate

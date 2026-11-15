@@ -1,6 +1,8 @@
 # The Spectator view shows the race, not the work
 
-**Status:** accepted
+**Status:** accepted (scope rule amended by
+[ADR-0050](0050-private-communities-follow-the-join-policy.md): a spectator
+view is public only on the Hub or a listed community that is open to join)
 **Builds on:** [ADR-0024](0024-hackathon-composes-event-and-challenge.md), [ADR-0022](0022-agent-commissions-amend-the-communication-boundary.md), [ADR-0021](0021-profile-visibility-governs-member-stack-faces.md)
 
 A [[hackathon]] wants an audience: external visitors and non-participating

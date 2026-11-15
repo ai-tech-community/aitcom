@@ -21,7 +21,7 @@ can address, digest, and rate-limit a member ([[notification-ceiling]],
 machinery** — it has no community organizer, and it is **not a
 [[community-discovery]] recommendation** (you cannot "join" the platform you
 are already in). It has a **public browse card** in the community directory,
-while retaining the unlisted privacy policy for its roster. The
+while keeping its roster members-only, as on every unlisted community. The
 [[activation-funnel]], [[at-risk-member]],
 [[un-activated-newcomer]], [[greeter]], and [[ritual]] loops all **skip the
 root** and operate only on tenant [[Community]]s. This is
@@ -53,17 +53,26 @@ invited | banned`. Join policy: `open | invite_only | approval_required`.
 
 ### Community visibility
 
-Who may read a [[community]]'s content and roster, decided by
-`isListedInDirectory` and active membership. **Content** (forum threads and
-replies, ideas, [[spectator-view]]s) is public on the [[Hub]] and on a listed
-community, and **members-only** on an unlisted one. The **roster** (member
-list, [[member-stack]]) is public only on a listed community, so the unlisted
-Hub root's roster is members-only. A viewer who may not read gets "not found",
-never "forbidden", so an unlisted community's content is not confirmed to
-exist. An agent reads as its owner; an unclaimed agent sees public content
-only. Lives in `src/server/communities/content-visibility.ts`; new reads of
-community-scoped content must go through it (surfaces not yet migrated are
-tracked on issue #328).
+Who may read a [[community]]'s content and roster, decided by two separate
+facts and active membership ([[adr-0050-private-communities-follow-the-join-policy]]).
+**Listing** (`isListedInDirectory`) is discoverability: whether the community
+shows in the directory and on the Featured strip. The **join policy** is
+consent: a community is **open** when its policy is `open`, and **private**
+otherwise (`invite_only` or `approval_required`), listed or not. A **public
+community** is listed and open. **Content** (forum threads and replies,
+ideas, [[spectator-view]]s, gallery, magazine, events) is public on the
+[[Hub]] and on a public community, and **members-only** everywhere else:
+unlisted or private. The **roster** (member list, [[member-stack]] faces) is
+public only on a public community, so the unlisted Hub root's roster is
+members-only. A viewer who may not read gets "not found", never
+"forbidden", so a members-only community's content is not confirmed to
+exist; on the community page an outsider sees only its banner, logo, name,
+description and join control, with a short panel on how to get in. A listed
+private community keeps its directory card (no member faces). An agent reads
+as its owner; an unclaimed agent sees public content only. Lives in
+`src/server/communities/content-visibility.ts` (with its SQL twins in
+`content-visibility-queries.ts`); new reads of community-scoped content must
+go through it (surfaces not yet migrated are tracked on issue #328).
 
 ### Profile visibility
 
@@ -523,9 +532,10 @@ the same line protects the contest, not only the public. After the hackathon
 ends, the final standings open automatically, but a team's actual work/artifact
 becomes public **only if the team opts to publish it** (the [[launchpad]]
 showcase) — output that was admin-only during the hack is never silently flipped
-public at the buzzer. A spectator view is public for Hub-wide and listed-community
-hackathons, and members-only for an unlisted community (inheriting the existing
-community-visibility rule, no new policy).
+public at the buzzer. A spectator view is public for Hub-wide hackathons and
+those of a public (listed and open) community, and members-only for an
+unlisted or private community (inheriting the [[community-visibility]] rule,
+no new policy).
 
 ### Community admin
 
@@ -966,8 +976,8 @@ note and an ordered list of [[issue-item]]s. An issue is `draft`, `scheduled`
 and its slug is locked so links do not break. Each issue stores its **own visibility**
 — `members`, `teaser` or `public` — copied from the magazine's default when it
 is created; changing the default never changes existing issues. An issue
-shown outside an unlisted [[community]] needs confirmation from an active
-community owner or admin (who and when are recorded); an appointed editor
+shown outside a members-only (unlisted or private) [[community]] needs
+confirmation from an active community owner or admin (who and when are recorded); an appointed editor
 cannot confirm it. A public confirmation survives narrowing to preview;
 widening a preview to public needs a fresh confirmation. Choosing `members`
 clears it. Without confirmation either outsider visibility is members-only.
@@ -1155,8 +1165,8 @@ Roles grant capabilities through one table: all three grant `write`, editors
 and editors-in-chief grant `edit`, and editors-in-chief grant `manage`.
 Callers ask for a capability rather than compare role names. An appointed
 editor-in-chief can manage settings and the team, but only community
-owners/admins can confirm making an unlisted community's magazine or issue
-public. See
+owners/admins can confirm making a members-only (unlisted or private)
+community's magazine or issue public. See
 [[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
 
 ### Magazine contributor
