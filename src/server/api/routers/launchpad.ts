@@ -9,6 +9,13 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
+import { communityContentReadableWhere } from "@/server/communities/content-visibility";
+import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
+import {
+  requireActiveMemberOf,
+  requireReadableContentOf,
+} from "@/server/communities/content-access";
+import { requireRulesAcceptance } from "@/server/communities/rules-acceptance";
 import { logActivity } from "@/server/agent/activity";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { evaluateBadges } from "@/server/badges/engine";
@@ -21,40 +28,20 @@ import {
   memberProfiles,
 } from "@/server/db/schema";
 
-async function requireRulesAcceptance(userId: string, communityId?: string) {
-  if (!communityId) return;
+type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
-  const payload = await getPayloadClient();
-  const { docs } = await payload.find({
-    collection: "community-rules",
-    where: { communityId: { equals: communityId } },
-    limit: 1,
+/** A project by id; a missing one is NOT_FOUND. */
+async function loadProject(payload: Payload, projectId: number) {
+  const project = await payload.findByID({
+    collection: "launchpad-projects",
+    id: projectId,
     depth: 0,
+    disableErrors: true,
   });
-
-  if (docs.length === 0) return;
-
-  const rules = docs[0]!;
-
-  const { docs: acceptanceDocs } = await payload.find({
-    collection: "rules-acceptance",
-    where: {
-      and: [
-        { userId: { equals: userId } },
-        { rulesVersion: { equals: rules.version } },
-        { communityId: { equals: communityId } },
-      ],
-    },
-    limit: 1,
-    depth: 0,
-  });
-
-  if (acceptanceDocs.length === 0) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "RULES_NOT_ACCEPTED",
-    });
+  if (!project) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
   }
+  return project;
 }
 
 export const launchpadRouter = createTRPCRouter({
@@ -77,6 +64,12 @@ export const launchpadRouter = createTRPCRouter({
       const payload = await getPayloadClient();
 
       const conditions: Where[] = [{ status: { equals: "published" } }];
+      // A members-only community's projects are for its members (ADR-0050);
+      // projects with no community stay public.
+      const readable = communityContentReadableWhere(
+        await hiddenContentCommunityIds(ctx.db, ctx.session?.user?.id),
+      );
+      if (readable) conditions.push(readable);
 
       if (input.stage !== "all") {
         conditions.push({ stage: { equals: input.stage } });
@@ -181,6 +174,13 @@ export const launchpadRouter = createTRPCRouter({
           message: "Project not found",
         });
       }
+      // A project the viewer may not read answers like a missing one.
+      await requireReadableContentOf(
+        ctx.db,
+        project.communityId,
+        ctx.session?.user?.id,
+        { notFound: "Project not found" },
+      );
 
       const updates = await ctx.db
         .select({
@@ -266,7 +266,6 @@ export const launchpadRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
 
@@ -427,14 +426,9 @@ export const launchpadRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
 
-      const project = await payload.findByID({
-        collection: "launchpad-projects",
-        id: input.projectId,
-        depth: 0,
-      });
+      const project = await loadProject(payload, input.projectId);
 
       if (project.authorId !== ctx.session.user.id) {
         throw new TRPCError({
@@ -481,15 +475,16 @@ export const launchpadRouter = createTRPCRouter({
   vote: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
       const userId = ctx.session.user.id;
 
-      const project = await payload.findByID({
-        collection: "launchpad-projects",
-        id: input.projectId,
-        depth: 0,
+      const project = await loadProject(payload, input.projectId);
+      // A community's project takes votes from its active members; one the
+      // caller may not read answers like a missing one (ADR-0050).
+      await requireActiveMemberOf(ctx.db, project.communityId, userId, {
+        notFound: "Project not found",
       });
+      await requireRulesAcceptance(userId, project.communityId ?? undefined);
 
       const [existingVote] = await ctx.db
         .select({ id: launchpadVotes.id })
@@ -568,14 +563,15 @@ export const launchpadRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
+      const userId = ctx.session.user.id;
 
-      const project = await payload.findByID({
-        collection: "launchpad-projects",
-        id: input.projectId,
-        depth: 0,
+      const project = await loadProject(payload, input.projectId);
+      // Same rule as voting: a community's project, its active members.
+      await requireActiveMemberOf(ctx.db, project.communityId, userId, {
+        notFound: "Project not found",
       });
+      await requireRulesAcceptance(userId, project.communityId ?? undefined);
 
       const [comment] = await ctx.db
         .insert(launchpadComments)

@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { getPayloadClient } from "@/server/payload";
+import { db } from "@/server/db";
+import { getSession } from "@/server/better-auth/server";
+import { viewerCanReadContentOf } from "@/server/communities/content-visibility-queries";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { LaunchpadDetail } from "@/components/launchpad/launchpad-detail";
 
@@ -18,7 +21,16 @@ export async function generateMetadata({
   });
 
   const project = docs[0];
-  if (!project) {
+  // A members-only community's project is not named to outsiders, not
+  // even in the page title (ADR-0050).
+  if (
+    !project ||
+    !(await viewerCanReadContentOf(
+      db,
+      project.communityId,
+      (await getSession())?.user?.id,
+    ))
+  ) {
     return { title: "Project Not Found" };
   }
 
