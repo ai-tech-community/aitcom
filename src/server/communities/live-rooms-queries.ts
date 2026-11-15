@@ -17,6 +17,7 @@ import {
   type LiveRoomRow,
   type QuietRoomRow,
 } from "@/server/communities/live-rooms";
+import { publicCommunitySql } from "@/server/communities/content-visibility-queries";
 import { createTtlMemo } from "@/server/ttl-memo";
 
 type DB = typeof _db;
@@ -25,7 +26,8 @@ type DB = typeof _db;
 const LIVE_ROOMS_TTL_MS = 60_000;
 
 /**
- * Public, unarchived rooms of listed communities with at least one message
+ * Public, unarchived rooms of public communities (listed and open:
+ * `publicCommunitySql`) with at least one message
  * in the window, with distinct people / agents who wrote and the last
  * message time. One grouped query.
  */
@@ -63,7 +65,7 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
         eq(spaces.kind, "room"),
         eq(spaces.visibility, "public"),
         isNull(spaces.archivedAt),
-        eq(communities.isListedInDirectory, true),
+        publicCommunitySql(),
         isNull(communities.deletedAt),
       ),
     )
@@ -81,7 +83,7 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
 }
 
 /**
- * The quiet pick: public, unarchived rooms of listed communities that are
+ * The quiet pick: public, unarchived rooms of public communities that are
  * not talking, biggest first (active members), then newest — ordered and
  * limited in SQL, so the cost follows what the page shows, not how many
  * rooms exist.
@@ -115,7 +117,7 @@ async function loadQuietRoomRows(
         eq(spaces.kind, "room"),
         eq(spaces.visibility, "public"),
         isNull(spaces.archivedAt),
-        eq(communities.isListedInDirectory, true),
+        publicCommunitySql(),
         isNull(communities.deletedAt),
         talkingIds.length > 0
           ? notInArray(spaces.id, [...talkingIds])

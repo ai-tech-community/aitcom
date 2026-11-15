@@ -174,6 +174,7 @@ async function loadDirectory(
       .select({
         id: communities.id,
         joinPolicy: communities.joinPolicy,
+        isListedInDirectory: communities.isListedInDirectory,
         createdAt: communities.createdAt,
       })
       .from(communities)

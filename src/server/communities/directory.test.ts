@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { CommunityCandidate } from "@/server/communities/discovery";
+import { HUB_SLUG } from "@/server/communities/hub";
 import {
   NEW_FOR_DAYS,
   ONLINE_PLACE,
   buildDirectory,
+  directoryCardShowsFaces,
   directoryPlaces,
   isNewCommunity,
   matchesQuery,
@@ -47,6 +49,7 @@ function facts(
       id,
       {
         joinPolicy: f.joinPolicy ?? ("open" as const),
+        isListedInDirectory: true,
         createdAt: new Date(NOW.getTime() - (f.ageDays ?? 400) * DAY),
       },
     ]),
@@ -83,6 +86,7 @@ function community(
     description: null,
     logoUrl: null,
     joinPolicy: "open",
+    isListedInDirectory: true,
     createdAt: new Date(NOW.getTime() - 400 * DAY),
     memberCount: 1,
     activeRecently: 0,
@@ -211,6 +215,29 @@ describe("sortDirectory", () => {
       "w",
       "x",
     ]);
+  });
+});
+
+describe("directoryCardShowsFaces", () => {
+  it("shows faces on a listed open community only", () => {
+    expect(directoryCardShowsFaces(community("a"))).toBe(true);
+  });
+
+  it.each<JoinPolicy>(["invite_only", "approval_required"])(
+    "shows no faces on a listed %s community: its roster is members-only",
+    (joinPolicy) => {
+      expect(directoryCardShowsFaces(community("a", { joinPolicy }))).toBe(
+        false,
+      );
+    },
+  );
+
+  it("shows no faces on the Hub's browse card", () => {
+    expect(
+      directoryCardShowsFaces(
+        community(HUB_SLUG, { slug: HUB_SLUG, isListedInDirectory: false }),
+      ),
+    ).toBe(false);
   });
 });
 

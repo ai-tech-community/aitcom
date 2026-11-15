@@ -1,8 +1,8 @@
 // @vitest-environment node
 /**
  * DB-INTEGRATION test for the Explore rooms (`spaces.squareRooms`). Proves,
- * against a REAL local DB, that only public, unarchived rooms of listed
- * communities appear: "talking" when someone wrote in the last day (with
+ * against a REAL local DB, that only public, unarchived rooms of public
+ * (listed and open) communities appear: "talking" when someone wrote in the last day (with
  * distinct people and agents counted apart, and nothing about who wrote or
  * what), the rest as quiet rooms with their member count.
  *
@@ -48,6 +48,7 @@ describe.skipIf(!RUN_DB)("spaces.squareRooms [DB integration]", () => {
     stale: string;
     privateRoom: string;
     unlistedRoom: string;
+    inviteOnlyRooms: string[];
   };
   let fx: Fixture;
 
@@ -89,7 +90,11 @@ describe.skipIf(!RUN_DB)("spaces.squareRooms [DB integration]", () => {
         .values({ id, email: `${id}@example.test`, name: id });
     }
 
-    const community = async (label: string, listed: boolean) => {
+    const community = async (
+      label: string,
+      listed: boolean,
+      joinPolicy: "open" | "invite_only" | "approval_required" = "open",
+    ) => {
       const [row] = await db
         .insert(schema.communities)
         .values({
@@ -97,12 +102,16 @@ describe.skipIf(!RUN_DB)("spaces.squareRooms [DB integration]", () => {
           slug: `it-live-${label}-${suffix}`,
           createdBy: owner,
           isListedInDirectory: listed,
+          joinPolicy,
         })
         .returning({ id: schema.communities.id });
       return row!.id;
     };
     const listed = await community("listed", true);
     const unlisted = await community("unlisted", false);
+    // Listed but private: its rooms stay off the Explore page (ADR-0050).
+    const inviteOnly = await community("invite", true, "invite_only");
+    const asksFirst = await community("asks", true, "approval_required");
 
     const room = async (
       communityId: string,
@@ -131,6 +140,10 @@ describe.skipIf(!RUN_DB)("spaces.squareRooms [DB integration]", () => {
     const stale = await room(listed, "stale", "public");
     const privateRoom = await room(listed, "private", "private");
     const unlistedRoom = await room(unlisted, "unlisted", "public");
+    const inviteTalking = await room(inviteOnly, "invite-talking", "public");
+    const inviteQuiet = await room(inviteOnly, "invite-quiet", "public");
+    const asksTalking = await room(asksFirst, "asks-talking", "public");
+    const privateCommunityRooms = [inviteTalking, inviteQuiet, asksTalking];
 
     const now = Date.now();
     const at = (hoursAgo: number) => new Date(now - hoursAgo * 3_600_000);
@@ -178,21 +191,42 @@ describe.skipIf(!RUN_DB)("spaces.squareRooms [DB integration]", () => {
         content: "hidden",
         createdAt: at(1),
       },
+      {
+        conversationId: inviteTalking.conversationId,
+        senderId: owner,
+        content: "members only",
+        createdAt: at(1),
+      },
+      {
+        conversationId: asksTalking.conversationId,
+        senderId: owner,
+        content: "members only",
+        createdAt: at(1),
+      },
     ]);
 
     fx = {
       userIds: [owner, member, agent],
-      communityIds: [listed, unlisted],
-      spaceIds: [talking, stale, privateRoom, unlistedRoom].map(
-        (r) => r.spaceId,
-      ),
-      conversationIds: [talking, stale, privateRoom, unlistedRoom].map(
-        (r) => r.conversationId,
-      ),
+      communityIds: [listed, unlisted, inviteOnly, asksFirst],
+      spaceIds: [
+        talking,
+        stale,
+        privateRoom,
+        unlistedRoom,
+        ...privateCommunityRooms,
+      ].map((r) => r.spaceId),
+      conversationIds: [
+        talking,
+        stale,
+        privateRoom,
+        unlistedRoom,
+        ...privateCommunityRooms,
+      ].map((r) => r.conversationId),
       talking: talking.spaceId,
       stale: stale.spaceId,
       privateRoom: privateRoom.spaceId,
       unlistedRoom: unlistedRoom.spaceId,
+      inviteOnlyRooms: privateCommunityRooms.map((r) => r.spaceId),
     };
     m.invalidate();
   });
@@ -229,8 +263,13 @@ describe.skipIf(!RUN_DB)("spaces.squareRooms [DB integration]", () => {
       people: 2,
       agents: 1,
     });
-    // A room that talked two days ago is quiet; private and unlisted never show.
+    // A room that talked two days ago is quiet; private rooms, and rooms of
+    // unlisted or private communities, never show.
     expect(ours(quiet)).toEqual([fx.stale]);
+    for (const id of fx.inviteOnlyRooms) {
+      expect(ours(talking)).not.toContain(id);
+      expect(ours(quiet)).not.toContain(id);
+    }
 
     const room = talking.find((r) => r.spaceId === fx.talking)!;
     expect(JSON.stringify(room)).not.toContain("hey");

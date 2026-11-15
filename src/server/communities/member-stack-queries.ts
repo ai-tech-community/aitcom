@@ -27,10 +27,10 @@ const roleRankSql = sql<number>`(case ${communityMemberships.role}
  *  One query for the whole page (no N+1). Returns leadership-first faces.
  *
  *  Access control is the CALLER's responsibility: this applies no
- *  directory-listing or membership check. Only pass community ids the viewer
- *  is allowed to see (e.g. the `list` query passes listed-only communities;
- *  `getMemberStack` gates unlisted communities before calling). Passing an
- *  unlisted community id here would expose its faces. */
+ *  roster check. Only pass community ids whose roster the viewer may read
+ *  (the directory passes only `directoryCardShowsFaces` communities: listed
+ *  and open; `getMemberStack` asks `viewerCanReadRoster` first). Passing a
+ *  members-only community id here would expose its faces. */
 export async function loadStackFacesForCommunities(
   db: DB,
   communityIds: string[],

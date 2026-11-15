@@ -23,14 +23,18 @@ vi.mock("@/server/communities/member-stack-queries", () => ({
 
 import { communitiesRouter } from "./communities";
 
-function card(slug: string): DirectoryCommunity {
+function card(
+  slug: string,
+  joinPolicy: DirectoryCommunity["joinPolicy"] = "open",
+): DirectoryCommunity {
   return {
     id: slug,
     slug,
     name: slug === "ait" ? "AIT Community" : "Builders",
     description: null,
     logoUrl: null,
-    joinPolicy: "open",
+    joinPolicy,
+    isListedInDirectory: slug !== "ait",
     createdAt: new Date("2026-01-01"),
     memberCount: 50,
     activeRecently: 0,
@@ -89,6 +93,42 @@ describe("public AIT directory card", () => {
     ]);
     expect(JSON.stringify(page)).not.toContain("hub-person");
   });
+
+  it.each(["invite_only", "approval_required"] as const)(
+    "shows a listed %s community's card with its count but no faces",
+    async (joinPolicy) => {
+      fake.snapshot.mockResolvedValue([
+        card("builders"),
+        { ...card("closed", joinPolicy), name: "Closed circle" },
+      ]);
+      fake.faces.mockResolvedValue(
+        new Map([
+          [
+            "builders",
+            [{ userId: "public-person", displayName: "Public", image: null }],
+          ],
+          [
+            "closed",
+            [{ userId: "inside-person", displayName: "Inside", image: null }],
+          ],
+        ]),
+      );
+      const database = {};
+      const caller = communitiesRouter.createCaller({
+        db: database as never,
+        session: null,
+        headers: new Headers(),
+      });
+      const page = await caller.directory({ locale: "en" });
+      expect(fake.faces).toHaveBeenCalledWith(database, ["builders"]);
+      expect(page.items.find((row) => row.slug === "closed")).toMatchObject({
+        joinPolicy,
+        memberCount: 50,
+        faces: [],
+      });
+      expect(JSON.stringify(page)).not.toContain("inside-person");
+    },
+  );
 
   it("keeps the AIT card reachable through name search", async () => {
     const caller = communitiesRouter.createCaller({

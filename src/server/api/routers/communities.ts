@@ -64,6 +64,7 @@ import {
 import {
   DIRECTORY_SORTS,
   DIRECTORY_WANTS,
+  directoryCardShowsFaces,
   queryDirectory,
   toPublicDirectoryCommunity,
 } from "@/server/communities/directory";
@@ -218,11 +219,12 @@ export const communitiesRouter = createTRPCRouter({
       const ip = near && !input.near ? ipOriginFromHeaders(ctx.headers) : null;
       const origin = near ? (input.near ?? ip?.point ?? null) : null;
       const page = queryDirectory(all, { ...input, origin });
-      // The Hub's browse exception does not make its roster public. Its card
-      // keeps the aggregate count, without reading or returning member faces.
+      // Faces only where the roster is public (ADR-0021, ADR-0050): not on
+      // the Hub's browse card, nor on a listed private community's card.
+      // Those cards keep the aggregate count, without reading member faces.
       const faces = await loadStackFacesForCommunities(
         ctx.db,
-        page.items.filter((c) => c.slug !== HUB_SLUG).map((c) => c.id),
+        page.items.filter(directoryCardShowsFaces).map((c) => c.id),
       );
       return {
         total: page.total,
@@ -234,7 +236,7 @@ export const communitiesRouter = createTRPCRouter({
           : null,
         items: page.items.map((c) => ({
           ...toPublicDirectoryCommunity(c),
-          faces: c.slug === HUB_SLUG ? [] : (faces.get(c.id) ?? []),
+          faces: directoryCardShowsFaces(c) ? (faces.get(c.id) ?? []) : [],
         })),
       };
     }),

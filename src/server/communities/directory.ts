@@ -6,6 +6,7 @@
  * `directory-queries.ts`.
  */
 
+import { isRosterPublic } from "@/server/communities/content-visibility";
 import type { CommunityCandidate } from "@/server/communities/discovery";
 import { livenessScore } from "@/server/communities/discovery";
 import type { JoinPolicy } from "@/server/communities/invite-policy";
@@ -64,6 +65,8 @@ export type DirectoryCommunity = {
   description: string | null;
   logoUrl: string | null;
   joinPolicy: JoinPolicy;
+  /** False only for the Hub, the directory's one unlisted card. */
+  isListedInDirectory: boolean;
   createdAt: Date;
   memberCount: number;
   /** Distinct people active in the discovery window. */
@@ -115,7 +118,10 @@ export function placeOf(event: Pick<DirectoryEventRow, "city" | "online">) {
  */
 export function buildDirectory(opts: {
   candidates: readonly CommunityCandidate[];
-  facts: ReadonlyMap<string, { joinPolicy: JoinPolicy; createdAt: Date }>;
+  facts: ReadonlyMap<
+    string,
+    { joinPolicy: JoinPolicy; isListedInDirectory: boolean; createdAt: Date }
+  >;
   events: readonly DirectoryEventRow[];
   /** Public room count per community id (absent = none). */
   openRooms?: ReadonlyMap<string, number>;
@@ -158,6 +164,7 @@ export function buildDirectory(opts: {
         description: c.description,
         logoUrl: c.logoUrl,
         joinPolicy: facts.joinPolicy,
+        isListedInDirectory: facts.isListedInDirectory,
         createdAt: facts.createdAt,
         memberCount: c.memberCount,
         activeRecently: c.activeNow,
@@ -184,6 +191,18 @@ export function buildDirectory(opts: {
       },
     ];
   });
+}
+
+/**
+ * Whether a directory card may show member faces: only where the roster is
+ * public (`isRosterPublic`, ADR-0021). The Hub's browse card and a listed
+ * private community's card show none; their cards keep the aggregate
+ * member count, a public directory signal like the Hub's.
+ */
+export function directoryCardShowsFaces(
+  c: Pick<DirectoryCommunity, "slug" | "isListedInDirectory" | "joinPolicy">,
+): boolean {
+  return isRosterPublic(c);
 }
 
 /**
