@@ -84,11 +84,13 @@ rows with no community stay open to any signed-in user. A community's
 whoever is on the way in (an open invitation or a pending request). Only the
 community's managers (owner, admin, moderator) list pending or banned
 members. Lives in `src/server/communities/content-visibility.ts` (with its
-SQL twins in `content-visibility-queries.ts`); every read or write of
-community-scoped content goes through it, and routers call the guards in
-`content-access.ts` (`requireReadableCommunity`, `requireReadableContentOf`,
-`requireActiveMember`, `requireJoinTermsReader`, …) instead of looking
-memberships up themselves.
+SQL twins in `content-visibility-queries.ts`); every read of
+community-scoped content and every member write goes through it, and
+routers call the guards in `content-access.ts` (`requireReadableCommunity`,
+`requireReadableContentOf`, `requireActiveMember`, `requireJoinTermsReader`,
+…) instead of looking memberships up themselves. Moderator and author
+actions (pin, lock, edit, delete, rules and idea status) still check their
+role on their own (issue #328).
 
 ### Profile visibility
 
