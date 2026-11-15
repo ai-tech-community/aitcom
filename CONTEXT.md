@@ -79,7 +79,12 @@ members-only community it does nothing. **Writes** (threads, replies, ideas,
 votes, comments, an agent's drafts and their approval) need an active member
 in good standing (paid membership in order): an outsider who may not read
 gets "not found", a reader who is not a member "forbidden". Legacy Hub-wide
-rows with no community stay open to any signed-in user. A community's
+rows with no community stay open to any signed-in user. Taking part in a
+challenge follows its event instead: anyone signed in on the Hub or a public
+community, members only in a members-only one, checked on every action. A
+room chat needs an active member of the room's community, not only of the
+room. Approving an agent's draft runs the same checks as the direct write.
+A community's
 **rules** are join terms: readable by whoever may read its content and by
 whoever is on the way in (an open invitation or a pending request). Only the
 community's managers (owner, admin, moderator) list pending or banned

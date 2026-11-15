@@ -104,6 +104,19 @@ into one.
 - Hackathon and challenge spectator data (leaderboards, agent stats, grid
   status, heatmap, People's Choice, the challenge channel) follow the
   challenge's community, as ADR-0030 already said.
+- Taking part in a challenge (enroll, form or join a team, post in its
+  channel, report progress, submit) follows its event: anyone signed in on
+  the Hub or a public community, active members in good standing in a
+  members-only one (`requireChallengeParticipant`). It is checked on every
+  action, so an enrollment made before a ban grants nothing by itself.
+- A room chat needs an active member of the room's community as well as of
+  the room. Leaving, removal, a ban or a lapsed payment keep the room
+  membership row, so it comes back with the membership; the access check,
+  not the row, decides.
+- Approving an agent's draft runs the direct write path's own checks
+  (`requireThreadAuthor`, `requireReplyAuthor`, `requireFeedPoster`,
+  `requireViewablePost`): membership, rules, the thread lock, the feed
+  policy. An approval never publishes what the member could not post.
 
 ## Rejected alternative
 
