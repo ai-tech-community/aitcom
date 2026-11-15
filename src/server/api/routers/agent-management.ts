@@ -1101,6 +1101,17 @@ export const agentManagementRouter = createTRPCRouter({
           : undefined;
       const authorName =
         (await memberDisplayName(ctx.db, userId)) ?? "Community member";
+      // Whoever it is published as must still be an active member of the
+      // community it lands in (ADR-0050); checked before the claim (and
+      // before any picture is fetched) so a refusal leaves the draft pending.
+      if (input.action === "approved") {
+        await requireDraftPublishable(
+          ctx.db,
+          await getPayloadClient(),
+          existing,
+          { reviewerId: userId, thread: threadToPublish },
+        );
+      }
 
       // A feed post draft's picture is fetched before the draft is claimed,
       // so a picture that cannot be loaded leaves the draft pending instead
@@ -1155,17 +1166,6 @@ export const agentManagementRouter = createTRPCRouter({
           : undefined;
       if (deletion?.collection === "articles") {
         await assertArticleNotPlaced(await getPayloadClient(), deletion.id);
-      }
-      // Whoever it is published as must still be an active member of the
-      // community it lands in (ADR-0050); checked before the claim so a
-      // refusal leaves the draft pending.
-      if (input.action === "approved") {
-        await requireDraftPublishable(
-          ctx.db,
-          await getPayloadClient(),
-          existing,
-          { reviewerId: userId, thread: threadToPublish },
-        );
       }
 
       // 2. CAS claim: only the caller who flips pending→action proceeds.
