@@ -45,6 +45,8 @@ describe.skipIf(!RUN_DB)(
     const threadIds: number[] = [];
     const ruleIds: number[] = [];
     const courseIds: number[] = [];
+    /** The Lounge room's conversation, per community id. */
+    const loungeChatOf = new Map<string, string>();
     const threadOf = new Map<string, number>();
 
     beforeAll(async () => {
@@ -72,17 +74,39 @@ describe.skipIf(!RUN_DB)(
       };
       f = await createPrivateCommunityFixture(m);
       for (const c of [f.open, f.inviteOnly, f.approval, f.unlisted]) {
+        const [lounge] = await db
+          .insert(schema.spaces)
+          .values([
+            {
+              communityId: c.id,
+              kind: "room",
+              visibility: "public",
+              name: "Lounge",
+              slug: `lounge-${c.slug}`,
+              position: 10,
+              createdBy: f.users.owner,
+            },
+          ])
+          .returning();
+        // In the Lounge: the member, and two people who are no longer (or
+        // not yet) active community members but still hold a room
+        // membership — someone who left (the outsider) and someone waiting
+        // for approval. Room membership alone must not open the chat.
+        await db.insert(schema.spaceMemberships).values(
+          [f.users.member, f.users.outsider, f.users.pending].map((userId) => ({
+            spaceId: lounge!.id,
+            userId,
+            status: "active" as const,
+          })),
+        );
+        const { getOrCreateRoomConversation } =
+          await import("@/server/communities/room-conversation");
+        loungeChatOf.set(
+          c.id,
+          await getOrCreateRoomConversation(db, lounge!.id),
+        );
         await db.insert(schema.spaces).values([
           ...buildDefaultSpaceRows(c.id),
-          {
-            communityId: c.id,
-            kind: "room",
-            visibility: "public",
-            name: "Lounge",
-            slug: `lounge-${c.slug}`,
-            position: 10,
-            createdBy: f.users.owner,
-          },
           {
             communityId: c.id,
             kind: "room",
@@ -180,6 +204,16 @@ describe.skipIf(!RUN_DB)(
         collection: "rules-acceptance",
         where: { communityId: { in: ids } },
       });
+      const chatIds = [...loungeChatOf.values()];
+      const { inArray } = await import("drizzle-orm");
+      if (chatIds.length > 0) {
+        await m.db
+          .delete(m.schema.messages)
+          .where(inArray(m.schema.messages.conversationId, chatIds));
+        await m.db
+          .delete(m.schema.conversations)
+          .where(inArray(m.schema.conversations.id, chatIds));
+      }
       await f.cleanup();
     }, 60_000);
 
@@ -423,6 +457,46 @@ describe.skipIf(!RUN_DB)(
         expect(guest.courses.map((c) => c.slug)).toEqual([
           `gate-course-${f.open.slug}`,
         ]);
+      });
+    });
+
+    describe("room chats", () => {
+      it("are closed to anyone who is not an active community member, room membership or not", async () => {
+        for (const [, c] of [["public", f.open], ...f.membersOnly] as const) {
+          const conversationId = loungeChatOf.get(c.id)!;
+          // A reader of a public community is refused; a members-only
+          // community's chat answers like a missing one.
+          const code = c === f.open ? "FORBIDDEN" : "NOT_FOUND";
+          for (const userId of [f.users.outsider, f.users.pending]) {
+            const caller = callerAs(userId);
+            await expect(
+              caller.inbox.getMessages({ conversationId }),
+            ).rejects.toMatchObject({ code });
+            await expect(
+              caller.inbox.sendMessage({ conversationId, content: "hi" }),
+            ).rejects.toMatchObject({ code });
+            const listed = await caller.inbox.listConversations({ limit: 50 });
+            expect(JSON.stringify(listed)).not.toContain(conversationId);
+          }
+        }
+      });
+
+      it("stay open to an active member in the room, and leave the others out of the badge", async () => {
+        const conversationId = loungeChatOf.get(f.inviteOnly.id)!;
+        const member = callerAs(f.users.member);
+        await expect(
+          member.inbox.sendMessage({ conversationId, content: "hello room" }),
+        ).resolves.toBeTruthy();
+        await expect(
+          member.inbox.getMessages({ conversationId }),
+        ).resolves.toMatchObject({
+          messages: [expect.objectContaining({ content: "hello room" })],
+        });
+        expect(
+          JSON.stringify(await member.inbox.listConversations({ limit: 50 })),
+        ).toContain(conversationId);
+        const badge = await callerAs(f.users.outsider).inbox.totalUnreadCount();
+        expect(badge.count).toBe(0);
       });
     });
 

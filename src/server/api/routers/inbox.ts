@@ -19,9 +19,10 @@ import {
   spaceMemberships,
   spaces,
   communities,
+  communityMemberships,
   user,
 } from "@/server/db/schema";
-import { isActiveMember } from "@/server/communities/room-access";
+import { requireActiveMemberOf } from "@/server/communities/content-access";
 import {
   canReadPaidCommunity,
   paymentsEnabled,
@@ -59,20 +60,37 @@ const uiResourceSchema = z.object({
 type ConversationDb = typeof Database;
 
 /**
- * For a space conversation, the caller must be an active member of the room.
- * Returns the active member user-ids (for realtime fan-out) or throws FORBIDDEN.
+ * For a space conversation, the caller must be an active member of the
+ * room AND an active member in good standing of the room's community
+ * (`requireActiveMember`, ADR-0050): someone who left, was removed or
+ * banned, or whose paid membership lapsed keeps their room membership row
+ * (so it comes back if they return) but not the chat. A members-only
+ * community's room answers NOT_FOUND to them, a public community's
+ * FORBIDDEN. Returns the user-ids to fan out to: the room's members who
+ * pass the same rule.
  */
 async function requireSpaceConversationAccess(
   db: ConversationDb,
   conversationSpaceId: string,
   userId: string,
 ): Promise<string[]> {
+  const space = await db.query.spaces.findFirst({
+    where: eq(spaces.id, conversationSpaceId),
+    columns: { communityId: true },
+  });
+  if (!space) throw new TRPCError({ code: "NOT_FOUND" });
+  await requireActiveMemberOf(db, space.communityId, userId);
   let members = await db
-    .select({
-      userId: spaceMemberships.userId,
-      status: spaceMemberships.status,
-    })
+    .select({ userId: spaceMemberships.userId })
     .from(spaceMemberships)
+    .innerJoin(
+      communityMemberships,
+      and(
+        eq(communityMemberships.userId, spaceMemberships.userId),
+        eq(communityMemberships.communityId, space.communityId),
+        eq(communityMemberships.status, "active"),
+      ),
+    )
     .where(
       and(
         eq(spaceMemberships.spaceId, conversationSpaceId),
@@ -80,11 +98,6 @@ async function requireSpaceConversationAccess(
       ),
     );
   if (paymentsEnabled()) {
-    const space = await db.query.spaces.findFirst({
-      where: eq(spaces.id, conversationSpaceId),
-      columns: { communityId: true },
-    });
-    if (!space) throw new TRPCError({ code: "FORBIDDEN" });
     const allowed = await Promise.all(
       members.map(async (member) => ({
         member,
@@ -99,8 +112,7 @@ async function requireSpaceConversationAccess(
       .filter((entry) => entry.allowed)
       .map((entry) => entry.member);
   }
-  const mine = members.find((m) => m.userId === userId);
-  if (!isActiveMember(mine ? { status: "active" } : null)) {
+  if (!members.some((m) => m.userId === userId)) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
   return members.map((m) => m.userId);
@@ -206,6 +218,16 @@ export const inboxRouter = createTRPCRouter({
         .innerJoin(
           spaceMemberships,
           eq(spaceMemberships.spaceId, conversations.spaceId),
+        )
+        // Only rooms of communities the caller is still an active member of
+        // (ADR-0050); a kept room membership alone lists nothing.
+        .innerJoin(
+          communityMemberships,
+          and(
+            eq(communityMemberships.communityId, spaces.communityId),
+            eq(communityMemberships.userId, userId),
+            eq(communityMemberships.status, "active"),
+          ),
         )
         .where(
           and(

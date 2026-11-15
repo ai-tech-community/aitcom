@@ -5,7 +5,9 @@ import {
   conversationParticipants,
   conversations,
   messages,
+  communityMemberships,
   spaceMemberships,
+  spaces,
 } from "@/server/db/schema";
 
 type DB = typeof _db;
@@ -16,7 +18,8 @@ type DB = typeof _db;
  * Two unread sources, UNION ALL'd then summed: DM/agent conversations
  * (tracked on conversationParticipants) and room conversations (no
  * participant rows — tracked on the member's active spaceMembership, the
- * same marker getMessages/listConversations use). Without the room arm the
+ * same marker getMessages/listConversations use), only while the member is
+ * still an active member of the room's community. Without the room arm the
  * global badge silently undercounts room unread.
  */
 export async function countInboxUnread(
@@ -48,6 +51,17 @@ export async function countInboxUnread(
           AND sm.status = 'active'
         WHERE (m.sender_id != ${userId} OR m.sender_type != 'human')
           AND (sm.last_read_at IS NULL OR m.created_at > sm.last_read_at)
+          -- A room is its community's: only an active community member
+          -- counts its unread (ADR-0050), room membership or not.
+          AND EXISTS (
+            SELECT 1
+            FROM ${spaces}
+            JOIN ${communityMemberships}
+              ON ${communityMemberships.communityId} = ${spaces.communityId}
+            WHERE ${spaces.id} = c.space_id
+              AND ${communityMemberships.userId} = ${userId}
+              AND ${communityMemberships.status} = 'active'
+          )
         GROUP BY m.conversation_id
       ) sub`,
     );
