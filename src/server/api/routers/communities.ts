@@ -40,6 +40,7 @@ import { seedDefaultSpaces } from "@/server/communities/seed-default-spaces";
 import { generateSlug } from "@/server/communities/slug-utils";
 import {
   canManageRole,
+  isCommunityManagerRole,
   ROLE_HIERARCHY,
   type CommunityRole,
 } from "@/server/communities/role-utils";
@@ -49,10 +50,7 @@ import {
   canRedeemInvite,
 } from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
-import {
-  loadMemberCommunityIds,
-  loadPublicLiveness,
-} from "@/server/communities/discovery-queries";
+import { loadPublicLiveness } from "@/server/communities/discovery-queries";
 import {
   invalidateDirectorySnapshots,
   loadDirectorySnapshot,
@@ -89,9 +87,12 @@ import { membershipPaymentAllowed } from "@/server/payments/access";
 import { stopCommunityMembershipBilling } from "@/server/payments/management";
 import { countPendingJoinRequests } from "@/server/communities/pending-join-requests";
 import {
+  activeCommunityRole,
+  activeMemberCommunityIds,
   viewerCanReadRoster,
   viewerCommunityAccess,
 } from "@/server/communities/content-visibility-queries";
+import { requireReadableRosterBySlug } from "@/server/communities/content-access";
 import { activateMembership } from "@/server/communities/activate-membership";
 import {
   joinSourceSchema,
@@ -255,7 +256,7 @@ export const communitiesRouter = createTRPCRouter({
       // members (ADR-0021, ADR-0050); the Hub's card never shows faces.
       const userId = ctx.session?.user?.id;
       const memberOf = userId
-        ? await loadMemberCommunityIds(ctx.db, userId)
+        ? await activeMemberCommunityIds(ctx.db, userId)
         : new Set<string>();
       const faces = await loadStackFacesForCommunities(
         ctx.db,
@@ -346,21 +347,24 @@ export const communitiesRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.slug),
-          isNull(communities.deletedAt),
-        ),
-      });
-
-      if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
+      const viewerId = ctx.session?.user?.id;
+      const community = await requireReadableRosterBySlug(
+        ctx.db,
+        input.slug,
+        viewerId,
+      );
+      // Join requests and bans are the managers' queue, not the roster.
       if (
-        !(await viewerCanReadRoster(ctx.db, community, ctx.session?.user?.id))
+        input.status !== "active" &&
+        !isCommunityManagerRole(
+          (await activeCommunityRole(
+            ctx.db,
+            community.id,
+            viewerId,
+          )) as CommunityRole | null,
+        )
       ) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: "FORBIDDEN" });
       }
 
       const conditions = [
@@ -419,7 +423,6 @@ export const communitiesRouter = createTRPCRouter({
         };
       }
 
-      const viewerId = ctx.session?.user?.id;
       return {
         items: items.map((row) => toDirectoryMember(row, viewerId)),
         nextCursor,

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
-const visibility = vi.hoisted(() => ({ roster: vi.fn() }));
+const visibility = vi.hoisted(() => ({ roster: vi.fn(), role: vi.fn() }));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
   env: { NODE_ENV: "test", NEXT_PUBLIC_APP_URL: "https://app.test" },
@@ -11,9 +11,16 @@ vi.mock("@/server/better-auth", () => ({
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => ({}) }));
 vi.mock("@/server/agent/activity", () => ({ logActivity: vi.fn() }));
-vi.mock("@/server/communities/content-visibility-queries", () => ({
-  viewerCanReadRoster: visibility.roster,
-}));
+vi.mock(
+  "@/server/communities/content-visibility-queries",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/server/communities/content-visibility-queries")
+    >()),
+    viewerCanReadRoster: visibility.roster,
+    activeCommunityRole: visibility.role,
+  }),
+);
 import { communitiesRouter } from "./communities";
 
 function fixture() {
@@ -60,6 +67,7 @@ function fixture() {
 beforeEach(() => {
   vi.clearAllMocks();
   visibility.roster.mockResolvedValue(true);
+  visibility.role.mockResolvedValue(null);
 });
 
 describe("Members directory used by the matching hub", () => {
@@ -129,4 +137,24 @@ describe("Members directory used by the matching hub", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(fake.database.select).not.toHaveBeenCalled();
   });
+  it.each(["pending_approval", "banned"] as const)(
+    "lists %s members only to the community's managers",
+    async (status) => {
+      for (const role of [null, "member"]) {
+        visibility.role.mockResolvedValue(role);
+        const fake = fixture();
+        await expect(
+          fake.caller.getMembers({ slug: "alpha", status }),
+        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        expect(fake.database.select).not.toHaveBeenCalled();
+      }
+      for (const role of ["moderator", "admin", "owner"]) {
+        visibility.role.mockResolvedValue(role);
+        const fake = fixture();
+        await fake.caller.getMembers({ slug: "alpha", status });
+        const query = new PgDialect().sqlToQuery(fake.filters[0] as never);
+        expect(query.params).toEqual(["community-a", status]);
+      }
+    },
+  );
 });
