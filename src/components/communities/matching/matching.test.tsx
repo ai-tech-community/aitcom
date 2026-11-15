@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import en from "../../../../messages/en.json";
 import nl from "../../../../messages/nl.json";
 import fr from "../../../../messages/fr.json";
@@ -21,6 +21,20 @@ const m = vi.hoisted(() => ({
   propose: vi.fn(),
   dismiss: vi.fn(),
   pending: false,
+  search: "",
+  listeners: new Set<() => void>(),
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () =>
+    new URLSearchParams(
+      useSyncExternalStore(
+        (listener) => {
+          m.listeners.add(listener);
+          return () => m.listeners.delete(listener);
+        },
+        () => m.search,
+      ),
+    ),
 }));
 vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => ({ data: m.session }) },
@@ -92,6 +106,24 @@ const type: ConnectionType = {
   promptB: "",
   topics: ["Cycling", "Hiking"],
 };
+const PEOPLE_PATH = "/en/communities/alpha/members";
+function setUrl(search: string) {
+  window.history.replaceState(
+    null,
+    "",
+    search ? `${PEOPLE_PATH}?${search}` : PEOPLE_PATH,
+  );
+}
+// Next syncs history.replaceState into useSearchParams; the mock does too.
+const realReplaceState = window.history.replaceState.bind(window.history);
+const replaceState = vi
+  .spyOn(window.history, "replaceState")
+  .mockImplementation((data, unused, url) => {
+    realReplaceState(data, unused, url);
+    m.search = window.location.search.replace(/^\?/, "");
+    for (const listener of m.listeners) listener();
+  });
+const pushState = vi.spyOn(window.history, "pushState");
 const a = { userId: "a", displayName: "Naomi", image: null };
 const b = { userId: "b", displayName: "Greg", image: null };
 function show(children: ReactNode, locale: "en" | "nl" | "fr" = "en") {
@@ -110,6 +142,8 @@ function show(children: ReactNode, locale: "en" | "nl" | "fr" = "en") {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  setUrl("");
+  replaceState.mockClear();
   m.pending = false;
   m.session = { user: { id: "me" } };
   m.memberships = {
@@ -232,6 +266,46 @@ describe("member matching interface", () => {
     expect(
       screen.queryByRole("tab", { name: "Connection types" }),
     ).not.toBeInTheDocument();
+  });
+  it("opens the tab the link names", () => {
+    setUrl("tab=profile");
+    show(<CommunityMembersHub slug="alpha" />);
+    expect(
+      screen.getByRole("tab", { name: "My matching profile" }),
+    ).toHaveAttribute("aria-selected", "true");
+  });
+  it("opens the directory when a member follows a link to an organizer tab", () => {
+    m.setup = {
+      data: { types: [type], profile: emptyMatchingProfile, canManage: false },
+    };
+    setUrl("tab=matches");
+    show(<CommunityMembersHub slug="alpha" />);
+    expect(screen.getByRole("tab", { name: "Directory" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+  it("puts the chosen tab in the URL without adding history entries", () => {
+    setUrl("ref=mail");
+    replaceState.mockClear();
+    show(<CommunityMembersHub slug="alpha" />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Introductions" }));
+    expect(replaceState).toHaveBeenLastCalledWith(
+      null,
+      "",
+      `${PEOPLE_PATH}?ref=mail&tab=introductions`,
+    );
+    expect(screen.getByRole("tab", { name: "Introductions" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Directory" }));
+    expect(replaceState).toHaveBeenLastCalledWith(
+      null,
+      "",
+      `${PEOPLE_PATH}?ref=mail`,
+    );
+    expect(pushState).not.toHaveBeenCalled();
   });
   it("keeps guests and inactive members in the directory, including stale signed-in cache", () => {
     m.session = null;
