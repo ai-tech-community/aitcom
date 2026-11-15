@@ -1,8 +1,9 @@
 "use client";
 
-import { useDeferredValue, useState } from "react";
+import { useCallback, useDeferredValue, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,14 @@ import { DirectoryMemberRow } from "./directory-member-row";
 import { MatchingProfileForm } from "./profile-form";
 import { CommunityMatches } from "./matches";
 import { IntroductionHistory } from "./introduction-history";
+import {
+  MEMBERS_HUB_TABS,
+  canOpenMembersHubTab,
+  isMembersHubTab,
+  parseMembersHubTab,
+  writeMembersHubTab,
+  type MembersHubTab,
+} from "./members-hub-tab";
 
 export function MemberDirectory({ slug }: { slug: string }) {
   const t = useTranslations("communityMatching");
@@ -75,9 +84,35 @@ export function MemberDirectory({ slug }: { slug: string }) {
   );
 }
 
+const TAB_LABEL_KEYS = {
+  directory: "peopleTab",
+  matches: "matchesTab",
+  profile: "profileTab",
+  introductions: "introductionsTab",
+} as const satisfies Record<MembersHubTab, string>;
+
+/**
+ * The open tab, kept in the URL in place (history.replaceState, which Next
+ * syncs into `useSearchParams`): a tab can be shared and survives refresh,
+ * and Back leaves the page instead of stepping through every tab.
+ */
+function useMembersHubTab(canManage: boolean) {
+  const searchParams = useSearchParams();
+  const tab = parseMembersHubTab(searchParams, canManage);
+  const setTab = useCallback((value: string) => {
+    if (!isMembersHubTab(value)) return;
+    const url = new URL(window.location.href);
+    const next = writeMembersHubTab(url.searchParams, value).toString();
+    window.history.replaceState(
+      null,
+      "",
+      next ? `${url.pathname}?${next}` : url.pathname,
+    );
+  }, []);
+  return [tab, setTab] as const;
+}
+
 function MatchingWorkspace({ slug }: { slug: string }) {
-  const t = useTranslations("communityMatching");
-  const [tab, setTab] = useState("people");
   const setup = api.communityMatching.setup.useQuery({ slug });
   if (setup.isPending)
     return (
@@ -87,46 +122,49 @@ function MatchingWorkspace({ slug }: { slug: string }) {
       </div>
     );
   if (setup.isError) return <ErrorState onRetry={setup.refetch} />;
-  const { types, profile, canManage } = setup.data;
+  return <MatchingTabs slug={slug} {...setup.data} />;
+}
+
+function MatchingTabs({
+  slug,
+  types,
+  profile,
+  canManage,
+}: { slug: string } & RouterOutputs["communityMatching"]["setup"]) {
+  const t = useTranslations("communityMatching");
+  const [tab, setTab] = useMembersHubTab(canManage);
+  const tabs = MEMBERS_HUB_TABS.filter((each) =>
+    canOpenMembersHubTab(each, canManage),
+  );
+  const panels: Record<MembersHubTab, ReactNode> = {
+    directory: <MemberDirectory slug={slug} />,
+    matches: <CommunityMatches slug={slug} types={types} />,
+    profile: (
+      <MatchingProfileForm
+        key={JSON.stringify({ types, profile })}
+        slug={slug}
+        profile={profile}
+        types={types}
+      />
+    ),
+    introductions: <IntroductionHistory slug={slug} />,
+  };
   return (
     <Tabs value={tab} onValueChange={setTab} className="gap-6">
       <div className="overflow-x-auto pb-1">
         <TabsList variant="line" aria-label={t("navigation")}>
-          <TabsTrigger value="people">{t("peopleTab")}</TabsTrigger>
-          {canManage && (
-            <TabsTrigger value="matches">{t("matchesTab")}</TabsTrigger>
-          )}
-          <TabsTrigger value="profile">{t("profileTab")}</TabsTrigger>
-          {canManage && (
-            <>
-              <TabsTrigger value="introductions">
-                {t("introductionsTab")}
-              </TabsTrigger>
-            </>
-          )}
+          {tabs.map((each) => (
+            <TabsTrigger key={each} value={each}>
+              {t(TAB_LABEL_KEYS[each])}
+            </TabsTrigger>
+          ))}
         </TabsList>
       </div>
-      <TabsContent value="people">
-        <MemberDirectory slug={slug} />
-      </TabsContent>
-      <TabsContent value="profile">
-        <MatchingProfileForm
-          key={JSON.stringify({ types, profile })}
-          slug={slug}
-          profile={profile}
-          types={types}
-        />
-      </TabsContent>
-      {canManage && (
-        <>
-          <TabsContent value="matches">
-            <CommunityMatches slug={slug} types={types} />
-          </TabsContent>
-          <TabsContent value="introductions">
-            <IntroductionHistory slug={slug} />
-          </TabsContent>
-        </>
-      )}
+      {tabs.map((each) => (
+        <TabsContent key={each} value={each}>
+          {panels[each]}
+        </TabsContent>
+      ))}
     </Tabs>
   );
 }
