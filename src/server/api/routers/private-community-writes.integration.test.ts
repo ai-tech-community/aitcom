@@ -23,6 +23,12 @@ vi.mock("@/server/agent/api-key", () => ({
   })),
 }));
 
+// One test agent makes many calls; the per-agent rate limit is not what
+// these tests are about.
+vi.mock("@/server/agent/rate-limit", () => ({
+  checkRateLimit: () => ({ allowed: true, remaining: 1, resetAt: 0 }),
+}));
+
 const RUN_DB = isLocalDbConfigured();
 
 /**
@@ -235,6 +241,10 @@ describe.skipIf(!RUN_DB)(
         where: {
           or: [{ id: { in: threadIds } }, { authorId: { in: userIds } }],
         },
+      });
+      await m.payload.delete({
+        collection: "feed-posts",
+        where: { authorId: { in: userIds } },
       });
       await m.payload.delete({
         collection: "idea-votes",
@@ -604,6 +614,66 @@ describe.skipIf(!RUN_DB)(
             action: "approved",
           }),
         ).resolves.toBeTruthy();
+      });
+
+      it("re-checks the direct path's rules on approval: feed policy and thread lock", async () => {
+        const { eq } = await import("drizzle-orm");
+        const pending = async (draftId: string) => {
+          const [row] = await m.db
+            .select({ status: m.schema.agentDrafts.status })
+            .from(m.schema.agentDrafts)
+            .where(eq(m.schema.agentDrafts.id, draftId));
+          return row?.status;
+        };
+
+        const post = await agentOf(f.users.member).agent.createFeedPost({
+          communitySlug: f.inviteOnly.slug,
+          content: "From the agent",
+        });
+        await m.db
+          .update(m.schema.communities)
+          .set({ feedPostPolicy: "admins_only" })
+          .where(eq(m.schema.communities.id, f.inviteOnly.id));
+        try {
+          await expect(
+            callerAs(f.users.member).agentManagement.reviewDraft({
+              draftId: post.draftId,
+              action: "approved",
+            }),
+          ).rejects.toMatchObject({ code: "FORBIDDEN" });
+          expect(await pending(post.draftId)).toBe("pending");
+        } finally {
+          await m.db
+            .update(m.schema.communities)
+            .set({ feedPostPolicy: "all_members" })
+            .where(eq(m.schema.communities.id, f.inviteOnly.id));
+        }
+
+        const threadId = threadOf.get(f.inviteOnly.id)!;
+        const reply = await agentOf(f.users.member).agent.replyToThread({
+          threadId,
+          content: "Rocket engines cool with regenerative cooling.",
+        });
+        await m.payload.update({
+          collection: "forum-threads",
+          id: threadId,
+          data: { isLocked: true },
+        });
+        try {
+          await expect(
+            callerAs(f.users.member).agentManagement.reviewDraft({
+              draftId: reply.draftId,
+              action: "approved",
+            }),
+          ).rejects.toMatchObject({ code: "FORBIDDEN" });
+          expect(await pending(reply.draftId)).toBe("pending");
+        } finally {
+          await m.payload.update({
+            collection: "forum-threads",
+            id: threadId,
+            data: { isLocked: false },
+          });
+        }
       });
 
       it("resolves a reply draft's community from its thread when the metadata has none", async () => {

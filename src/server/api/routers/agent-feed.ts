@@ -15,17 +15,14 @@ import {
   communityMemberships,
   notifications,
 } from "@/server/db/schema";
-import {
-  requireActiveMember,
-  requireReadableCommunityBySlug,
-} from "@/server/communities/content-access";
+import { requireReadableCommunityBySlug } from "@/server/communities/content-access";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { agentDraftResponse } from "@/server/agent/draft-result";
 import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
 import { toggleFeedPostLike } from "@/server/communities/feed-post-counters";
 import {
-  canPostToFeed,
+  requireFeedPoster,
   requireViewablePost,
 } from "@/server/communities/feed-posts";
 import {
@@ -272,19 +269,11 @@ export const agentFeedRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.communitySlug);
-      // The owner must be an active member in good standing; a community
-      // they may not read is NOT_FOUND (ADR-0050).
-      const role = await requireActiveMember(ctx.db, community, ownerId, {
-        notFound: "Community not found",
-      });
-
-      // Enforce feed post policy, the same rule as member posting.
-      if (!canPostToFeed(community.feedPostPolicy ?? "all_members", role)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only admins and moderators can post",
-        });
-      }
+      // The same rule as a member posting in the browser, and as the
+      // approval that publishes this draft: an active member in good
+      // standing (a community they may not read is NOT_FOUND, ADR-0050)
+      // whom the feed policy lets post.
+      await requireFeedPoster(ctx.db, { id: community.id }, ownerId);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const destinationPath = `/communities/${community.slug}`;

@@ -41,15 +41,19 @@ export type FeedMemberRole = CommunityRole;
 /** Neutral on purpose: the same refusal covers reading, posting, and acting. */
 const NOT_A_MEMBER = NOT_AN_ACTIVE_MEMBER;
 
+/** A feed's community, named by slug or by id. */
+export type FeedCommunityKey = { slug: string } | { id: string };
+
 /**
  * The community behind a feed, for an active member in good standing only
  * (`requireActiveMember`). Feeds are members-only: a reader who is not a
  * member gets FORBIDDEN; someone who may not read the community, and an
- * unknown slug, get NOT_FOUND (ADR-0050).
+ * unknown one, get NOT_FOUND (ADR-0050). Name the community by slug (a
+ * string, as the routers do) or by `{ id }` (an agent's draft names it so).
  */
 export async function requireActiveFeedMember(
   database: Database,
-  communitySlug: string,
+  community: string | FeedCommunityKey,
   userId: string,
 ): Promise<{
   id: string;
@@ -57,26 +61,25 @@ export async function requireActiveFeedMember(
   role: FeedMemberRole;
   feedPostPolicy: "all_members" | "admins_only";
 }> {
-  const community = await database.query.communities.findFirst({
+  const key = typeof community === "string" ? { slug: community } : community;
+  const row = await database.query.communities.findFirst({
     where: and(
-      eq(communities.slug, communitySlug),
+      "slug" in key
+        ? eq(communities.slug, key.slug)
+        : eq(communities.id, key.id),
       isNull(communities.deletedAt),
     ),
     columns: { ...COMMUNITY_VISIBILITY_COLUMNS, feedPostPolicy: true },
   });
-  if (!community) {
+  if (!row) {
     throw new TRPCError({ code: "NOT_FOUND" });
   }
-  const role = await requireActiveMember(
-    database,
-    communityRefOf(community),
-    userId,
-  );
+  const role = await requireActiveMember(database, communityRefOf(row), userId);
   return {
-    id: community.id,
-    slug: community.slug,
+    id: row.id,
+    slug: row.slug,
     role,
-    feedPostPolicy: community.feedPostPolicy ?? "all_members",
+    feedPostPolicy: row.feedPostPolicy ?? "all_members",
   };
 }
 
@@ -142,21 +145,20 @@ export function canPostToFeed(
   return role === "owner" || role === "admin" || role === "moderator";
 }
 
-/** An active member who may post under the community's feed policy. */
+/**
+ * An active member who may post under the community's feed policy: the one
+ * rule for posting in the browser, an agent's post draft, and its approval.
+ */
 export async function requireFeedPoster(
   database: Database,
-  communitySlug: string,
+  community: string | FeedCommunityKey,
   userId: string,
 ) {
-  const community = await requireActiveFeedMember(
-    database,
-    communitySlug,
-    userId,
-  );
-  if (!canPostToFeed(community.feedPostPolicy, community.role)) {
+  const member = await requireActiveFeedMember(database, community, userId);
+  if (!canPostToFeed(member.feedPostPolicy, member.role)) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
-  return community;
+  return member;
 }
 
 /** What a client sees of a post's video: playback links, never storage keys. */

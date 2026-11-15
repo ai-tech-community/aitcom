@@ -1,18 +1,23 @@
 /**
  * Who may still publish an agent's community draft when it is approved.
  *
- * A draft is checked when the agent makes it (the owner must be an active
- * member of the community it lands in) and again here, before the draft is
- * claimed, because membership can end in between (ADR-0050). Checking
- * before the claim means a refused approval leaves the draft pending.
+ * A draft is checked when the agent makes it and again here, before the
+ * draft is claimed, because things change in between (ADR-0050): a
+ * membership ends, the feed policy tightens, a thread is locked. Each
+ * draft type runs the very function the direct write path runs, so an
+ * approval can never publish what a member could not post themselves.
+ * Checking before the claim means a refused approval leaves the draft
+ * pending.
  *
- * - The agent's owner must still be an active member in good standing.
- * - So must the reviewer whose name a thread, post or comment is published
- *   under, when that is someone else.
- * - A reply draft names its thread, not always its community: the
- *   community is read from the thread, so a draft without `communityId`
- *   metadata is checked all the same. A thread with no community is
- *   Hub-wide and open to any signed-in user.
+ * - thread: `requireThreadAuthor` (member, rules), for the owner and for
+ *   the reviewer it is published under.
+ * - reply: `requireReplyAuthor` (member, rules, not locked) for the owner;
+ *   the community is read from the thread, so a draft without
+ *   `communityId` metadata is checked all the same.
+ * - feed post: `requireFeedPoster` (member, feed policy) for the owner and
+ *   the reviewer it is published under.
+ * - feed comment: `requireViewablePost` with membership, as
+ *   `feed.addComment`, for the owner and the reviewer.
  *
  * Drafts that publish nothing into a community pass unchanged.
  */
@@ -22,13 +27,17 @@ import { TRPCError } from "@trpc/server";
 import type { db as appDb } from "@/server/db";
 import type { getPayloadClient } from "@/server/payload";
 import {
-  requireActiveMemberBySlug,
-  requireActiveMemberOf,
-} from "@/server/communities/content-access";
+  requireFeedPoster,
+  requireViewablePost,
+} from "@/server/communities/feed-posts";
 import {
   FORUM_THREAD_DRAFT_TYPE,
   type ForumThreadDraft,
 } from "@/server/communities/forum-thread-draft";
+import {
+  requireReplyAuthor,
+  requireThreadAuthor,
+} from "@/server/communities/forum-write-access";
 
 type DB = typeof appDb;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -46,9 +55,9 @@ function publishersOf(draft: PublishableDraft, reviewerId: string): string[] {
 }
 
 /**
- * Throws unless everyone the draft is published as may still write into
- * the community it lands in. `thread` is the parsed thread draft, for a
- * thread draft being approved.
+ * Throws unless everyone the draft is published as may still write it,
+ * by the direct path's own rules. `thread` is the parsed thread draft, for
+ * a thread draft being approved.
  */
 export async function requireDraftPublishable(
   db: DB,
@@ -57,12 +66,8 @@ export async function requireDraftPublishable(
   input: { reviewerId: string; thread?: ForumThreadDraft },
 ): Promise<void> {
   if (draft.type === FORUM_THREAD_DRAFT_TYPE) {
-    const slug = input.thread?.communitySlug;
-    if (!slug) return;
     for (const userId of publishersOf(draft, input.reviewerId)) {
-      await requireActiveMemberBySlug(db, slug, userId, {
-        notFound: "Community not found",
-      });
+      await requireThreadAuthor(db, input.thread?.communitySlug, userId);
     }
     return;
   }
@@ -93,37 +98,25 @@ export async function requireDraftPublishable(
       });
     }
     // The reply is the agent's, on the owner's behalf: the owner counts.
-    await requireActiveMemberOf(db, thread.communityId, draft.ownerId, {
-      notFound: "Thread not found",
-    });
+    await requireReplyAuthor(db, thread, draft.ownerId);
     return;
   }
 
   if (draft.type === "feed_post") {
     if (!draft.targetId) return;
     for (const userId of publishersOf(draft, input.reviewerId)) {
-      await requireActiveMemberOf(db, draft.targetId, userId, {
-        notFound: "Community not found",
-      });
+      await requireFeedPoster(db, { id: draft.targetId }, userId);
     }
     return;
   }
 
   if (draft.type === "feed_comment") {
-    const post = draft.targetId
-      ? await payload.findByID({
-          collection: "feed-posts",
-          id: Number(draft.targetId),
-          depth: 0,
-          disableErrors: true,
-        })
-      : null;
-    if (!post || post.isDeleted) {
+    if (!draft.targetId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
     }
     for (const userId of publishersOf(draft, input.reviewerId)) {
-      await requireActiveMemberOf(db, post.communityId, userId, {
-        notFound: "Post not found",
+      await requireViewablePost(db, payload, Number(draft.targetId), userId, {
+        requireMembership: true,
       });
     }
   }

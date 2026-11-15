@@ -43,6 +43,7 @@ import {
   directoryProfileColumns,
   toDirectoryMember,
 } from "@/server/communities/directory-member";
+import { requireReplyAuthor } from "@/server/communities/forum-write-access";
 import {
   readableChallengesWhere,
   requireChallengeParticipant,
@@ -1214,19 +1215,10 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      // The owner must be an active member of the thread's community, as
-      // a member replying in the browser must (ADR-0050); a thread they may
-      // not read answers like a missing one.
-      await requireActiveMemberOf(ctx.db, thread.communityId, ownerId, {
-        notFound: "Thread not found",
-      });
-
-      if (thread.isLocked) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Thread is locked",
-        });
-      }
+      // The owner must be allowed to reply as a member replying in the
+      // browser is (ADR-0050): active member (a thread they may not read
+      // answers like a missing one), rules accepted, thread not locked.
+      await requireReplyAuthor(ctx.db, thread, ownerId);
 
       const topic = threadTopic(thread);
       if (!shareReferencesThreadTopic(topic.title, topic.body, input.content)) {
@@ -1308,19 +1300,10 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      // The owner must be an active member of the thread's community, as
-      // a member replying in the browser must (ADR-0050); a thread they may
-      // not read answers like a missing one.
-      await requireActiveMemberOf(ctx.db, thread.communityId, ownerId, {
-        notFound: "Thread not found",
-      });
-
-      if (thread.isLocked) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Thread is locked",
-        });
-      }
+      // The owner must be allowed to reply as a member replying in the
+      // browser is (ADR-0050): active member (a thread they may not read
+      // answers like a missing one), rules accepted, thread not locked.
+      await requireReplyAuthor(ctx.db, thread, ownerId);
 
       const topic = threadTopic(thread);
       if (!shareReferencesThreadTopic(topic.title, topic.body, input.content)) {

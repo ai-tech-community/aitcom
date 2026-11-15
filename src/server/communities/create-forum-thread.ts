@@ -4,9 +4,8 @@ import type { db as Database } from "@/server/db";
 import { getPayloadClient } from "@/server/payload";
 
 import { forumBodyToLexical } from "./forum-body";
-import { requireActiveMemberBySlug } from "./content-access";
+import { requireThreadAuthor } from "./forum-write-access";
 import { type ForumThreadDraft, forumThreadSlug } from "./forum-thread-draft";
-import { requireRulesAcceptance } from "./rules-acceptance";
 
 type DB = typeof Database;
 
@@ -22,17 +21,12 @@ export async function createForumThread(
   author: { id: string; name: string },
   input: ForumThreadDraft,
 ) {
-  // A community's thread needs its author to be an active member in good
-  // standing (ADR-0050). An unknown slug, and a community the author may
-  // not read, are NOT_FOUND, never a silent Hub thread.
-  const communityId = input.communitySlug
-    ? (
-        await requireActiveMemberBySlug(db, input.communitySlug, author.id, {
-          notFound: "Community not found",
-        })
-      ).id
-    : undefined;
-  await requireRulesAcceptance(author.id, communityId);
+  // The one thread rule, shared with the approval of an agent's draft.
+  const communityId = await requireThreadAuthor(
+    db,
+    input.communitySlug,
+    author.id,
+  );
   const payload = await getPayloadClient();
   const slug = await forumThreadSlugToPublish(payload, input.title, input.slug);
 

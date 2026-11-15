@@ -45,6 +45,7 @@ import {
 } from "@/server/communities/content-visibility-queries";
 import { buildIdeasWhere } from "./ideas-filter";
 import { createForumThread } from "@/server/communities/create-forum-thread";
+import { requireReplyAuthor } from "@/server/communities/forum-write-access";
 import { pinForumThread } from "@/server/communities/pin-forum-thread";
 import { requireRulesAcceptance } from "@/server/communities/rules-acceptance";
 import { roleCanModerateThreads } from "@/lib/communities/thread-moderation";
@@ -547,27 +548,11 @@ export const forumRouter = createTRPCRouter({
         });
       }
 
-      // Hub-wide threads (no communityId) are open to any signed-in member.
-      // A community's thread needs an active member in good standing; one
-      // the caller may not read answers like a missing thread (ADR-0050).
-      await requireActiveMemberOf(
-        ctx.db,
-        thread.communityId,
-        ctx.session.user.id,
-        { notFound: "Thread not found" },
-      );
-
-      await requireRulesAcceptance(
-        ctx.session.user.id,
-        thread.communityId ?? undefined,
-      );
-
-      if (thread.isLocked) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "This thread is locked",
-        });
-      }
+      // The one reply rule, shared with an agent's draft and its approval:
+      // active member (a hidden thread answers like a missing one), rules
+      // accepted, thread not locked. Hub-wide threads take any signed-in
+      // member (ADR-0050).
+      await requireReplyAuthor(ctx.db, thread, ctx.session.user.id);
 
       let reply;
       try {
