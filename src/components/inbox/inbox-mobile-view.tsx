@@ -18,14 +18,9 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
-import {
-  PromptInput,
-  PromptInputTextarea,
-  PromptInputFooter,
-  PromptInputSubmit,
-} from "@/components/ai-elements/prompt-input";
 import { useInbox } from "./inbox-provider";
 import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
+import { MessageComposer } from "./message-composer";
 import { useInboxStream } from "./use-inbox-stream";
 
 // ---------------------------------------------------------------------------
@@ -59,7 +54,6 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
   const { setActiveChat, toggleList } = useInbox();
   const { data: session } = authClient.useSession();
   const t = useTranslations("inbox");
-  const utils = api.useUtils();
 
   useInboxStream();
 
@@ -69,42 +63,6 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
     { conversationId: chatInfo.conversationId, limit: 50 },
     { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
   );
-
-  const sendMessage = api.inbox.sendMessage.useMutation({
-    // Optimistic send: the human's own message renders instantly (ADR-0025 Tier 0).
-    onMutate: async ({ content }) => {
-      const uid = session?.user?.id;
-      if (!uid) return;
-      const key = { conversationId: chatInfo.conversationId, limit: 50 };
-      await utils.inbox.getMessages.cancel(key);
-      const previous = utils.inbox.getMessages.getData(key);
-      utils.inbox.getMessages.setData(key, (old) => {
-        if (!old) return old;
-        const optimistic = {
-          id: `optimistic-${Date.now()}`,
-          senderId: uid,
-          senderType: "human" as const,
-          content,
-          createdAt: new Date(),
-        } as (typeof old.messages)[number];
-        return { ...old, messages: [...old.messages, optimistic] };
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) {
-        utils.inbox.getMessages.setData(
-          { conversationId: chatInfo.conversationId, limit: 50 },
-          ctx.previous,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.inbox.getMessages.invalidate();
-      void utils.inbox.listConversations.invalidate();
-      void utils.inbox.totalUnreadCount.invalidate();
-    },
-  });
 
   // ── Handlers ──────────────────────────────────────────────────────────
 
@@ -116,18 +74,6 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
     setActiveChat(null);
     toggleList();
   }, [setActiveChat, toggleList]);
-
-  const handleSubmit = useCallback(
-    async (message: { text: string }) => {
-      const text = message.text.trim();
-      if (!text) return;
-      await sendMessage.mutateAsync({
-        conversationId: chatInfo.conversationId,
-        content: text,
-      });
-    },
-    [chatInfo.conversationId, sendMessage],
-  );
 
   // ── Derived data ──────────────────────────────────────────────────────
 
@@ -256,16 +202,10 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
 
       {/* ── Input area ──────────────────────────────────────────────── */}
       <div className="border-border border-t">
-        <PromptInput onSubmit={handleSubmit}>
-          <PromptInputTextarea
-            placeholder={t("placeholder")}
-            className="min-h-10 text-sm"
-          />
-          <PromptInputFooter>
-            <div />
-            <PromptInputSubmit disabled={sendMessage.isPending} />
-          </PromptInputFooter>
-        </PromptInput>
+        <MessageComposer
+          conversationId={chatInfo.conversationId}
+          placeholder={t("placeholder")}
+        />
       </div>
     </div>
   );
