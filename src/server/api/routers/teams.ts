@@ -35,6 +35,7 @@ import {
 import { boundHackathonEvent } from "@/server/hackathon/bound-event";
 import {
   requireChallengeParticipant,
+  requireOwnTeamSeat,
   requireTeamParticipant,
 } from "@/server/hackathon/challenge-access";
 
@@ -277,7 +278,8 @@ export const teamsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      const team = await requireTeamParticipant(
+      // An exit: no read gate, only the caller's own seat (ADR-0050).
+      const team = await requireOwnTeamSeat(
         ctx.db,
         (
           await ctx.db
@@ -326,7 +328,8 @@ export const teamsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      const team = await requireTeamParticipant(
+      // An exit: no read gate, only the caller's own seat (ADR-0050).
+      const team = await requireOwnTeamSeat(
         ctx.db,
         (
           await ctx.db

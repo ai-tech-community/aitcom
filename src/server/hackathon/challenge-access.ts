@@ -98,6 +98,25 @@ export async function requireReadableTeam(
 }
 
 /**
+ * A team the caller sits on, for the exit actions (leave; disband for its
+ * captain). These skip the read gate on purpose: someone who lost access to
+ * a members-only community must still be able to give up their seat, which
+ * reveals nothing about the challenge. Someone with no seat (not on the team
+ * and not its captain) gets "Team not found", like a missing team.
+ */
+export async function requireOwnTeamSeat<
+  T extends { id: string; captainId: string },
+>(db: DB, team: T | undefined, userId: string): Promise<T> {
+  if (
+    !team ||
+    (team.captainId !== userId && !(await ownerOnTeam(db, userId, team.id)))
+  ) {
+    throw new TRPCError({ code: "NOT_FOUND", message: TEAM_NOT_FOUND });
+  }
+  return team;
+}
+
+/**
  * Whether the user may take part in the challenge (the boolean form of
  * `requireChallengeParticipant`), for lists and for checking someone
  * other than the caller. A missing challenge is false.

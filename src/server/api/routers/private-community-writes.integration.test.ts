@@ -907,6 +907,81 @@ describe.skipIf(!RUN_DB)(
         ).resolves.toBeNull();
       });
 
+      it("lets someone who lost access still leave or disband their own team", async () => {
+        const { and, eq } = await import("drizzle-orm");
+        const challengeId = challengeOf.get(f.inviteOnly.id)!;
+        const [team] = await m.db
+          .insert(m.schema.teams)
+          .values({
+            challengeId,
+            eventId: 1,
+            name: "Leavers",
+            captainId: f.users.privateMember,
+            joinCode: `L${challengeId}`.slice(0, 20),
+            maxSize: 5,
+            status: "forming",
+          })
+          .returning();
+        await m.db.insert(m.schema.challengeEnrollments).values({
+          challengeId,
+          userId: f.users.privateMember,
+          teamId: team!.id,
+          status: "active",
+        });
+        await m.db
+          .update(m.schema.challengeEnrollments)
+          .set({ teamId: team!.id })
+          .where(
+            and(
+              eq(m.schema.challengeEnrollments.challengeId, challengeId),
+              eq(m.schema.challengeEnrollments.userId, f.users.member),
+            ),
+          );
+        const membership = (userId: string) =>
+          and(
+            eq(m.schema.communityMemberships.communityId, f.inviteOnly.id),
+            eq(m.schema.communityMemberships.userId, userId),
+          );
+        for (const userId of [f.users.member, f.users.privateMember]) {
+          await m.db
+            .update(m.schema.communityMemberships)
+            .set({ status: "banned" })
+            .where(membership(userId));
+        }
+        try {
+          // Someone with no seat on the team learns nothing.
+          await expect(
+            callerAs(f.users.outsider).teams.leaveTeam({ teamId: team!.id }),
+          ).rejects.toMatchObject({ code: "NOT_FOUND" });
+          await expect(
+            callerAs(f.users.outsider).teams.disbandTeam({ teamId: team!.id }),
+          ).rejects.toMatchObject({ code: "NOT_FOUND" });
+          // A banned member frees their seat; a banned captain disbands.
+          await expect(
+            callerAs(f.users.member).teams.leaveTeam({ teamId: team!.id }),
+          ).resolves.toEqual({ left: true });
+          await expect(
+            callerAs(f.users.privateMember).teams.disbandTeam({
+              teamId: team!.id,
+            }),
+          ).resolves.toEqual({ disbanded: true });
+        } finally {
+          for (const userId of [f.users.member, f.users.privateMember]) {
+            await m.db
+              .update(m.schema.communityMemberships)
+              .set({ status: "active" })
+              .where(membership(userId));
+          }
+          await m.db
+            .update(m.schema.challengeEnrollments)
+            .set({ teamId: null })
+            .where(eq(m.schema.challengeEnrollments.teamId, team!.id));
+          await m.db
+            .delete(m.schema.teams)
+            .where(eq(m.schema.teams.id, team!.id));
+        }
+      });
+
       it("the challenge channel takes posts from enrolled readers only", async () => {
         for (const [, c] of f.membersOnly) {
           for (const userId of strangers()) {
