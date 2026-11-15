@@ -1272,6 +1272,7 @@
     "noConversations": "No conversations yet",
     "noConversationsDescription": "Start a conversation with a community member or your AI agent.",
     "placeholder": "Type a message...",
+    "sendFailed": "Your message didn't send. Try again.",
     "agentLabel": "Your Agent",
     "unreadBadge": "unread messages",
     "minimize": "Minimize",

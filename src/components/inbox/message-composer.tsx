@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import {
   PromptInput,
@@ -19,7 +21,8 @@ import { useSendMessage } from "./use-send-message";
  * The one message composer every inbox view renders (floating chat window,
  * /messages, mobile inbox): a text field, a toolbar of extras on the left
  * (emoji) and the send button on the right. Enter sends, Shift+Enter makes
- * a new line. The field is uncontrolled; PromptInput empties it on send.
+ * a new line. The field is uncontrolled; PromptInput empties it on send,
+ * and a failed send puts the text back.
  */
 export function MessageComposer({
   conversationId,
@@ -28,16 +31,25 @@ export function MessageComposer({
   conversationId: string;
   placeholder: string;
 }) {
+  const t = useTranslations("inbox");
   const { send, isPending } = useSendMessage(conversationId);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = useCallback(
     async ({ text }: { text: string }) => {
-      const content = text.trim();
-      if (!content) return;
-      await send(content);
+      try {
+        await send(text);
+      } catch (error) {
+        // PromptInput emptied the field before sending. Give the text back,
+        // unless the member has started a new message since.
+        const field = textareaRef.current;
+        if (field?.value === "") field.value = text;
+        toast.error(t("sendFailed"));
+        // PromptInput keeps everything else as it was on a failed send.
+        throw error;
+      }
     },
-    [send],
+    [send, t],
   );
 
   const insertEmoji = useCallback((emoji: string) => {

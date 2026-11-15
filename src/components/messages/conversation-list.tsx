@@ -19,6 +19,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getInitials } from "@/lib/avatar";
 import { LIVE_MESSAGES_FALLBACK_MS } from "@/components/inbox/live-refetch";
+import { MESSAGES_PAGE_SIZE } from "@/components/inbox/use-send-message";
 import { cn } from "@/lib/utils";
 
 type Conversation =
@@ -98,7 +99,10 @@ export function ConversationList({
     const unread = conversations.filter((c) => c.unreadCount > 0);
     await Promise.all(
       unread.map((c) =>
-        utils.inbox.getMessages.fetch({ conversationId: c.id, limit: 50 }),
+        utils.inbox.getMessages.fetch({
+          conversationId: c.id,
+          limit: MESSAGES_PAGE_SIZE,
+        }),
       ),
     );
     await Promise.all([

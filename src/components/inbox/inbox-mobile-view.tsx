@@ -21,6 +21,7 @@ import {
 import { useInbox } from "./inbox-provider";
 import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
 import { MessageComposer } from "./message-composer";
+import { MESSAGES_PAGE_SIZE } from "./use-send-message";
 import { useInboxStream } from "./use-inbox-stream";
 
 // ---------------------------------------------------------------------------
@@ -60,7 +61,7 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
   // ── Data fetching ─────────────────────────────────────────────────────
 
   const messagesQuery = api.inbox.getMessages.useQuery(
-    { conversationId: chatInfo.conversationId, limit: 50 },
+    { conversationId: chatInfo.conversationId, limit: MESSAGES_PAGE_SIZE },
     { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
   );
 

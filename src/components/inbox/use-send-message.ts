@@ -5,8 +5,12 @@ import { useCallback } from "react";
 import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
 
-/** The message page every inbox surface reads; the optimistic row goes here. */
-const MESSAGES_LIMIT = 50;
+/**
+ * How many messages a conversation view loads. Every `inbox.getMessages`
+ * read uses it, so they share one cache entry, the one the optimistic row
+ * is written to.
+ */
+export const MESSAGES_PAGE_SIZE = 50;
 
 /**
  * Sends a message in one conversation. The member's own message shows at
@@ -25,7 +29,7 @@ export function useSendMessage(conversationId: string): {
   const sendMessage = api.inbox.sendMessage.useMutation({
     onMutate: async ({ content }) => {
       if (!currentUserId) return;
-      const key = { conversationId, limit: MESSAGES_LIMIT };
+      const key = { conversationId, limit: MESSAGES_PAGE_SIZE };
       await utils.inbox.getMessages.cancel(key);
       const previous = utils.inbox.getMessages.getData(key);
       utils.inbox.getMessages.setData(key, (old) => {
@@ -44,7 +48,7 @@ export function useSendMessage(conversationId: string): {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) {
         utils.inbox.getMessages.setData(
-          { conversationId, limit: MESSAGES_LIMIT },
+          { conversationId, limit: MESSAGES_PAGE_SIZE },
           ctx.previous,
         );
       }

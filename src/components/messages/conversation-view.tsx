@@ -28,6 +28,7 @@ import {
 import { LIVE_MESSAGES_FALLBACK_MS } from "@/components/inbox/live-refetch";
 import { MessageComposer } from "@/components/inbox/message-composer";
 import { UiMessage } from "@/components/inbox/ui-message";
+import { MESSAGES_PAGE_SIZE } from "@/components/inbox/use-send-message";
 import { isChatUiEnabled } from "@/lib/chat/flags";
 
 type ConversationViewProps = {
@@ -65,7 +66,7 @@ export function ConversationView({
   const currentUserId = session?.user?.id;
 
   const messagesQuery = api.inbox.getMessages.useQuery(
-    { conversationId, limit: 50 },
+    { conversationId, limit: MESSAGES_PAGE_SIZE },
     { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
   );
 

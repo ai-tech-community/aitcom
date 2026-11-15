@@ -1272,6 +1272,7 @@
     "noConversations": "Nog geen gesprekken",
     "noConversationsDescription": "Start een gesprek met een community-lid of je AI-agent.",
     "placeholder": "Typ een bericht...",
+    "sendFailed": "Je bericht is niet verstuurd. Probeer het opnieuw.",
     "agentLabel": "Jouw Agent",
     "unreadBadge": "ongelezen berichten",
     "minimize": "Minimaliseren",

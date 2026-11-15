@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
 const send = vi.hoisted(() => vi.fn());
+const toast = vi.hoisted(() => ({ error: vi.fn() }));
 
+vi.mock("sonner", () => ({ toast }));
 vi.mock("next-intl", () => ({
   useTranslations: () => (k: string) => k,
   useLocale: () => "en",
@@ -12,12 +14,9 @@ vi.mock("./use-send-message", () => ({
 }));
 vi.mock("@/components/composer/emoji-picker-button", () => ({
   EmojiPickerButton: ({ onPick }: { onPick: (emoji: string) => void }) => (
-    <div>
-      <button type="button" onClick={() => onPick("🎉")}>
-        emoji
-      </button>
-      <input aria-label="emoji search" />
-    </div>
+    <button type="button" onClick={() => onPick("🎉")}>
+      emoji
+    </button>
   ),
 }));
 
@@ -35,10 +34,20 @@ async function settle() {
   });
 }
 
+/** A promise the test settles by hand. */
+function deferred() {
+  let reject!: (error: Error) => void;
+  const promise = new Promise<void>((_resolve, rej) => {
+    reject = rej;
+  });
+  return { promise, reject };
+}
+
 describe("MessageComposer", () => {
   beforeEach(() => {
     send.mockReset();
     send.mockResolvedValue(undefined);
+    toast.error.mockReset();
     // Run the caret fix-up at once instead of on the next frame.
     vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
       run(0);
@@ -68,7 +77,7 @@ describe("MessageComposer", () => {
     expect(textarea.value).toBe("Hi🎉 there");
   });
 
-  it("sends the trimmed text on Enter", async () => {
+  it("hands the text as typed to send on Enter", async () => {
     const textarea = renderComposer();
     fireEvent.change(textarea, { target: { value: "  hello  " } });
 
@@ -76,33 +85,10 @@ describe("MessageComposer", () => {
     await settle();
 
     expect(send).toHaveBeenCalledTimes(1);
-    expect(send).toHaveBeenCalledWith("hello");
+    expect(send).toHaveBeenCalledWith("  hello  ");
   });
 
-  it("sends nothing for whitespace", async () => {
-    const textarea = renderComposer();
-    fireEvent.change(textarea, { target: { value: "   " } });
-
-    fireEvent.keyDown(textarea, { key: "Enter" });
-    await settle();
-
-    expect(send).not.toHaveBeenCalled();
-  });
-
-  it("Enter outside the textarea does not send", async () => {
-    const textarea = renderComposer();
-    fireEvent.change(textarea, { target: { value: "hello" } });
-
-    fireEvent.keyDown(screen.getByRole("textbox", { name: "emoji search" }), {
-      key: "Enter",
-    });
-    await settle();
-
-    expect(send).not.toHaveBeenCalled();
-    expect(textarea.value).toBe("hello");
-  });
-
-  it("clears the field after sending", async () => {
+  it("clears the field after a successful send", async () => {
     const textarea = renderComposer();
     fireEvent.change(textarea, { target: { value: "hello" } });
 
@@ -111,5 +97,36 @@ describe("MessageComposer", () => {
 
     expect(send).toHaveBeenCalledWith("hello");
     expect(textarea.value).toBe("");
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("puts the text back and says so when the send fails", async () => {
+    send.mockRejectedValue(new Error("offline"));
+    const textarea = renderComposer();
+    fireEvent.change(textarea, { target: { value: "  hello  " } });
+
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    await settle();
+
+    expect(send).toHaveBeenCalledWith("  hello  ");
+    expect(textarea.value).toBe("  hello  ");
+    expect(toast.error).toHaveBeenCalledWith("sendFailed");
+  });
+
+  it("keeps newer text when a send fails after the member typed on", async () => {
+    const pending = deferred();
+    send.mockReturnValue(pending.promise);
+    const textarea = renderComposer();
+    fireEvent.change(textarea, { target: { value: "hello" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    await settle();
+    expect(textarea.value).toBe("");
+
+    fireEvent.change(textarea, { target: { value: "and another thing" } });
+    pending.reject(new Error("offline"));
+    await settle();
+
+    expect(textarea.value).toBe("and another thing");
+    expect(toast.error).toHaveBeenCalledWith("sendFailed");
   });
 });

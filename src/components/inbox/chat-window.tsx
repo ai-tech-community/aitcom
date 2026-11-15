@@ -29,6 +29,7 @@ import { Link } from "@/i18n/navigation";
 import { useInbox } from "./inbox-provider";
 import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
 import { MessageComposer } from "./message-composer";
+import { MESSAGES_PAGE_SIZE } from "./use-send-message";
 import { useInboxStream } from "./use-inbox-stream";
 import { UiMessage } from "./ui-message";
 import { isChatUiEnabled } from "@/lib/chat/flags";
@@ -78,7 +79,7 @@ export function ChatWindow({
   const currentUserId = session?.user?.id;
 
   const messagesQuery = api.inbox.getMessages.useQuery(
-    { conversationId, limit: 50 },
+    { conversationId, limit: MESSAGES_PAGE_SIZE },
     { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
   );
 
