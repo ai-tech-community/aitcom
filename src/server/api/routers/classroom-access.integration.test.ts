@@ -114,6 +114,8 @@ describe.skipIf(!RUN_DB)("classroom course access [DB integration]", () => {
         name: `Access ${sfx}`,
         slug: `access-${sfx}`,
         createdBy: ids.authorId,
+        // Public, so a course's isPublic reaches visitors (ADR-0050).
+        isListedInDirectory: true,
       })
       .returning();
     await db.insert(schema.communityMemberships).values([
@@ -415,6 +417,83 @@ describe.skipIf(!RUN_DB)("classroom course access [DB integration]", () => {
     it("shows a banned member only public courses", async () => {
       await setMembershipStatus(fx.memberId, "banned");
       expect(await slugsFor(fx.memberId)).toEqual([fx.publicCourse.slug]);
+    });
+  });
+
+  describe("in a members-only community (ADR-0050)", () => {
+    async function makeMembersOnly(
+      facts: Partial<{
+        isListedInDirectory: boolean;
+        joinPolicy: "open" | "invite_only" | "approval_required";
+      }>,
+    ) {
+      const { eq } = await import("drizzle-orm");
+      const [c] = await m.db
+        .update(m.schema.communities)
+        .set(facts)
+        .where(eq(m.schema.communities.id, fx.communityId))
+        .returning({ slug: m.schema.communities.slug });
+      return c!.slug;
+    }
+
+    const shapes = [
+      ["listed invite_only", { joinPolicy: "invite_only" }],
+      ["listed approval_required", { joinPolicy: "approval_required" }],
+      ["unlisted", { isListedInDirectory: false }],
+    ] as const;
+
+    it.each(shapes)(
+      "%s: a public course is hidden from guests and outsiders",
+      async (_label, facts) => {
+        const slug = await makeMembersOnly(facts);
+        for (const viewer of [null, fx.outsiderId]) {
+          const caller = callerAs(viewer);
+          await expect(
+            caller.classrooms.list({ communitySlug: slug }),
+          ).rejects.toMatchObject({ code: "NOT_FOUND" });
+          await expect(
+            caller.classrooms.get({ slug: fx.publicCourse.slug }),
+          ).rejects.toMatchObject({ code: "NOT_FOUND" });
+        }
+        const outsider = callerAs(fx.outsiderId);
+        await expect(
+          outsider.classrooms.enroll({ courseId: fx.publicCourse.id }),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+        await expect(
+          outsider.classrooms.markLessonComplete({
+            lessonId: fx.publicCourse.lessonId,
+            completed: true,
+          }),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      },
+      30_000,
+    );
+
+    it("hides a public course from a pending member too", async () => {
+      await makeMembersOnly({ joinPolicy: "approval_required" });
+      await m.db.insert(m.schema.communityMemberships).values({
+        communityId: fx.communityId,
+        userId: fx.outsiderId,
+        status: "pending_approval",
+      });
+      await expect(
+        callerAs(fx.outsiderId).classrooms.get({ slug: fx.publicCourse.slug }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("still serves members every published course", async () => {
+      const slug = await makeMembersOnly({ joinPolicy: "invite_only" });
+      const listed = await callerAs(fx.memberId).classrooms.list({
+        communitySlug: slug,
+      });
+      expect(listed.map((c) => c.slug).sort()).toEqual(
+        [fx.membersOnly.slug, fx.publicCourse.slug].sort(),
+      );
+      await expect(
+        callerAs(fx.memberId).classrooms.enroll({
+          courseId: fx.publicCourse.id,
+        }),
+      ).resolves.toEqual({ enrolled: true, already: false });
     });
   });
 });

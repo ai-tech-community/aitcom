@@ -24,6 +24,7 @@ describe("resolveCourseAccess", () => {
       (status) => {
         expect(
           resolveCourseAccess({
+            communityContentReadable: true,
             course: course(status, false),
             viewerId: AUTHOR,
             membership: null,
@@ -40,6 +41,7 @@ describe("resolveCourseAccess", () => {
         for (const status of ["draft", "published", "archived"] as const) {
           expect(
             resolveCourseAccess({
+              communityContentReadable: true,
               course: course(status, false),
               viewerId: VIEWER,
               membership: active(role),
@@ -52,6 +54,7 @@ describe("resolveCourseAccess", () => {
     it("a manager role that is not active counts for nothing", () => {
       expect(
         resolveCourseAccess({
+          communityContentReadable: true,
           course: course("published", false),
           viewerId: VIEWER,
           membership: { role: "admin", active: false },
@@ -65,6 +68,7 @@ describe("resolveCourseAccess", () => {
       for (const isPublic of [false, true]) {
         expect(
           resolveCourseAccess({
+            communityContentReadable: true,
             course: course("published", isPublic),
             viewerId: VIEWER,
             membership: active("member"),
@@ -78,6 +82,7 @@ describe("resolveCourseAccess", () => {
       (status) => {
         expect(
           resolveCourseAccess({
+            communityContentReadable: true,
             course: course(status, true),
             viewerId: VIEWER,
             membership: active("member"),
@@ -95,6 +100,7 @@ describe("resolveCourseAccess", () => {
     ] as const)("%s: public published → visitor", (_label, viewerId, m) => {
       expect(
         resolveCourseAccess({
+          communityContentReadable: true,
           course: course("published", true),
           viewerId,
           membership: m,
@@ -109,6 +115,7 @@ describe("resolveCourseAccess", () => {
     ] as const)("%s: members-only published → none", (_label, viewerId, m) => {
       expect(
         resolveCourseAccess({
+          communityContentReadable: true,
           course: course("published", false),
           viewerId,
           membership: m,
@@ -119,6 +126,7 @@ describe("resolveCourseAccess", () => {
     it("a public draft is still hidden from visitors", () => {
       expect(
         resolveCourseAccess({
+          communityContentReadable: true,
           course: course("draft", true),
           viewerId: null,
           membership: null,
@@ -129,6 +137,7 @@ describe("resolveCourseAccess", () => {
     it("treats a null isPublic as members-only", () => {
       expect(
         resolveCourseAccess({
+          communityContentReadable: true,
           course: { status: "published", isPublic: null, authorId: AUTHOR },
           viewerId: null,
           membership: null,
@@ -187,5 +196,53 @@ describe("requireEditableCourse", () => {
     await expect(
       requireEditableCourse(payloadWith(null) as never, 12, AUTHOR),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  describe("in a community whose content the viewer may not read", () => {
+    it.each([
+      ["signed out", null, null],
+      ["signed-in non-member", VIEWER, null],
+      ["pending or invited", VIEWER, { role: "member", active: false }],
+    ] as const)(
+      "%s: a public published course is still hidden (ADR-0050)",
+      (_label, viewerId, m) => {
+        expect(
+          resolveCourseAccess({
+            course: course("published", true),
+            viewerId,
+            membership: m,
+            communityContentReadable: false,
+          }),
+        ).toBe("none");
+      },
+    );
+
+    it("changes nothing for members, managers and the author", () => {
+      const hidden = { communityContentReadable: false } as const;
+      expect(
+        resolveCourseAccess({
+          ...hidden,
+          course: course("published", false),
+          viewerId: VIEWER,
+          membership: active("member"),
+        }),
+      ).toBe("member");
+      expect(
+        resolveCourseAccess({
+          ...hidden,
+          course: course("draft", false),
+          viewerId: VIEWER,
+          membership: active("moderator"),
+        }),
+      ).toBe("manager");
+      expect(
+        resolveCourseAccess({
+          ...hidden,
+          course: course("draft", false),
+          viewerId: AUTHOR,
+          membership: null,
+        }),
+      ).toBe("manager");
+    });
   });
 });

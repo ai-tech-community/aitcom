@@ -19,6 +19,12 @@ import {
   resolveCourseAccess,
 } from "@/server/classroom/course-access";
 import { logActivity } from "@/server/agent/activity";
+import { requireReadableCommunity } from "@/server/communities/content-access";
+import {
+  COMMUNITY_VISIBILITY_COLUMNS,
+  communityRefOf,
+  type CommunityRef,
+} from "@/server/communities/content-visibility-queries";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { db } from "@/server/db";
 import {
@@ -63,13 +69,14 @@ async function resolveCommunityAndRole(
   ctx: { db: typeof db; session: { user: { id: string } } | null },
   slug: string,
 ): Promise<{
+  community: CommunityRef;
   communityId: string;
   role: CommunityRole | null;
   classroomCreatePolicy: "all_members" | "admins_only";
 }> {
   const community = await ctx.db.query.communities.findFirst({
     where: and(eq(communities.slug, slug), isNull(communities.deletedAt)),
-    columns: { id: true, classroomCreatePolicy: true },
+    columns: { ...COMMUNITY_VISIBILITY_COLUMNS, classroomCreatePolicy: true },
   });
   if (!community) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -95,6 +102,7 @@ async function resolveCommunityAndRole(
   }
 
   return {
+    community: communityRefOf(community),
     communityId: community.id,
     role,
     classroomCreatePolicy: community.classroomCreatePolicy ?? "all_members",
@@ -219,16 +227,24 @@ function assertLessonBodyEmbeds(body: unknown): void {
 }
 
 export const classroomsRouter = createTRPCRouter({
-  /** List a community's published courses; members-only courses hidden from non-members. */
+  /**
+   * List a community's published courses; members-only courses hidden from
+   * non-members. A members-only community's classroom is for its members
+   * only (ADR-0050): anyone else gets NOT_FOUND, whatever the courses'
+   * `isPublic`.
+   */
   list: publicProcedure
     .input(z.object({ communitySlug: z.string() }))
     .query(async ({ ctx, input }) => {
-      const { communityId, role } = await resolveCommunityAndRole(
+      const { community, communityId, role } = await resolveCommunityAndRole(
         ctx,
         input.communitySlug,
       );
       const payload = await getPayloadClient();
       const userId = ctx.session?.user?.id;
+      if (role === null) {
+        await requireReadableCommunity(ctx.db, community, userId);
+      }
 
       // The database query narrows candidates (so the 50-row page isn't
       // filled with courses the caller can't see); the access policy is the
@@ -263,6 +279,8 @@ export const classroomsRouter = createTRPCRouter({
             course: c,
             viewerId: userId ?? null,
             membership,
+            // A non-member got this far only if the content is readable.
+            communityContentReadable: true,
           }) !== "none",
       );
 

@@ -6,6 +6,10 @@ import type { db } from "@/server/db";
 import type { getPayloadClient } from "@/server/payload";
 import { communities, communityMemberships } from "@/server/db/schema";
 import {
+  COMMUNITY_VISIBILITY_COLUMNS,
+  viewerCanReadContent,
+} from "@/server/communities/content-visibility-queries";
+import {
   coursePurchaseAllowed,
   membershipPaymentAllowed,
 } from "@/server/payments/access";
@@ -15,7 +19,10 @@ import {
  * rules (spec 2026-09-27-classroom-lesson-materials §1, issue #351):
  *
  * - none    — may not know the course exists (callers answer NOT_FOUND)
- * - visitor — non-member on a public, published course
+ * - visitor — non-member on a public, published course, in a community
+ *             whose content the viewer may read (ADR-0050): a course's
+ *             `isPublic` only widens access where the community's content
+ *             is public; in a members-only community it does nothing
  * - member  — active community member on a published course
  * - manager — the author, or an active owner/admin/moderator
  *
@@ -47,6 +54,12 @@ export function resolveCourseAccess(input: {
   course: CourseAccessCourse;
   viewerId: string | null;
   membership: CourseAccessMembership | null;
+  /**
+   * Whether the viewer may read the community's content
+   * (`viewerCanReadContent`). Required, so no caller can forget that a
+   * public course in a members-only community is still members-only.
+   */
+  communityContentReadable: boolean;
 }): CourseAccess {
   const { course, viewerId, membership } = input;
   if (viewerId !== null && course.authorId === viewerId) return "manager";
@@ -56,7 +69,9 @@ export function resolveCourseAccess(input: {
 
   if (course.status !== "published") return "none";
   if (role !== null) return "member";
-  return course.isPublic === true ? "visitor" : "none";
+  return course.isPublic === true && input.communityContentReadable
+    ? "visitor"
+    : "none";
 }
 
 export type LoadableCourse = CourseAccessCourse & {
@@ -80,7 +95,7 @@ export async function loadCourseAccess(
       eq(communities.id, course.communityId),
       isNull(communities.deletedAt),
     ),
-    columns: { id: true },
+    columns: COMMUNITY_VISIBILITY_COLUMNS,
   });
   if (!community) return "none";
 
@@ -103,7 +118,15 @@ export async function loadCourseAccess(
     !(await membershipPaymentAllowed(database, course.communityId, viewerId))
   )
     membership = null;
-  const access = resolveCourseAccess({ course, viewerId, membership });
+  const access = resolveCourseAccess({
+    course,
+    viewerId,
+    membership,
+    // Only a non-member's access depends on it; a member reads anyway.
+    communityContentReadable:
+      membership?.active === true ||
+      (await viewerCanReadContent(database, community, viewerId)),
+  });
   if (
     !options.ignorePurchase &&
     access !== "manager" &&

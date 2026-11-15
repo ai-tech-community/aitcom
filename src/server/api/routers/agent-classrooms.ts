@@ -29,6 +29,11 @@ import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { agentProcedure, requireOwner, requireScope } from "@/server/api/trpc";
+import { requireReadableCommunity } from "@/server/communities/content-access";
+import {
+  COMMUNITY_VISIBILITY_COLUMNS,
+  communityRefOf,
+} from "@/server/communities/content-visibility-queries";
 import {
   assertCourseEditable,
   isCourseManagerRole,
@@ -210,8 +215,7 @@ async function communityForOwner(
   const community = await db.query.communities.findFirst({
     where: and(eq(communities.slug, slug), isNull(communities.deletedAt)),
     columns: {
-      id: true,
-      slug: true,
+      ...COMMUNITY_VISIBILITY_COLUMNS,
       name: true,
       classroomCreatePolicy: true,
     },
@@ -329,6 +333,16 @@ export const agentClassroomRouter = {
       const role = await ownerRole(ctx.db, community.id, ctx.agent.ownerId);
       const payload = await getPayloadClient();
       const userId = ctx.agent.ownerId;
+      // An agent reads as its owner: a members-only community's classroom
+      // only through a member owner (ADR-0050).
+      if (role === null) {
+        await requireReadableCommunity(
+          ctx.db,
+          communityRefOf(community),
+          userId,
+          { notFound: "Community not found" },
+        );
+      }
       const candidates: Where[] = isCourseManagerRole(role)
         ? [{ status: { exists: true } }]
         : [
@@ -361,6 +375,8 @@ export const agentClassroomRouter = {
             course,
             viewerId: userId,
             membership,
+            // A non-member owner got this far only if the content is readable.
+            communityContentReadable: true,
           }) !== "none",
       );
       const courseIds = courses.map((course) => course.id);

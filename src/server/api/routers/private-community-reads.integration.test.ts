@@ -44,6 +44,7 @@ describe.skipIf(!RUN_DB)(
     let f: PrivateCommunityFixture;
     const threadIds: number[] = [];
     const ruleIds: number[] = [];
+    const courseIds: number[] = [];
     const threadOf = new Map<string, number>();
 
     beforeAll(async () => {
@@ -123,6 +124,20 @@ describe.skipIf(!RUN_DB)(
           },
         });
         ruleIds.push(rules.id);
+        const course = await m.payload.create({
+          collection: "courses",
+          data: {
+            title: `Gate course ${c.slug}`,
+            slug: `gate-course-${c.slug}`,
+            authorId: f.users.owner,
+            authorName: "Owner",
+            status: "published",
+            communityId: c.id,
+            isPublic: true,
+            enrollmentCount: 0,
+          },
+        });
+        courseIds.push(course.id);
       }
     }, 120_000);
 
@@ -136,6 +151,10 @@ describe.skipIf(!RUN_DB)(
       await m.payload.delete({
         collection: "community-rules",
         where: { id: { in: ruleIds } },
+      });
+      await m.payload.delete({
+        collection: "courses",
+        where: { id: { in: courseIds } },
       });
       const ids = [f.open, f.inviteOnly, f.approval, f.unlisted].map(
         (c) => c.id,
@@ -364,6 +383,33 @@ describe.skipIf(!RUN_DB)(
         await expect(
           callerAs(null).forum.incrementViewCount({ threadId: 2_000_000_000 }),
         ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      });
+    });
+
+    describe("agent.browseClassrooms", () => {
+      it("refuses a members-only classroom to an agent whose owner is not a member", async () => {
+        for (const [, c] of f.membersOnly) {
+          for (const owner of f.outsiders) {
+            await expect(
+              agentOf(owner).agent.browseClassrooms({ communitySlug: c.slug }),
+            ).rejects.toMatchObject({ code: "NOT_FOUND" });
+          }
+        }
+      });
+
+      it("shows a members-only classroom through a member owner, and a public one to anyone", async () => {
+        const member = await agentOf(f.users.member).agent.browseClassrooms({
+          communitySlug: f.approval.slug,
+        });
+        expect(member.courses.map((c) => c.slug)).toEqual([
+          `gate-course-${f.approval.slug}`,
+        ]);
+        const guest = await agentOf(null).agent.browseClassrooms({
+          communitySlug: f.open.slug,
+        });
+        expect(guest.courses.map((c) => c.slug)).toEqual([
+          `gate-course-${f.open.slug}`,
+        ]);
       });
     });
 
