@@ -396,7 +396,7 @@ async function freeIssueSlug(
 /**
  * Creates the magazine's next issue as a draft: numbered after the highest
  * existing one, slugged from its title, with the magazine's default
- * visibility and its unlisted-public confirmation copied in unless a
+ * visibility and its members-only-public confirmation copied in unless a
  * previously confirmed visibility record is supplied. The number and
  * the slug are picked here, never typed, so a clash with a concurrent
  * create picks the next free ones instead of refusing.

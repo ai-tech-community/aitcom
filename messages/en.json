@@ -5609,7 +5609,7 @@
       "articleLocked": "The editors have this article now, so it cannot be changed.",
       "articleNotPending": "Someone already decided on this article. Reload to see what changed.",
       "reviewNoteRequired": "Tell the writer what to change.",
-      "unlistedPublicLeadersOnly": "This community is unlisted. Only its owners and admins can make this public.",
+      "unlistedPublicLeadersOnly": "This community is private. Only its owners and admins can make this public.",
       "themeInvalid": "Pick a type pair from the list and an accent color with enough contrast."
     },
     "publicOptIn": {

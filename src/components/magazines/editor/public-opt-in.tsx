@@ -40,7 +40,8 @@ export function publicOptInRequired(input: {
 }
 
 /**
- * The unlisted-community opt-in (ADR-0042): before a private community shows
+ * The members-only-community opt-in (ADR-0042, ADR-0050): before an
+ * unlisted or private community shows
  * an issue (or its magazine default) to everyone, the editor reads in plain
  * words what becomes visible and ticks a box. Renders for preview or public
  * choices in a content-private community, including when a confirmed preview

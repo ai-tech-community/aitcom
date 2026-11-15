@@ -545,7 +545,7 @@ export interface Magazine {
    */
   defaultVisibility?: ('members' | 'teaser' | 'public') | null;
   /**
-   * Who confirmed showing it outside an unlisted community (preview or public).
+   * Who confirmed showing it outside a members-only (unlisted or private) community (preview or public).
    */
   publicConfirmedBy?: string | null;
   publicConfirmedAt?: string | null;
@@ -600,7 +600,7 @@ export interface MagazineIssue {
   layout?: ('cover-story' | 'long-read' | 'digest') | null;
   visibility: 'members' | 'teaser' | 'public';
   /**
-   * Who confirmed showing it outside an unlisted community (preview or public).
+   * Who confirmed showing it outside a members-only (unlisted or private) community (preview or public).
    */
   publicConfirmedBy?: string | null;
   publicConfirmedAt?: string | null;

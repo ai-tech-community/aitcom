@@ -36,7 +36,7 @@ const VISIBILITY_HINTS = {
 
 /**
  * The issue's own fields: title, address (read-only once published), cover,
- * editor's note and who can read it, with the unlisted-community opt-in.
+ * editor's note and who can read it, with the members-only-community opt-in.
  * Everything here autosaves with the rest of the issue; a field the server
  * would refuse (blank title, bad address, a public choice still waiting for
  * the tick) says why and waits.

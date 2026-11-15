@@ -90,7 +90,7 @@ export const MagazineIssues: CollectionConfig = {
       type: "text",
       admin: {
         description:
-          "Who confirmed showing it outside an unlisted community (preview or public).",
+          "Who confirmed showing it outside a members-only (unlisted or private) community (preview or public).",
       },
     },
     { name: "publicConfirmedAt", type: "date" },

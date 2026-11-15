@@ -5609,7 +5609,7 @@
       "articleLocked": "Cet article est maintenant entre les mains de la rédaction et ne peut plus être modifié.",
       "articleNotPending": "Une décision a déjà été prise pour cet article. Rechargez pour voir ce qui a changé.",
       "reviewNoteRequired": "Indiquez à l’auteur les modifications à apporter.",
-      "unlistedPublicLeadersOnly": "Cette communauté n’est pas répertoriée. Seuls ses propriétaires et administrateurs peuvent rendre ce contenu public.",
+      "unlistedPublicLeadersOnly": "Cette communauté est privée. Seuls ses propriétaires et administrateurs peuvent rendre ce contenu public.",
       "themeInvalid": "Choisissez une paire de caractères dans la liste et une couleur d’accent avec assez de contraste."
     },
     "publicOptIn": {

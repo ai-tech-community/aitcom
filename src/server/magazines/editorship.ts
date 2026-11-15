@@ -36,7 +36,7 @@ export type MagazineStanding = {
   isEditor: boolean;
   /** An active member of the magazine's community. */
   isMember: boolean;
-  /** Active community owner/admin: may confirm public in an unlisted community. */
+  /** Active community owner/admin: may confirm public in a members-only community. */
   leadsCommunity: boolean;
 };
 

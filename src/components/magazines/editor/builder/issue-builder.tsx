@@ -113,7 +113,7 @@ function isValidSlug(slug: string): boolean {
 /**
  * Who will be able to read the issue once the working copy is saved: its
  * effective visibility (ruling F10), never the stored value alone. In an
- * unlisted community an unconfirmed `public` issue is members-only; a
+ * unlisted or private community an unconfirmed `public` issue is members-only; a
  * ticked opt-in counts, because the save records the confirmation.
  */
 function audienceOf(

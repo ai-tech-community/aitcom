@@ -29,10 +29,10 @@ export type IssueDetailsDraft = {
 /**
  * The issue's details as they are saved. Besides the edited fields, a save
  * carries whether the issue's outsider visibility holds the editor's
- * unlisted-community opt-in (ADR-0042). It is part of the value, not a side
+ * members-only-community opt-in (ADR-0042). It is part of the value, not a side
  * flag, because ticking the box must save even when the visibility itself
  * does not change: an issue already open to outsiders without a confirmation
- * (its community became unlisted later) is confirmed by the tick alone.
+ * (its community became unlisted or private later) is confirmed by the tick alone.
  */
 export type IssueDetailsSave = IssueDetailsDraft & {
   /**

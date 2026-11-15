@@ -311,7 +311,7 @@ export function registerMagazineTools(
     "create-magazine",
     {
       description:
-        "Create the community magazine. Requires contribute scope and a claimed owner with the same manage permission as the magazine settings page (a community owner or admin, or an editor-in-chief). Same fields and validation as that form: name, slug, optional description, logo (media id or http(s) URL, plus alt text), cover (media id or http(s) URL, plus alt text), topics, and default visibility. Send a media id or a URL for each picture, not both. Public visibility in an unlisted community needs confirmUnlistedPublic. Refuses when the community already has a magazine. This cannot publish an issue.",
+        "Create the community magazine. Requires contribute scope and a claimed owner with the same manage permission as the magazine settings page (a community owner or admin, or an editor-in-chief). Same fields and validation as that form: name, slug, optional description, logo (media id or http(s) URL, plus alt text), cover (media id or http(s) URL, plus alt text), topics, and default visibility. Send a media id or a URL for each picture, not both. Public visibility in a members-only community (unlisted, or private because it is invite-only or approves join requests) needs confirmUnlistedPublic. Refuses when the community already has a magazine. This cannot publish an issue.",
       inputSchema: {
         communitySlug: z.string().min(1).max(80),
         name: z.string().trim().min(1).max(120),

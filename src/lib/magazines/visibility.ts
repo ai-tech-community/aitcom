@@ -9,14 +9,16 @@ import {
  * 6), in one client-safe module: the server's resolver and service and the
  * editor screens (settings, builder) all import them from here, so a
  * screen never re-derives what the server decides. `CommunityVisibility` is
- * plain data (slug and listing), never a database row.
+ * plain data (slug, listing and join policy), never a database row.
  */
 
 /**
  * The visibility a non-member effectively gets (ADR-0042, Decision 5). In a
- * content-public community (the Hub or a listed community) it is the stored
- * value. In a content-private community, `teaser` and `public` count only
- * when a confirmation is recorded; unconfirmed issues count as members.
+ * content-public community (the Hub, or a listed and open community) it is
+ * the stored value. In a content-private community (unlisted, or private
+ * because joining needs consent: ADR-0050), `teaser` and `public` count
+ * only when a confirmation is recorded; unconfirmed issues count as
+ * members.
  * Every surface that shows a visibility uses this (preflight F10).
  */
 export function effectiveVisibility(
@@ -54,7 +56,8 @@ export function shouldWithdrawVisibilityConfirmation(
 }
 
 /**
- * A visibility value and its unlisted-community opt-in, as stored on a
+ * A visibility value and its members-only-community opt-in (the field names
+ * still say "unlisted", from before ADR-0050), as stored on a
  * magazine (for its default) and on an issue (for its own visibility).
  */
 export type VisibilityRecord = {
@@ -77,7 +80,7 @@ export function planVisibilityChange(input: {
   next: IssueVisibility;
   current: VisibilityRecord;
   community: CommunityVisibility;
-  /** A leader confirms showing preview or public outside an unlisted community. */
+  /** A leader confirms showing preview or public outside a members-only community. */
   confirmUnlistedPublic: boolean;
   actorId: string;
   actorLeadsCommunity: boolean;
