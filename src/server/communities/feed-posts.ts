@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import type { db as Db } from "@/server/db";
-import { communities, communityMemberships, user } from "@/server/db/schema";
+import { communities, user } from "@/server/db/schema";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { CommunityRole } from "@/server/communities/role-utils";
@@ -18,13 +18,20 @@ import {
   OUTSIDE_VIEWER,
   type FeedViewer,
 } from "@/server/communities/post-visibility";
-import { requireReadableContentOf } from "./content-access";
-import { activeCommunityRole } from "./content-visibility-queries";
+import {
+  NOT_AN_ACTIVE_MEMBER,
+  requireActiveMember,
+  requireReadableContentOf,
+} from "./content-access";
+import {
+  activeCommunityRole,
+  COMMUNITY_VISIBILITY_COLUMNS,
+  communityRefOf,
+} from "./content-visibility-queries";
 import { imageIdsOf } from "./feed-images";
 import { loadMentionViews, type PostMentionView } from "./post-mentions";
 import { loadPollViews } from "./post-polls";
 import type { FeedPollView } from "@/lib/poll-rules";
-import { membershipPaymentAllowed } from "@/server/payments/access";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -32,11 +39,13 @@ type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 export type FeedMemberRole = CommunityRole;
 
 /** Neutral on purpose: the same refusal covers reading, posting, and acting. */
-const NOT_A_MEMBER = "Must be an active community member";
+const NOT_A_MEMBER = NOT_AN_ACTIVE_MEMBER;
 
 /**
- * The community behind a feed, for an active member only. Feeds are
- * members-only: anyone else gets FORBIDDEN, an unknown slug NOT_FOUND.
+ * The community behind a feed, for an active member in good standing only
+ * (`requireActiveMember`). Feeds are members-only: a reader who is not a
+ * member gets FORBIDDEN; someone who may not read the community, and an
+ * unknown slug, get NOT_FOUND (ADR-0050).
  */
 export async function requireActiveFeedMember(
   database: Database,
@@ -53,33 +62,20 @@ export async function requireActiveFeedMember(
       eq(communities.slug, communitySlug),
       isNull(communities.deletedAt),
     ),
-    columns: { id: true, slug: true, feedPostPolicy: true },
+    columns: { ...COMMUNITY_VISIBILITY_COLUMNS, feedPostPolicy: true },
   });
   if (!community) {
     throw new TRPCError({ code: "NOT_FOUND" });
   }
-  const membership = await database.query.communityMemberships.findFirst({
-    where: and(
-      eq(communityMemberships.communityId, community.id),
-      eq(communityMemberships.userId, userId),
-      eq(communityMemberships.status, "active"),
-    ),
-    columns: { id: true, role: true },
-  });
-  if (
-    !membership ||
-    (membership.role === "member" &&
-      !(await membershipPaymentAllowed(database, community.id, userId)))
-  ) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: NOT_A_MEMBER,
-    });
-  }
+  const role = await requireActiveMember(
+    database,
+    communityRefOf(community),
+    userId,
+  );
   return {
     id: community.id,
     slug: community.slug,
-    role: membership.role as FeedMemberRole,
+    role,
     feedPostPolicy: community.feedPostPolicy ?? "all_members",
   };
 }
