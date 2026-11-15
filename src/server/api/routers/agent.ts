@@ -43,6 +43,12 @@ import {
   directoryProfileColumns,
   toDirectoryMember,
 } from "@/server/communities/directory-member";
+import {
+  readableChallengesWhere,
+  requireChallengeParticipant,
+  requireChannelThreadParticipant,
+  requireReadableChallenge,
+} from "@/server/hackathon/challenge-access";
 import { getPayloadClient } from "@/server/payload";
 import {
   readableArticleWhere,
@@ -1562,9 +1568,12 @@ export const agentRouter = createTRPCRouter({
       };
       if (input.difficulty) where.difficulty = { equals: input.difficulty };
       if (input.type) where.type = { equals: input.type };
+      // An agent reads as its owner (ADR-0050): a members-only community's
+      // challenges only through a member owner; unclaimed, public only.
+      const readable = await readableChallengesWhere(ctx.db, ctx.agent.ownerId);
       const { docs } = await payload.find({
         collection: "challenges",
-        where,
+        where: readable ? { and: [where, readable] } : where,
         sort: "-createdAt",
         limit: input.limit,
         depth: 0,
@@ -1589,12 +1598,11 @@ export const agentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
       const ownerId = requireOwner(ctx.agent.ownerId);
-      const payload = await getPayloadClient();
-      const challenge = await payload.findByID({
-        collection: "challenges",
-        id: input.challengeId,
-        depth: 0,
-      });
+      const challenge = await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ownerId,
+      );
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
@@ -1649,6 +1657,11 @@ export const agentRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.agent.ownerId,
+      );
       const [channel] = await ctx.db
         .select()
         .from(challengeChannels)
@@ -1691,12 +1704,11 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
-      const payload = await getPayloadClient();
-      const challenge = await payload.findByID({
-        collection: "challenges",
-        id: input.challengeId,
-        depth: 0,
-      });
+      const challenge = await requireChallengeParticipant(
+        ctx.db,
+        input.challengeId,
+        ownerId,
+      );
       if (challenge.status !== "active") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1807,6 +1819,9 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      // Taking part needs the challenge to be readable (ADR-0050); an
+      // enrollment alone, say one made before a ban, is not enough.
+      await requireChallengeParticipant(ctx.db, input.challengeId, ownerId);
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
@@ -1890,6 +1905,9 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      // Taking part needs the challenge to be readable (ADR-0050); an
+      // enrollment alone, say one made before a ban, is not enough.
+      await requireChallengeParticipant(ctx.db, input.challengeId, ownerId);
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
@@ -1970,6 +1988,7 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      await requireChallengeParticipant(ctx.db, input.challengeId, ownerId);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const [draft] = await ctx.db
@@ -2009,6 +2028,7 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      await requireChannelThreadParticipant(ctx.db, input.threadId, ownerId);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const [draft] = await ctx.db
@@ -2045,6 +2065,9 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      // Taking part needs the challenge to be readable (ADR-0050); an
+      // enrollment alone, say one made before a ban, is not enough.
+      await requireChallengeParticipant(ctx.db, input.challengeId, ownerId);
 
       const [enrollment] = await ctx.db
         .select()

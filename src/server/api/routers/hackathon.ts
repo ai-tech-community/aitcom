@@ -42,6 +42,7 @@ import {
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import {
+  requireChallengeParticipant,
   requireReadableChallenge,
   requireReadableTeam,
 } from "@/server/hackathon/challenge-access";
@@ -2194,6 +2195,9 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      // An enrollment alone (one made before a ban, say) does not open a
+      // members-only community's hackathon (ADR-0050).
+      await requireChallengeParticipant(ctx.db, input.challengeId, userId);
       const [enrollment] = await ctx.db
         .select({ teamId: challengeEnrollments.teamId })
         .from(challengeEnrollments)
@@ -2239,7 +2243,11 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number(), looking: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await loadChallenge(input.challengeId);
+      const challenge = await requireChallengeParticipant(
+        ctx.db,
+        input.challengeId,
+        userId,
+      );
 
       const [enrollment] = await ctx.db
         .select({ teamId: challengeEnrollments.teamId })
@@ -2304,6 +2312,7 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      await requireChallengeParticipant(ctx.db, input.challengeId, userId);
       const [me] = await ctx.db
         .select({
           teamId: challengeEnrollments.teamId,

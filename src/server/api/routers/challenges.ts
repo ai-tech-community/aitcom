@@ -14,6 +14,7 @@ const challengeIdInputSchema = z.object({ challengeId: z.number() });
 import { getPayloadClient } from "@/server/payload";
 import {
   readableChallengesWhere,
+  requireChallengeParticipant,
   requireReadableChallenge,
 } from "@/server/hackathon/challenge-access";
 import {
@@ -135,7 +136,7 @@ export const challengesRouter = createTRPCRouter({
       const { challengeId } = challengeIdInputSchema.parse(input);
 
       // A members-only community's challenge takes its members only.
-      const challenge = await requireReadableChallenge(
+      const challenge = await requireChallengeParticipant(
         ctx.db,
         challengeId,
         userId,
@@ -822,6 +823,7 @@ export const challengesRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      await requireChallengeParticipant(ctx.db, input.challengeId, userId);
 
       const [enrollment] = await ctx.db
         .select()

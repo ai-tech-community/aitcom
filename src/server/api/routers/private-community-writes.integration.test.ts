@@ -51,6 +51,8 @@ describe.skipIf(!RUN_DB)(
     const projectOf = new Map<string, { id: number; slug: string }>();
     const challengeOf = new Map<string, number>();
     const teamOf = new Map<string, string>();
+    const channelOf = new Map<string, string>();
+    const channelThreadOf = new Map<string, string>();
     let hubThreadId: number;
     let hubChallengeId: number;
 
@@ -178,6 +180,30 @@ describe.skipIf(!RUN_DB)(
           })
           .returning();
         teamOf.set(c.id, team!.id);
+        const [channel] = await db
+          .insert(schema.challengeChannels)
+          .values({ challengeId, communityId: c.id })
+          .returning();
+        channelOf.set(c.id, channel!.id);
+        const [channelThread] = await db
+          .insert(schema.challengeThreads)
+          .values({
+            channelId: channel!.id,
+            type: "discussion",
+            authorId: f.users.owner,
+            authorType: "member",
+            title: "Kickoff",
+            content: "Say hello.",
+          })
+          .returning();
+        channelThreadOf.set(c.id, channelThread!.id);
+        // The member is enrolled; so is the invitee, as if they had enrolled
+        // before a ban or had their enrollment left behind: enrollment alone
+        // must not open a members-only challenge.
+        await db.insert(schema.challengeEnrollments).values([
+          { challengeId, userId: f.users.member, status: "active" },
+          { challengeId, userId: f.users.invited, status: "active" },
+        ]);
       }
       const hub = await m.payload.create({
         collection: "forum-threads",
@@ -233,6 +259,39 @@ describe.skipIf(!RUN_DB)(
         where: { id: { in: projectIds } },
       });
       const challengeIds = [...challengeOf.values(), hubChallengeId];
+      const channelIds = [...channelOf.values()];
+      const channelThreads = await m.db
+        .select({ id: m.schema.challengeThreads.id })
+        .from(m.schema.challengeThreads)
+        .where(inArray(m.schema.challengeThreads.channelId, channelIds));
+      const channelThreadIds = channelThreads.map((t) => t.id);
+      if (channelThreadIds.length > 0) {
+        await m.db
+          .delete(m.schema.challengeReplies)
+          .where(inArray(m.schema.challengeReplies.threadId, channelThreadIds));
+      }
+      const enrollments = await m.db
+        .select({ id: m.schema.challengeEnrollments.id })
+        .from(m.schema.challengeEnrollments)
+        .where(
+          inArray(m.schema.challengeEnrollments.challengeId, challengeIds),
+        );
+      const enrollmentIds = enrollments.map((e) => e.id);
+      if (enrollmentIds.length > 0) {
+        await m.db
+          .delete(m.schema.challengeProgress)
+          .where(
+            inArray(m.schema.challengeProgress.enrollmentId, enrollmentIds),
+          );
+      }
+      await m.db
+        .delete(m.schema.challengeEnrollments)
+        .where(
+          inArray(m.schema.challengeEnrollments.challengeId, challengeIds),
+        );
+      await m.db
+        .delete(m.schema.challengeThreads)
+        .where(inArray(m.schema.challengeThreads.channelId, channelIds));
       await m.db
         .delete(m.schema.teams)
         .where(inArray(m.schema.teams.challengeId, challengeIds));
@@ -669,6 +728,156 @@ describe.skipIf(!RUN_DB)(
             projectId: projectOf.get(f.inviteOnly.id)!.id,
           }),
         ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      });
+    });
+
+    describe("challenge participation", () => {
+      it("agent.browseChallenges lists a members-only challenge only through a member owner", async () => {
+        const ids = async (owner: string | null) =>
+          (await agentOf(owner).agent.browseChallenges({ limit: 50 })).map(
+            (c) => c.id,
+          );
+        for (const owner of [null, ...strangers()]) {
+          const listed = await ids(owner);
+          expect(listed).toContain(hubChallengeId);
+          expect(listed).toContain(challengeOf.get(f.open.id));
+          for (const [, c] of f.membersOnly) {
+            expect(listed).not.toContain(challengeOf.get(c.id));
+          }
+        }
+        expect(await ids(f.users.member)).toContain(
+          challengeOf.get(f.inviteOnly.id),
+        );
+      });
+
+      it("agent challenge reads and enrollment answer NOT_FOUND to a stranger's agent", async () => {
+        for (const [, c] of f.membersOnly) {
+          const challengeId = challengeOf.get(c.id)!;
+          for (const owner of strangers()) {
+            const agent = agentOf(owner);
+            for (const call of [
+              () => agent.agent.getChallengeDetails({ challengeId }),
+              () => agent.agent.browseChallengeChannel({ challengeId }),
+              () => agent.agent.enrollInChallenge({ challengeId }),
+              () =>
+                agent.agent.postToChallengeChannel({
+                  challengeId,
+                  content: "Hi",
+                }),
+              () =>
+                agent.agent.replyInChallengeChannel({
+                  threadId: channelThreadOf.get(c.id)!,
+                  content: "Hi",
+                }),
+            ]) {
+              await expect(call()).rejects.toMatchObject({ code: "NOT_FOUND" });
+            }
+          }
+        }
+        await expect(
+          agentOf(null).agent.browseChallengeChannel({
+            challengeId: challengeOf.get(f.unlisted.id)!,
+          }),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+        await expect(
+          agentOf(f.users.privateMember).agent.enrollInChallenge({
+            challengeId: challengeOf.get(f.approval.id)!,
+          }),
+        ).resolves.toMatchObject({ enrolled: true });
+        await expect(
+          agentOf(null).agent.browseChallengeChannel({
+            challengeId: challengeOf.get(f.open.id)!,
+          }),
+        ).resolves.toMatchObject({ threads: expect.any(Array) });
+      });
+
+      it("teams answer a hidden challenge or team like a missing one", async () => {
+        for (const [, c] of f.membersOnly) {
+          const challengeId = challengeOf.get(c.id)!;
+          const teamId = teamOf.get(c.id)!;
+          for (const userId of strangers()) {
+            const caller = callerAs(userId);
+            for (const call of [
+              () => caller.teams.createTeam({ challengeId, name: "Ours" }),
+              () => caller.teams.joinTeam({ joinCode: `G${challengeId}` }),
+              () => caller.teams.leaveTeam({ teamId }),
+              () => caller.teams.disbandTeam({ teamId }),
+              () => caller.teams.submitTeam({ teamId }),
+              () => caller.hackathon.myTeam({ challengeId }),
+              () => caller.hackathon.lookingForTeamList({ challengeId }),
+              () =>
+                caller.hackathon.setLookingForTeam({
+                  challengeId,
+                  looking: true,
+                }),
+            ]) {
+              await expect(call()).rejects.toMatchObject({ code: "NOT_FOUND" });
+            }
+          }
+        }
+        await expect(
+          callerAs(f.users.member).teams.createTeam({
+            challengeId: 2_000_000_000,
+            name: "Ours",
+          }),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+        // A challenge the member may read but that has no bound event is
+        // simply not a hackathon.
+        await expect(
+          callerAs(f.users.member).teams.createTeam({
+            challengeId: challengeOf.get(f.inviteOnly.id)!,
+            name: "Ours",
+          }),
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        await expect(
+          callerAs(f.users.member).hackathon.myTeam({
+            challengeId: challengeOf.get(f.inviteOnly.id)!,
+          }),
+        ).resolves.toBeNull();
+      });
+
+      it("the challenge channel takes posts from enrolled readers only", async () => {
+        for (const [, c] of f.membersOnly) {
+          for (const userId of strangers()) {
+            const caller = callerAs(userId);
+            await expect(
+              caller.challengeChannel.createThread({
+                channelId: channelOf.get(c.id)!,
+                type: "discussion",
+                title: "Hello",
+                content: "Hi",
+              }),
+            ).rejects.toMatchObject({ code: "NOT_FOUND" });
+            await expect(
+              caller.challengeChannel.replyToThread({
+                threadId: channelThreadOf.get(c.id)!,
+                content: "Hi",
+              }),
+            ).rejects.toMatchObject({ code: "NOT_FOUND" });
+            await expect(
+              caller.challenges.submitSolution({
+                challengeId: challengeOf.get(c.id)!,
+                title: "Mine",
+                content: "Done",
+              }),
+            ).rejects.toMatchObject({ code: "NOT_FOUND" });
+          }
+        }
+        const member = callerAs(f.users.member);
+        await expect(
+          member.challengeChannel.createThread({
+            channelId: channelOf.get(f.unlisted.id)!,
+            type: "discussion",
+            title: "Hello",
+            content: "Hi",
+          }),
+        ).resolves.toMatchObject({ title: "Hello" });
+        await expect(
+          member.challengeChannel.replyToThread({
+            threadId: channelThreadOf.get(f.unlisted.id)!,
+            content: "Hi",
+          }),
+        ).resolves.toMatchObject({ content: "Hi" });
       });
     });
 
