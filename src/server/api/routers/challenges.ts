@@ -13,6 +13,10 @@ import {
 const challengeIdInputSchema = z.object({ challengeId: z.number() });
 import { getPayloadClient } from "@/server/payload";
 import {
+  readableChallengesWhere,
+  requireReadableChallenge,
+} from "@/server/hackathon/challenge-access";
+import {
   logActivity,
   checkEnrollmentCompletion,
 } from "@/server/agent/activity";
@@ -78,7 +82,7 @@ export const challengesRouter = createTRPCRouter({
         })
         .optional(),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
 
       const whereConditions: Where = {
@@ -95,9 +99,17 @@ export const challengesRouter = createTRPCRouter({
         whereConditions.tags = { in: input.tags };
       }
 
+      // Challenges of communities the viewer may not read stay off the
+      // list (ADR-0030, ADR-0050).
+      const readable = await readableChallengesWhere(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
       const { docs } = await payload.find({
         collection: "challenges",
-        where: whereConditions,
+        where: readable
+          ? { and: [whereConditions, readable] }
+          : whereConditions,
         sort: "-startsAt",
         limit: 50,
         depth: 0,
@@ -110,23 +122,9 @@ export const challengesRouter = createTRPCRouter({
 
   getById: publicProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
-      const payload = await getPayloadClient();
-
-      try {
-        const challenge = await payload.findByID({
-          collection: "challenges",
-          id: input.id,
-          depth: 0,
-        });
-        return challenge;
-      } catch {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Challenge not found",
-        });
-      }
-    }),
+    .query(async ({ ctx, input }) =>
+      requireReadableChallenge(ctx.db, input.id, ctx.session?.user?.id),
+    ),
 
   // ── Enroll in a challenge ─────────────────────────────────────────────────
 
@@ -136,21 +134,12 @@ export const challengesRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       const { challengeId } = challengeIdInputSchema.parse(input);
 
-      // Fetch challenge from Payload
-      const payload = await getPayloadClient();
-      let challenge;
-      try {
-        challenge = await payload.findByID({
-          collection: "challenges",
-          id: challengeId,
-          depth: 0,
-        });
-      } catch {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Challenge not found",
-        });
-      }
+      // A members-only community's challenge takes its members only.
+      const challenge = await requireReadableChallenge(
+        ctx.db,
+        challengeId,
+        userId,
+      );
 
       // Validate challenge is active
       if (challenge.status !== "active") {
@@ -388,24 +377,20 @@ export const challengesRouter = createTRPCRouter({
   getLeaderboard: publicProcedure
     .input(z.object({ challengeId: z.number(), limit: z.number().default(50) }))
     .query(async ({ ctx, input }) => {
-      // Fetch challenge to determine ranking mode
-      const payload = await getPayloadClient();
+      // The leaderboard is spectator data: it follows the challenge's
+      // community (ADR-0030, ADR-0050).
+      const challenge = await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.session?.user?.id,
+      );
       let rankingMode: "speed" | "thoroughness" | "collaboration" = "speed";
-      try {
-        const challenge = await payload.findByID({
-          collection: "challenges",
-          id: input.challengeId,
-          depth: 0,
-        });
-        if (
-          challenge.rankingMode === "speed" ||
-          challenge.rankingMode === "thoroughness" ||
-          challenge.rankingMode === "collaboration"
-        ) {
-          rankingMode = challenge.rankingMode;
-        }
-      } catch {
-        // Use default ranking mode
+      if (
+        challenge.rankingMode === "speed" ||
+        challenge.rankingMode === "thoroughness" ||
+        challenge.rankingMode === "collaboration"
+      ) {
+        rankingMode = challenge.rankingMode;
       }
 
       // Get all enrollments for this challenge (non-abandoned)

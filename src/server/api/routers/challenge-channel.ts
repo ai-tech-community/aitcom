@@ -16,12 +16,22 @@ import {
 import { logActivity } from "@/server/agent/activity";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
+import {
+  requireReadableChallenge,
+  requireReadableChannel,
+  requireReadableChannelThread,
+} from "@/server/hackathon/challenge-access";
 
 export const challengeChannelRouter = createTRPCRouter({
-  /** Get channel metadata for a challenge */
+  /** Get channel metadata for a challenge its community lets the viewer read. */
   getChannel: publicProcedure
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
+      await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.session?.user?.id,
+      );
       const [channel] = await ctx.db
         .select()
         .from(challengeChannels)
@@ -49,6 +59,11 @@ export const challengeChannelRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      await requireReadableChannel(
+        ctx.db,
+        input.channelId,
+        ctx.session?.user?.id,
+      );
       const conditions = [eq(challengeThreads.channelId, input.channelId)];
       if (input.type) {
         conditions.push(eq(challengeThreads.type, input.type));
@@ -98,6 +113,11 @@ export const challengeChannelRouter = createTRPCRouter({
   getThread: publicProcedure
     .input(z.object({ threadId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await requireReadableChannelThread(
+        ctx.db,
+        input.threadId,
+        ctx.session?.user?.id,
+      );
       const [thread] = await ctx.db
         .select({
           id: challengeThreads.id,
