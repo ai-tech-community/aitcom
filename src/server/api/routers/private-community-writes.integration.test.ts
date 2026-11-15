@@ -631,6 +631,47 @@ describe.skipIf(!RUN_DB)(
       });
     });
 
+    describe("launchpad author actions", () => {
+      it("answer a hidden project like a missing one before checking the author", async () => {
+        await expectEachHidden((c, userId) =>
+          callerAs(userId).launchpad.update({
+            projectId: projectOf.get(c.id)!.id,
+            title: "Taken over",
+          }),
+        );
+        await expectEachHidden((c, userId) =>
+          callerAs(userId).launchpad.archive({
+            projectId: projectOf.get(c.id)!.id,
+          }),
+        );
+        await expectEachHidden((c, userId) =>
+          callerAs(userId).launchpad.postUpdate({
+            projectId: projectOf.get(c.id)!.id,
+            title: "News",
+            content: "Words",
+          }),
+        );
+        await expect(
+          callerAs(f.users.outsider).launchpad.archive({
+            projectId: 2_000_000_000,
+          }),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      });
+
+      it("still refuse a reader who is not the author", async () => {
+        await expect(
+          callerAs(f.users.outsider).launchpad.archive({
+            projectId: projectOf.get(f.open.id)!.id,
+          }),
+        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        await expect(
+          callerAs(f.users.member).launchpad.archive({
+            projectId: projectOf.get(f.inviteOnly.id)!.id,
+          }),
+        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      });
+    });
+
     describe("challenge and hackathon spectator views", () => {
       it("hide a members-only community's challenge from outsiders", async () => {
         for (const viewer of f.outsiders) {
