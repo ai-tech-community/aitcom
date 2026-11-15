@@ -378,7 +378,11 @@ describe.skipIf(!RUN_DB)(
         magazineDefaultVisibility: "members",
         hasTopics: true,
         communityIsPrivate: true,
-        community: { slug: slug(), isListedInDirectory: false },
+        community: {
+          slug: slug(),
+          isListedInDirectory: false,
+          joinPolicy: "open",
+        },
       });
       await expect(
         editor.saveAutoDraftSettings({
@@ -1039,6 +1043,7 @@ describe.skipIf(!RUN_DB)(
       expect(settings.community).toEqual({
         slug: slug(),
         isListedInDirectory: !settings.communityIsPrivate,
+        joinPolicy: "open",
       });
 
       const magazine = await saveMagazine();
@@ -1199,6 +1204,7 @@ describe.skipIf(!RUN_DB)(
         name: `Magazine ${fx.sfx}`,
         slug: slug(),
         isListedInDirectory: false,
+        joinPolicy: "open",
       });
     });
 

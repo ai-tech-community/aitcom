@@ -47,6 +47,7 @@ describe.skipIf(!RUN_DB)("magazine editorship [DB integration]", () => {
       slug: string;
       name: string;
       isListedInDirectory: boolean;
+      joinPolicy: "open" | "invite_only" | "approval_required";
     };
     magazine: Magazine;
   };
@@ -163,6 +164,7 @@ describe.skipIf(!RUN_DB)("magazine editorship [DB integration]", () => {
         slug: community!.slug,
         name: community!.name,
         isListedInDirectory: community!.isListedInDirectory,
+        joinPolicy: community!.joinPolicy,
       },
       magazine,
     };
