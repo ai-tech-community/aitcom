@@ -138,6 +138,15 @@ describe.skipIf(!RUN_DB)(
           },
         });
         courseIds.push(course.id);
+        await m.payload.create({
+          collection: "community-links",
+          data: {
+            communityId: c.id,
+            label: "Website",
+            url: "https://example.test",
+            sortOrder: 0,
+          },
+        });
       }
     }, 120_000);
 
@@ -159,6 +168,10 @@ describe.skipIf(!RUN_DB)(
       const ids = [f.open, f.inviteOnly, f.approval, f.unlisted].map(
         (c) => c.id,
       );
+      await m.payload.delete({
+        collection: "community-links",
+        where: { communityId: { in: ids } },
+      });
       await m.payload.delete({
         collection: "community-topics",
         where: { communityId: { in: ids } },
@@ -410,6 +423,26 @@ describe.skipIf(!RUN_DB)(
         expect(guest.courses.map((c) => c.slug)).toEqual([
           `gate-course-${f.open.slug}`,
         ]);
+      });
+    });
+
+    describe("links.list", () => {
+      it("gives outsiders of a members-only community no links, and members its links", async () => {
+        for (const [, c] of f.membersOnly) {
+          for (const viewer of f.outsiders) {
+            await expect(
+              callerAs(viewer).links.list({ communitySlug: c.slug }),
+            ).resolves.toEqual([]);
+          }
+        }
+        await expect(
+          callerAs(f.users.member).links.list({
+            communitySlug: f.inviteOnly.slug,
+          }),
+        ).resolves.toMatchObject([{ label: "Website" }]);
+        await expect(
+          callerAs(null).links.list({ communitySlug: f.open.slug }),
+        ).resolves.toMatchObject([{ label: "Website" }]);
       });
     });
 
