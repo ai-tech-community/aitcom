@@ -2964,7 +2964,8 @@
       "toastDeleted": "Comment deleted."
     },
     "vote": {
-      "signInToVote": "Sign in to vote"
+      "signInToVote": "Sign in to vote",
+      "membersOnly": "Join the community to vote and comment on its projects."
     },
     "detail": {
       "by": "by",

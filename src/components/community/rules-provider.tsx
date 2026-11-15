@@ -13,7 +13,12 @@ const RulesModal = dynamic(
 );
 
 type RulesContextValue = {
-  openRulesModal: () => void;
+  /**
+   * Show a community's rules to accept. Pass the slug of the community the
+   * refused write belongs to (a Launchpad project's, say); without one the
+   * provider's own community is shown, the Hub by default.
+   */
+  openRulesModal: (communitySlug?: string) => void;
 };
 
 const RulesContext = createContext<RulesContextValue>({
@@ -32,9 +37,11 @@ interface RulesProviderProps {
 export function RulesProvider({ children, communitySlug }: RulesProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [requestedSlug, setRequestedSlug] = useState<string | undefined>();
   const t = useTranslations("community.rules");
 
-  const openRulesModal = useCallback(() => {
+  const openRulesModal = useCallback((slug?: string) => {
+    setRequestedSlug(slug);
     setMounted(true);
     setIsOpen(true);
   }, []);
@@ -48,7 +55,7 @@ export function RulesProvider({ children, communitySlug }: RulesProviderProps) {
           onClose={() => setIsOpen(false)}
           title={t("title")}
           subtitle={t("subtitle")}
-          communitySlug={communitySlug}
+          communitySlug={requestedSlug ?? communitySlug}
         />
       ) : null}
     </RulesContext.Provider>

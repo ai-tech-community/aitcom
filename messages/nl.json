@@ -2964,7 +2964,8 @@
       "toastDeleted": "Reactie verwijderd."
     },
     "vote": {
-      "signInToVote": "Log in om te stemmen"
+      "signInToVote": "Log in om te stemmen",
+      "membersOnly": "Word lid van de community om op haar projecten te stemmen en te reageren."
     },
     "detail": {
       "by": "door",

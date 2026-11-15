@@ -13,6 +13,7 @@ import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { LexicalRenderer } from "@/lib/lexical";
 import { LaunchpadTimeline } from "@/components/launchpad/launchpad-timeline";
 import { LaunchpadComments } from "@/components/launchpad/launchpad-comments";
+import { useLaunchpadWriteError } from "@/components/launchpad/use-launchpad-write-error";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -58,6 +59,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
   const tDetail = useTranslations("launchpad.detail");
   const { data: session } = authClient.useSession();
   const { requireAuth } = useRequireAuth();
+  const handleWriteError = useLaunchpadWriteError();
 
   const {
     data: project,
@@ -84,8 +86,9 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       }
       return { prev };
     },
-    onError: (_err, _input, ctx) => {
+    onError: (err, _input, ctx) => {
       if (ctx?.prev) utils.launchpad.getBySlug.setData({ slug }, ctx.prev);
+      handleWriteError(err, project?.communitySlug);
     },
     onSettled: () => void utils.launchpad.getBySlug.invalidate({ slug }),
   });
@@ -272,6 +275,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       {/* ------------------------------------------------------------------ */}
       <LaunchpadComments
         projectId={project.id}
+        communitySlug={project.communitySlug}
         comments={project.comments ?? []}
         currentUserId={currentUserId}
       />

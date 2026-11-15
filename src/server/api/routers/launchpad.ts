@@ -27,6 +27,7 @@ import {
   notifications,
   user,
   memberProfiles,
+  communities,
 } from "@/server/db/schema";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -55,6 +56,23 @@ async function loadReadableProject(
     notFound: "Project not found",
   });
   return project;
+}
+
+/**
+ * The slug of each project's community, by community id, so a screen can
+ * point a refused vote or comment at that community (its rules prompt).
+ */
+async function communitySlugsById(
+  db: typeof appDb,
+  communityIds: readonly (string | null | undefined)[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(communityIds.filter((id): id is string => !!id))];
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ id: communities.id, slug: communities.slug })
+    .from(communities)
+    .where(inArray(communities.id, ids));
+  return new Map(rows.map((row) => [row.id, row.slug]));
 }
 
 /** Only a project's author may change it. */
@@ -166,9 +184,16 @@ export const launchpadRouter = createTRPCRouter({
         votedProjectIds = new Set(myVotes.map((v) => v.projectId));
       }
 
+      const slugs = await communitySlugsById(
+        ctx.db,
+        projects.map((p) => p.communityId),
+      );
       return {
         projects: projects.map((p) => ({
           ...p,
+          communitySlug: p.communityId
+            ? (slugs.get(p.communityId) ?? null)
+            : null,
           hasVoted: votedProjectIds.has(p.id),
         })),
         totalPages: result.totalPages,
@@ -261,6 +286,11 @@ export const launchpadRouter = createTRPCRouter({
 
       return {
         ...project,
+        communitySlug: project.communityId
+          ? ((await communitySlugsById(ctx.db, [project.communityId])).get(
+              project.communityId,
+            ) ?? null)
+          : null,
         updates,
         comments,
         hasVoted,
