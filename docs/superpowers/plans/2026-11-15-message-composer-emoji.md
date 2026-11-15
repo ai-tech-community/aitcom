@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Members can add emoji in every inbox message composer, using the feed editor's emoji picker, through one shared message composer.
+**Goal:** Members can add emoji in every message composer (floating chat window, `/messages`, mobile inbox view, community rooms), using the feed editor's emoji picker, through one shared message composer.
 
-**Architecture:** The feed editor's generic pieces (toolbar button, emoji picker, undoable insert-at-caret) move to `src/components/composer/` with their own `composer` translation namespace; the feed imports them from there. The three inbox surfaces' copy-pasted composer and optimistic-send code become one `MessageComposer` component and one `useSendMessage` hook.
+**Architecture:** The feed editor's generic pieces (toolbar button, emoji picker, undoable insert-at-caret) move to `src/components/composer/` with their own `composer` translation namespace; the feed imports them from there. The copy-pasted composer and optimistic-send code of the three inbox views (floating chat window, `/messages`, mobile inbox view) become one `MessageComposer` component and one `useSendMessage` hook; community rooms get it too, because they render `/messages`' `ConversationView`.
 
 **Tech Stack:** Next.js 15 App Router, React 19, tRPC, next-intl (en/fr/nl), frimousse emoji picker, vitest + Testing Library.
 

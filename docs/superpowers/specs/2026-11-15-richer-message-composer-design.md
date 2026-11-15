@@ -12,7 +12,7 @@ private conversation without leaving it.
 ## Goals
 
 - Emoji picker in every message composer (floating chat window, `/messages`
-  page, mobile inbox view).
+  page, mobile inbox view, community rooms).
 - GIFs (GIPHY) in person-to-person (`dm`) and room (`space`) conversations.
 - Photos, up to 4 per message, in `dm` and `space` conversations.
 - A message may carry a GIF or photos with no text.
@@ -28,7 +28,8 @@ conversations. Tracked on #584.
   Public `media/` storage is wrong for it.
 - No second emoji picker, GIF picker, image shrinker or upload lifecycle.
   The feed's and the gallery's are reused.
-- No fourth copy of the composer. The three inbox surfaces share one.
+- No more copies of the composer. Every conversation surface (floating chat
+  window, `/messages`, mobile inbox view, community rooms) shares one.
 
 ## Constraints
 
@@ -46,8 +47,8 @@ conversations. Tracked on #584.
 1. **Reuse feed + gallery pieces behind shared seams (chosen).** Move the
    feed editor's generic pieces (emoji picker, GIF picker, toolbar button,
    insert-at-caret) to `src/components/composer/`; one `MessageComposer` for
-   the inbox; attachments in their own table; photo uploads follow the
-   gallery's presign → upload → finish → sweep lifecycle.
+   every conversation view; attachments in their own table; photo uploads
+   follow the gallery's presign → upload → finish → sweep lifecycle.
 2. **Import the feed pieces where they are.** Less churn, but the inbox
    would depend on `communities/feed/editor` and its translation namespace,
    and the GIF picker is hard-wired to a community-scoped search.
@@ -63,7 +64,10 @@ conversations. Tracked on #584.
   `composer` translation namespace. The feed editor imports from here.
 - `src/components/inbox/message-composer.tsx` — the one composer
   (`PromptInput` + textarea + toolbar + send). `use-send-message.ts` — the
-  one optimistic send hook. The three surfaces render these.
+  one optimistic send hook. The four surfaces render these: the floating
+  chat window, `/messages` and the mobile inbox view directly, community
+  rooms through `/messages`' `ConversationView`
+  (`src/components/communities/rooms/room-view.tsx`).
 
 ### GIFs (PR 2)
 - New table `app.message_attachment` (one row per GIF or photo, ordered by
