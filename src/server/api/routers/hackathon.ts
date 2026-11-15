@@ -42,6 +42,7 @@ import {
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import {
+  participantsAmong,
   requireChallengeParticipant,
   requireReadableChallenge,
   requireReadableTeam,
@@ -2380,10 +2381,20 @@ export const hackathonRouter = createTRPCRouter({
           ),
         );
 
+      // Someone who lost access (banned, lapsed) keeps their enrollment row
+      // but is not offered as a teammate (ADR-0050).
+      const allowed = await participantsAmong(
+        ctx.db,
+        challenge,
+        rows.map((r) => r.userId),
+      );
       return {
         open: true,
         viewer,
-        candidates: lookingForTeamCandidates(rows, { excludeUserId: userId }),
+        candidates: lookingForTeamCandidates(
+          rows.filter((r) => allowed.has(r.userId)),
+          { excludeUserId: userId },
+        ),
       };
     }),
 

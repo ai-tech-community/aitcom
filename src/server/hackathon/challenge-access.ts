@@ -13,12 +13,19 @@ import type { Where } from "payload";
 
 import type { Challenge } from "@/payload-types";
 import type { db as appDb } from "@/server/db";
-import { challengeChannels, challengeThreads, teams } from "@/server/db/schema";
+import {
+  challengeChannels,
+  challengeThreads,
+  communities,
+  teams,
+} from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { requireReadableContentOf } from "@/server/communities/content-access";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import {
+  COMMUNITY_VISIBILITY_COLUMNS,
   hiddenContentCommunityIds,
+  viewerCanReadContent,
   viewerCanReadContentOf,
 } from "@/server/communities/content-visibility-queries";
 import { ownerOnTeam } from "@/server/hackathon/team-membership";
@@ -135,6 +142,31 @@ export async function mayTakePartInChallenge(
   });
   if (!challenge) return false;
   return viewerCanReadContentOf(db, challenge.communityId, userId);
+}
+
+/**
+ * The users among `userIds` who may still take part in the challenge, for
+ * lists of other participants (the looking-for-team list): someone who was
+ * banned, or whose paid membership lapsed, keeps their enrollment row but
+ * is no longer shown. The community is read once.
+ */
+export async function participantsAmong(
+  db: DB,
+  challenge: { communityId?: string | null },
+  userIds: readonly string[],
+): Promise<Set<string>> {
+  if (!challenge.communityId) return new Set(userIds);
+  const community = await db.query.communities.findFirst({
+    where: eq(communities.id, challenge.communityId),
+    columns: COMMUNITY_VISIBILITY_COLUMNS,
+  });
+  if (!community) return new Set();
+  const allowed = await Promise.all(
+    userIds.map(async (userId) =>
+      (await viewerCanReadContent(db, community, userId)) ? userId : null,
+    ),
+  );
+  return new Set(allowed.filter((id): id is string => id !== null));
 }
 
 /**
