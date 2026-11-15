@@ -117,6 +117,22 @@ describe("FeaturedCommunities", () => {
     ]);
   });
 
+  it("shows no member count where the viewer may not see it", () => {
+    const closed: FeaturedCommunityCard = {
+      ...NL_CARD,
+      id: "closed",
+      slug: "closed-circle",
+      name: "Closed circle",
+      memberCount: null,
+      isListedInDirectory: true,
+    };
+    const { container } = renderIn([closed, NL_CARD]);
+    const card = screen.getByRole("link", { name: "Closed circle" });
+    expect(card.textContent).not.toMatch(/members|null|NaN/);
+    expect(screen.getByText("4 members")).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/null|NaN/);
+  });
+
   it("names each card link by the community name alone", () => {
     renderIn(THREE);
     expect(
@@ -247,6 +263,22 @@ describe("FeaturedCommunities art", () => {
     } finally {
       Object.assign(box, previous);
     }
+  });
+
+  it("draws a house without people where the viewer may not see the count", () => {
+    renderIn([
+      {
+        ...NL_CARD,
+        id: "closed",
+        slug: "closed-circle",
+        name: "Closed circle",
+        memberCount: null,
+        isListedInDirectory: true,
+      },
+    ]);
+    const drawn = sceneSpy.calls.filter(([slug]) => slug === "closed-circle");
+    expect(drawn.length).toBeGreaterThan(0);
+    expect(drawn.every(([, members]) => members === 0)).toBe(true);
   });
 
   it("draws each card's own house from its slug and real member count", () => {

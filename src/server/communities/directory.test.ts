@@ -32,6 +32,8 @@ function candidate(
     name: id,
     description: null,
     logoUrl: null,
+    isListedInDirectory: true,
+    joinPolicy: "open",
     memberCount: 1,
     activeNow: 0,
     contributionCount: 0,
@@ -41,15 +43,11 @@ function candidate(
   };
 }
 
-function facts(
-  entries: [string, { joinPolicy?: JoinPolicy; ageDays?: number }][],
-) {
+function facts(entries: [string, { ageDays?: number }][]) {
   return new Map(
     entries.map(([id, f]) => [
       id,
       {
-        joinPolicy: f.joinPolicy ?? ("open" as const),
-        isListedInDirectory: true,
         createdAt: new Date(NOW.getTime() - (f.ageDays ?? 400) * DAY),
       },
     ]),
@@ -114,8 +112,14 @@ describe("isNewCommunity", () => {
 describe("buildDirectory", () => {
   it("carries the real join policy, activity, newness and open rooms", () => {
     const [c] = buildDirectory({
-      candidates: [candidate("a", { activeNow: 3, newJoins: 2 })],
-      facts: facts([["a", { joinPolicy: "approval_required", ageDays: 3 }]]),
+      candidates: [
+        candidate("a", {
+          activeNow: 3,
+          newJoins: 2,
+          joinPolicy: "approval_required",
+        }),
+      ],
+      facts: facts([["a", { ageDays: 3 }]]),
       events: [],
       openRooms: new Map([["a", 2]]),
       now: NOW,
@@ -219,25 +223,67 @@ describe("sortDirectory", () => {
 });
 
 describe("directoryCardShowsFaces", () => {
-  it("shows faces on a listed open community only", () => {
-    expect(directoryCardShowsFaces(community("a"))).toBe(true);
+  it("shows faces on a listed open community to everyone", () => {
+    expect(directoryCardShowsFaces(community("a"), false)).toBe(true);
   });
 
   it.each<JoinPolicy>(["invite_only", "approval_required"])(
-    "shows no faces on a listed %s community: its roster is members-only",
+    "shows a listed %s community's faces to its members only",
     (joinPolicy) => {
-      expect(directoryCardShowsFaces(community("a", { joinPolicy }))).toBe(
-        false,
-      );
+      const c = community("a", { joinPolicy });
+      expect(directoryCardShowsFaces(c, false)).toBe(false);
+      expect(directoryCardShowsFaces(c, true)).toBe(true);
     },
   );
 
-  it("shows no faces on the Hub's browse card", () => {
+  it("shows no faces on the Hub's browse card, members included", () => {
+    const hub = community(HUB_SLUG, {
+      slug: HUB_SLUG,
+      isListedInDirectory: false,
+    });
+    expect(directoryCardShowsFaces(hub, false)).toBe(false);
+    expect(directoryCardShowsFaces(hub, true)).toBe(false);
+  });
+});
+
+describe("toPublicDirectoryCommunity signals", () => {
+  const busy = { memberCount: 40, activeRecently: 6, openRooms: 2 };
+
+  it.each<JoinPolicy>(["invite_only", "approval_required"])(
+    "hides a listed %s community's count, activity and rooms from outsiders",
+    (joinPolicy) => {
+      expect(
+        toPublicDirectoryCommunity(community("a", { joinPolicy, ...busy })),
+      ).toMatchObject({
+        memberCount: null,
+        activeRecently: null,
+        openRooms: null,
+      });
+    },
+  );
+
+  it("shows them to a member of that community", () => {
     expect(
-      directoryCardShowsFaces(
-        community(HUB_SLUG, { slug: HUB_SLUG, isListedInDirectory: false }),
+      toPublicDirectoryCommunity(
+        community("a", { joinPolicy: "invite_only", ...busy }),
+        true,
       ),
-    ).toBe(false);
+    ).toMatchObject(busy);
+  });
+
+  it("shows them on a public community and the Hub", () => {
+    expect(toPublicDirectoryCommunity(community("a", busy))).toMatchObject(
+      busy,
+    );
+    expect(
+      toPublicDirectoryCommunity(
+        community(HUB_SLUG, {
+          slug: HUB_SLUG,
+          isListedInDirectory: false,
+          ...busy,
+        }),
+      ),
+    ).toMatchObject(busy);
   });
 });
 

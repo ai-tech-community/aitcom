@@ -6,7 +6,12 @@
  * `directory-queries.ts`.
  */
 
-import { isRosterPublic } from "@/server/communities/content-visibility";
+import {
+  canReadRoster,
+  cardShowsActivity,
+  cardShowsMemberCount,
+} from "@/server/communities/content-visibility";
+import { HUB_SLUG } from "@/server/communities/hub";
 import type { CommunityCandidate } from "@/server/communities/discovery";
 import { livenessScore } from "@/server/communities/discovery";
 import type { JoinPolicy } from "@/server/communities/invite-policy";
@@ -118,10 +123,7 @@ export function placeOf(event: Pick<DirectoryEventRow, "city" | "online">) {
  */
 export function buildDirectory(opts: {
   candidates: readonly CommunityCandidate[];
-  facts: ReadonlyMap<
-    string,
-    { joinPolicy: JoinPolicy; isListedInDirectory: boolean; createdAt: Date }
-  >;
+  facts: ReadonlyMap<string, { createdAt: Date }>;
   events: readonly DirectoryEventRow[];
   /** Public room count per community id (absent = none). */
   openRooms?: ReadonlyMap<string, number>;
@@ -163,8 +165,8 @@ export function buildDirectory(opts: {
         name: c.name,
         description: c.description,
         logoUrl: c.logoUrl,
-        joinPolicy: facts.joinPolicy,
-        isListedInDirectory: facts.isListedInDirectory,
+        joinPolicy: c.joinPolicy,
+        isListedInDirectory: c.isListedInDirectory,
         createdAt: facts.createdAt,
         memberCount: c.memberCount,
         activeRecently: c.activeNow,
@@ -194,15 +196,16 @@ export function buildDirectory(opts: {
 }
 
 /**
- * Whether a directory card may show member faces: only where the roster is
- * public (`isRosterPublic`, ADR-0021). The Hub's browse card and a listed
- * private community's card show none; their cards keep the aggregate
- * member count, a public directory signal like the Hub's.
+ * Whether a directory card may show member faces to this viewer: only
+ * where they may read the roster (`canReadRoster`, ADR-0021) — a public
+ * community for everyone, a private one for its members. The Hub's browse
+ * card never shows faces (ADR-0019).
  */
 export function directoryCardShowsFaces(
   c: Pick<DirectoryCommunity, "slug" | "isListedInDirectory" | "joinPolicy">,
+  isMember: boolean,
 ): boolean {
-  return isRosterPublic(c);
+  return c.slug !== HUB_SLUG && canReadRoster(c, isMember);
 }
 
 /**
@@ -369,10 +372,13 @@ export type PublicDirectoryCommunity = {
   description: string | null;
   logoUrl: string | null;
   joinPolicy: JoinPolicy;
-  memberCount: number;
-  activeRecently: number;
+  /** Null when this viewer may not see it (`cardShowsMemberCount`). */
+  memberCount: number | null;
+  /** Null when this viewer may not see it (`cardShowsActivity`). */
+  activeRecently: number | null;
   isNew: boolean;
-  openRooms: number;
+  /** Null when this viewer may not see it (`cardShowsActivity`). */
+  openRooms: number | null;
   nextEvent: Pick<DirectoryNextEvent, "date" | "city" | "online"> | null;
   wants: DirectoryWant[];
   /** Km to its nearest upcoming in-person event, when asked "near". */
@@ -380,12 +386,16 @@ export type PublicDirectoryCommunity = {
 };
 
 /**
- * The public shape: only the facts the page shows. Ranking internals
- * (score, new joins) and the event's internal fields stay on the server.
+ * The public shape: only the facts the page shows this viewer. Ranking
+ * internals (score, new joins) and the event's internal fields stay on the
+ * server, and so do a private community's member count, activity and room
+ * count unless the viewer is a member (ADR-0050).
  */
 export function toPublicDirectoryCommunity(
   c: DirectoryCommunity & { distanceKm?: number | null },
+  isMember = false,
 ): PublicDirectoryCommunity {
+  const showsActivity = cardShowsActivity(c, isMember);
   const description = c.description?.trim() ?? "";
   return {
     id: c.id,
@@ -397,10 +407,10 @@ export function toPublicDirectoryCommunity(
         : null,
     logoUrl: c.logoUrl,
     joinPolicy: c.joinPolicy,
-    memberCount: c.memberCount,
-    activeRecently: c.activeRecently,
+    memberCount: cardShowsMemberCount(c, isMember) ? c.memberCount : null,
+    activeRecently: showsActivity ? c.activeRecently : null,
     isNew: c.isNew,
-    openRooms: c.openRooms,
+    openRooms: showsActivity ? c.openRooms : null,
     nextEvent: c.nextEvent
       ? {
           date: c.nextEvent.date,

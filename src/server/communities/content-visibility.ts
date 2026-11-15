@@ -118,6 +118,34 @@ export function canReadRoster(
 }
 
 /**
+ * Whether a discovery card (directory, Explore, Featured strip) may show a
+ * community's member count to this viewer. The count is roster
+ * information (ADR-0021): shown where the viewer may read the roster, and
+ * on the Hub's browse card, which keeps its aggregate count (ADR-0019).
+ * A private community's outsiders see no count (ADR-0050).
+ */
+export function cardShowsMemberCount(
+  community: CommunityVisibility,
+  isActiveMember: boolean,
+): boolean {
+  return (
+    community.slug === HUB_SLUG || canReadRoster(community, isActiveMember)
+  );
+}
+
+/**
+ * Whether a discovery card may show how alive a community is inside
+ * (people active recently, open rooms): where the viewer may read its
+ * content, as `communities.getBySlug` sends its liveness.
+ */
+export function cardShowsActivity(
+  community: CommunityVisibility,
+  isActiveMember: boolean,
+): boolean {
+  return canReadContent(community, isActiveMember);
+}
+
+/**
  * Payload `where` that drops community-scoped content (forum threads, ideas)
  * of communities the viewer may not read. Unscoped (legacy Hub) rows stay
  * visible: SQL `NOT IN` alone would drop their NULL `communityId`, so they

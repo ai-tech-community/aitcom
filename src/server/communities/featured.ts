@@ -1,4 +1,8 @@
-import { isFeaturedStripCommunity } from "@/server/communities/content-visibility";
+import {
+  cardShowsMemberCount,
+  isFeaturedStripCommunity,
+} from "@/server/communities/content-visibility";
+import type { JoinPolicy } from "@/server/communities/invite-policy";
 import { HUB_SLUG } from "@/server/communities/hub";
 
 /**
@@ -25,7 +29,11 @@ export type FeaturedCommunityCard = {
   name: string;
   description: string | null;
   logoUrl: string | null;
-  memberCount: number;
+  /**
+   * Active members, or null when this viewer may not see it: a private
+   * community's outsiders get no count (`cardShowsMemberCount`, ADR-0050).
+   */
+  memberCount: number | null;
   /**
    * Set when the card was loaded from the database. An unlisted community
    * is dropped, except the Hub.
@@ -37,6 +45,34 @@ export type FeaturedCommunityCard = {
 export function asMemberCount(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 0;
+}
+
+/**
+ * The picked cards as this viewer may see them: a private community's count
+ * only for its members (`memberOf`: the viewer's active community ids). The
+ * join policy the rule reads stays on the server.
+ */
+export function featuredCardsForViewer(
+  rows: readonly (FeaturedCommunityCard & {
+    memberCount: number;
+    isListedInDirectory: boolean;
+    joinPolicy: JoinPolicy;
+  })[],
+  memberOf: ReadonlySet<string>,
+): FeaturedCommunityCard[] {
+  return rows.map(({ joinPolicy, ...card }) => ({
+    ...card,
+    memberCount: cardShowsMemberCount(
+      {
+        slug: card.slug,
+        isListedInDirectory: card.isListedInDirectory,
+        joinPolicy,
+      },
+      memberOf.has(card.id),
+    )
+      ? card.memberCount
+      : null,
+  }));
 }
 
 /** Curated doors first, then other explicitly public communities. */
@@ -54,7 +90,9 @@ export function pickHomeCommunities<T extends FeaturedCommunityCard>(
         !excluded.has(row.slug),
     )
     .sort(
-      (a, b) => b.memberCount - a.memberCount || a.name.localeCompare(b.name),
+      (a, b) =>
+        (b.memberCount ?? -1) - (a.memberCount ?? -1) ||
+        a.name.localeCompare(b.name),
     );
   return [...featured, ...others].slice(0, 6);
 }

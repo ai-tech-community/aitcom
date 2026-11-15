@@ -5,6 +5,8 @@ import type { JoinPolicy } from "./invite-policy";
 import {
   canReadContent,
   canReadRoster,
+  cardShowsActivity,
+  cardShowsMemberCount,
   communityContentReadableWhere,
   type CommunityVisibility,
   isContentPublic,
@@ -161,6 +163,27 @@ describe("public directory and featured strip", () => {
     expect(isPublicDirectoryCommunity(privateListed)).toBe(true);
     expect(isFeaturedStripCommunity(privateListed)).toBe(true);
     expect(isContentPublic(privateListed)).toBe(false);
+  });
+});
+
+describe("discovery card signals", () => {
+  it.each(
+    POLICIES.flatMap((policy) =>
+      [false, true].map((isMember) => ({ policy, isMember })),
+    ),
+  )(
+    "on a listed $policy community (member: $isMember) show count and activity only when the viewer may read inside",
+    ({ policy, isMember }) => {
+      const c = community(policy, true);
+      const visible = policy === "open" || isMember;
+      expect(cardShowsMemberCount(c, isMember)).toBe(visible);
+      expect(cardShowsActivity(c, isMember)).toBe(visible);
+    },
+  );
+
+  it("keep the Hub's browse card count and activity for everyone", () => {
+    expect(cardShowsMemberCount(HUB, false)).toBe(true);
+    expect(cardShowsActivity(HUB, false)).toBe(true);
   });
 });
 

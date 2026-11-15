@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { rankCommunitiesForMember } from "@/server/communities/discovery";
+import {
+  rankCommunitiesForMember,
+  toCommunityRecommendation,
+} from "@/server/communities/discovery";
 import {
   loadDiscoveryCandidates,
   loadMemberCommunityIds,
@@ -21,6 +24,6 @@ export const discoveryRouter = createTRPCRouter({
         candidates,
         memberCommunityIds,
         limit: input.limit,
-      });
+      }).map(toCommunityRecommendation);
     }),
 });

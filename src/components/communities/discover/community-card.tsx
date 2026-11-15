@@ -38,11 +38,15 @@ export function CommunityCard({
   const { slug, name, description, logoUrl, memberCount, faces } = community;
   const id = `community-card-${slug}`;
   const distance = showDistance ? community.distanceKm : null;
+  // Null counts are ones this viewer may not see (a private community's
+  // outsiders, ADR-0050): the card leaves them out rather than show zero.
+  const activeRecently = community.activeRecently ?? 0;
+  const openRooms = community.openRooms ?? 0;
   const alive =
     distance !== null ||
-    community.activeRecently > 0 ||
+    activeRecently > 0 ||
     community.nextEvent !== null ||
-    community.openRooms > 0;
+    openRooms > 0;
 
   return (
     <article
@@ -89,27 +93,30 @@ export function CommunityCard({
         {alive ? (
           <div className="space-y-1.5">
             {distance !== null ? <DistanceLine km={distance} /> : null}
-            {community.activeRecently > 0 ? (
-              <ActivityLine count={community.activeRecently} />
+            {activeRecently > 0 ? (
+              <ActivityLine count={activeRecently} />
             ) : null}
             {community.nextEvent ? (
               <NextEventLine event={community.nextEvent} />
             ) : null}
-            {community.openRooms > 0 ? (
-              <OpenRoomsLine count={community.openRooms} />
-            ) : null}
+            {openRooms > 0 ? <OpenRoomsLine count={openRooms} /> : null}
           </div>
         ) : null}
         <div className="border-border mt-auto flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-          <div className="flex min-w-0 items-center gap-2">
-            {/* Clicks pass through to the card link (no tooltips here). */}
-            <div aria-hidden="true" className="pointer-events-none">
-              <MemberStackView faces={faces} total={memberCount} />
+          {memberCount !== null ? (
+            <div className="flex min-w-0 items-center gap-2">
+              {/* Clicks pass through to the card link (no tooltips here). */}
+              <div aria-hidden="true" className="pointer-events-none">
+                <MemberStackView faces={faces} total={memberCount} />
+              </div>
+              <span className="text-muted-foreground text-xs whitespace-nowrap tabular-nums">
+                {t("membersCount", { count: memberCount })}
+              </span>
             </div>
-            <span className="text-muted-foreground text-xs whitespace-nowrap tabular-nums">
-              {t("membersCount", { count: memberCount })}
-            </span>
-          </div>
+          ) : (
+            // Keeps the join control at the end of the row.
+            <span aria-hidden="true" />
+          )}
           <JoinAction
             slug={slug}
             name={name}

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   livenessScore,
   rankCommunitiesForMember,
+  toCommunityRecommendation,
   type CommunityCandidate,
 } from "./discovery";
 
@@ -14,6 +15,8 @@ function candidate(
     name: over.name ?? over.communityId,
     description: over.description ?? null,
     logoUrl: over.logoUrl ?? null,
+    isListedInDirectory: over.isListedInDirectory ?? true,
+    joinPolicy: over.joinPolicy ?? "open",
     memberCount: over.memberCount ?? 0,
     activeNow: over.activeNow ?? 0,
     contributionCount: over.contributionCount ?? 0,
@@ -116,5 +119,37 @@ describe("rankCommunitiesForMember", () => {
       memberCommunityIds: new Set(),
     });
     expect(r!.score).toBe(12);
+  });
+});
+
+describe("toCommunityRecommendation", () => {
+  it.each(["invite_only", "approval_required"] as const)(
+    "shows no count or activity of a listed %s community",
+    (joinPolicy) => {
+      expect(
+        toCommunityRecommendation(
+          candidate({
+            communityId: "c",
+            joinPolicy,
+            memberCount: 40,
+            activeNow: 6,
+          }),
+        ),
+      ).toMatchObject({ memberCount: null, activeNow: null });
+    },
+  );
+
+  it("shows a public community's count and activity, and no ranking internals", () => {
+    const out = toCommunityRecommendation(
+      candidate({
+        communityId: "c",
+        memberCount: 40,
+        activeNow: 6,
+        contributionCount: 9,
+      }),
+    );
+    expect(out).toMatchObject({ memberCount: 40, activeNow: 6 });
+    expect(out).not.toHaveProperty("contributionCount");
+    expect(out).not.toHaveProperty("joinPolicy");
   });
 });

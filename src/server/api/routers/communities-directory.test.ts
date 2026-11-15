@@ -2,7 +2,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DirectoryCommunity } from "@/server/communities/directory";
 
-const fake = vi.hoisted(() => ({ snapshot: vi.fn(), faces: vi.fn() }));
+const fake = vi.hoisted(() => ({
+  snapshot: vi.fn(),
+  faces: vi.fn(),
+  memberOf: vi.fn(),
+}));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
   env: { NODE_ENV: "test", NEXT_PUBLIC_APP_URL: "https://app.test" },
@@ -15,6 +19,10 @@ vi.mock("@/server/agent/activity", () => ({ logActivity: vi.fn() }));
 vi.mock("@/server/communities/directory-queries", () => ({
   loadDirectorySnapshot: fake.snapshot,
   invalidateDirectorySnapshots: vi.fn(),
+}));
+vi.mock("@/server/communities/discovery-queries", () => ({
+  loadMemberCommunityIds: fake.memberOf,
+  loadPublicLiveness: vi.fn(),
 }));
 vi.mock("@/server/communities/member-stack-queries", () => ({
   loadStackFacesForCommunities: fake.faces,
@@ -51,6 +59,7 @@ function card(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fake.memberOf.mockResolvedValue(new Set());
   fake.snapshot.mockResolvedValue([card("ait"), card("builders")]);
   fake.faces.mockResolvedValue(
     new Map([
@@ -95,11 +104,16 @@ describe("public AIT directory card", () => {
   });
 
   it.each(["invite_only", "approval_required"] as const)(
-    "shows a listed %s community's card with its count but no faces",
+    "shows outsiders a listed %s community's card without faces, count or activity",
     async (joinPolicy) => {
       fake.snapshot.mockResolvedValue([
         card("builders"),
-        { ...card("closed", joinPolicy), name: "Closed circle" },
+        {
+          ...card("closed", joinPolicy),
+          name: "Closed circle",
+          activeRecently: 7,
+          openRooms: 2,
+        },
       ]);
       fake.faces.mockResolvedValue(
         new Map([
@@ -114,21 +128,55 @@ describe("public AIT directory card", () => {
         ]),
       );
       const database = {};
-      const caller = communitiesRouter.createCaller({
-        db: database as never,
-        session: null,
-        headers: new Headers(),
-      });
-      const page = await caller.directory({ locale: "en" });
-      expect(fake.faces).toHaveBeenCalledWith(database, ["builders"]);
-      expect(page.items.find((row) => row.slug === "closed")).toMatchObject({
-        joinPolicy,
-        memberCount: 50,
-        faces: [],
-      });
-      expect(JSON.stringify(page)).not.toContain("inside-person");
+      for (const session of [null, { user: { id: "outsider" }, session: {} }]) {
+        const caller = communitiesRouter.createCaller({
+          db: database as never,
+          session: session as never,
+          headers: new Headers(),
+        });
+        const page = await caller.directory({ locale: "en" });
+        expect(fake.faces).toHaveBeenLastCalledWith(database, ["builders"]);
+        expect(page.items.find((row) => row.slug === "closed")).toMatchObject({
+          joinPolicy,
+          memberCount: null,
+          activeRecently: null,
+          openRooms: null,
+          faces: [],
+        });
+        expect(JSON.stringify(page)).not.toContain("inside-person");
+      }
     },
   );
+
+  it("shows a private community's card in full to its members", async () => {
+    fake.snapshot.mockResolvedValue([
+      { ...card("closed", "invite_only"), activeRecently: 7, openRooms: 2 },
+    ]);
+    fake.memberOf.mockResolvedValue(new Set(["closed"]));
+    fake.faces.mockResolvedValue(
+      new Map([
+        [
+          "closed",
+          [{ userId: "inside-person", displayName: "Inside", image: null }],
+        ],
+      ]),
+    );
+    const database = {};
+    const caller = communitiesRouter.createCaller({
+      db: database as never,
+      session: { user: { id: "member" }, session: {} } as never,
+      headers: new Headers(),
+    });
+    const page = await caller.directory({ locale: "en" });
+    expect(fake.memberOf).toHaveBeenCalledWith(database, "member");
+    expect(fake.faces).toHaveBeenCalledWith(database, ["closed"]);
+    expect(page.items[0]).toMatchObject({
+      memberCount: 50,
+      activeRecently: 7,
+      openRooms: 2,
+      faces: [{ userId: "inside-person" }],
+    });
+  });
 
   it("keeps the AIT card reachable through name search", async () => {
     const caller = communitiesRouter.createCaller({

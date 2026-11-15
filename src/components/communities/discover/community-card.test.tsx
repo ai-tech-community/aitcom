@@ -150,6 +150,29 @@ describe("CommunityCard", () => {
     expect(screen.getByText("isNew")).toBeInTheDocument();
   });
 
+  it("shows no count, activity or rooms where the viewer may not see them", () => {
+    const { container } = render(
+      <CommunityCard
+        community={item({
+          joinPolicy: "invite_only",
+          memberCount: null,
+          activeRecently: null,
+          openRooms: null,
+          nextEvent: null,
+        })}
+      />,
+    );
+    expect(screen.queryByText(/membersCount/)).toBeNull();
+    expect(screen.queryByText(/activeRecently/)).toBeNull();
+    expect(screen.queryByText(/openRooms/)).toBeNull();
+    expect(screen.queryByTestId("stack")).toBeNull();
+    expect(container.textContent).not.toMatch(/null|NaN/);
+    // The join control keeps its place at the foot of the card.
+    expect(
+      screen.getByRole("button", { name: "join acme" }),
+    ).toBeInTheDocument();
+  });
+
   it("hides the face stack from screen readers (the count is in text)", () => {
     render(<CommunityCard community={item()} />);
     expect(screen.getByTestId("stack").parentElement).toHaveAttribute(

@@ -464,6 +464,54 @@ describe.skipIf(!RUN_DB)(
         );
       }, 30_000);
 
+      it("show outsiders a listed private card without count or activity, and members in full", async () => {
+        const { invalidateDirectorySnapshots } =
+          await import("@/server/communities/directory-queries");
+        const cardOf = async (viewer: string | null, slug: string) => {
+          invalidateDirectorySnapshots();
+          const page = await callerAs(viewer).communities.directory({
+            q: sfx,
+            limit: 48,
+            locale: "en",
+          });
+          return page.items.find((item) => item.slug === slug);
+        };
+        for (const policy of policies) {
+          for (const viewer of [null, outsiderId, pendingId, invitedId]) {
+            expect(await cardOf(viewer, closed[policy].slug)).toMatchObject({
+              memberCount: null,
+              activeRecently: null,
+              openRooms: null,
+              faces: [],
+            });
+          }
+          const member = await cardOf(memberId, closed[policy].slug);
+          expect(member?.memberCount).toBe(1);
+          expect(member?.activeRecently).toEqual(expect.any(Number));
+        }
+        expect((await cardOf(null, listed.slug))?.memberCount).toBe(1);
+      }, 60_000);
+
+      it("give an agent a private community's member count only through a member owner", async () => {
+        const countsFor = async () => {
+          const items = await callerAs(null).agent.browseCommunities({
+            search: sfx,
+            limit: 50,
+          });
+          return new Map(items.map((item) => [item.slug, item.memberCount]));
+        };
+        agentKey.ownerId = null;
+        const unclaimed = await countsFor();
+        expect(unclaimed.get(closed.invite_only.slug)).toBeNull();
+        expect(unclaimed.get(closed.approval_required.slug)).toBeNull();
+        expect(unclaimed.get(listed.slug)).toBe(1);
+        agentKey.ownerId = outsiderId;
+        expect((await countsFor()).get(closed.invite_only.slug)).toBeNull();
+        agentKey.ownerId = memberId;
+        expect((await countsFor()).get(closed.invite_only.slug)).toBe(1);
+        agentKey.ownerId = null;
+      }, 60_000);
+
       it.each(policies)(
         "serve a listed %s community to its active members",
         async (policy) => {

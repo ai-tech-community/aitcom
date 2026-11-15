@@ -10,6 +10,7 @@ import {
   FEATURED_COMMUNITY_SLUGS,
   NEVER_FEATURE_SLUGS,
   asMemberCount,
+  featuredCardsForViewer,
   pickFeaturedCommunities,
   pickHomeCommunities,
 } from "./featured";
@@ -148,5 +149,60 @@ describe("pickHomeCommunities", () => {
         card("public"),
       ]).map((row) => row.slug),
     ).toEqual(["public"]);
+  });
+});
+
+describe("featuredCardsForViewer", () => {
+  const row = (
+    slug: string,
+    joinPolicy: "open" | "invite_only" | "approval_required",
+    memberCount = 40,
+    isListedInDirectory = true,
+  ) => ({
+    id: `${slug}-id`,
+    slug,
+    name: slug,
+    description: null,
+    logoUrl: null,
+    memberCount,
+    isListedInDirectory,
+    joinPolicy,
+  });
+
+  it("drops a private community's count for outsiders and keeps the order", () => {
+    const cards = featuredCardsForViewer(
+      [
+        row("open-door", "open", 12),
+        row("closed", "invite_only", 40),
+        row("asks", "approval_required", 30),
+        row(HUB_SLUG, "open", 900, false),
+      ],
+      new Set(),
+    );
+    expect(cards.map((c) => [c.slug, c.memberCount])).toEqual([
+      ["open-door", 12],
+      ["closed", null],
+      ["asks", null],
+      [HUB_SLUG, 900],
+    ]);
+    expect(cards[0]).not.toHaveProperty("joinPolicy");
+  });
+
+  it("shows a member the count of their own private community", () => {
+    expect(
+      featuredCardsForViewer(
+        [row("closed", "invite_only", 40)],
+        new Set(["closed-id"]),
+      )[0]?.memberCount,
+    ).toBe(40);
+  });
+
+  it("puts cards without a count after counted ones when it re-picks", () => {
+    expect(
+      pickHomeCommunities([
+        { ...row("hidden", "open"), memberCount: null },
+        row("small", "open", 2),
+      ]).map((c) => c.slug),
+    ).toEqual(["small", "hidden"]);
   });
 });

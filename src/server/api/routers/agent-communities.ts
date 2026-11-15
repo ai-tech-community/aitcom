@@ -28,6 +28,8 @@ import { logActivity } from "@/server/agent/activity";
 import { activateMembership } from "@/server/communities/activate-membership";
 import { consumeInviteUse } from "@/server/communities/invite-uses";
 import { canRedeemInvite } from "@/server/communities/invite-policy";
+import { cardShowsMemberCount } from "@/server/communities/content-visibility";
+import { loadMemberCommunityIds } from "@/server/communities/discovery-queries";
 import { canAdvise } from "@/server/agents/advisory";
 import {
   communityDescriptionSchema,
@@ -183,7 +185,9 @@ export const agentCommunityRouter = {
           description: communities.description,
           logoUrl: communities.logoUrl,
           joinPolicy: communities.joinPolicy,
-          memberCount: sql<number>`coalesce(${memberCountSq.count}, 0)`,
+          isListedInDirectory: communities.isListedInDirectory,
+          // Postgres `count()` is bigint, which arrives as a string.
+          memberCount: sql<number>`coalesce(${memberCountSq.count}, 0)::int`,
           createdAt: communities.createdAt,
         })
         .from(communities)
@@ -192,7 +196,20 @@ export const agentCommunityRouter = {
         .orderBy(desc(communities.createdAt), desc(communities.id))
         .limit(input.limit);
 
-      return items;
+      // An agent reads as its owner: a private community's member count
+      // only when the owner is a member (ADR-0050); null otherwise.
+      const memberOf = ctx.agent.ownerId
+        ? await loadMemberCommunityIds(ctx.db, ctx.agent.ownerId)
+        : new Set<string>();
+      return items.map(({ isListedInDirectory, ...item }) => ({
+        ...item,
+        memberCount: cardShowsMemberCount(
+          { slug: item.slug, isListedInDirectory, joinPolicy: item.joinPolicy },
+          memberOf.has(item.id),
+        )
+          ? item.memberCount
+          : null,
+      }));
     }),
 
   /** Get community details + the owner's membership/role. */

@@ -90,8 +90,8 @@ function StreetPeek({
           <Badge variant="secondary">{t("isNew")}</Badge>
         ) : null}
       </span>
-      {community.activeRecently > 0 ? (
-        <ActivityLine count={community.activeRecently} />
+      {(community.activeRecently ?? 0) > 0 ? (
+        <ActivityLine count={community.activeRecently ?? 0} />
       ) : null}
       {community.nextEvent ? (
         <NextEventLine event={community.nextEvent} />
@@ -248,8 +248,10 @@ export function SquareHero({
       items.map((c) => ({
         slug: c.slug,
         name: c.name,
-        memberCount: c.memberCount,
-        activeRecently: c.activeRecently,
+        // A count this viewer may not see draws no figures or lit
+        // windows: the street never invents activity.
+        memberCount: c.memberCount ?? 0,
+        activeRecently: c.activeRecently ?? 0,
         hasUpcomingEvent: c.nextEvent !== null,
         talking: talking.has(c.slug),
         isNew: c.isNew,

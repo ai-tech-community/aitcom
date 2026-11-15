@@ -210,7 +210,7 @@ export default async function Home() {
   ]);
 
   const [featuredCommunities, communityCount, hostNames] = await Promise.all([
-    loadFeaturedCommunities(db),
+    loadFeaturedCommunities(db, session?.user?.id ?? null),
     db
       .select({ value: count() })
       .from(communities)

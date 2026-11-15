@@ -49,7 +49,10 @@ import {
   canRedeemInvite,
 } from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
-import { loadPublicLiveness } from "@/server/communities/discovery-queries";
+import {
+  loadMemberCommunityIds,
+  loadPublicLiveness,
+} from "@/server/communities/discovery-queries";
 import {
   invalidateDirectorySnapshots,
   loadDirectorySnapshot,
@@ -248,12 +251,17 @@ export const communitiesRouter = createTRPCRouter({
       const ip = near && !input.near ? ipOriginFromHeaders(ctx.headers) : null;
       const origin = near ? (input.near ?? ip?.point ?? null) : null;
       const page = queryDirectory(all, { ...input, origin });
-      // Faces only where the roster is public (ADR-0021, ADR-0050): not on
-      // the Hub's browse card, nor on a listed private community's card.
-      // Those cards keep the aggregate count, without reading member faces.
+      // A private community's faces, count and activity go only to its
+      // members (ADR-0021, ADR-0050); the Hub's card never shows faces.
+      const userId = ctx.session?.user?.id;
+      const memberOf = userId
+        ? await loadMemberCommunityIds(ctx.db, userId)
+        : new Set<string>();
       const faces = await loadStackFacesForCommunities(
         ctx.db,
-        page.items.filter(directoryCardShowsFaces).map((c) => c.id),
+        page.items
+          .filter((c) => directoryCardShowsFaces(c, memberOf.has(c.id)))
+          .map((c) => c.id),
       );
       return {
         total: page.total,
@@ -263,10 +271,15 @@ export const communitiesRouter = createTRPCRouter({
         origin: origin
           ? { precise: !!input.near, city: ip?.city ?? null }
           : null,
-        items: page.items.map((c) => ({
-          ...toPublicDirectoryCommunity(c),
-          faces: directoryCardShowsFaces(c) ? (faces.get(c.id) ?? []) : [],
-        })),
+        items: page.items.map((c) => {
+          const isMember = memberOf.has(c.id);
+          return {
+            ...toPublicDirectoryCommunity(c, isMember),
+            faces: directoryCardShowsFaces(c, isMember)
+              ? (faces.get(c.id) ?? [])
+              : [],
+          };
+        }),
       };
     }),
 

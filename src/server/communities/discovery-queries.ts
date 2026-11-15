@@ -41,6 +41,7 @@ async function loadCommunityCandidates(
       description: communities.description,
       logoUrl: communities.logoUrl,
       isListedInDirectory: communities.isListedInDirectory,
+      joinPolicy: communities.joinPolicy,
       crossPromote: communityAcquireConfig.crossPromote,
     })
     .from(communities)
@@ -141,6 +142,8 @@ async function loadCommunityCandidates(
       name: r.name,
       description: r.description,
       logoUrl: r.logoUrl,
+      isListedInDirectory: r.isListedInDirectory,
+      joinPolicy: r.joinPolicy,
       memberCount: memberCountMap.get(r.id) ?? 0,
       activeNow: health.activeNow,
       contributionCount: health.contributionCount,

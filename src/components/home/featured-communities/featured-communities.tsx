@@ -62,7 +62,11 @@ export function FeaturedCommunities({
           <li key={community.slug} className="min-w-0">
             <CommunityCard
               community={community}
-              members={t("membersCount", { count: community.memberCount })}
+              members={
+                community.memberCount === null
+                  ? null
+                  : t("membersCount", { count: community.memberCount })
+              }
             />
           </li>
         ))}
@@ -79,9 +83,11 @@ function CommunityCard({
   members,
 }: {
   community: FeaturedCommunityCard;
-  members: string;
+  /** Null when this viewer may not see the count: no line, no figures. */
+  members: string | null;
 }) {
-  const { slug, memberCount } = community;
+  const { slug } = community;
+  const memberCount = community.memberCount ?? 0;
   const id = `featured-community-${slug}`;
   const frame = useCallback(
     (tick: number, cols: number, rows: number) =>
@@ -128,9 +134,11 @@ function CommunityCard({
               {community.description}
             </p>
           ) : null}
-          <span className="text-muted-foreground mt-auto font-mono text-xs">
-            {members}
-          </span>
+          {members !== null ? (
+            <span className="text-muted-foreground mt-auto font-mono text-xs">
+              {members}
+            </span>
+          ) : null}
         </div>
       </div>
     </Link>

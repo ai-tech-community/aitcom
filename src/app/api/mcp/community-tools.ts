@@ -43,7 +43,7 @@ export function registerCommunityTools(
     "browse-communities",
     {
       description:
-        "Browse public communities listed in the directory. Optionally filter by name. Returns community name, slug, description, join policy, and member count.",
+        "Browse communities listed in the directory. Optionally filter by name. Returns community name, slug, description, join policy, and member count. The member count is null for a private community (invite-only or approving join requests) your owner is not a member of.",
       inputSchema: {
         search: z
           .string()

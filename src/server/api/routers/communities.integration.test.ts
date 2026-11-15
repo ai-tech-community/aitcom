@@ -127,6 +127,8 @@ describe.skipIf(!RUN_DB)("communities discover [DB integration]", () => {
       name: "q",
       description: null,
       logoUrl: null,
+      isListedInDirectory: true,
+      joinPolicy: "open" as const,
       memberCount: 1,
       activeNow: 0,
       contributionCount: 0,

@@ -157,6 +157,22 @@ describe("SquareHero", () => {
     expect(screen.getByTestId("glow").textContent).toContain("[ Beta ]");
   });
 
+  it("names a private community it may not count without numbers", () => {
+    state.items = [
+      item("c", "Closed", {
+        joinPolicy: "invite_only",
+        memberCount: null,
+        activeRecently: null,
+        openRooms: null,
+      }),
+    ];
+    const { container } = render(<SquareHero headline={HEADLINE} />);
+    fireEvent.pointerEnter(screen.getByTestId("street-house-c"));
+    expect(screen.getByText("Closed")).toBeInTheDocument();
+    expect(screen.queryByText(/activeRecently/)).toBeNull();
+    expect(container.textContent).not.toMatch(/null|NaN/);
+  });
+
   it("turns the caption into a peek with Join and Visit that stays put", () => {
     state.items = [item("a", "Alpha"), item("b", "Beta")];
     const { container } = render(<SquareHero headline={HEADLINE} />);
