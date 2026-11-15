@@ -7,16 +7,21 @@ type Community = {
   name: string;
   bannerUrl: string | null;
   viewerCanReadContent: boolean;
+  viewerMembershipStatus: string | null;
 };
 
 const m = vi.hoisted(() => ({
   segments: [] as string[],
+  myCommunities: undefined as
+    | { slug: string; status: string; role: string }[]
+    | undefined,
   community: {
     data: {
       slug: "mlops",
       name: "MLOps",
       bannerUrl: null,
       viewerCanReadContent: true,
+      viewerMembershipStatus: null,
     } as Community | undefined,
     isPending: false,
     isLoading: false,
@@ -39,7 +44,7 @@ vi.mock("@/trpc/react", () => ({
       getBySlug: {
         useQuery: () => m.community,
       },
-      getMyCommunities: { useQuery: () => ({ data: undefined }) },
+      getMyCommunities: { useQuery: () => ({ data: m.myCommunities }) },
     },
   },
 }));
@@ -99,10 +104,12 @@ const readable: Community = {
   name: "MLOps",
   bannerUrl: null,
   viewerCanReadContent: true,
+  viewerMembershipStatus: null,
 };
 
 beforeEach(() => {
   m.segments = [];
+  m.myCommunities = undefined;
   m.community = {
     data: { ...readable },
     isPending: false,
@@ -210,6 +217,10 @@ describe("CommunityLayoutClient frame", () => {
     );
 
     it("hands the panel the viewer's membership, so it can explain the next step", async () => {
+      m.community.data = {
+        ...m.community.data!,
+        viewerMembershipStatus: "pending_approval",
+      };
       await renderLayout([
         {
           slug: "mlops",
@@ -220,6 +231,25 @@ describe("CommunityLayoutClient frame", () => {
       expect(screen.getByTestId("members-only")).toHaveAttribute(
         "data-status",
         "pending_approval",
+      );
+    });
+
+    it("takes the membership from the same answer as the gate, not from fresher memberships", async () => {
+      // Just after accepting an invite: the memberships refetched first and
+      // say active, the community answer still says invited and unreadable.
+      // An active member who may not read is a lapsed payment, so mixing
+      // the two would flash the wrong message.
+      m.community.data = {
+        ...m.community.data!,
+        viewerMembershipStatus: "invited",
+      };
+      m.myCommunities = [{ slug: "mlops", status: "active", role: "member" }];
+      await renderLayout([
+        { slug: "mlops", status: "invited", role: "member" },
+      ]);
+      expect(screen.getByTestId("members-only")).toHaveAttribute(
+        "data-status",
+        "invited",
       );
     });
 

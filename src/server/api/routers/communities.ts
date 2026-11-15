@@ -89,6 +89,7 @@ import { countPendingJoinRequests } from "@/server/communities/pending-join-requ
 import {
   activeCommunityRole,
   activeMemberCommunityIds,
+  communityStanding,
   viewerCanReadRoster,
   viewerCommunityAccess,
 } from "@/server/communities/content-visibility-queries";
@@ -290,7 +291,8 @@ export const communitiesRouter = createTRPCRouter({
    * and how to join it. `viewerCanReadContent` says whether the viewer may
    * read its content (ADR-0050): when false the page shows only the private
    * state, so the liveness numbers stay zero, and the member counts are
-   * null unless the viewer may read the roster.
+   * null unless the viewer may read the roster. `viewerMembershipStatus` is
+   * the viewer's membership row status (null without one), read with it.
    */
   getBySlug: publicProcedure
     .input(z.object({ slug: z.string() }))
@@ -308,10 +310,16 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      const access = await viewerCommunityAccess(
+      const viewerId = ctx.session?.user?.id;
+      const access = await viewerCommunityAccess(ctx.db, community, viewerId);
+      // Where the viewer stands, in the same answer as `viewerCanReadContent`,
+      // so the members-only panel never mixes it with a fresher (or staler)
+      // membership list: right after an invite is accepted that mix reads
+      // as "active but may not read", the lapsed-payment message.
+      const { status: viewerMembershipStatus } = await communityStanding(
         ctx.db,
-        community,
-        ctx.session?.user?.id,
+        community.id,
+        viewerId,
       );
 
       const counts = access.roster
@@ -326,6 +334,7 @@ export const communitiesRouter = createTRPCRouter({
         ...community,
         newsSector: await readCommunityNewsSector(ctx.db, community.id),
         viewerCanReadContent: access.content,
+        viewerMembershipStatus,
         ...counts,
         liveness,
       };
