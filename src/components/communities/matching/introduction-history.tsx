@@ -46,7 +46,10 @@ export function IntroductionHistory({ slug }: { slug: string }) {
                 <Badge variant="secondary">{t(`status.${intro.status}`)}</Badge>
               </div>
               {intro.reason && (
-                <p className="text-muted-foreground max-w-prose text-sm break-words whitespace-pre-wrap">
+                <p
+                  dir="auto"
+                  className="text-muted-foreground max-w-prose text-sm break-words whitespace-pre-wrap"
+                >
                   {intro.reason}
                 </p>
               )}

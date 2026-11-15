@@ -77,7 +77,10 @@ function renderArticleImage(src: string, alt: string, key: number) {
         className="h-auto w-full rounded"
       />
       {alt ? (
-        <figcaption className="text-muted-foreground mt-2 text-center text-sm">
+        <figcaption
+          dir="auto"
+          className="text-muted-foreground mt-2 text-center text-sm"
+        >
           {alt}
         </figcaption>
       ) : null}
@@ -166,7 +169,11 @@ function renderAdmonition(
       className={`text-foreground my-4 rounded border px-4 py-3 ${admonitionBorderClass(variant)}`}
     >
       <p className="font-mono text-xs tracking-wider">{variant}</p>
-      {body ? <div className="mt-1 text-sm leading-relaxed">{body}</div> : null}
+      {body ? (
+        <div dir="auto" className="mt-1 text-sm leading-relaxed">
+          {body}
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -220,7 +227,10 @@ function renderNode(
             <p className="text-muted-foreground mb-2 font-mono text-xs tracking-wider">
               MERMAID
             </p>
-            <pre className="overflow-x-auto font-mono text-xs leading-relaxed">
+            <pre
+              dir="ltr"
+              className="overflow-x-auto font-mono text-xs leading-relaxed"
+            >
               <code>{source || "graph TD; A[Start] --> B[End]"}</code>
             </pre>
           </div>
@@ -255,7 +265,7 @@ function renderNode(
       }
 
       return (
-        <p key={idx} className="mb-4 leading-relaxed">
+        <p key={idx} dir="auto" className="mb-4 leading-relaxed">
           {node.children?.map((c, i) => renderNode(c, i, ctx))}
         </p>
       );
@@ -281,13 +291,14 @@ function renderNode(
         <Tag
           key={idx}
           id={slug}
+          dir="auto"
           className={`group ${headingClass[node.tag ?? "h2"]}`}
         >
           {node.children?.map((c, i) => renderNode(c, i, ctx))}
           <a
             href={`#${slug}`}
             aria-label="Link to this section"
-            className="text-muted-foreground ml-2 opacity-0 transition-opacity group-hover:opacity-100"
+            className="text-muted-foreground ms-2 opacity-0 transition-opacity group-hover:opacity-100"
           >
             #
           </a>
@@ -304,7 +315,7 @@ function renderNode(
             ? "list-none"
             : "list-disc";
       return (
-        <Tag key={idx} className={`mb-4 pl-6 ${listClass}`}>
+        <Tag key={idx} dir="auto" className={`mb-4 ps-6 ${listClass}`}>
           {node.children?.map((c, i) => renderNode(c, i, ctx))}
         </Tag>
       );
@@ -321,7 +332,8 @@ function renderNode(
       return (
         <blockquote
           key={idx}
-          className="border-primary/40 text-muted-foreground my-4 border-l-4 pl-4 italic"
+          dir="auto"
+          className="border-primary/40 text-muted-foreground my-4 border-s-4 ps-4 italic"
         >
           {node.children?.map((c, i) => renderNode(c, i, ctx))}
         </blockquote>
@@ -339,6 +351,7 @@ function renderNode(
       return (
         <pre
           key={idx}
+          dir="ltr"
           className="my-4 overflow-x-auto rounded p-4 font-mono text-sm leading-relaxed"
         >
           <code>{code}</code>
@@ -359,6 +372,7 @@ function renderNode(
         return (
           <pre
             key={idx}
+            dir="ltr"
             className="my-4 overflow-x-auto rounded p-4 font-mono text-sm leading-relaxed"
           >
             <code>{code}</code>
@@ -468,6 +482,11 @@ export type LexicalViewOptions = {
 /**
  * Payload Lexical JSON as React. Empty paragraphs that only pad a block are
  * omitted, including ones saved before the editor stopped creating them.
+ *
+ * Each text block takes its direction from its own words (`dir="auto"`), so
+ * Hebrew or Arabic reads right to left in any locale. The stored node
+ * `direction` is not used: documents built on the server always say "ltr".
+ * Code always reads left to right.
  */
 export function renderLexicalDocument(
   content: unknown,

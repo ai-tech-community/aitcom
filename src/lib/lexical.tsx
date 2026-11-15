@@ -107,6 +107,7 @@ async function HighlightedCode({
   }
   return (
     <div
+      dir="ltr"
       className="my-4 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:p-4 [&_pre]:font-mono [&_pre]:text-sm [&_pre]:leading-relaxed"
       dangerouslySetInnerHTML={{ __html: html }}
     />

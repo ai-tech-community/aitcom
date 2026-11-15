@@ -237,7 +237,10 @@ export function FeedComments({
                   </div>
                 </div>
               ) : (
-                <p className="mt-0.5 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">
+                <p
+                  dir="auto"
+                  className="mt-0.5 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap"
+                >
                   {comment.content}
                 </p>
               )}

@@ -6,7 +6,8 @@ import remarkGfm from "remark-gfm";
 /**
  * The markdown articles and threads are written in, rendered as elements.
  * Raw HTML is not enabled, and a link or image only keeps an http(s), mailto,
- * or same-site address.
+ * or same-site address. Each text block takes its direction from its own
+ * words (`dir="auto"`); code always reads left to right.
  */
 function textOf(children: ReactNode): string {
   if (typeof children === "string") return children;
@@ -47,7 +48,9 @@ const headingClass: Record<string, string> = {
 function heading(tag: "h1" | "h2" | "h3" | "h4" | "h5" | "h6") {
   const Tag = tag;
   const Component = ({ children }: { children?: ReactNode }) => (
-    <Tag className={headingClass[tag]}>{children}</Tag>
+    <Tag dir="auto" className={headingClass[tag]}>
+      {children}
+    </Tag>
   );
   Component.displayName = `Markdown${tag}`;
   return Component;
@@ -60,9 +63,21 @@ const components: Components = {
   h4: heading("h4"),
   h5: heading("h5"),
   h6: heading("h6"),
-  p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
-  ul: ({ children }) => <ul className="mb-4 list-disc pl-6">{children}</ul>,
-  ol: ({ children }) => <ol className="mb-4 list-decimal pl-6">{children}</ol>,
+  p: ({ children }) => (
+    <p dir="auto" className="mb-4 leading-relaxed">
+      {children}
+    </p>
+  ),
+  ul: ({ children }) => (
+    <ul dir="auto" className="mb-4 list-disc ps-6">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol dir="auto" className="mb-4 list-decimal ps-6">
+      {children}
+    </ol>
+  ),
   li: ({ children }) => <li className="mb-1">{children}</li>,
   a: ({ href, children }) => {
     const safe = safeUrl(href);
@@ -99,27 +114,33 @@ const components: Components = {
     );
   },
   pre: ({ children }) => (
-    <pre className="bg-muted my-4 overflow-x-auto rounded p-4 font-mono text-sm leading-relaxed">
+    <pre
+      dir="ltr"
+      className="bg-muted my-4 overflow-x-auto rounded p-4 font-mono text-sm leading-relaxed"
+    >
       {children}
     </pre>
   ),
   table: ({ children }) => (
     <div className="mb-4 overflow-x-auto">
-      <table className="w-full border-collapse text-left text-sm">
+      <table dir="auto" className="w-full border-collapse text-start text-sm">
         {children}
       </table>
     </div>
   ),
   th: ({ children }) => (
-    <th className="border-border border-b pr-3 pb-2 font-semibold">
+    <th className="border-border border-b pe-3 pb-2 font-semibold">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border-border border-b py-2 pr-3 align-top">{children}</td>
+    <td className="border-border border-b py-2 pe-3 align-top">{children}</td>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-primary/40 text-muted-foreground my-4 border-l-4 pl-4 italic">
+    <blockquote
+      dir="auto"
+      className="border-primary/40 text-muted-foreground my-4 border-s-4 ps-4 italic"
+    >
       {children}
     </blockquote>
   ),

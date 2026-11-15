@@ -37,6 +37,9 @@ function Inlines({
  * A post's text with its light formatting (bold, italic, lists), its links
  * made clickable and its @mentions shown as members. Everything is built
  * as elements from parsed data, so no member markup ever reaches the DOM.
+ *
+ * Every line and list takes its direction from its own words
+ * (`dir="auto"`), so Hebrew or Arabic reads right to left in any locale.
  */
 export function FormattedPostText({
   text,
@@ -61,7 +64,7 @@ export function FormattedPostText({
       {parsePostText(text).map((block, index) => {
         if (block.kind === "bullets") {
           return (
-            <ul key={index} className="list-disc space-y-0.5 pl-5">
+            <ul key={index} dir="auto" className="list-disc space-y-0.5 ps-5">
               {block.items.map((item, i) => (
                 <li key={i}>
                   <Inlines line={item} mentions={mentions} />
@@ -74,8 +77,9 @@ export function FormattedPostText({
           return (
             <ol
               key={index}
+              dir="auto"
               start={block.start}
-              className="list-decimal space-y-0.5 pl-5"
+              className="list-decimal space-y-0.5 ps-5"
             >
               {block.items.map((item, i) => (
                 <li key={i}>
@@ -86,12 +90,19 @@ export function FormattedPostText({
           );
         }
         return (
-          <p key={index} className="whitespace-pre-wrap">
+          <p key={index} dir="auto" className="whitespace-pre-wrap">
             {block.lines.map((line, i) => (
-              <Fragment key={i}>
-                {i > 0 ? "\n" : null}
-                <Inlines line={line} mentions={mentions} />
-              </Fragment>
+              // Each line reads in its own direction, the way Unicode
+              // treats a line break: a Hebrew paragraph and an English one
+              // in the same post each read their way. An empty line keeps
+              // its height with a <br>.
+              <span key={i} dir="auto" className="block">
+                {line.some((part) => part.text !== "") ? (
+                  <Inlines line={line} mentions={mentions} />
+                ) : (
+                  <br />
+                )}
+              </span>
             ))}
           </p>
         );

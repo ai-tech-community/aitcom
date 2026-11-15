@@ -145,7 +145,10 @@ export function ChallengeThreadDetail({
       </div>
 
       {/* Thread content */}
-      <div className="text-foreground mt-4 text-sm leading-relaxed whitespace-pre-wrap">
+      <div
+        dir="auto"
+        className="text-foreground mt-4 text-sm leading-relaxed whitespace-pre-wrap"
+      >
         {thread.content}
       </div>
 
@@ -182,7 +185,10 @@ export function ChallengeThreadDetail({
                   className="text-muted-foreground text-xs"
                 />
               </div>
-              <div className="text-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap">
+              <div
+                dir="auto"
+                className="text-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap"
+              >
                 {r.content}
               </div>
             </div>

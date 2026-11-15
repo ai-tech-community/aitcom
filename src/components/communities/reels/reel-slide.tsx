@@ -127,9 +127,10 @@ export function ReelSlide({
             type="button"
             aria-expanded={captionOpen}
             onClick={() => setCaptionOpen((open) => !open)}
-            className="focus-visible:ring-ring pointer-events-auto mt-2 block max-w-prose rounded-sm text-left text-sm leading-relaxed outline-none focus-visible:ring-[3px]"
+            className="focus-visible:ring-ring pointer-events-auto mt-2 block max-w-prose rounded-sm text-start text-sm leading-relaxed outline-none focus-visible:ring-[3px]"
           >
             <span
+              dir="auto"
               className={cn(
                 "block whitespace-pre-wrap",
                 captionOpen ? "max-h-[40dvh] overflow-y-auto" : "line-clamp-2",

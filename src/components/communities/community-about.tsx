@@ -84,6 +84,7 @@ export function CommunityDescription({ text }: { text: string }) {
       <p
         id={id}
         ref={ref}
+        dir="auto"
         data-community-description=""
         className={cn(
           // Full width so a long link breaks instead of widening the panel.
