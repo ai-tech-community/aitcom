@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isCommunityOverview,
+  isOutsiderRoute,
   isWorkspacePath,
   resolveCommunityLayoutVariant,
 } from "./layout-variant";
@@ -88,5 +89,28 @@ describe("isCommunityOverview", () => {
   it("is not any tab page", () => {
     expect(isCommunityOverview(["forum"])).toBe(false);
     expect(isCommunityOverview(["events", "abc"])).toBe(false);
+  });
+});
+
+describe("isOutsiderRoute", () => {
+  it("keeps the paid offers open to someone on their way in", () => {
+    expect(isOutsiderRoute(["offers"])).toBe(true);
+    expect(isOutsiderRoute(["offers", "42"])).toBe(true);
+    expect(isOutsiderRoute(["(group)", "offers"])).toBe(true);
+  });
+
+  it("closes the Overview and every tab", () => {
+    for (const segments of [
+      [],
+      ["forum"],
+      ["members"],
+      ["gallery"],
+      ["magazine"],
+      ["events"],
+      ["spaces", "general"],
+      ["referrals"],
+    ]) {
+      expect(isOutsiderRoute(segments)).toBe(false);
+    }
   });
 });

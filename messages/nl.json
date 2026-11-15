@@ -3111,6 +3111,18 @@
       "signInToCreate": "Meld je aan om een community te maken",
       "submit": "Community aanmaken"
     },
+    "membersOnly": {
+      "titlePrivate": "Deze community is privé",
+      "titleMembersOnly": "Alleen leden kunnen binnenkijken",
+      "join": "Word lid van {community} om de berichten, evenementen en leden te zien.",
+      "request": "Vraag om lid te worden van {community}. Zodra een organisator ja zegt, zie je de berichten, evenementen en leden.",
+      "pending": "Je hebt gevraagd om lid te worden van {community}. Zodra een organisator ja zegt, zie je alles.",
+      "invited": "Je bent uitgenodigd voor {community}. Neem de uitnodiging aan om alles te zien.",
+      "inviteOnly": "Je kunt alleen op uitnodiging lid worden van {community}. Vraag een lid om je een uitnodigingslink te sturen.",
+      "unavailable": "Je kunt geen lid worden van {community}.",
+      "lapsed": "Je betaalde lidmaatschap van {community} is afgelopen. Verleng het om weer alles te zien.",
+      "offers": "Bekijk de lidmaatschappen"
+    },
     "profile": {
       "members": "Mensen",
       "offers": "Het aanbod van je community",

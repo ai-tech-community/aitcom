@@ -42,6 +42,19 @@ export function isCommunityOverview(segments: string[]): boolean {
 }
 
 /**
+ * Routes someone who may not read the community's content still opens,
+ * because they are part of getting in: the paid offers (and an offer's
+ * page), gated on their own by `communityPayments`. Every other route of a
+ * members-only community shows the members-only state instead.
+ */
+const OUTSIDER_ROUTES: ReadonlyArray<string> = ["offers"];
+
+export function isOutsiderRoute(segments: string[]): boolean {
+  const [first] = routeSegments(segments);
+  return first !== undefined && OUTSIDER_ROUTES.includes(first);
+}
+
+/**
  * The same decision from a locale-free pathname (next-intl's `usePathname`),
  * for site chrome outside the community layout, such as the footer.
  */

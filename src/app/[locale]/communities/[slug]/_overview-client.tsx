@@ -54,8 +54,11 @@ export function CommunityOverviewPageClient({
           </Button>
         </div>
       )}
-      {/* Liveness preview — visible to non-members above the feed. The join
-          control lives in the community rail, who is here in About. */}
+      {/* Liveness preview — visible to non-members above the feed. Only
+          viewers who may read the community get here (an outsider of a
+          members-only community sees the layout's members-only state), and
+          the server sends the numbers only to them. The join control lives
+          in the community rail, who is here in About. */}
       {community &&
         !isMember &&
         (community.liveness.activeContributors > 0 ||

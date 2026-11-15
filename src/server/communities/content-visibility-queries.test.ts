@@ -25,6 +25,7 @@ import {
   viewerCanReadContent,
   viewerCanReadContentOf,
   viewerCanReadRoster,
+  viewerCommunityAccess,
 } from "./content-visibility-queries";
 
 beforeEach(() => {
@@ -123,6 +124,46 @@ describe("content and roster reads", () => {
     await expect(
       viewerCanReadRoster(membershipDb("member").db, PRIVATE_LISTED, "u1"),
     ).resolves.toBe(true);
+  });
+
+  it("answers content and roster together with at most one membership lookup", async () => {
+    const outsider = membershipDb(null);
+    await expect(
+      viewerCommunityAccess(outsider.db, PRIVATE_LISTED, "u1"),
+    ).resolves.toEqual({ content: false, roster: false });
+    expect(outsider.membership).toHaveBeenCalledTimes(1);
+
+    const member = membershipDb("member");
+    await expect(
+      viewerCommunityAccess(member.db, PRIVATE_LISTED, "u1"),
+    ).resolves.toEqual({ content: true, roster: true });
+
+    const guest = membershipDb(null);
+    await expect(
+      viewerCommunityAccess(guest.db, PUBLIC_LISTED, null),
+    ).resolves.toEqual({ content: true, roster: true });
+    expect(guest.membership).not.toHaveBeenCalled();
+  });
+
+  it("gives the Hub's outsiders its content but not its roster", async () => {
+    const hub = {
+      id: "hub",
+      slug: "ait",
+      isListedInDirectory: false,
+      joinPolicy: "open" as const,
+    };
+    await expect(
+      viewerCommunityAccess(membershipDb(null).db, hub, null),
+    ).resolves.toEqual({ content: true, roster: false });
+  });
+
+  it("refuses both before paid admission", async () => {
+    payments.canReadPaidCommunity.mockResolvedValue(false);
+    const { db, membership } = membershipDb("member");
+    await expect(
+      viewerCommunityAccess(db, PUBLIC_LISTED, "u1"),
+    ).resolves.toEqual({ content: false, roster: false });
+    expect(membership).not.toHaveBeenCalled();
   });
 
   it("reads the join policy when it looks a community up", async () => {

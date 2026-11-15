@@ -3111,6 +3111,18 @@
       "signInToCreate": "Sign in to create a community",
       "submit": "Create Community"
     },
+    "membersOnly": {
+      "titlePrivate": "This community is private",
+      "titleMembersOnly": "Only members can see inside",
+      "join": "Join {community} to see its posts, events and members.",
+      "request": "Ask to join {community}. Once an organizer says yes, you can see its posts, events and members.",
+      "pending": "You asked to join {community}. Once an organizer says yes, you can see everything inside.",
+      "invited": "You are invited to {community}. Accept the invitation to see everything inside.",
+      "inviteOnly": "You can join {community} only with an invitation. Ask a member to send you an invite link.",
+      "unavailable": "You can't join {community}.",
+      "lapsed": "Your paid membership of {community} has ended. Renew it to see everything inside again.",
+      "offers": "See membership options"
+    },
     "profile": {
       "members": "People",
       "offers": "What your community offers",

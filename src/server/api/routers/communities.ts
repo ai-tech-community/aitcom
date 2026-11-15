@@ -85,7 +85,10 @@ import { listMyCommunities } from "@/server/communities/my-communities";
 import { membershipPaymentAllowed } from "@/server/payments/access";
 import { stopCommunityMembershipBilling } from "@/server/payments/management";
 import { countPendingJoinRequests } from "@/server/communities/pending-join-requests";
-import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
+import {
+  viewerCanReadRoster,
+  viewerCommunityAccess,
+} from "@/server/communities/content-visibility-queries";
 import { activateMembership } from "@/server/communities/activate-membership";
 import {
   joinSourceSchema,
@@ -121,6 +124,32 @@ async function verifiedJoinMetadata(
     source,
   );
   return verified ? joinSourceMetadata(verified) : undefined;
+}
+
+/** Active members, and how many of them run the community. */
+async function activeMemberCounts(
+  db: typeof Database,
+  communityId: string,
+): Promise<{ memberCount: number; adminCount: number }> {
+  const [row] = await db
+    .select({
+      memberCount: count(),
+      adminCount: sql<number>`count(*) filter (where ${inArray(
+        communityMemberships.role,
+        ["owner", "admin"],
+      )})::int`,
+    })
+    .from(communityMemberships)
+    .where(
+      and(
+        eq(communityMemberships.communityId, communityId),
+        eq(communityMemberships.status, "active"),
+      ),
+    );
+  return {
+    memberCount: row?.memberCount ?? 0,
+    adminCount: row?.adminCount ?? 0,
+  };
 }
 
 /** The membership changed between reading and writing it (e.g. a ban). */
@@ -241,51 +270,49 @@ export const communitiesRouter = createTRPCRouter({
       };
     }),
 
-  /** Get community by slug (public profile) */
+  /**
+   * A community's public profile, and what this viewer may see inside it.
+   * Everyone gets who the community is (name, description, logo, banner)
+   * and how to join it. `viewerCanReadContent` says whether the viewer may
+   * read its content (ADR-0050): when false the page shows only the private
+   * state, so the liveness numbers stay zero, and the member counts are
+   * null unless the viewer may read the roster.
+   */
   getBySlug: publicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
+      const row = await ctx.db.query.communities.findFirst({
         where: and(
           eq(communities.slug, input.slug),
           isNull(communities.deletedAt),
         ),
       });
 
-      if (!community) {
+      if (!row) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
+      // Who created it is roster information, and no screen reads it.
+      const { createdBy: _createdBy, ...community } = row;
 
-      const [memberCountResult] = await ctx.db
-        .select({ count: count() })
-        .from(communityMemberships)
-        .where(
-          and(
-            eq(communityMemberships.communityId, community.id),
-            eq(communityMemberships.status, "active"),
-          ),
-        );
+      const access = await viewerCommunityAccess(
+        ctx.db,
+        community,
+        ctx.session?.user?.id,
+      );
 
-      const [adminCountResult] = await ctx.db
-        .select({ count: count() })
-        .from(communityMemberships)
-        .where(
-          and(
-            eq(communityMemberships.communityId, community.id),
-            eq(communityMemberships.status, "active"),
-            inArray(communityMemberships.role, ["owner", "admin"]),
-          ),
-        );
+      const counts = access.roster
+        ? await activeMemberCounts(ctx.db, community.id)
+        : { memberCount: null, adminCount: null };
 
-      const liveness = community.isListedInDirectory
+      const liveness = access.content
         ? await loadPublicLiveness(ctx.db, community.id, new Date())
         : { activeContributors: 0, recentThreads: 0 };
 
       return {
         ...community,
         newsSector: await readCommunityNewsSector(ctx.db, community.id),
-        memberCount: memberCountResult?.count ?? 0,
-        adminCount: adminCountResult?.count ?? 0,
+        viewerCanReadContent: access.content,
+        ...counts,
         liveness,
       };
     }),

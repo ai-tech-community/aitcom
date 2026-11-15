@@ -201,6 +201,30 @@ export async function viewerCanReadContentOf(
   return viewerCanReadContent(db, community, userId);
 }
 
+/**
+ * Both reads for one viewer in one pass: the paid-entry check once, and
+ * the membership lookup only when the community's content or roster is not
+ * public anyway. Same answers as `viewerCanReadContent` and
+ * `viewerCanReadRoster`.
+ */
+export async function viewerCommunityAccess(
+  db: DB,
+  community: CommunityRef,
+  userId: string | null | undefined,
+): Promise<{ content: boolean; roster: boolean }> {
+  if (!(await canReadPaidCommunity(db, community.id, userId))) {
+    return { content: false, roster: false };
+  }
+  const content = canReadContent(community, false);
+  const roster = canReadRoster(community, false);
+  if (content && roster) return { content, roster };
+  const isMember = await isActiveCommunityMember(db, community.id, userId);
+  return {
+    content: canReadContent(community, isMember),
+    roster: canReadRoster(community, isMember),
+  };
+}
+
 export async function viewerCanReadRoster(
   db: DB,
   community: CommunityRef,

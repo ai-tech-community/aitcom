@@ -44,7 +44,7 @@ export function CommunityAbout({
       className={cn("flex flex-col gap-3", className)}
     >
       <SectionLabel id={headingId}>{t("about")}</SectionLabel>
-      {description ? <ClampedText text={description} /> : null}
+      {description ? <CommunityDescription text={description} /> : null}
       {stack.isLoading ? (
         <div className="flex -space-x-2" aria-hidden="true">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -58,8 +58,11 @@ export function CommunityAbout({
   );
 }
 
-/** Plain text kept to six lines, with a toggle only when it is longer. */
-function ClampedText({ text }: { text: string }) {
+/**
+ * A community's description: plain text kept to six lines, with a toggle
+ * only when it is longer. Also the private state's introduction.
+ */
+export function CommunityDescription({ text }: { text: string }) {
   const t = useTranslations("communities.profile");
   const id = useId();
   const ref = useRef<HTMLParagraphElement>(null);

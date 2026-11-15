@@ -3111,6 +3111,18 @@
       "signInToCreate": "Connectez-vous pour créer une communauté",
       "submit": "Créer la communauté"
     },
+    "membersOnly": {
+      "titlePrivate": "Cette communauté est privée",
+      "titleMembersOnly": "Seuls les membres voient l’intérieur",
+      "join": "Rejoignez {community} pour voir ses publications, ses événements et ses membres.",
+      "request": "Demandez à rejoindre {community}. Dès qu’un organisateur accepte, vous voyez ses publications, ses événements et ses membres.",
+      "pending": "Vous avez demandé à rejoindre {community}. Dès qu’un organisateur accepte, vous voyez tout.",
+      "invited": "Vous êtes invité à rejoindre {community}. Acceptez l’invitation pour tout voir.",
+      "inviteOnly": "Vous ne pouvez rejoindre {community} que sur invitation. Demandez à un membre de vous envoyer un lien d’invitation.",
+      "unavailable": "Vous ne pouvez pas rejoindre {community}.",
+      "lapsed": "Votre adhésion payante à {community} a pris fin. Renouvelez-la pour tout voir à nouveau.",
+      "offers": "Voir les adhésions"
+    },
     "profile": {
       "members": "Personnes",
       "offers": "Les offres de votre communauté",

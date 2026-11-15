@@ -340,6 +340,148 @@ describe.skipIf(!RUN_DB)(
       });
     });
 
+    describe("listed private communities (ADR-0050)", () => {
+      type Policy = "invite_only" | "approval_required";
+      let closed: Record<Policy, { id: string; slug: string }>;
+      let closedThreads: { id: number; slug: string }[];
+      let pendingId: string;
+      let invitedId: string;
+
+      beforeEach(async () => {
+        const { db, schema } = m;
+        pendingId = `vis-pending-${sfx}`;
+        invitedId = `vis-invited-${sfx}`;
+        await db.insert(schema.user).values([
+          { id: pendingId, email: `${pendingId}@example.test`, name: "P" },
+          { id: invitedId, email: `${invitedId}@example.test`, name: "I" },
+        ]);
+        const rows = await db
+          .insert(schema.communities)
+          .values(
+            (["invite_only", "approval_required"] as const).map((policy) => ({
+              name: `Closed ${policy} ${sfx}`,
+              slug: `closed-${policy.replace("_", "-")}-${sfx}`,
+              createdBy: memberId,
+              isListedInDirectory: true,
+              joinPolicy: policy,
+            })),
+          )
+          .returning();
+        closed = {
+          invite_only: { id: rows[0]!.id, slug: rows[0]!.slug },
+          approval_required: { id: rows[1]!.id, slug: rows[1]!.slug },
+        };
+        const ids = [closed.invite_only.id, closed.approval_required.id];
+        await db.insert(schema.communityMemberships).values(
+          ids.flatMap((communityId) => [
+            { communityId, userId: memberId, status: "active" as const },
+            {
+              communityId,
+              userId: pendingId,
+              status: "pending_approval" as const,
+            },
+            { communityId, userId: invitedId, status: "invited" as const },
+          ]),
+        );
+        closedThreads = [
+          await createThread("closed-invite-plans", closed.invite_only.id),
+          await createThread(
+            "closed-approval-plans",
+            closed.approval_required.id,
+          ),
+        ];
+      });
+
+      afterEach(async () => {
+        const { db, schema } = m;
+        const { eq, inArray } = await import("drizzle-orm");
+        const threadIds = closedThreads.map((t) => t.id);
+        await m.payload.delete({
+          collection: "forum-replies",
+          where: { thread: { in: threadIds } },
+        });
+        await m.payload.delete({
+          collection: "forum-threads",
+          where: { id: { in: threadIds } },
+        });
+        const ids = [closed.invite_only.id, closed.approval_required.id];
+        await db
+          .delete(schema.communityMemberships)
+          .where(inArray(schema.communityMemberships.communityId, ids));
+        await db
+          .delete(schema.communities)
+          .where(inArray(schema.communities.id, ids));
+        for (const id of [pendingId, invitedId]) {
+          await db.delete(schema.user).where(eq(schema.user.id, id));
+        }
+      });
+
+      const policies: Policy[] = ["invite_only", "approval_required"];
+
+      it.each(policies)(
+        "hide a listed %s community's forum and roster from every outsider",
+        async (policy) => {
+          for (const viewer of [null, outsiderId, pendingId, invitedId]) {
+            const caller = callerAs(viewer);
+            await expect(
+              caller.forum.getThreads({ communitySlug: closed[policy].slug }),
+            ).rejects.toMatchObject({ code: "NOT_FOUND" });
+            await expect(
+              caller.communities.getMembers({ slug: closed[policy].slug }),
+            ).rejects.toMatchObject({ code: "NOT_FOUND" });
+            await expect(
+              caller.communities.getMemberStack({ slug: closed[policy].slug }),
+            ).resolves.toEqual({ faces: [], total: 0 });
+            const profile = await caller.communities.getBySlug({
+              slug: closed[policy].slug,
+            });
+            expect(profile).toMatchObject({
+              joinPolicy: policy,
+              viewerCanReadContent: false,
+              memberCount: null,
+              liveness: { activeContributors: 0, recentThreads: 0 },
+            });
+          }
+        },
+        30_000,
+      );
+
+      it("drop listed private threads from the unscoped listing for outsiders", async () => {
+        const outsider = await callerAs(outsiderId).forum.getThreads({
+          limit: 50,
+          search: "plans",
+        });
+        for (const thread of closedThreads) {
+          expect(slugsOf(outsider.threads)).not.toContain(thread.slug);
+        }
+        const member = await callerAs(memberId).forum.getThreads({
+          limit: 50,
+          search: "plans",
+        });
+        expect(slugsOf(member.threads)).toEqual(
+          expect.arrayContaining(closedThreads.map((t) => t.slug)),
+        );
+      }, 30_000);
+
+      it.each(policies)(
+        "serve a listed %s community to its active members",
+        async (policy) => {
+          const caller = callerAs(memberId);
+          const res = await caller.forum.getThreads({
+            communitySlug: closed[policy].slug,
+          });
+          expect(res.threads).toHaveLength(1);
+          await expect(
+            caller.communities.getMembers({ slug: closed[policy].slug }),
+          ).resolves.toBeTruthy();
+          await expect(
+            caller.communities.getBySlug({ slug: closed[policy].slug }),
+          ).resolves.toMatchObject({ viewerCanReadContent: true });
+        },
+        30_000,
+      );
+    });
+
     describe("communities roster (shared rule)", () => {
       it("keeps an unlisted member list members-only", async () => {
         await expect(

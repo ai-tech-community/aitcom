@@ -14,10 +14,12 @@ import {
 } from "@/server/better-auth/hub-session";
 import { CommunityBanner } from "@/components/communities/community-banner";
 import { CommunityIdentity } from "@/components/communities/community-identity";
+import { CommunityMembersOnly } from "@/components/communities/community-members-only";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { Spinner } from "@/components/ui/spinner";
 import {
   isCommunityOverview,
+  isOutsiderRoute,
   resolveCommunityLayoutVariant,
 } from "@/lib/communities/layout-variant";
 import { useJoinDeepLink } from "@/components/communities/use-community-join";
@@ -73,6 +75,21 @@ export function CommunityLayoutClient({
     notFound();
   }
   const community = communityQuery.data;
+  // Someone who may not read the community's content (an outsider of a
+  // private or unlisted community, ADR-0050) gets who it is and how to get
+  // in, never its tabs or pages — except the routes that are part of
+  // getting in (the paid offers), which keep their own gate.
+  const membersOnly = !community.viewerCanReadContent;
+  const page =
+    membersOnly && !isOutsiderRoute(segments) ? (
+      <CommunityMembersOnly
+        community={community}
+        membershipStatus={membershipStatus}
+        memberRole={memberRole}
+      />
+    ) : (
+      children
+    );
 
   return (
     <PageDocumentAuthProvider user={initialUser}>
@@ -83,9 +100,10 @@ export function CommunityLayoutClient({
         // left from `lg` — a named exception to the default page frame
         // (DESIGN.md "Page frame"). Below `lg` the rail's wrapper drops out
         // (`contents`), so identity and the sticky tab bar stack above the page.
-        // The Overview opens with the banner across the full width.
+        // The Overview opens with the banner across the full width, and so
+        // does the members-only state on every route.
         <div className="px-4 py-8 sm:px-8">
-          {isCommunityOverview(segments) ? (
+          {membersOnly || isCommunityOverview(segments) ? (
             <CommunityBanner community={community} className="mb-8" />
           ) : null}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
@@ -98,10 +116,12 @@ export function CommunityLayoutClient({
                 membershipStatus={membershipStatus}
                 memberRole={memberRole}
               />
-              <CommunityNav slug={slug} memberRole={memberRole} />
+              {membersOnly ? null : (
+                <CommunityNav slug={slug} memberRole={memberRole} />
+              )}
             </div>
             {/* Not <main>: the root layout already provides the main landmark. */}
-            <div className="min-w-0">{children}</div>
+            <div className="min-w-0">{page}</div>
           </div>
         </div>
       )}

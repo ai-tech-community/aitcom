@@ -2,12 +2,22 @@ import { Suspense } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 
+type Community = {
+  slug: string;
+  name: string;
+  bannerUrl: string | null;
+  viewerCanReadContent: boolean;
+};
+
 const m = vi.hoisted(() => ({
   segments: [] as string[],
   community: {
-    data: { slug: "mlops", name: "MLOps", bannerUrl: null } as
-      | { slug: string; name: string; bannerUrl: string | null }
-      | undefined,
+    data: {
+      slug: "mlops",
+      name: "MLOps",
+      bannerUrl: null,
+      viewerCanReadContent: true,
+    } as Community | undefined,
     isPending: false,
     isLoading: false,
     isError: false,
@@ -49,6 +59,17 @@ vi.mock("@/components/communities/community-identity", () => ({
 vi.mock("@/components/communities/community-nav", () => ({
   CommunityNav: () => <nav data-testid="nav" />,
 }));
+vi.mock("@/components/communities/community-members-only", () => ({
+  CommunityMembersOnly: (props: {
+    membershipStatus: string | null;
+    community: { slug: string };
+  }) => (
+    <section
+      data-testid="members-only"
+      data-status={props.membershipStatus ?? "none"}
+    />
+  ),
+}));
 
 import type { HubMembershipSeed } from "@/server/better-auth/hub-session";
 import { CommunityLayoutClient } from "./_community-layout-client";
@@ -73,10 +94,17 @@ async function renderLayout(initialMemberships: HubMembershipSeed[] = []) {
   return result;
 }
 
+const readable: Community = {
+  slug: "mlops",
+  name: "MLOps",
+  bannerUrl: null,
+  viewerCanReadContent: true,
+};
+
 beforeEach(() => {
   m.segments = [];
   m.community = {
-    data: { slug: "mlops", name: "MLOps", bannerUrl: null },
+    data: { ...readable },
     isPending: false,
     isLoading: false,
     isError: false,
@@ -131,7 +159,7 @@ describe("CommunityLayoutClient frame", () => {
     const banner = "https://cdn.example.test/banner.png";
 
     it("runs across the top of the Overview, above the rail", async () => {
-      m.community.data = { slug: "mlops", name: "MLOps", bannerUrl: banner };
+      m.community.data = { ...readable, bannerUrl: banner };
       const { container } = await renderLayout();
       const img = container.querySelector("[data-community-banner]");
       expect(img).toHaveAttribute("src", banner);
@@ -143,7 +171,7 @@ describe("CommunityLayoutClient frame", () => {
     });
 
     it("stays off the other pages, so their content keeps the space", async () => {
-      m.community.data = { slug: "mlops", name: "MLOps", bannerUrl: banner };
+      m.community.data = { ...readable, bannerUrl: banner };
       m.segments = ["forum"];
       const { container } = await renderLayout();
       expect(container.querySelector("[data-community-banner]")).toBeNull();
@@ -152,6 +180,62 @@ describe("CommunityLayoutClient frame", () => {
     it("is absent when the community has none", async () => {
       const { container } = await renderLayout();
       expect(container.querySelector("[data-community-banner]")).toBeNull();
+    });
+  });
+
+  describe("members-only state (ADR-0050)", () => {
+    const banner = "https://cdn.example.test/banner.png";
+
+    beforeEach(() => {
+      m.community.data = {
+        ...readable,
+        bannerUrl: banner,
+        viewerCanReadContent: false,
+      };
+    });
+
+    it.each([[[]], [["forum"]], [["members"]], [["gallery"]], [["magazine"]]])(
+      "shows banner, identity and the private panel on %j, never the tabs or the page",
+      async (segments) => {
+        m.segments = segments;
+        const { container } = await renderLayout();
+        expect(
+          container.querySelector("[data-community-banner]"),
+        ).toHaveAttribute("src", banner);
+        expect(screen.getByTestId("identity")).toBeInTheDocument();
+        expect(screen.getByTestId("members-only")).toBeInTheDocument();
+        expect(screen.queryByTestId("nav")).toBeNull();
+        expect(screen.queryByTestId("page")).toBeNull();
+      },
+    );
+
+    it("hands the panel the viewer's membership, so it can explain the next step", async () => {
+      await renderLayout([
+        {
+          slug: "mlops",
+          status: "pending_approval",
+          role: "member",
+        },
+      ]);
+      expect(screen.getByTestId("members-only")).toHaveAttribute(
+        "data-status",
+        "pending_approval",
+      );
+    });
+
+    it("keeps the paid offers reachable, still without the tabs", async () => {
+      m.segments = ["offers"];
+      await renderLayout();
+      expect(screen.getByTestId("page")).toBeInTheDocument();
+      expect(screen.queryByTestId("members-only")).toBeNull();
+      expect(screen.queryByTestId("nav")).toBeNull();
+    });
+
+    it("leaves a workspace route to its own gate", async () => {
+      m.segments = ["events", "new"];
+      await renderLayout();
+      expect(screen.getByTestId("page")).toBeInTheDocument();
+      expect(screen.queryByTestId("members-only")).toBeNull();
     });
   });
 });
