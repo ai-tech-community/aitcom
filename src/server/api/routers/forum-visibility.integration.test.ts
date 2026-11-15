@@ -441,6 +441,7 @@ describe.skipIf(!RUN_DB)(
               memberCount: null,
               liveness: { activeContributors: 0, recentThreads: 0 },
             });
+            expect(profile).not.toHaveProperty("createdBy");
           }
         },
         30_000,

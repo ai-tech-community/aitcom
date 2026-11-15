@@ -281,18 +281,18 @@ export const communitiesRouter = createTRPCRouter({
   getBySlug: publicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
-      const row = await ctx.db.query.communities.findFirst({
+      const community = await ctx.db.query.communities.findFirst({
         where: and(
           eq(communities.slug, input.slug),
           isNull(communities.deletedAt),
         ),
+        // Who created it is roster information, and no screen reads it.
+        columns: { createdBy: false },
       });
 
-      if (!row) {
+      if (!community) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
-      // Who created it is roster information, and no screen reads it.
-      const { createdBy: _createdBy, ...community } = row;
 
       const access = await viewerCommunityAccess(
         ctx.db,

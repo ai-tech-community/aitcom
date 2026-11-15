@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { JoinPolicy } from "@/server/communities/invite-policy";
+import type * as PaymentsAccess from "@/server/payments/access";
 
 const fake = vi.hoisted(() => ({
   community: vi.fn(),
@@ -19,7 +20,7 @@ vi.mock("@/server/better-auth", () => ({
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => ({}) }));
 vi.mock("@/server/agent/activity", () => ({ logActivity: vi.fn() }));
 vi.mock("@/server/payments/access", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/server/payments/access")>()),
+  ...(await importOriginal<typeof PaymentsAccess>()),
   canReadPaidCommunity: async () => true,
   membershipPaymentAllowed: async () => true,
 }));
@@ -47,7 +48,6 @@ function row(joinPolicy: JoinPolicy, isListedInDirectory = true) {
     joinPolicy,
     isListedInDirectory,
     feedPostPolicy: "all_members",
-    createdBy: "owner-user-id",
     deletedAt: null,
   };
 }
@@ -104,8 +104,10 @@ describe("communities.getBySlug", () => {
           adminCount: null,
           liveness: { activeContributors: 0, recentThreads: 0 },
         });
-        expect(community).not.toHaveProperty("createdBy");
       }
+      expect(fake.community).toHaveBeenCalledWith(
+        expect.objectContaining({ columns: { createdBy: false } }),
+      );
       expect(fake.liveness).not.toHaveBeenCalled();
       expect(fake.counts).not.toHaveBeenCalled();
     },

@@ -470,5 +470,43 @@ describe.skipIf(!RUN_DB)(
         expect(byQuery).toEqual(await readableByResolver(viewerId, "full"));
       }
     }, 60_000);
+
+    it.each(["invite_only", "approval_required"] as const)(
+      "open→%s: a listed community turned private hides unconfirmed issues in both forms",
+      async (joinPolicy) => {
+        const { eq } = await import("drizzle-orm");
+        const unconfirmed = fx.issues.find(
+          (i) => i.label === "listed-published-public-unconfirmed",
+        )!;
+        const confirmed = fx.issues.find(
+          (i) => i.label === "listed-published-public-confirmed",
+        )!;
+        const teaser = fx.issues.find(
+          (i) => i.label === "listed-published-teaser-unconfirmed",
+        )!;
+
+        await m.db
+          .update(m.schema.communities)
+          .set({ joinPolicy })
+          .where(eq(m.schema.communities.id, fx.communities.listed));
+
+        for (const viewerId of [null, fx.users.outsider]) {
+          for (const reach of ["teaser", "full"] as const) {
+            const byQuery = await readableByQuery(viewerId, reach);
+            expect(byQuery).not.toContain(unconfirmed.label);
+            expect(byQuery).not.toContain(teaser.label);
+            expect(byQuery).toContain(confirmed.label);
+            expect(byQuery).toEqual(await readableByResolver(viewerId, reach));
+          }
+          expect(
+            await m.access.loadMagazineIssueAccess(m.db, unconfirmed, viewerId),
+          ).toBe("none");
+          expect(
+            await m.access.loadMagazineIssueAccess(m.db, confirmed, viewerId),
+          ).toBe("full");
+        }
+      },
+      60_000,
+    );
   },
 );
