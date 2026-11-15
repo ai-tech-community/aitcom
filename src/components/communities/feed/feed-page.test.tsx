@@ -33,6 +33,11 @@ vi.mock("./post-composer", () => ({ PostComposer: () => null }));
 vi.mock("./community-sidebar", () => ({
   CommunitySidebar: () => <div data-testid="community-sidebar" />,
 }));
+vi.mock("@/components/communities/community-about", () => ({
+  CommunityAbout: ({ className }: { className?: string }) => (
+    <section data-testid="community-about" className={className} />
+  ),
+}));
 vi.mock("./topic-chips", () => ({ TopicChips: () => null }));
 vi.mock("./community-activity-feed", () => ({
   CommunityActivityFeed: () => null,
@@ -103,5 +108,18 @@ describe("FeedPage side panel", () => {
     // already taking the left of the page.
     expect(panel?.className).toMatch(/\bxl:sticky\b/);
     expect(panel?.className).not.toMatch(/\b(hidden|lg:sticky)\b/);
+  });
+
+  it("opens with About, which moves above the feed below xl", () => {
+    const { container } = renderPage(false);
+    const panel = container.querySelector("[data-feed-side-panel]");
+    const about = screen.getByTestId("community-about");
+    expect(screen.getAllByTestId("community-about")).toHaveLength(1);
+    expect(panel?.firstElementChild).toBe(about);
+    // Below xl the panel's wrapper drops out, so its two parts become items
+    // of the page grid: About first, the rest after the feed.
+    expect(panel?.className).toMatch(/^contents\b/);
+    expect(about.className).toMatch(/\border-first\b/);
+    expect(about.className).toMatch(/\bxl:order-none\b/);
   });
 });

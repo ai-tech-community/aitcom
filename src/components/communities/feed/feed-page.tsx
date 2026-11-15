@@ -17,6 +17,7 @@ import { TopicChips } from "./topic-chips";
 import { CommunityActivityFeed, FeedSkeleton } from "./community-activity-feed";
 import { WelcomeChecklist } from "@/components/communities/onboarding/welcome-checklist";
 import { HubFirstSessionPath } from "@/components/communities/first-session-path";
+import { CommunityAbout } from "@/components/communities/community-about";
 
 interface FeedPageProps {
   slug: string;
@@ -109,11 +110,13 @@ export function FeedPage({
       </div>
 
       {/* Side panel: beside the feed from `xl` (the community rail takes the
-          left), below it on narrower screens. */}
+          left), opening with About. Below `xl` the panel's wrapper drops out
+          (`contents`): About moves above the feed and the rest follows it. */}
       <div
         data-feed-side-panel=""
-        className="xl:sticky xl:top-24 xl:max-h-[calc(100dvh-7rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-width:thin]"
+        className="contents xl:sticky xl:top-24 xl:flex xl:max-h-[calc(100dvh-7rem)] xl:flex-col xl:gap-8 xl:self-start xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-width:thin]"
       >
+        <CommunityAbout slug={slug} className="order-first xl:order-none" />
         <CommunitySidebar slug={slug} />
       </div>
     </div>

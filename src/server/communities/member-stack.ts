@@ -60,6 +60,13 @@ export function shouldRenderStack(totalActiveCount: number): boolean {
   return totalActiveCount >= MEMBER_STACK_MIN_TOTAL;
 }
 
+/** Whether the stack shows at all: enough active members and at least one
+ *  public face to draw. Callers that frame the stack (a section heading) use
+ *  this to leave the frame out too. */
+export function isStackShown(faces: StackFace[], totalActiveCount: number) {
+  return shouldRenderStack(totalActiveCount) && faces.length > 0;
+}
+
 /** What the stack actually renders, given the available public faces and the
  *  active total. The "+N" circle appears ONLY when the community has more than
  *  MEMBER_STACK_MAX_FACES members; below that it's all faces, no count.

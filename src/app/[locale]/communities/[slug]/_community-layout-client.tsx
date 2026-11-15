@@ -12,12 +12,15 @@ import {
   type HubAuthUser,
   type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
+import { CommunityBanner } from "@/components/communities/community-banner";
 import { CommunityIdentity } from "@/components/communities/community-identity";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { Spinner } from "@/components/ui/spinner";
-import { resolveCommunityLayoutVariant } from "@/lib/communities/layout-variant";
+import {
+  isCommunityOverview,
+  resolveCommunityLayoutVariant,
+} from "@/lib/communities/layout-variant";
 import { useJoinDeepLink } from "@/components/communities/use-community-join";
-import { useCommunityIdentityDensity } from "@/components/communities/use-community-identity-density";
 import { useRouter } from "@/i18n/navigation";
 
 export function CommunityLayoutClient({
@@ -50,10 +53,6 @@ export function CommunityLayoutClient({
   const memberships = myCommunities ?? initialMemberships;
   const membershipStatus = membershipStatusForSlug(memberships, slug);
   const memberRole = memberRoleForSlug(memberships, slug);
-  const identityDensity = useCommunityIdentityDensity(
-    segments,
-    membershipStatus === "active",
-  );
 
   // `isLoading` is false while a query is pending but not yet fetching.
   // That is the first paint of a cold visit: the server took the missing
@@ -84,7 +83,11 @@ export function CommunityLayoutClient({
         // left from `lg` — a named exception to the default page frame
         // (DESIGN.md "Page frame"). Below `lg` the rail's wrapper drops out
         // (`contents`), so identity and the sticky tab bar stack above the page.
+        // The Overview opens with the banner across the full width.
         <div className="px-4 py-8 sm:px-8">
+          {isCommunityOverview(segments) ? (
+            <CommunityBanner community={community} className="mb-8" />
+          ) : null}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
             <div
               data-community-rail=""
@@ -94,7 +97,6 @@ export function CommunityLayoutClient({
                 community={community}
                 membershipStatus={membershipStatus}
                 memberRole={memberRole}
-                density={identityDensity}
               />
               <CommunityNav slug={slug} memberRole={memberRole} />
             </div>

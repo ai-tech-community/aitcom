@@ -197,8 +197,25 @@ describe("JoinButton for an invited member", () => {
     document.body.appendChild(heading);
     const ref = { current: heading };
     try {
-      renderButton("invite_only", "invited", "en", { focusAfterAnswer: ref });
+      renderButton("invite_only", "invited", "en", { focusAfterChange: ref });
       fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+      await waitFor(() => expect(heading).toHaveFocus());
+    } finally {
+      heading.remove();
+    }
+  });
+
+  it("moves focus to the given target after joining", async () => {
+    const heading = document.createElement("h1");
+    heading.tabIndex = -1;
+    document.body.appendChild(heading);
+    const ref = { current: heading };
+    try {
+      renderButton("open", null, "en", { focusAfterChange: ref });
+      fireEvent.click(screen.getByRole("button", { name: "Join Community" }));
+      await waitFor(() =>
+        expect(s.join).toHaveBeenCalledWith({ slug: "makers" }),
+      );
       await waitFor(() => expect(heading).toHaveFocus());
     } finally {
       heading.remove();

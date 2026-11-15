@@ -4,10 +4,9 @@ import { act, render, screen } from "@testing-library/react";
 
 const m = vi.hoisted(() => ({
   segments: [] as string[],
-  identityProps: [] as { density?: string }[],
   community: {
-    data: { slug: "mlops", name: "MLOps" } as
-      | { slug: string; name: string }
+    data: { slug: "mlops", name: "MLOps", bannerUrl: null } as
+      | { slug: string; name: string; bannerUrl: string | null }
       | undefined,
     isPending: false,
     isLoading: false,
@@ -45,10 +44,7 @@ vi.mock("@/components/communities/use-community-join", () => ({
   useJoinDeepLink: () => undefined,
 }));
 vi.mock("@/components/communities/community-identity", () => ({
-  CommunityIdentity: (props: { density?: string }) => {
-    m.identityProps.push(props);
-    return <div data-testid="identity" />;
-  },
+  CommunityIdentity: () => <div data-testid="identity" />,
 }));
 vi.mock("@/components/communities/community-nav", () => ({
   CommunityNav: () => <nav data-testid="nav" />,
@@ -79,9 +75,8 @@ async function renderLayout(initialMemberships: HubMembershipSeed[] = []) {
 
 beforeEach(() => {
   m.segments = [];
-  m.identityProps = [];
   m.community = {
-    data: { slug: "mlops", name: "MLOps" },
+    data: { slug: "mlops", name: "MLOps", bannerUrl: null },
     isPending: false,
     isLoading: false,
     isError: false,
@@ -132,26 +127,31 @@ describe("CommunityLayoutClient frame", () => {
     expect(container.querySelector("[data-community-rail]")).toBeNull();
   });
 
-  describe("identity density", () => {
-    const owner: HubMembershipSeed[] = [
-      { slug: "mlops", status: "active", role: "owner" },
-    ];
+  describe("banner", () => {
+    const banner = "https://cdn.example.test/banner.png";
 
-    it("is compact on a member's tab page", async () => {
-      m.segments = ["insights"];
-      await renderLayout(owner);
-      expect(m.identityProps.at(-1)?.density).toBe("compact");
+    it("runs across the top of the Overview, above the rail", async () => {
+      m.community.data = { slug: "mlops", name: "MLOps", bannerUrl: banner };
+      const { container } = await renderLayout();
+      const img = container.querySelector("[data-community-banner]");
+      expect(img).toHaveAttribute("src", banner);
+      const rail = container.querySelector("[data-community-rail]");
+      expect(rail).not.toContainElement(img as HTMLElement);
+      expect(
+        img!.compareDocumentPosition(rail!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
 
-    it("is compact on a member's Overview too", async () => {
-      await renderLayout(owner);
-      expect(m.identityProps.at(-1)?.density).toBe("compact");
+    it("stays off the other pages, so their content keeps the space", async () => {
+      m.community.data = { slug: "mlops", name: "MLOps", bannerUrl: banner };
+      m.segments = ["forum"];
+      const { container } = await renderLayout();
+      expect(container.querySelector("[data-community-banner]")).toBeNull();
     });
 
-    it("is full on a tab page for someone who has not joined", async () => {
-      m.segments = ["insights"];
-      await renderLayout();
-      expect(m.identityProps.at(-1)?.density).toBe("full");
+    it("is absent when the community has none", async () => {
+      const { container } = await renderLayout();
+      expect(container.querySelector("[data-community-banner]")).toBeNull();
     });
   });
 });
