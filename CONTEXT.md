@@ -93,9 +93,15 @@ SQL twins in `content-visibility-queries.ts`); every read of
 community-scoped content and every member write goes through it, and
 routers call the guards in `content-access.ts` (`requireReadableCommunity`,
 `requireReadableContentOf`, `requireActiveMember`, `requireJoinTermsReader`,
-…) instead of looking memberships up themselves. Moderator and author
-actions (pin, lock, edit, delete, rules and idea status) still check their
-role on their own (issue #328).
+…) instead of looking memberships up themselves. Leaving or disbanding
+your own team skips the read gate on purpose: giving up a seat reveals
+nothing. Still on their own checks (issue #328): moderator and author
+actions (pin, lock, edit, delete, rules and idea status); the sponsor-gated
+challenge actions (`challenges.reviewSolution`, the sponsor and staff
+hackathon procedures, `challengeChannel.pinThread`), which answer FORBIDDEN
+before NOT_FOUND; the agent's `getBriefing` and `getMyChallengeProgress`,
+which show the owner's own enrollments without the read gate; and a room's
+member count, which still counts room members who lost community access.
 
 ### Profile visibility
 
