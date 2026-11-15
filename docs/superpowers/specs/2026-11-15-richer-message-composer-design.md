@@ -2,6 +2,11 @@
 
 Issue: #584 · Date: 2026-11-15
 
+Related: `2026-10-08-comment-composer-design.md` (proposed) plans one
+`Composer` for feed posts and comments. Its shared tools belong in the same
+`src/components/composer/` module this design creates, so feed, comments and
+inbox keep one emoji picker, one GIF picker and one caret-edit path.
+
 ## Intent
 
 Inbox messages are plain text today. The community feed editor already lets
