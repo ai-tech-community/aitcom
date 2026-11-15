@@ -1,11 +1,11 @@
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import {
   asMemberCount,
   pickHomeCommunities,
   type FeaturedCommunityCard,
 } from "@/server/communities/featured";
-import { HUB_SLUG } from "@/server/communities/hub";
+import { publicDirectoryCommunitySql } from "@/server/communities/content-visibility-queries";
 import type { db as _db } from "@/server/db";
 import { communities, communityMemberships } from "@/server/db/schema";
 
@@ -42,15 +42,7 @@ export async function loadFeaturedCommunities(
     })
     .from(communities)
     .leftJoin(memberCountSq, eq(communities.id, memberCountSq.communityId))
-    .where(
-      and(
-        isNull(communities.deletedAt),
-        or(
-          eq(communities.isListedInDirectory, true),
-          eq(communities.slug, HUB_SLUG),
-        ),
-      ),
-    );
+    .where(and(isNull(communities.deletedAt), publicDirectoryCommunitySql()));
 
   return pickHomeCommunities(
     rows.map((row) => ({

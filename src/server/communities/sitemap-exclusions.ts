@@ -1,9 +1,15 @@
 import { HUB_SLUG } from "./hub";
 
 /**
- * Sitemap rules for unlisted communities (ADR-0030, `isListedInDirectory`).
- * A hidden community contributes no URL: not its page, and not a child
- * (forum thread, event, classroom, and so on) in any locale.
+ * Sitemap rules for communities (ADR-0050). Two rules, as on the site:
+ *
+ * - The **front page** (`/communities/<slug>`) follows listing: a community
+ *   on the directory (`isPublicDirectoryCommunity`, the Hub included) keeps
+ *   it, even when it is private, because outsiders see who it is and how to
+ *   join there. An unlisted community contributes no front page.
+ * - Every page **inside** (forum thread, event, classroom, and so on)
+ *   follows the content rule: a community whose content is members-only
+ *   (`hiddenContentCommunityIds`) contributes none, in any locale.
  */
 
 /** True when this doc is scoped to a community the sitemap must omit. */
@@ -31,28 +37,99 @@ export function hiddenCommunitySlugs(
 }
 
 /**
- * True when `url` is a community page or any child of a hidden community.
- * Matches path and absolute locale URLs (`/en/...`, `/nl/...`). A shorter
- * slug does not match a longer one (`demo` vs `demo-community`).
+ * Which community slugs the sitemap must not publish, per rule. `frontPage`
+ * is every live community off the directory (all but the Hub when the
+ * directory lookup failed: fail closed); `inside` is every community whose
+ * content is members-only.
  */
-export function urlListsHiddenCommunity(
+export type SitemapCommunityRules = {
+  frontPage: ReadonlySet<string>;
+  inside: ReadonlySet<string>;
+};
+
+export function sitemapCommunityRules(
+  slugById: ReadonlyMap<string, string>,
+  contentHiddenIds: readonly string[],
+  directorySlugs: ReadonlySet<string> | null,
+): SitemapCommunityRules {
+  const frontPage = new Set<string>();
+  for (const slug of slugById.values()) {
+    if (slug === HUB_SLUG) continue;
+    if (!directorySlugs?.has(slug)) {
+      frontPage.add(slug);
+    }
+  }
+  return {
+    frontPage,
+    inside: hiddenCommunitySlugs(slugById, contentHiddenIds),
+  };
+}
+
+/** Where `/communities/<slug>` occurs in `url`, as a whole slug. */
+function communityPathEnds(url: string, slug: string): string[] {
+  const needle = `/communities/${slug}`;
+  const ends: string[] = [];
+  let from = 0;
+  while (from < url.length) {
+    const at = url.indexOf(needle, from);
+    if (at === -1) break;
+    const next = url[at + needle.length];
+    if (next === undefined || next === "/" || next === "?" || next === "#") {
+      ends.push(url.slice(at + needle.length));
+    }
+    from = at + needle.length;
+  }
+  return ends;
+}
+
+/** True when `url` is a page below the front page of one of `slugs`. */
+export function urlListsCommunityInside(
   url: string,
-  hiddenSlugs: ReadonlySet<string>,
+  slugs: ReadonlySet<string>,
 ): boolean {
-  for (const slug of hiddenSlugs) {
-    const needle = `/communities/${slug}`;
-    let from = 0;
-    while (from < url.length) {
-      const at = url.indexOf(needle, from);
-      if (at === -1) break;
-      const next = url[at + needle.length];
-      if (next === undefined || next === "/" || next === "?" || next === "#") {
-        return true;
-      }
-      from = at + needle.length;
+  for (const slug of slugs) {
+    if (
+      communityPathEnds(url, slug).some(
+        (rest) => rest.startsWith("/") && rest.length > 1,
+      )
+    ) {
+      return true;
     }
   }
   return false;
+}
+
+/** The front page itself (no path below it) of one of `slugs`. */
+function urlIsCommunityFrontPage(
+  url: string,
+  slugs: ReadonlySet<string>,
+): boolean {
+  for (const slug of slugs) {
+    if (
+      communityPathEnds(url, slug).some(
+        (rest) => !rest.startsWith("/") || rest === "/",
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * True when `url` breaks a rule: a front page off the directory, or a page
+ * inside a members-only community. Matches path and absolute locale URLs
+ * (`/en/...`, `/nl/...`). A shorter slug does not match a longer one
+ * (`demo` vs `demo-community`).
+ */
+export function urlBreaksCommunityRules(
+  url: string,
+  rules: SitemapCommunityRules,
+): boolean {
+  return (
+    urlIsCommunityFrontPage(url, rules.frontPage) ||
+    urlListsCommunityInside(url, rules.inside)
+  );
 }
 
 type SitemapEntry = {
@@ -63,16 +140,17 @@ type SitemapEntry = {
 /** Drops entries whose canonical URL or any locale alternate is hidden. */
 export function withoutHiddenCommunityUrls<T extends SitemapEntry>(
   entries: readonly T[],
-  hiddenSlugs: ReadonlySet<string>,
+  rules: SitemapCommunityRules,
 ): T[] {
-  if (hiddenSlugs.size === 0) return [...entries];
+  if (rules.frontPage.size === 0 && rules.inside.size === 0) {
+    return [...entries];
+  }
   return entries.filter((entry) => {
-    if (urlListsHiddenCommunity(entry.url, hiddenSlugs)) return false;
+    if (urlBreaksCommunityRules(entry.url, rules)) return false;
     const languages = entry.alternates?.languages;
     if (!languages) return true;
     return Object.values(languages).every(
-      (url) =>
-        url == null || !urlListsHiddenCommunity(String(url), hiddenSlugs),
+      (url) => url == null || !urlBreaksCommunityRules(String(url), rules),
     );
   });
 }

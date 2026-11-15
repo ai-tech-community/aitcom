@@ -22,6 +22,7 @@ import {
   findReadableCommunityBySlug,
   isActiveCommunityMember,
   publicCommunitySql,
+  publicDirectoryCommunitySql,
   viewerCanReadContent,
   viewerCanReadContentOf,
   viewerCanReadRoster,
@@ -44,6 +45,14 @@ describe("visibility SQL twins", () => {
       '("app"."community"."isListedInDirectory" = $1 and "app"."community"."joinPolicy" = $2)',
     );
     expect(params).toEqual([true, "open"]);
+  });
+
+  it("puts listed communities and the Hub on the directory, by listing only", () => {
+    const { sql, params } = render(publicDirectoryCommunitySql());
+    expect(sql).toBe(
+      '("app"."community"."isListedInDirectory" = $1 or "app"."community"."slug" = $2)',
+    );
+    expect(params).toEqual([true, "ait"]);
   });
 
   it("makes content public on the Hub or a public community", () => {

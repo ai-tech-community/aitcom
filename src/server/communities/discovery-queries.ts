@@ -1,6 +1,6 @@
 /** Loads discovery candidates with windowed liveness signals. Thin DB glue. */
 
-import { and, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 
 import {
   communities,
@@ -15,6 +15,7 @@ import {
   type ActivityRow,
 } from "@/server/communities/insights";
 import { isPublicDirectoryCommunity } from "@/server/communities/content-visibility";
+import { publicDirectoryCommunitySql } from "@/server/communities/content-visibility-queries";
 import type { CommunityCandidate } from "@/server/communities/discovery";
 import type { db as _db } from "@/server/db";
 import { HUB_SLUG } from "./hub";
@@ -50,10 +51,7 @@ async function loadCommunityCandidates(
     .where(
       and(
         opts.includeHub
-          ? or(
-              eq(communities.isListedInDirectory, true),
-              eq(communities.slug, HUB_SLUG),
-            )
+          ? publicDirectoryCommunitySql()
           : and(
               eq(communities.isListedInDirectory, true),
               ne(communities.slug, HUB_SLUG),

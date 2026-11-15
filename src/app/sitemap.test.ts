@@ -685,6 +685,99 @@ describe("buildSitemapEntries", () => {
     );
   });
 
+  it("lists a listed community's front page, even a private one, but only public threads", async () => {
+    const find = vi.fn(async ({ collection }: { collection: string }) => {
+      if (collection === "forum-threads") {
+        return {
+          docs: [
+            // A row the content rule should already have filtered out:
+            // the slug rule must still drop it.
+            {
+              slug: "closed-plans",
+              communityId: "closed-id",
+              updatedAt: "2026-04-03",
+            },
+            {
+              slug: "hello-neighbours",
+              communityId: "nl-id",
+              updatedAt: "2026-04-03",
+            },
+          ],
+        };
+      }
+      return { docs: [] };
+    });
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () =>
+        new Map([
+          ["closed-id", "closed-circle"],
+          ["nl-id", "ait-community-netherlands"],
+          ["xxx-id", "xxx-ai"],
+          ["hub-id", "ait"],
+        ]),
+      async () => [],
+      async () => [],
+      // Content rule: the private and the unlisted community are hidden.
+      async () => ["closed-id", "xxx-id"],
+      undefined,
+      async () => [],
+      async () => [],
+      async () => [],
+      // Listing rule: the directory shows the private one, not the unlisted.
+      async () => ["closed-circle", "ait-community-netherlands", "ait"],
+    );
+    const urls = entries.flatMap((entry) => [
+      entry.url,
+      ...Object.values(entry.alternates?.languages ?? {}),
+    ]);
+
+    for (const slug of ["closed-circle", "ait-community-netherlands", "ait"]) {
+      const loc = localeFor(`/communities/${slug}`);
+      expect(urls).toContain(loc.url);
+      const entry = entries.find((item) => item.url === loc.url);
+      expect(entry?.alternates?.languages).toEqual(loc.languages);
+    }
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/communities/ait-community-netherlands/forum/hello-neighbours",
+    );
+    for (const url of urls) {
+      expect(String(url)).not.toContain("/communities/closed-circle/");
+      expect(String(url)).not.toContain("/communities/xxx-ai");
+    }
+  });
+
+  it("lists no community front page when the directory lookup fails", async () => {
+    mockGetPayloadClient.mockResolvedValue({
+      find: vi.fn(async () => ({ docs: [] })),
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map([["nl-id", "ait-community-netherlands"]]),
+      async () => [],
+      async () => [],
+      async () => [],
+      undefined,
+      async () => [],
+      async () => [],
+      async () => [],
+      async () => {
+        throw new Error("directory down");
+      },
+    );
+    expect(urlsOf(entries)).not.toContain(
+      "https://www.aitcommunity.org/en/communities/ait-community-netherlands",
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      "[sitemap] directory community lookup failed",
+      expect.any(Error),
+    );
+  });
+
   it("lists no threads when the hidden-community lookup fails", async () => {
     const find = vi.fn(async ({ collection }: { collection: string }) => ({
       docs:

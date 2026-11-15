@@ -65,6 +65,26 @@ export function publicCommunitySql(): SQL {
   )!;
 }
 
+/**
+ * SQL twin of `isPublicDirectoryCommunity`: listed, or the Hub. Listing
+ * only, never access.
+ */
+export function publicDirectoryCommunitySql(): SQL {
+  return or(
+    eq(communities.isListedInDirectory, true),
+    eq(communities.slug, HUB_SLUG),
+  )!;
+}
+
+/** Slugs of the live communities on the public directory. */
+export async function directoryCommunitySlugs(db: DB): Promise<string[]> {
+  const rows = await db
+    .select({ slug: communities.slug })
+    .from(communities)
+    .where(and(publicDirectoryCommunitySql(), isNull(communities.deletedAt)));
+  return rows.map((row) => row.slug);
+}
+
 /** SQL twin of `isContentPublic`: the Hub, or a public community. */
 export function contentPublicCommunitySql(): SQL {
   return or(eq(communities.slug, HUB_SLUG), publicCommunitySql())!;

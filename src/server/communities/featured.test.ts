@@ -105,7 +105,8 @@ describe("homepage wiring", () => {
       "utf8",
     );
     expect(src).toContain("isListedInDirectory");
-    expect(src).toContain("HUB_SLUG");
+    // Listed or the Hub, through the seam's SQL twin of the directory rule.
+    expect(src).toContain("publicDirectoryCommunitySql()");
   });
 });
 

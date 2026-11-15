@@ -23,7 +23,7 @@ import { communityContentReadableWhere } from "@/server/communities/content-visi
 import { publishedEventsVisibleWhere } from "@/lib/events/public-event-access";
 import {
   docBelongsToHiddenCommunity,
-  hiddenCommunitySlugs,
+  sitemapCommunityRules,
   withoutHiddenCommunityUrls,
 } from "@/server/communities/sitemap-exclusions";
 import { getPayloadClient } from "@/server/payload";
@@ -188,6 +188,18 @@ async function defaultCommunitySlugById(): Promise<
   }
 }
 
+/**
+ * Slugs of the live communities on the public directory: listed ones and
+ * the Hub (`isPublicDirectoryCommunity`). Their front pages are listed, a
+ * private one's too (ADR-0050).
+ */
+async function defaultDirectoryCommunitySlugs(): Promise<string[]> {
+  const { db } = await import("@/server/db");
+  const { directoryCommunitySlugs } =
+    await import("@/server/communities/content-visibility-queries");
+  return directoryCommunitySlugs(db);
+}
+
 /** Communities whose threads a signed-out visitor may not read (ADR-0030). */
 async function defaultHiddenCommunityIds(): Promise<string[]> {
   const { db } = await import("@/server/db");
@@ -298,6 +310,9 @@ export async function buildSitemapEntries(
   getDatacenterFacilityPages: () => Promise<
     readonly { path: string; updatedAt?: Date }[]
   > = defaultDatacenterFacilityPages,
+  getDirectoryCommunitySlugs: () => Promise<
+    readonly string[]
+  > = defaultDirectoryCommunitySlugs,
 ): Promise<MetadataRoute.Sitemap> {
   let awesomePagePaths: string[] = [];
   try {
@@ -445,13 +460,24 @@ export async function buildSitemapEntries(
       return path ? [localeEntries(path, safeDate(thread.updatedAt))] : [];
     });
 
-  // Community pages, forum threads, and any other URL under an unlisted
-  // slug, in every locale. Event URLs do not carry the slug; those are
-  // dropped above by community id.
-  const hiddenSlugs =
-    hiddenCommunityIds === null
-      ? new Set<string>()
-      : hiddenCommunitySlugs(communitySlugById, hiddenCommunityIds);
+  // A listed community's front page is listed, a private one's too; an
+  // unlisted one's is not. Pages inside a members-only community are not,
+  // in any locale. Event URLs do not carry the slug; those are dropped
+  // above by community id. A failed directory lookup lists no front page.
+  let directorySlugs: ReadonlySet<string> | null = null;
+  try {
+    directorySlugs = new Set(await getDirectoryCommunitySlugs());
+  } catch (error) {
+    console.error("[sitemap] directory community lookup failed", error);
+  }
+  const communityEntries = uniqueLocaleEntries(
+    [...(directorySlugs ?? [])].map((slug) => `/communities/${slug}`),
+  );
+  const communityRules = sitemapCommunityRules(
+    communitySlugById,
+    hiddenCommunityIds ?? [],
+    directorySlugs,
+  );
 
   return withoutRetiredSectionUrls(
     withoutHiddenCommunityUrls(
@@ -460,9 +486,10 @@ export async function buildSitemapEntries(
         ...eventEntries,
         ...articleEntries,
         ...magazineEntries,
+        ...communityEntries,
         ...threadEntries,
       ],
-      hiddenSlugs,
+      communityRules,
     ).filter((entry) => !isUnlistedNewsGamePath(entry.url)),
   );
 }
