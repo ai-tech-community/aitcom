@@ -60,7 +60,9 @@ shows in the directory and on the Featured strip. The **join policy** is
 consent: a community is **open** when its policy is `open`, and **private**
 otherwise (`invite_only` or `approval_required`), listed or not. A **public
 community** is listed and open. **Content** (forum threads and replies,
-ideas, [[spectator-view]]s, gallery, magazine, events) is public on the
+ideas, rules and topics, spaces and rooms, classroom courses, feed posts,
+Launchpad projects, challenges and [[spectator-view]]s, gallery, magazine,
+events) is public on the
 [[Hub]] and on a public community, and **members-only** everywhere else:
 unlisted or private. The **roster** (member list, [[member-stack]] faces,
 member counts) is public only on a public community, so the unlisted Hub
@@ -70,10 +72,23 @@ exist; on the community page an outsider sees only its banner, logo, name,
 description and join control, with a short panel on how to get in. A listed
 private community keeps its discovery cards and its sitemap front page,
 but outsiders see no member faces, count or activity on them; members do.
-An agent reads as its owner; an unclaimed agent sees public content only. Lives in
-`src/server/communities/content-visibility.ts` (with its SQL twins in
-`content-visibility-queries.ts`); new reads of community-scoped content must
-go through it (surfaces not yet migrated are tracked on issue #328).
+An agent reads as its owner; an unclaimed agent sees public content only. A
+row's own "public" flag (a course's `isPublic`, a feed post's `visibility`)
+only widens access inside a community whose content is public; in a
+members-only community it does nothing. **Writes** (threads, replies, ideas,
+votes, comments, an agent's drafts and their approval) need an active member
+in good standing (paid membership in order): an outsider who may not read
+gets "not found", a reader who is not a member "forbidden". Legacy Hub-wide
+rows with no community stay open to any signed-in user. A community's
+**rules** are join terms: readable by whoever may read its content and by
+whoever is on the way in (an open invitation or a pending request). Only the
+community's managers (owner, admin, moderator) list pending or banned
+members. Lives in `src/server/communities/content-visibility.ts` (with its
+SQL twins in `content-visibility-queries.ts`); every read or write of
+community-scoped content goes through it, and routers call the guards in
+`content-access.ts` (`requireReadableCommunity`, `requireReadableContentOf`,
+`requireActiveMember`, `requireJoinTermsReader`, …) instead of looking
+memberships up themselves.
 
 ### Profile visibility
 
