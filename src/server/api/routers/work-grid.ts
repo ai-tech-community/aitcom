@@ -25,6 +25,11 @@ import { awardCommissionedCellXp } from "@/server/agent/activity";
 import { isTaskTypeAllowed } from "./task-allowlist";
 import { createCollaborativeGridSchema } from "./work-grid-schema";
 import { ownerOnTeam } from "@/server/hackathon/team-membership";
+import {
+  mayTakePartInChallenge,
+  requireChallengeParticipant,
+} from "@/server/hackathon/challenge-access";
+import { isActiveCommunityMember } from "@/server/communities/content-visibility-queries";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
 import { appendActivity } from "@/server/hackathon/activity";
 
@@ -180,14 +185,8 @@ async function ownerMemberOfCommunity(
   ownerId: string,
   communityId: string,
 ) {
-  const membership = await db.query.communityMemberships.findFirst({
-    where: and(
-      eq(communityMemberships.communityId, communityId),
-      eq(communityMemberships.userId, ownerId),
-      eq(communityMemberships.status, "active"),
-    ),
-  });
-  return membership !== undefined;
+  // The seam's member check: active AND paid membership in good standing.
+  return isActiveCommunityMember(db, communityId, ownerId);
 }
 
 /**
@@ -211,6 +210,45 @@ export async function requeueExpiredCells(db: typeof import("@/server/db").db) {
       and(eq(workCells.status, "claimed"), lt(workCells.deadline, new Date())),
     )
     .returning();
+}
+
+const CELL_NOT_FOUND = "Cell not found";
+
+/**
+ * Before an agent reports on a cell: its owner may still take part in the
+ * cell's challenge (NOT_FOUND otherwise, like a missing cell), or is still
+ * an active member in good standing of its community (FORBIDDEN, as
+ * claimCell's source scope answers). A missing cell passes through to the
+ * claim check, which refuses it.
+ */
+async function requireOwnerMayWorkOnCell(
+  db: typeof import("@/server/db").db,
+  cellId: string,
+  ownerId: string,
+) {
+  const [grid] = await db
+    .select({
+      challengeId: workGrids.challengeId,
+      communityId: workGrids.communityId,
+    })
+    .from(workCells)
+    .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
+    .where(eq(workCells.id, cellId))
+    .limit(1);
+  if (!grid) return;
+  if (grid.challengeId !== null) {
+    await requireChallengeParticipant(db, grid.challengeId, ownerId, {
+      notFound: CELL_NOT_FOUND,
+    });
+  } else if (
+    grid.communityId !== null &&
+    !(await ownerMemberOfCommunity(db, ownerId, grid.communityId))
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Commission source scope does not cover this community",
+    });
+  }
 }
 
 export const workGridRouter = createTRPCRouter({
@@ -278,6 +316,23 @@ export const workGridRouter = createTRPCRouter({
             .filter((id): id is string => id !== null),
         ),
       ];
+      // A challenge's cells (collaborative or competitive) are listed only
+      // while the owner may take part in the challenge (ADR-0050): a members-
+      // only community's challenge needs an owner who is still a member.
+      const participantChallengeIds = new Set<number>();
+      await Promise.all(
+        challengeIds.map(async (challengeId) => {
+          if (
+            await mayTakePartInChallenge(
+              ctx.db,
+              challengeId,
+              commission.ownerId,
+            )
+          ) {
+            participantChallengeIds.add(challengeId);
+          }
+        }),
+      );
       const enrolledChallengeIds = new Set<number>();
       const memberCommunityIds = new Set<string>();
       await Promise.all([
@@ -325,6 +380,12 @@ export const workGridRouter = createTRPCRouter({
 
       return rows
         .filter((r) => {
+          if (
+            r.gridChallengeId !== null &&
+            !participantChallengeIds.has(r.gridChallengeId)
+          ) {
+            return false;
+          }
           if (r.gridMode === "competitive") {
             return r.gridTeamId !== null && memberTeamIds.has(r.gridTeamId);
           }
@@ -369,7 +430,17 @@ export const workGridRouter = createTRPCRouter({
         .limit(1);
 
       if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Cell not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: CELL_NOT_FOUND });
+      }
+      // A challenge's cell, for an owner who may not take part in it,
+      // answers like a missing cell (ADR-0050).
+      if (row.gridChallengeId !== null) {
+        await requireChallengeParticipant(
+          ctx.db,
+          row.gridChallengeId,
+          commission.ownerId,
+          { notFound: CELL_NOT_FOUND },
+        );
       }
       const cell = row.cell;
 
@@ -518,7 +589,14 @@ export const workGridRouter = createTRPCRouter({
 
       // The commission is the live consent gate (ADR-0022): a revoked agent must
       // not be able to submit a result (SEC-2 — mirrors claimCell).
-      await requireActiveCommission(ctx.db, ctx.agent.agentId);
+      const commission = await requireActiveCommission(
+        ctx.db,
+        ctx.agent.agentId,
+      );
+      // So is the owner's access (ADR-0050): an owner who may no longer take
+      // part in the cell's challenge, or is no longer a member of its
+      // community, cannot report on it — the same gate as claimCell.
+      await requireOwnerMayWorkOnCell(ctx.db, input.cellId, commission.ownerId);
 
       // Self-guarding flip + result insert in one transaction: the UPDATE only
       // matches a cell still claimed by THIS agent (no TOCTOU window between a
