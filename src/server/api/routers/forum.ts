@@ -33,6 +33,10 @@ import {
 } from "@/server/communities/live-forum-replies";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import {
+  requireJoinTermsReader,
+  requireReadableContentOf,
+} from "@/server/communities/content-access";
+import {
   findReadableCommunityBySlug,
   hiddenContentCommunityIds,
   viewerCanReadContentOf,
@@ -54,16 +58,12 @@ export const forumRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.communitySlug),
-          isNull(communities.deletedAt),
-        ),
-        columns: { id: true },
-      });
-      if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
+      // Rules are join terms: for readers, and for people on the way in.
+      const community = await requireJoinTermsReader(
+        ctx.db,
+        input.communitySlug,
+        ctx.session?.user?.id,
+      );
 
       const payload = await getPayloadClient();
       const { docs } = await payload.find({
@@ -108,16 +108,12 @@ export const forumRouter = createTRPCRouter({
   acceptRules: protectedProcedure
     .input(z.object({ communitySlug: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.communitySlug),
-          isNull(communities.deletedAt),
-        ),
-        columns: { id: true },
-      });
-      if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
+      // Whoever may read the rules may accept them, invitees included.
+      const community = await requireJoinTermsReader(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
 
       const payload = await getPayloadClient();
       const { docs } = await payload.find({
@@ -463,14 +459,26 @@ export const forumRouter = createTRPCRouter({
 
   incrementViewCount: publicProcedure
     .input(z.object({ threadId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
       const thread = await payload.findByID({
         collection: "forum-threads",
         id: input.threadId,
         depth: 0,
         overrideAccess: true,
+        disableErrors: true,
       });
+      // Only a reader counts a view; a thread they may not read answers
+      // like a missing one.
+      if (!thread) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      }
+      await requireReadableContentOf(
+        ctx.db,
+        thread.communityId,
+        ctx.session?.user?.id,
+        { notFound: "Thread not found" },
+      );
       await payload.update({
         collection: "forum-threads",
         id: input.threadId,
