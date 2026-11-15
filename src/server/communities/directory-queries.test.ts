@@ -25,6 +25,8 @@ function database(hubListed = false) {
       if (query.includes('"cross_promote"'))
         return {
           rows: [
+            // id, slug, name, description, logo, listed, join policy,
+            // cross-promote
             [
               "hub",
               "ait",
@@ -32,17 +34,27 @@ function database(hubListed = false) {
               "The root community",
               null,
               hubListed,
+              "open",
               true,
             ],
-            ["listed", "builders", "Builders", null, null, true, true],
-            ["private", "secret-guild", "Private", null, null, false, true],
+            ["listed", "builders", "Builders", null, null, true, "open", true],
+            [
+              "private",
+              "secret-guild",
+              "Private",
+              null,
+              null,
+              false,
+              "open",
+              true,
+            ],
           ],
         };
-      if (query.includes('"join_policy"'))
+      if (query.includes('"created_at"') && !query.includes('"activity'))
         return {
           rows: [
-            ["hub", "open", new Date("2026-01-01")],
-            ["listed", "open", new Date("2026-01-01")],
+            ["hub", new Date("2026-01-01")],
+            ["listed", new Date("2026-01-01")],
           ],
         };
       if (query.includes('"community_membership"'))
@@ -74,6 +86,8 @@ describe("AIT community directory eligibility", () => {
     expect(rows.find((row) => row.slug === "ait")).toMatchObject({
       name: "AIT Community",
       memberCount: 50,
+      joinPolicy: "open",
+      isListedInDirectory: false,
     });
     const candidates = calls.find((call) =>
       call.query.includes('"cross_promote"'),
