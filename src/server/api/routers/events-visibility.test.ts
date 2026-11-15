@@ -97,6 +97,23 @@ describe("private event registration surfaces", () => {
     expect(select).not.toHaveBeenCalled();
   });
 
+  it("hides a listed community that approves join requests from a guest", async () => {
+    findCommunity.mockResolvedValue({
+      id: "studio",
+      slug: "asks-first",
+      isListedInDirectory: true,
+      joinPolicy: "approval_required",
+    });
+    const guest = caller(null);
+    await expect(guest.events.registrationCount({ eventId: 7 })).resolves.toBe(
+      0,
+    );
+    await expect(guest.events.getAttendees({ eventId: 7 })).resolves.toEqual(
+      [],
+    );
+    expect(select).not.toHaveBeenCalled();
+  });
+
   it("refuses registration from a signed-in non-member", async () => {
     await expect(
       caller("outsider").events.register({ eventId: 7 }),

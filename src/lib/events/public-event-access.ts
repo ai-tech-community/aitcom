@@ -1,38 +1,27 @@
 import type { Where } from "payload";
 
-import { communityContentReadableWhere } from "@/server/communities/content-visibility";
-import { HUB_SLUG } from "@/server/communities/hub";
+import {
+  communityContentReadableWhere,
+  type CommunityVisibility,
+  isContentPublic,
+} from "@/server/communities/content-visibility";
 
 /**
- * Join policies whose events a signed-out visitor may see, and only when
- * the community is also listed. Anything else — invite-only, or a policy
- * this list does not name — stays hidden.
+ * What the event gate needs to know about a community: the seam's
+ * visibility facts (ADR-0050).
  */
-export const PUBLIC_EVENT_JOIN_POLICIES = [
-  "open",
-  "approval_required",
-] as const;
+export type EventCommunityGate = CommunityVisibility;
 
 /**
- * A community whose events a signed-out visitor may see.
- * Public only for the Hub (ADR-0030), or a directory-listed community whose
- * join policy is in `PUBLIC_EVENT_JOIN_POLICIES`. Unlisted rooms,
- * invite-only communities (listed or not), and any unknown join policy
- * stay hidden. Fail closed.
+ * A community whose events a signed-out visitor may see: exactly the
+ * communities whose content is public (`isContentPublic`): the Hub
+ * (ADR-0030), or a listed community that is open to join. Unlisted
+ * communities and private ones (invite-only, or approving join requests),
+ * listed or not, stay hidden, and so does any join policy the seam does
+ * not know. Fail closed.
  */
-export type EventCommunityGate = {
-  slug: string;
-  isListedInDirectory: boolean;
-  /** Stored as varchar. Unknown values are not public. */
-  joinPolicy: string;
-};
-
 export function eventCommunityIsPublic(community: EventCommunityGate): boolean {
-  if (community.slug === HUB_SLUG) return true;
-  if (!community.isListedInDirectory) return false;
-  return (PUBLIC_EVENT_JOIN_POLICIES as readonly string[]).includes(
-    community.joinPolicy,
-  );
+  return isContentPublic(community);
 }
 
 /**

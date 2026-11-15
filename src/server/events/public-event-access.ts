@@ -1,35 +1,29 @@
 import { cache } from "react";
-import { and, eq, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 
+import { eventCommunityIsPublic } from "@/lib/events/public-event-access";
 import {
-  eventCommunityIsPublic,
-  PUBLIC_EVENT_JOIN_POLICIES,
-} from "@/lib/events/public-event-access";
-import { isActiveCommunityMember } from "@/server/communities/content-visibility-queries";
-import { HUB_SLUG } from "@/server/communities/hub";
+  COMMUNITY_VISIBILITY_COLUMNS,
+  contentPrivateCommunitySql,
+  isActiveCommunityMember,
+} from "@/server/communities/content-visibility-queries";
 import { communities, communityMemberships } from "@/server/db/schema";
 import type { db as _db } from "@/server/db";
 
 type DB = typeof _db;
 
 /**
- * Communities whose events this viewer may not see. The Hub is always
- * public. Every other community is hidden unless it is listed and its join
- * policy is open or approval-required. Invite-only and any unknown policy
- * are hidden. Active memberships are left out. Matches
- * `eventCommunityIsPublic` and fails closed.
+ * Communities whose events this viewer may not see: those whose content is
+ * not public (`contentPrivateCommunitySql`: not the Hub, and unlisted or
+ * private), plus orphaned community ids. Active memberships are left out.
+ * Matches `eventCommunityIsPublic` and fails closed.
  */
 export const hiddenEventCommunityIds = cache(
   async function hiddenEventCommunityIds(
     db: DB,
     userId: string | null | undefined,
   ): Promise<string[]> {
-    const hiddenFromPublic = or(
-      eq(communities.isListedInDirectory, false),
-      notInArray(communities.joinPolicy, [...PUBLIC_EVENT_JOIN_POLICIES]),
-    );
-    if (!hiddenFromPublic) return [];
-    const conditions = [ne(communities.slug, HUB_SLUG), hiddenFromPublic];
+    const conditions = [contentPrivateCommunitySql()];
     if (userId) {
       const memberOf = db
         .select({ id: communityMemberships.communityId })
@@ -89,12 +83,7 @@ export const viewerMaySeeEvent = cache(async function viewerMaySeeEvent(
   if (!communityId) return true;
   const community = await db.query.communities.findFirst({
     where: eq(communities.id, communityId),
-    columns: {
-      id: true,
-      slug: true,
-      isListedInDirectory: true,
-      joinPolicy: true,
-    },
+    columns: COMMUNITY_VISIBILITY_COLUMNS,
   });
   if (!community) return false;
   if (eventCommunityIsPublic(community)) return true;

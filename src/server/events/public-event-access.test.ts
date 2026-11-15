@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { contentPrivateCommunitySql } from "@/server/communities/content-visibility-queries";
 import { HUB_SLUG } from "@/server/communities/hub";
 
 import {
@@ -99,16 +100,16 @@ function fakeDb(options: {
 }
 
 describe("hiddenEventCommunityIds", () => {
-  it("hides unlisted communities and any join policy outside the public allow-list", async () => {
+  it("hides every community whose content is not public, by the seam's SQL twin", async () => {
     const query = queryDb(false);
     await hiddenEventCommunityIds(query.db, null);
     const sql = query.sql();
+    expect(sql).toBe(sqlText(contentPrivateCommunitySql()));
     expect(sql).toContain("isListedInDirectory");
     expect(sql).toContain("joinPolicy");
     expect(sql).toContain("open");
-    expect(sql).toContain("approval_required");
+    expect(sql).not.toContain("approval_required");
     expect(sql).not.toContain("invite_only");
-    expect(sql).toContain("not in");
     expect(sql).toContain(HUB_SLUG);
     expect(sql).not.toContain("userId");
   });
@@ -126,7 +127,7 @@ describe("hiddenEventCommunityIds", () => {
     const query = queryDb(true);
     await hiddenEventCommunityIds(query.db, "member-1");
     const sql = query.sql();
-    expect(sql).toContain("approval_required");
+    expect(sql).toContain(sqlText(contentPrivateCommunitySql()));
     expect(sql).toContain("not in");
     expect(sql).toContain("userId");
     expect(sql).toContain("member-1");
@@ -171,6 +172,30 @@ describe("viewerMaySeeEvent", () => {
 
   it("keeps an event with no community public", async () => {
     await expect(viewerMaySeeEvent(fakeDb({}), null, null)).resolves.toBe(true);
+  });
+
+  it("hides a listed community that approves join requests from a non-member", async () => {
+    const asksFirst = {
+      ...studio,
+      slug: "asks-first",
+      isListedInDirectory: true,
+      joinPolicy: "approval_required" as const,
+    };
+    await expect(
+      viewerMaySeeEvent(fakeDb({ community: asksFirst }), "studio", "guest"),
+    ).resolves.toBe(false);
+  });
+
+  it("shows a listed open community to a guest", async () => {
+    const open = {
+      ...studio,
+      slug: "open-door",
+      isListedInDirectory: true,
+      joinPolicy: "open" as const,
+    };
+    await expect(
+      viewerMaySeeEvent(fakeDb({ community: open }), "studio", null),
+    ).resolves.toBe(true);
   });
 
   it("fails closed when the community row is missing", async () => {

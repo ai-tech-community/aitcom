@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+import { isContentPublic } from "@/server/communities/content-visibility";
 import { HUB_SLUG } from "@/server/communities/hub";
 
 import {
@@ -15,10 +16,10 @@ import {
 const dir = dirname(fileURLToPath(import.meta.url));
 
 function gate(
-  over: Partial<EventCommunityGate> &
-    Pick<EventCommunityGate, "slug" | "isListedInDirectory" | "joinPolicy">,
+  over: Omit<EventCommunityGate, "joinPolicy"> & { joinPolicy: string },
 ): EventCommunityGate {
-  return over;
+  // Stored as varchar: a test may hand in a value the seam does not know.
+  return over as EventCommunityGate;
 }
 
 describe("event community publicity", () => {
@@ -34,7 +35,7 @@ describe("event community publicity", () => {
     ).toBe(true);
   });
 
-  it("keeps listed open and approval-required communities public", () => {
+  it("keeps a listed open community public", () => {
     expect(
       eventCommunityIsPublic(
         gate({
@@ -44,6 +45,9 @@ describe("event community publicity", () => {
         }),
       ),
     ).toBe(true);
+  });
+
+  it("hides a listed community that approves join requests: it is private", () => {
     expect(
       eventCommunityIsPublic(
         gate({
@@ -52,10 +56,23 @@ describe("event community publicity", () => {
           joinPolicy: "approval_required",
         }),
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("hides unlisted, invite-only, and unknown join policies from guests", () => {
+  it("follows the community content rule exactly", () => {
+    for (const joinPolicy of ["open", "invite_only", "approval_required"]) {
+      for (const isListedInDirectory of [true, false]) {
+        for (const slug of [HUB_SLUG, "builders"]) {
+          const community = gate({ slug, isListedInDirectory, joinPolicy });
+          expect(eventCommunityIsPublic(community)).toBe(
+            isContentPublic(community),
+          );
+        }
+      }
+    }
+  });
+
+  it("hides unlisted, private, and unknown join policies from guests", () => {
     const hidden: EventCommunityGate[] = [
       gate({
         slug: "ait-demo-studio",
@@ -76,6 +93,11 @@ describe("event community publicity", () => {
         slug: "closed-circle",
         isListedInDirectory: true,
         joinPolicy: "invite_only",
+      }),
+      gate({
+        slug: "asks-first",
+        isListedInDirectory: true,
+        joinPolicy: "approval_required",
       }),
       gate({
         slug: "mystery",
