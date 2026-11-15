@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  isCommunityOverview,
   isWorkspacePath,
-  resolveCommunityIdentityDensity,
   resolveCommunityLayoutVariant,
 } from "./layout-variant";
 
@@ -78,11 +78,15 @@ describe("isWorkspacePath", () => {
   });
 });
 
-describe("resolveCommunityIdentityDensity", () => {
-  it("is compact for a member, so the whole tab list stays in view", () => {
-    expect(resolveCommunityIdentityDensity(true)).toBe("compact");
+describe("isCommunityOverview", () => {
+  it("is the community's root page", () => {
+    expect(isCommunityOverview([])).toBe(true);
   });
-  it("is full for someone who has not joined", () => {
-    expect(resolveCommunityIdentityDensity(false)).toBe("full");
+  it("ignores route groups", () => {
+    expect(isCommunityOverview(["(authoring)"])).toBe(true);
+  });
+  it("is not any tab page", () => {
+    expect(isCommunityOverview(["forum"])).toBe(false);
+    expect(isCommunityOverview(["events", "abc"])).toBe(false);
   });
 });

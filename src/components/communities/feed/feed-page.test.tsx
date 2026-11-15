@@ -33,6 +33,11 @@ vi.mock("./post-composer", () => ({ PostComposer: () => null }));
 vi.mock("./community-sidebar", () => ({
   CommunitySidebar: () => <div data-testid="community-sidebar" />,
 }));
+vi.mock("@/components/communities/community-about", () => ({
+  CommunityAbout: ({ className }: { className?: string }) => (
+    <section data-testid="community-about" className={className} />
+  ),
+}));
 vi.mock("./topic-chips", () => ({ TopicChips: () => null }));
 vi.mock("./community-activity-feed", () => ({
   CommunityActivityFeed: () => null,
@@ -103,5 +108,21 @@ describe("FeedPage side panel", () => {
     // already taking the left of the page.
     expect(panel?.className).toMatch(/\bxl:sticky\b/);
     expect(panel?.className).not.toMatch(/\b(hidden|lg:sticky)\b/);
+  });
+
+  it("puts About first in reading order, then the feed, then the panel", () => {
+    const { container } = renderPage(false);
+    const about = screen.getByTestId("community-about");
+    const panel = container.querySelector("[data-feed-side-panel]")!;
+    expect(screen.getAllByTestId("community-about")).toHaveLength(1);
+    // Same order in code as on screen, so keyboard and screen-reader users
+    // meet About first at every size: no CSS `order` reshuffle.
+    const grid = about.parentElement!;
+    expect(grid.firstElementChild).toBe(about);
+    expect(grid.lastElementChild).toBe(panel);
+    expect(about.className).not.toMatch(/\border-/);
+    // From xl, About and the panel share the right column.
+    expect(about.className).toMatch(/\bxl:col-start-2\b/);
+    expect(panel.className).toMatch(/\bxl:col-start-2\b/);
   });
 });

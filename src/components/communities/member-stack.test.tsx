@@ -1,18 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-// MemberStack (the connected sibling in this module) pulls in @/trpc/react,
-// whose AppRouter graph would load the server-only db client under jsdom. The
-// MemberStackView tests below never touch tRPC, so stub the client to keep the
-// import graph off the server (repo convention — see agent-suggestions.test.tsx).
-vi.mock("@/trpc/react", () => ({
-  api: {
-    communities: {
-      getMemberStack: { useQuery: vi.fn(() => ({ data: undefined })) },
-    },
-  },
-}));
-
 // Repo convention: stub next-intl so the
 // component's useTranslations resolves without a NextIntlClientProvider.
 vi.mock("next-intl", () => ({
@@ -42,6 +30,11 @@ describe("MemberStackView", () => {
     expect(screen.getByText("A")).toBeInTheDocument();
     expect(screen.getByText("B")).toBeInTheDocument();
     expect(screen.queryByText(/^\+/)).not.toBeInTheDocument();
+  });
+
+  it("is a labelled group, so screen readers hear the member count", () => {
+    render(<MemberStackView faces={faces} total={42} />);
+    expect(screen.getByRole("group", { name: "label" })).toBeInTheDocument();
   });
 
   it("renders the '+N' overflow once the total exceeds the max", () => {

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   selectStackFaces,
   shouldRenderStack,
+  isStackShown,
   presentStack,
   MEMBER_STACK_MAX_FACES,
   MEMBER_STACK_FACES_WITH_OVERFLOW,
@@ -93,6 +94,14 @@ describe("shouldRenderStack", () => {
   });
   it("is true at the minimum total", () => {
     expect(shouldRenderStack(MEMBER_STACK_MIN_TOTAL)).toBe(true);
+  });
+});
+
+describe("isStackShown", () => {
+  it("needs both enough members and a face to draw", () => {
+    expect(isStackShown([face("a")], MEMBER_STACK_MIN_TOTAL)).toBe(true);
+    expect(isStackShown([], MEMBER_STACK_MIN_TOTAL + 5)).toBe(false);
+    expect(isStackShown([face("a")], MEMBER_STACK_MIN_TOTAL - 1)).toBe(false);
   });
 });
 

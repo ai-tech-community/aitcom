@@ -17,6 +17,7 @@ import { TopicChips } from "./topic-chips";
 import { CommunityActivityFeed, FeedSkeleton } from "./community-activity-feed";
 import { WelcomeChecklist } from "@/components/communities/onboarding/welcome-checklist";
 import { HubFirstSessionPath } from "@/components/communities/first-session-path";
+import { CommunityAbout } from "@/components/communities/community-about";
 
 interface FeedPageProps {
   slug: string;
@@ -46,9 +47,19 @@ export function FeedPage({
   const isMember = !!memberRole;
 
   return (
-    <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
+    // Code order is reading order at every size: About, the feed, the rest of
+    // the side panel. From `xl` the grid places About and the panel in the
+    // right column beside the feed, which spans both rows; About scrolls
+    // away and the panel stays in view. No row gap from `xl`, so a missing
+    // About leaves no hole above the panel.
+    <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:grid-rows-[auto_1fr] xl:gap-y-0">
+      <CommunityAbout
+        slug={slug}
+        className="xl:col-start-2 xl:row-start-1 xl:mb-8"
+      />
+
       {/* Main column: composer + feed */}
-      <div className="min-w-0 space-y-4">
+      <div className="min-w-0 space-y-4 xl:col-start-1 xl:row-span-2 xl:row-start-1">
         {isAuthenticated && isMember && (
           <HubFirstSessionPath slug={slug} isMember={isMember} />
         )}
@@ -108,11 +119,11 @@ export function FeedPage({
         )}
       </div>
 
-      {/* Side panel: beside the feed from `xl` (the community rail takes the
-          left), below it on narrower screens. */}
+      {/* Side panel: beside the feed from `xl`, under About (the community
+          rail takes the left), below the feed on narrower screens. */}
       <div
         data-feed-side-panel=""
-        className="xl:sticky xl:top-24 xl:max-h-[calc(100dvh-7rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-width:thin]"
+        className="xl:sticky xl:top-24 xl:col-start-2 xl:row-start-2 xl:max-h-[calc(100dvh-7rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-width:thin]"
       >
         <CommunitySidebar slug={slug} />
       </div>

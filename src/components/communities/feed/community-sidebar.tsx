@@ -25,8 +25,8 @@ interface CommunitySidebarProps {
 
 /**
  * Supporting context beside the feed: sector news, links, what is coming
- * up, and the ideas members back most. Who is here lives in the community
- * rail (`CommunityIdentity`), so it is not repeated here. Discussions live in the feed itself.
+ * up, and the ideas members back most. The description and who is here sit
+ * above it in `CommunityAbout`. Discussions live in the feed itself.
  * Sections with nothing to show are left out rather than saying "none".
  */
 export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {

@@ -54,8 +54,8 @@ export function CommunityOverviewPageClient({
           </Button>
         </div>
       )}
-      {/* Liveness preview — visible to non-members above the feed.
-          Member count + join CTA already live in the header. */}
+      {/* Liveness preview — visible to non-members above the feed. The join
+          control lives in the community rail, who is here in About. */}
       {community &&
         !isMember &&
         (community.liveness.activeContributors > 0 ||

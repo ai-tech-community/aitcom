@@ -15,12 +15,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslations } from "next-intl";
 import {
-  shouldRenderStack,
+  isStackShown,
   presentStack,
   type StackFace,
 } from "@/server/communities/member-stack";
-import { api } from "@/trpc/react";
-import { Skeleton } from "@/components/ui/skeleton";
 
 function initial(displayName: string | null): string {
   return (displayName ?? "?").trim()[0]?.toUpperCase() ?? "?";
@@ -42,7 +40,7 @@ export function MemberStackView({
 }: MemberStackViewProps) {
   const t = useTranslations("communities.stack");
 
-  if (!shouldRenderStack(total) || faces.length === 0) return null;
+  if (!isStackShown(faces, total)) return null;
 
   const { shownFaces, overflow } = presentStack(faces, total);
 
@@ -50,6 +48,9 @@ export function MemberStackView({
     <TooltipProvider delayDuration={150}>
       <AvatarGroup
         className={className}
+        // A labelled group, so screen readers announce the member count:
+        // there is no visible "N members" line beside the faces.
+        role="group"
         aria-label={t("label", { count: total })}
         data-slot="member-stack"
       >
@@ -84,38 +85,5 @@ export function MemberStackView({
         ) : null}
       </AvatarGroup>
     </TooltipProvider>
-  );
-}
-
-export interface MemberStackProps {
-  slug: string;
-  className?: string;
-}
-
-/** Self-fetching member stack for the community header. Renders nothing while
- *  loading or when policy/access hides it. */
-export function MemberStack({ slug, className }: MemberStackProps) {
-  const { data, isLoading, isError } = api.communities.getMemberStack.useQuery({
-    slug,
-  });
-  if (isError) return null; // supplementary widget — may stay absent on error (No-Silent-Failure)
-  if (isLoading) {
-    return (
-      <div className={className} aria-hidden="true">
-        <div className="flex -space-x-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="size-7 rounded-full" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-  if (!data) return null;
-  return (
-    <MemberStackView
-      faces={data.faces}
-      total={data.total}
-      className={className}
-    />
   );
 }

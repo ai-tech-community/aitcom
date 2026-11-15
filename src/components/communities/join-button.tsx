@@ -25,11 +25,12 @@ interface JoinButtonProps {
   /** `compact` fits a tight header (one line, small invitation buttons). */
   size?: "default" | "compact";
   /**
-   * Where focus goes once an invitation is answered (the answer buttons go
-   * away), e.g. the community's heading. Without it, focus moves to the
-   * control that replaces them, when there is one.
+   * Where focus goes once a join, a request to join or an invitation answer
+   * goes through and this control is replaced, e.g. the community's heading.
+   * Without it, focus moves to the control that replaces the invitation's
+   * answer buttons, when there is one.
    */
-  focusAfterAnswer?: RefObject<HTMLElement | null>;
+  focusAfterChange?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -45,12 +46,15 @@ export function JoinButton({
   membershipStatus,
   memberRole,
   size = "default",
-  focusAfterAnswer,
+  focusAfterChange,
 }: JoinButtonProps) {
   const t = useTranslations("communities.profile");
   const router = useRouter();
   const controlRef = useRef<HTMLButtonElement>(null);
   const answered = useRef(false);
+  // Set by the join/request click, cleared by Leave: leaving asks first in a
+  // dialog that returns focus itself, so only a join moves it here.
+  const focusTargetOnChange = useRef(false);
   const { action, run, leave, busy } = useCommunityJoin({
     slug,
     name,
@@ -58,7 +62,10 @@ export function JoinButton({
     membership: membershipStatus
       ? { status: membershipStatus, role: memberRole ?? "member" }
       : null,
-    onChange: () => router.refresh(),
+    onChange: () => {
+      router.refresh();
+      if (focusTargetOnChange.current) focusAfterChange?.current?.focus();
+    },
   });
 
   // Once the answer shows (the membership reloaded), focus its control, so
@@ -71,7 +78,7 @@ export function JoinButton({
 
   const onAnswered = () => {
     router.refresh();
-    const target = focusAfterAnswer?.current;
+    const target = focusAfterChange?.current;
     if (target) target.focus();
     else answered.current = true;
   };
@@ -104,7 +111,10 @@ export function JoinButton({
         <Button
           ref={controlRef}
           variant="outline"
-          onClick={() => void leave()}
+          onClick={() => {
+            focusTargetOnChange.current = false;
+            void leave();
+          }}
           disabled={busy}
         >
           {busy ? (
@@ -118,7 +128,14 @@ export function JoinButton({
     case "join":
     case "request":
       return (
-        <Button ref={controlRef} onClick={() => void run()} disabled={busy}>
+        <Button
+          ref={controlRef}
+          onClick={() => {
+            focusTargetOnChange.current = true;
+            void run();
+          }}
+          disabled={busy}
+        >
           {busy ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
