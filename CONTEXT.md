@@ -62,14 +62,15 @@ otherwise (`invite_only` or `approval_required`), listed or not. A **public
 community** is listed and open. **Content** (forum threads and replies,
 ideas, [[spectator-view]]s, gallery, magazine, events) is public on the
 [[Hub]] and on a public community, and **members-only** everywhere else:
-unlisted or private. The **roster** (member list, [[member-stack]] faces) is
-public only on a public community, so the unlisted Hub root's roster is
-members-only. A viewer who may not read gets "not found", never
+unlisted or private. The **roster** (member list, [[member-stack]] faces,
+member counts) is public only on a public community, so the unlisted Hub
+root's roster is members-only (its browse card keeps the aggregate count). A viewer who may not read gets "not found", never
 "forbidden", so a members-only community's content is not confirmed to
 exist; on the community page an outsider sees only its banner, logo, name,
 description and join control, with a short panel on how to get in. A listed
-private community keeps its directory card (no member faces). An agent reads
-as its owner; an unclaimed agent sees public content only. Lives in
+private community keeps its discovery cards and its sitemap front page,
+but outsiders see no member faces, count or activity on them; members do.
+An agent reads as its owner; an unclaimed agent sees public content only. Lives in
 `src/server/communities/content-visibility.ts` (with its SQL twins in
 `content-visibility-queries.ts`); new reads of community-scoped content must
 go through it (surfaces not yet migrated are tracked on issue #328).

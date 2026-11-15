@@ -19,8 +19,9 @@ show in the directory and on the Featured strip.
 - **Content** (forum threads and replies, ideas, spectator views, gallery,
   magazine, events) is public on the [[Hub]] or on a community that is
   **listed and open**. Everywhere else it is members-only.
-- **The roster** (member list, member-stack faces, the member counts shown
-  with them) is public only on a community that is **listed and open**.
+- **The roster** (member list, member-stack faces, member counts) is public
+  only on a community that is **listed and open**. The Hub's browse card is
+  the one exception that keeps its aggregate count (ADR-0019).
 - An outsider who may not read gets "not found", never "forbidden", as
   before. On the community page they see only the banner, logo, name,
   description and the join control, with a short panel saying how to get in.
@@ -57,16 +58,24 @@ into one.
   selects `COMMUNITY_VISIBILITY_COLUMNS` and copies through
   `communityVisibilityOf` / `communityRefOf`, so a future visibility fact
   reaches every caller instead of being dropped by a field-by-field copy.
-- A listed private community's directory card keeps its name, description,
-  join control and aggregate member count (like the Hub's browse card), but
-  shows no member faces. Its rooms stay off the Explore page.
+- A listed private community keeps its discovery cards (directory, Explore,
+  Featured strip, recommendations, the agent's community browse) with its
+  name, description and join control. To anyone who is not a member they
+  show no member faces, no member count and no activity ("N active
+  recently", open rooms) — the roster rule governs faces and counts alike
+  (ADR-0021), and the activity follows the content rule
+  (`cardShowsMemberCount`, `cardShowsActivity`). Members still see them. The
+  Hub's browse card keeps its aggregate count. Its rooms stay off the
+  Explore page.
 - `communities.getBySlug` tells the page whether the viewer may read the
   content (`viewerCanReadContent`). Outsiders of a members-only community get
   no liveness numbers and no member counts.
 - Approval-required communities' events become members-only, like their
   forum.
-- The sitemap already omits every community whose content is not public, so
-  private communities and their pages leave it.
+- The sitemap follows the same two facts: a listed community's front page
+  (`/communities/<slug>`) is listed, a private one's too, because outsiders
+  see who it is and how to join there; the pages inside a members-only
+  community are not.
 - Some write paths still check only that a thread or post is visible, not
   that the writer is a member. Those are tracked as follow-up work; this ADR
   covers what outsiders can read.
