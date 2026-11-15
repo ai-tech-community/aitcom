@@ -12,12 +12,16 @@ function setup(segments: string[], isMember: boolean) {
 }
 
 describe("useCommunityIdentityDensity", () => {
-  it("is compact for a member on a tab page", () => {
-    const { result } = setup(["insights"], true);
-    expect(result.current).toBe("compact");
+  it("is compact for a member, on the Overview too", () => {
+    expect(setup(["insights"], true).result.current).toBe("compact");
+    expect(setup([], true).result.current).toBe("compact");
   });
 
-  it("stays full when a visitor joins on a tab page, so the control they pressed stays", () => {
+  it("is full for a visitor", () => {
+    expect(setup([], false).result.current).toBe("full");
+  });
+
+  it("stays full when a visitor joins, so the control they pressed stays", () => {
     const { result, rerender } = setup(["events"], false);
     expect(result.current).toBe("full");
     rerender({ segments: ["events"], isMember: true });
@@ -34,6 +38,14 @@ describe("useCommunityIdentityDensity", () => {
   it("treats a new array with the same segments as the same page", () => {
     const { result, rerender } = setup(["events", "x"], false);
     rerender({ segments: ["events", "x"], isMember: true });
+    expect(result.current).toBe("full");
+  });
+
+  it("stays full when a member leaves and rejoins on the same page", () => {
+    const { result, rerender } = setup([], true);
+    rerender({ segments: [], isMember: false });
+    expect(result.current).toBe("full");
+    rerender({ segments: [], isMember: true });
     expect(result.current).toBe("full");
   });
 

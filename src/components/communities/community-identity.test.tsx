@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../messages/en.json";
 import type { RouterOutputs } from "@/trpc/react";
 
-const m = vi.hoisted(() => ({ joinProps: [] as unknown[] }));
+const m = vi.hoisted(() => ({
+  joinProps: [] as unknown[],
+  menuProps: [] as { onLeft?: () => void }[],
+}));
 
 vi.mock("./join-button", () => ({
   JoinButton: (props: { slug: string }) => {
@@ -14,6 +17,12 @@ vi.mock("./join-button", () => ({
   },
 }));
 vi.mock("./member-stack", () => ({ MemberStack: () => null }));
+vi.mock("./community-actions-menu", () => ({
+  CommunityActionsMenu: (props: { onLeft?: () => void }) => {
+    m.menuProps.push(props);
+    return <button type="button">Community options</button>;
+  },
+}));
 
 import { CommunityIdentity } from "./community-identity";
 
@@ -198,6 +207,87 @@ describe("CommunityIdentity", () => {
       expect(document.querySelector("[data-community-tagline]")).toBeNull();
       expect(screen.queryByText(/42 members/)).toBeNull();
       expect(m.joinProps).toHaveLength(0);
+    });
+
+    it("offers the community menu in the row", () => {
+      m.menuProps = [];
+      renderCompact();
+      expect(
+        screen.getByRole("button", { name: "Community options" }),
+      ).toBeInTheDocument();
+      expect(m.menuProps).toHaveLength(1);
+    });
+
+    it("moves focus to the heading once leaving opens the full identity", () => {
+      m.menuProps = [];
+      const { rerender } = render(
+        <NextIntlClientProvider locale="en" messages={en}>
+          <CommunityIdentity
+            community={community}
+            membershipStatus="active"
+            memberRole="member"
+            density="compact"
+          />
+        </NextIntlClientProvider>,
+      );
+      screen.getByRole("button", { name: "Community options" }).focus();
+      act(() => m.menuProps.at(-1)?.onLeft?.());
+      rerender(
+        <NextIntlClientProvider locale="en" messages={en}>
+          <CommunityIdentity
+            community={community}
+            membershipStatus={null}
+            density="full"
+          />
+        </NextIntlClientProvider>,
+      );
+      expect(screen.getByRole("heading", { level: 1 })).toHaveFocus();
+    });
+
+    it("waits for the switch to full before taking focus", () => {
+      m.menuProps = [];
+      const view = (status: "active" | null, density: "full" | "compact") => (
+        <NextIntlClientProvider locale="en" messages={en}>
+          <CommunityIdentity
+            community={community}
+            membershipStatus={status}
+            memberRole="member"
+            density={density}
+          />
+        </NextIntlClientProvider>
+      );
+      const { rerender } = render(view("active", "compact"));
+      const trigger = screen.getByRole("button", { name: "Community options" });
+      trigger.focus();
+      act(() => m.menuProps.at(-1)?.onLeft?.());
+      // The leave landed but the rail has not switched yet.
+      rerender(view(null, "compact"));
+      expect(trigger).toHaveFocus();
+      rerender(view(null, "full"));
+      expect(screen.getByRole("heading", { level: 1 })).toHaveFocus();
+    });
+
+    it("leaves focus alone when the density changes for another reason", () => {
+      const { rerender } = render(
+        <NextIntlClientProvider locale="en" messages={en}>
+          <CommunityIdentity
+            community={community}
+            membershipStatus="active"
+            memberRole="member"
+            density="compact"
+          />
+        </NextIntlClientProvider>,
+      );
+      rerender(
+        <NextIntlClientProvider locale="en" messages={en}>
+          <CommunityIdentity
+            community={community}
+            membershipStatus={null}
+            density="full"
+          />
+        </NextIntlClientProvider>,
+      );
+      expect(screen.getByRole("heading", { level: 1 })).not.toHaveFocus();
     });
   });
 });

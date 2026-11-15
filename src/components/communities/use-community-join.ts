@@ -207,6 +207,7 @@ export function useCommunityJoin({
   const mine = useMyMemberships();
   const runMembership = useMembershipRunner();
   const finishing = useFinishingSlug();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
 
   const current =
@@ -248,8 +249,17 @@ export function useCommunityJoin({
   };
 
   const leave = async () => {
-    if (action.kind !== "member" || !action.canLeave) return;
-    await perform("leave");
+    if (action.kind !== "member" || !action.canLeave || busy) return;
+    // Leaving ends the membership, like declining an invitation: ask first.
+    const sure = await confirm({
+      title: name
+        ? t("leaveConfirmTitle", { community: name })
+        : t("leaveConfirmTitleGeneric"),
+      description: t("leaveConfirmBody"),
+      confirmLabel: t("leaveConfirmAction"),
+      destructive: true,
+    });
+    if (sure) await perform("leave");
   };
 
   return { action, run, leave, busy: busy || finishing === slug };

@@ -37,7 +37,11 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=6144
 
+      # The whole-program type check runs into the same heap limit (main and
+      # PR runs died in node::OOMErrorHandler), so it gets the same headroom.
       - run: pnpm tsc --noEmit
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
 
   test:
     name: Tests

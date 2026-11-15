@@ -22,6 +22,7 @@ const s = vi.hoisted(() => ({
   ),
   toast: vi.fn(),
   toastError: vi.fn(),
+  confirm: vi.fn((_: unknown) => Promise.resolve(false)),
 }));
 
 vi.mock("@/components/auth/auth-required-dialog", () => ({
@@ -37,6 +38,9 @@ vi.mock("next-intl", () => ({
 }));
 vi.mock("sonner", () => ({
   toast: { success: s.toast, error: s.toastError },
+}));
+vi.mock("@/components/confirm-dialog", () => ({
+  useConfirm: () => s.confirm,
 }));
 vi.mock("@/components/auth/session-provider", () => ({
   useInitialAuthUser: () => s.initialUser,
@@ -200,6 +204,63 @@ describe("useCommunityJoin", () => {
     );
     await act(() => result.current.run());
     expect(s.toast).toHaveBeenCalledWith("joinedGeneric");
+  });
+
+  describe("leave", () => {
+    const member = { status: "active", role: "member" } as const;
+
+    it("asks first, naming the community, and leaves on yes", async () => {
+      s.confirm.mockResolvedValueOnce(true);
+      const onChange = vi.fn();
+      const { result } = renderHook(() =>
+        useCommunityJoin({
+          slug: "acme",
+          name: "ACME",
+          joinPolicy: "open",
+          membership: member,
+          onChange,
+        }),
+      );
+      await act(() => result.current.leave());
+      expect(s.confirm).toHaveBeenCalledWith({
+        title: 'leaveConfirmTitle:{"community":"ACME"}',
+        description: "leaveConfirmBody",
+        confirmLabel: "leaveConfirmAction",
+        destructive: true,
+      });
+      expect(s.leave).toHaveBeenCalledWith({ slug: "acme" });
+      expect(onChange).toHaveBeenCalledOnce();
+    });
+
+    it("stays a member when the answer is no", async () => {
+      s.confirm.mockResolvedValueOnce(false);
+      const onChange = vi.fn();
+      const { result } = renderHook(() =>
+        useCommunityJoin({
+          slug: "acme",
+          name: "ACME",
+          joinPolicy: "open",
+          membership: member,
+          onChange,
+        }),
+      );
+      await act(() => result.current.leave());
+      expect(s.leave).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("does not ask someone who cannot leave", async () => {
+      const { result } = renderHook(() =>
+        useCommunityJoin({
+          slug: "acme",
+          joinPolicy: "open",
+          membership: { status: "active", role: "owner" },
+        }),
+      );
+      await act(() => result.current.leave());
+      expect(s.confirm).not.toHaveBeenCalled();
+      expect(s.leave).not.toHaveBeenCalled();
+    });
   });
 });
 

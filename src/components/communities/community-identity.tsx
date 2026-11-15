@@ -1,13 +1,14 @@
 "use client";
 
 import type { MembershipStatus as ViewerMembershipStatus } from "@/server/communities/invite-policy";
-import { useRef, type Ref } from "react";
+import { useEffect, useRef, type Ref, type RefObject } from "react";
 import { useTranslations } from "next-intl";
 import { Users } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { getInitials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
+import { CommunityActionsMenu } from "./community-actions-menu";
 import { JoinButton } from "./join-button";
 import { MemberStack } from "./member-stack";
 import type { CommunityIdentityDensity } from "@/lib/communities/layout-variant";
@@ -23,7 +24,7 @@ interface CommunityIdentityProps {
   memberRole?: MemberRole | null;
   /**
    * `full` (the default) is the whole introduction. `compact` is one row of
-   * logo, name and role, for a member's pages past the Overview — see
+   * logo, name, role and the member's community menu — see
    * `resolveCommunityIdentityDensity`.
    */
   density?: CommunityIdentityDensity;
@@ -102,10 +103,23 @@ export function CommunityIdentity({
   density = "full",
 }: CommunityIdentityProps) {
   const role = membershipStatus === "active" && memberRole ? memberRole : null;
+  // One heading ref for both densities. Focus lands on the heading after
+  // answering an invitation, and after leaving from the compact row's menu:
+  // that row (and the menu button) gives way to the full identity, so the
+  // heading is where keyboard and screen-reader users pick up again.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusHeadingOnSwitch = useRef(false);
+  useEffect(() => {
+    // Only the compact → full switch that the leave caused takes focus. Any
+    // switch clears the request, so a leave whose refresh never landed
+    // cannot pull focus later, on some unrelated change.
+    const leaveFinished = focusHeadingOnSwitch.current && density === "full";
+    focusHeadingOnSwitch.current = false;
+    if (leaveFinished) headingRef.current?.focus();
+  }, [density]);
 
   if (density === "compact") {
     // A member is already in: the menu matters more than the introduction.
-    // Leave Community stays on the Overview's full identity.
     return (
       <div
         data-community-identity=""
@@ -113,10 +127,23 @@ export function CommunityIdentity({
         className="flex items-center gap-3"
       >
         <CommunityLogo community={community} density="compact" />
-        <CommunityHeading
+        <div className="min-w-0 flex-1">
+          <CommunityHeading
+            name={community.name}
+            role={role}
+            headingRef={headingRef}
+            className="text-lg leading-snug"
+          />
+        </div>
+        <CommunityActionsMenu
+          slug={community.slug}
           name={community.name}
-          role={role}
-          className="text-lg leading-snug"
+          joinPolicy={community.joinPolicy}
+          membershipStatus={membershipStatus}
+          memberRole={memberRole}
+          onLeft={() => {
+            focusHeadingOnSwitch.current = true;
+          }}
         />
       </div>
     );
@@ -128,6 +155,7 @@ export function CommunityIdentity({
       membershipStatus={membershipStatus}
       memberRole={memberRole}
       role={role}
+      headingRef={headingRef}
     />
   );
 }
@@ -137,13 +165,14 @@ function FullCommunityIdentity({
   membershipStatus,
   memberRole,
   role,
-}: Omit<CommunityIdentityProps, "density"> & { role: MemberRole | null }) {
+  headingRef,
+}: Omit<CommunityIdentityProps, "density"> & {
+  role: MemberRole | null;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+}) {
   const t = useTranslations("communities.profile");
 
   const active = community.liveness?.activeContributors ?? 0;
-  // Focus lands here after answering an invitation: the heading gains the
-  // Member badge (or stays as it was, after a decline).
-  const headingRef = useRef<HTMLHeadingElement>(null);
 
   return (
     <div
