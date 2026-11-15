@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { canManageRole, ROLE_HIERARCHY } from "./role-utils";
+import {
+  canManageRole,
+  isCommunityManagerRole,
+  ROLE_HIERARCHY,
+} from "./role-utils";
 
 describe("ROLE_HIERARCHY", () => {
   it("ranks owner highest", () => {
@@ -42,5 +46,19 @@ describe("canManageRole", () => {
   });
   it("owner cannot manage owner", () => {
     expect(canManageRole("owner", "owner")).toBe(false);
+  });
+});
+
+describe("isCommunityManagerRole", () => {
+  it("is owner, admin and moderator", () => {
+    expect(isCommunityManagerRole("owner")).toBe(true);
+    expect(isCommunityManagerRole("admin")).toBe(true);
+    expect(isCommunityManagerRole("moderator")).toBe(true);
+  });
+
+  it("is not a member, nor someone with no active role", () => {
+    expect(isCommunityManagerRole("member")).toBe(false);
+    expect(isCommunityManagerRole(null)).toBe(false);
+    expect(isCommunityManagerRole(undefined)).toBe(false);
   });
 });
