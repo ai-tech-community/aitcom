@@ -3,6 +3,7 @@
 import {
   and,
   eq,
+  inArray,
   isNull,
   isNotNull,
   not,
@@ -172,6 +173,50 @@ export async function isActiveCommunityMember(
   userId: string | null | undefined,
 ): Promise<boolean> {
   return (await activeCommunityRole(db, communityId, userId)) !== null;
+}
+
+/**
+ * Ids of the communities the user is an active member of in good standing:
+ * the set `isActiveCommunityMember` answers yes for, read in one pass. A
+ * member whose paid membership lapsed is not in it, so discovery cards,
+ * the Featured strip and the agent's browse show them what any outsider
+ * sees. Staff roles never pay.
+ */
+export async function activeMemberCommunityIds(
+  db: DB,
+  userId: string,
+): Promise<Set<string>> {
+  const rows = await db
+    .select({
+      communityId: communityMemberships.communityId,
+      role: communityMemberships.role,
+    })
+    .from(communityMemberships)
+    .where(
+      and(
+        eq(communityMemberships.userId, userId),
+        eq(communityMemberships.status, "active"),
+      ),
+    );
+  const ids = new Set(rows.map((r) => r.communityId));
+  if (!paymentsEnabled()) return ids;
+  const paying = rows
+    .filter((r) => r.role === "member")
+    .map((r) => r.communityId);
+  if (paying.length === 0) return ids;
+  const paid = await db
+    .select({ id: paymentPolicies.communityId })
+    .from(paymentPolicies)
+    .where(
+      and(
+        inArray(paymentPolicies.communityId, paying),
+        isNotNull(paymentPolicies.paidEntryAt),
+      ),
+    );
+  for (const { id } of paid) {
+    if (!(await membershipPaymentAllowed(db, id, userId))) ids.delete(id);
+  }
+  return ids;
 }
 
 /** Skips the membership lookup when the content is public anyway. */

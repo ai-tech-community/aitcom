@@ -32,8 +32,25 @@ describe("paid community public read shortcuts", () => {
         isDeleted: false,
       }),
     };
+    const database = {
+      query: {
+        communities: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: "paid",
+            slug: "paid",
+            isListedInDirectory: true,
+            joinPolicy: "open",
+          }),
+        },
+      },
+    };
     await expect(
-      requireViewablePost({} as never, payload as never, 1, "expired-member"),
+      requireViewablePost(
+        database as never,
+        payload as never,
+        1,
+        "expired-member",
+      ),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });

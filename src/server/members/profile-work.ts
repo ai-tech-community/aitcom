@@ -231,6 +231,8 @@ export function readableCourseCommunitySlug(
     course,
     viewerId: context.viewerId,
     membership: context.membershipByCommunityId.get(course.communityId) ?? null,
+    // Hidden communities were dropped above.
+    communityContentReadable: true,
   });
   return access === "none" ? null : communitySlug;
 }

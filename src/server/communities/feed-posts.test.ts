@@ -21,24 +21,71 @@ describe("canPostToFeed", () => {
 });
 
 describe("requireActiveFeedMember", () => {
-  it("refuses a non-member with a neutral message (used for reading and posting)", async () => {
-    const database = {
+  function database(
+    facts: { isListedInDirectory: boolean; joinPolicy: string },
+    membership?: { role: string },
+  ) {
+    return {
       query: {
         communities: {
           findFirst: async () => ({
             id: "c1",
             slug: "makers",
             feedPostPolicy: "all_members",
+            ...facts,
           }),
         },
-        communityMemberships: { findFirst: async () => undefined },
+        communityMemberships: { findFirst: async () => membership },
       },
-    };
+    } as never;
+  }
+  const PUBLIC = { isListedInDirectory: true, joinPolicy: "open" };
+
+  it("refuses a non-member with a neutral message (used for reading and posting)", async () => {
     await expect(
-      requireActiveFeedMember(database as never, "makers", "u1"),
+      requireActiveFeedMember(database(PUBLIC), "makers", "u1"),
     ).rejects.toMatchObject({
       code: "FORBIDDEN",
       message: "Must be an active community member",
+    });
+  });
+
+  it.each([
+    [
+      "listed invite_only",
+      { isListedInDirectory: true, joinPolicy: "invite_only" },
+    ],
+    [
+      "listed approval_required",
+      { isListedInDirectory: true, joinPolicy: "approval_required" },
+    ],
+    ["unlisted", { isListedInDirectory: false, joinPolicy: "open" }],
+  ])(
+    "answers NOT_FOUND to a non-member of a %s community, so it is not confirmed",
+    async (_label, facts) => {
+      await expect(
+        requireActiveFeedMember(database(facts), "makers", "u1"),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    },
+  );
+
+  it("gives an active member the feed's community and their role", async () => {
+    await expect(
+      requireActiveFeedMember(
+        database(
+          { isListedInDirectory: true, joinPolicy: "invite_only" },
+          {
+            role: "moderator",
+          },
+        ),
+        "makers",
+        "u1",
+      ),
+    ).resolves.toEqual({
+      id: "c1",
+      slug: "makers",
+      role: "moderator",
+      feedPostPolicy: "all_members",
     });
   });
 });

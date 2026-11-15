@@ -157,6 +157,8 @@ describe.skipIf(!RUN_DB)("classroom lesson files [DB integration]", () => {
         name: `Lesson files ${sfx}`,
         slug: `lesson-files-${sfx}`,
         createdBy: authorId,
+        // Public, so a course's isPublic reaches visitors (ADR-0050).
+        isListedInDirectory: true,
       })
       .returning();
     await m.db.insert(m.schema.communityMemberships).values([

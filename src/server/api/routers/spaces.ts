@@ -17,7 +17,6 @@ import {
   communityProcedure,
 } from "@/server/api/trpc";
 import {
-  communities,
   communityMemberships,
   spaces,
   spaceMemberships,
@@ -32,6 +31,10 @@ import {
 import { roomAccessRequestRecipients } from "@/server/communities/room-notifications";
 import { getOrCreateRoomConversation } from "@/server/communities/room-conversation";
 import { getAvatarUrl } from "@/lib/avatar";
+import {
+  requireReadableCommunity,
+  requireReadableCommunityBySlug,
+} from "@/server/communities/content-access";
 import { squareRooms } from "@/server/communities/live-rooms";
 import {
   invalidateSquareRooms,
@@ -39,17 +42,19 @@ import {
 } from "@/server/communities/live-rooms-queries";
 
 export const spacesRouter = createTRPCRouter({
-  /** Enabled spaces for the public nav, position-ordered. */
+  /**
+   * Enabled spaces for the community nav, position-ordered. Who may see
+   * them follows the content rule (ADR-0050): an outsider of a members-only
+   * community gets NOT_FOUND.
+   */
   list: publicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.slug),
-          isNull(communities.deletedAt),
-        ),
-      });
-      if (!community) throw new TRPCError({ code: "NOT_FOUND" });
+      const community = await requireReadableCommunityBySlug(
+        ctx.db,
+        input.slug,
+        ctx.session?.user?.id,
+      );
 
       return ctx.db
         .select({
@@ -305,10 +310,19 @@ export const spacesRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /** Rooms the caller can see: active rooms in the community + the caller's membership status for each. */
+  /**
+   * Rooms the caller can see: active rooms in the community + the caller's
+   * membership status for each. Members-only communities list them to
+   * their members only (ADR-0050).
+   */
   listRooms: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
+      await requireReadableCommunity(
+        ctx.db,
+        ctx.community,
+        ctx.session.user.id,
+      );
       const rooms = await ctx.db
         .select({
           id: spaces.id,
@@ -580,10 +594,18 @@ export const spacesRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /** Public-within-community room lookup: meta + caller's membership + conversationId when active. */
+  /**
+   * Room lookup for whoever may read the community (ADR-0050): meta +
+   * caller's membership + conversationId when active.
+   */
   getRoom: communityProcedure
     .input(z.object({ slug: z.string(), spaceSlug: z.string() }))
     .query(async ({ ctx, input }) => {
+      await requireReadableCommunity(
+        ctx.db,
+        ctx.community,
+        ctx.session.user.id,
+      );
       const [room] = await ctx.db
         .select({
           id: spaces.id,

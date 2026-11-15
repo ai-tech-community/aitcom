@@ -82,6 +82,8 @@ type Over = {
   course?: unknown;
   material?: unknown;
   community?: boolean;
+  /** The community's join policy; open (with listing) makes it public. */
+  joinPolicy?: "open" | "invite_only" | "approval_required";
   policy?: "all_members" | "admins_only";
   role?: string | null;
   recent?: number;
@@ -190,13 +192,17 @@ function fakes(over: Over = {}) {
   const db = {
     query: {
       communities: {
-        findFirst: vi
-          .fn()
-          .mockResolvedValue(
-            over.community === false
-              ? undefined
-              : { classroomUploadPolicy: over.policy ?? "admins_only" },
-          ),
+        findFirst: vi.fn().mockResolvedValue(
+          over.community === false
+            ? undefined
+            : {
+                id: "c1",
+                slug: "makers",
+                isListedInDirectory: true,
+                joinPolicy: over.joinPolicy ?? "open",
+                classroomUploadPolicy: over.policy ?? "admins_only",
+              },
+        ),
       },
       communityMemberships: {
         findFirst: vi
@@ -719,6 +725,22 @@ describe("fileLink", () => {
         disposition: "inline",
       }),
     ).resolves.toEqual({ url: "https://signed.test/f" });
+  });
+
+  it("gives no visitor a free-preview file in a members-only community", async () => {
+    const { deps } = fakes({
+      course: { ...COURSE, isPublic: true },
+      material: material({ status: "ready", visibility: "preview" }),
+      role: null,
+      joinPolicy: "invite_only",
+    });
+    await expect(
+      fileLink(deps, {
+        viewerId: null,
+        materialId: 7,
+        disposition: "inline",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("never links a file that is still uploading", async () => {

@@ -132,7 +132,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
     "browse-members",
     {
       description:
-        "Browse public member profiles sorted by XP. Optionally search by display name.",
+        "Browse public member profiles sorted by XP. Optionally search by display name. With communitySlug, lists that community's members as the owner may see them: a private or unlisted community's roster only when the owner is a member, and a private profile's details (XP, level, skills, company) left out.",
       inputSchema: {
         limit: z
           .number()

@@ -52,24 +52,6 @@ export function forumThreadSlug(
 }
 
 /**
- * A provided community slug must name a live community. Omitting it is a
- * hub-wide thread, the same as the forum form without `?community=`.
- */
-export function threadCommunityId(
-  slug: string | undefined,
-  community: { id: string } | null | undefined,
-): string | undefined {
-  if (!slug) return undefined;
-  if (!community) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "Community not found",
-    });
-  }
-  return community.id;
-}
-
-/**
  * A thread names its community by id, by slug, or by neither (a hub thread).
  * When both are sent they must name the same community.
  */

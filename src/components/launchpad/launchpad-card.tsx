@@ -4,12 +4,12 @@ import { LazyMotion, domAnimation, m } from "framer-motion";
 import { ChevronUp, MessageSquare, Clock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
-import { toast } from "sonner";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { api } from "@/trpc/react";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
+import { useLaunchpadWriteError } from "./use-launchpad-write-error";
 
 type LaunchpadCardProps = {
   project: {
@@ -24,6 +24,8 @@ type LaunchpadCardProps = {
     commentCount?: number | null;
     hasVoted: boolean;
     createdAt: string;
+    /** The project's community, for its rules prompt; null on the Hub. */
+    communitySlug?: string | null;
   };
   index: number;
 };
@@ -44,6 +46,7 @@ function getCoverUrl(
 export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
   const t = useTranslations("launchpad");
   const { requireAuth } = useRequireAuth();
+  const handleWriteError = useLaunchpadWriteError();
   const utils = api.useUtils();
 
   const listInput = {
@@ -76,9 +79,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
     },
     onError: (err, _input, ctx) => {
       if (ctx?.prev) utils.launchpad.list.setData(listInput, ctx.prev);
-      if (err.message === "RULES_NOT_ACCEPTED") {
-        toast.error(t("vote.signInToVote"));
-      }
+      handleWriteError(err, project.communitySlug);
     },
     onSettled: () => void utils.launchpad.list.invalidate(),
   });

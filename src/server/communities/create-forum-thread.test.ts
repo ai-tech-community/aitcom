@@ -5,7 +5,6 @@ import {
   forumThreadDraftMeta,
   forumThreadFromDraft,
   forumThreadSlug,
-  threadCommunityId,
 } from "./forum-thread-draft";
 
 describe("forum thread create", () => {
@@ -15,26 +14,6 @@ describe("forum thread create", () => {
       "hello-world-2",
     );
     expect(forumThreadSlug("Hello, World!")).not.toMatch(/\d{13}/);
-  });
-
-  it("keeps a missing community slug as a hub thread", () => {
-    expect(threadCommunityId(undefined, undefined)).toBeUndefined();
-  });
-
-  it("refuses a community slug that does not name a live community", () => {
-    expect(() => threadCommunityId("missing", null)).toThrow(TRPCError);
-    try {
-      threadCommunityId("missing", null);
-    } catch (error) {
-      expect(error).toMatchObject({
-        code: "NOT_FOUND",
-        message: "Community not found",
-      });
-    }
-  });
-
-  it("uses the community id when the slug matches", () => {
-    expect(threadCommunityId("makers", { id: "c1" })).toBe("c1");
   });
 
   it("stores a thread draft the owner can approve into the same thread", () => {

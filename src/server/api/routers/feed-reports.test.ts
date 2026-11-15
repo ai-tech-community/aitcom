@@ -3,10 +3,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as ObjectStorage from "@/server/media/object-storage";
 
+/** A public community: readable by anyone, so refusals say FORBIDDEN. */
+const PUBLIC_COMMUNITY = {
+  id: "c-1",
+  slug: "makers",
+  name: "Makers",
+  isListedInDirectory: true,
+  joinPolicy: "open",
+};
+
 const hooks = {
   membership: undefined as { role: string } | undefined,
   post: null as Record<string, unknown> | null,
-  community: undefined as { slug: string; name: string } | undefined,
+  community: undefined as Record<string, unknown> | undefined,
   moderators: [] as { userId: string }[],
   inserted: [] as unknown[],
 };
@@ -79,7 +88,7 @@ const communityPost = (over: Record<string, unknown> = {}) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   hooks.membership = undefined;
-  hooks.community = undefined;
+  hooks.community = PUBLIC_COMMUNITY;
   hooks.moderators = [];
   hooks.inserted = [];
   hooks.post = communityPost();
@@ -107,6 +116,19 @@ describe("feed.reviewReport", () => {
       caller().feed.reviewReport({ postId: 5, action: "remove" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(payload.update).not.toHaveBeenCalled();
+  });
+
+  it("says not found to a non-member of a members-only community", async () => {
+    hooks.community = { ...PUBLIC_COMMUNITY, joinPolicy: "invite_only" };
+    hooks.post = communityPost({ visibility: "public", hiddenAt: null });
+    await expect(
+      caller().feed.reviewReport({ postId: 5, action: "remove" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(
+      caller().feed.reportPost({ postId: 5, reason: "spam" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(payload.update).not.toHaveBeenCalled();
+    expect(payload.create).not.toHaveBeenCalled();
   });
 
   it("lets a moderator restore the post", async () => {
@@ -227,7 +249,7 @@ describe("feed.getPostReports", () => {
 describe("feed.reportPost moderator notice", () => {
   beforeEach(() => {
     hooks.membership = { role: "member" };
-    hooks.community = { slug: "makers", name: "Makers" };
+    hooks.community = PUBLIC_COMMUNITY;
     hooks.moderators = [{ userId: "mod-1" }];
     payload.count.mockResolvedValue({ totalDocs: 1 });
     payload.create.mockResolvedValue({});

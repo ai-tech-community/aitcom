@@ -11,6 +11,7 @@ import {
   type CommunityVisibility,
   isContentPublic,
   isFeaturedStripCommunity,
+  isOnTheWayIn,
   isOpenCommunity,
   isPrivateCommunity,
   isPublicCommunity,
@@ -199,5 +200,18 @@ describe("communityContentReadableWhere", () => {
         { communityId: { not_in: ["a", "b"] } },
       ],
     });
+  });
+});
+
+describe("isOnTheWayIn", () => {
+  it("is an open invitation or a pending request", () => {
+    expect(isOnTheWayIn("invited")).toBe(true);
+    expect(isOnTheWayIn("pending_approval")).toBe(true);
+  });
+
+  it("is not a stranger, a banned member, or a member already in", () => {
+    expect(isOnTheWayIn(null)).toBe(false);
+    expect(isOnTheWayIn("banned")).toBe(false);
+    expect(isOnTheWayIn("active")).toBe(false);
   });
 });

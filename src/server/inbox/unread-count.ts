@@ -1,11 +1,13 @@
 import { sql } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
+import { activeMemberCommunityIds } from "@/server/communities/content-visibility-queries";
 import {
   conversationParticipants,
   conversations,
   messages,
   spaceMemberships,
+  spaces,
 } from "@/server/db/schema";
 
 type DB = typeof _db;
@@ -16,13 +18,28 @@ type DB = typeof _db;
  * Two unread sources, UNION ALL'd then summed: DM/agent conversations
  * (tracked on conversationParticipants) and room conversations (no
  * participant rows — tracked on the member's active spaceMembership, the
- * same marker getMessages/listConversations use). Without the room arm the
+ * same marker getMessages/listConversations use), only while the member is
+ * still an active member in good standing of the room's community. Without the room arm the
  * global badge silently undercounts room unread.
  */
 export async function countInboxUnread(
   db: DB,
   userId: string,
 ): Promise<number> {
+  // The seam's member set (active and paid membership in order), the same
+  // answer listConversations filters room rows by.
+  const memberOf = [...(await activeMemberCommunityIds(db, userId))];
+  const inGoodStandingCommunity =
+    memberOf.length === 0
+      ? sql`false`
+      : sql`EXISTS (
+          SELECT 1 FROM ${spaces}
+          WHERE ${spaces.id} = c.space_id
+            AND ${spaces.communityId} IN (${sql.join(
+              memberOf.map((id) => sql`${id}`),
+              sql`, `,
+            )})
+        )`;
   const [result] = await db
     .select({ total: sql<number>`coalesce(sum(sub.cnt), 0)::int` })
     .from(
@@ -48,6 +65,9 @@ export async function countInboxUnread(
           AND sm.status = 'active'
         WHERE (m.sender_id != ${userId} OR m.sender_type != 'human')
           AND (sm.last_read_at IS NULL OR m.created_at > sm.last_read_at)
+          -- A room is its community's: only a member in good standing
+          -- counts its unread (ADR-0050), room membership or not.
+          AND ${inGoodStandingCommunity}
         GROUP BY m.conversation_id
       ) sub`,
     );

@@ -9,49 +9,58 @@ import { getPayloadClient } from "@/server/payload";
 import { and, eq, isNull } from "drizzle-orm";
 import { communities, communityMemberships } from "@/server/db/schema";
 import { releaseDeletedTopic } from "@/server/communities/post-topics";
+import { requireReadableCommunityBySlug } from "@/server/communities/content-access";
+import { isActiveCommunityMember } from "@/server/communities/content-visibility-queries";
 import { topicSlugify, isAtTopicCap } from "./topic-helpers";
 
+type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
+
+/** Create the community's default 'general' topic when it is missing. */
+async function ensureDefaultTopic(payload: Payload, communityId: string) {
+  const { docs } = await payload.find({
+    collection: "community-topics",
+    where: {
+      and: [
+        { communityId: { equals: communityId } },
+        { slug: { equals: "general" } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+  });
+  if (docs.length > 0) return;
+  await payload.create({
+    collection: "community-topics",
+    data: {
+      label: "General",
+      slug: "general",
+      communityId,
+      sortOrder: 0,
+      isDefault: true,
+    },
+  });
+}
+
 export const topicsRouter = createTRPCRouter({
-  /** PUBLIC: list a community's topics; ensure a 'general' default exists. */
+  /**
+   * A community's topics, for whoever may read its content (ADR-0050). The
+   * first active member to ask creates the default 'general' topic; a
+   * reader from outside never writes.
+   */
   list: publicProcedure
     .input(z.object({ communitySlug: z.string() }))
     .query(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.communitySlug),
-          isNull(communities.deletedAt),
-        ),
-        columns: { id: true },
-      });
-      if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
+      const userId = ctx.session?.user?.id;
+      const community = await requireReadableCommunityBySlug(
+        ctx.db,
+        input.communitySlug,
+        userId,
+      );
 
       const payload = await getPayloadClient();
 
-      // Ensure the default 'general' topic exists.
-      const { docs: existingDefault } = await payload.find({
-        collection: "community-topics",
-        where: {
-          and: [
-            { communityId: { equals: community.id } },
-            { slug: { equals: "general" } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
-      if (existingDefault.length === 0) {
-        await payload.create({
-          collection: "community-topics",
-          data: {
-            label: "General",
-            slug: "general",
-            communityId: community.id,
-            sortOrder: 0,
-            isDefault: true,
-          },
-        });
+      if (await isActiveCommunityMember(ctx.db, community.id, userId)) {
+        await ensureDefaultTopic(payload, community.id);
       }
 
       const { docs } = await payload.find({

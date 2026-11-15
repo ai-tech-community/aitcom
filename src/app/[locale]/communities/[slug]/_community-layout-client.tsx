@@ -80,11 +80,15 @@ export function CommunityLayoutClient({
   // in, never its tabs or pages — except the routes that are part of
   // getting in (the paid offers), which keep their own gate.
   const membersOnly = !community.viewerCanReadContent;
+  // The panel's next step comes from the same server answer that says the
+  // viewer may not read: right after an invite is accepted, the fresh
+  // memberships already say "active" while this answer still says "may not
+  // read", and mixing the two would flash "your paid membership has ended".
   const page =
     membersOnly && !isOutsiderRoute(segments) ? (
       <CommunityMembersOnly
         community={community}
-        membershipStatus={membershipStatus}
+        membershipStatus={community.viewerMembershipStatus}
         memberRole={memberRole}
       />
     ) : (

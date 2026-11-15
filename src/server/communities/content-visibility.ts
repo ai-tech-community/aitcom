@@ -22,7 +22,7 @@
 import type { Where } from "payload";
 
 import { HUB_SLUG } from "./hub";
-import type { JoinPolicy } from "./invite-policy";
+import type { JoinPolicy, MembershipStatus } from "./invite-policy";
 
 export type CommunityVisibility = {
   slug: string;
@@ -115,6 +115,16 @@ export function canReadRoster(
   isActiveMember: boolean,
 ): boolean {
   return isRosterPublic(community) || isActiveMember;
+}
+
+/**
+ * Someone with an open invitation or a pending request to join. They may
+ * read a members-only community's rules (its join terms) before they
+ * accept or are approved, and nothing else inside it. A stranger with no
+ * membership row, and a banned member, may not.
+ */
+export function isOnTheWayIn(status: MembershipStatus | null): boolean {
+  return status === "invited" || status === "pending_approval";
 }
 
 /**

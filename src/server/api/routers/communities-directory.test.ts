@@ -21,9 +21,17 @@ vi.mock("@/server/communities/directory-queries", () => ({
   invalidateDirectorySnapshots: vi.fn(),
 }));
 vi.mock("@/server/communities/discovery-queries", () => ({
-  loadMemberCommunityIds: fake.memberOf,
   loadPublicLiveness: vi.fn(),
 }));
+vi.mock(
+  "@/server/communities/content-visibility-queries",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/server/communities/content-visibility-queries")
+    >()),
+    activeMemberCommunityIds: fake.memberOf,
+  }),
+);
 vi.mock("@/server/communities/member-stack-queries", () => ({
   loadStackFacesForCommunities: fake.faces,
   loadStackFaces: vi.fn(),

@@ -26,6 +26,7 @@ import {
   challengeReplies,
   communities,
   communityMemberships,
+  user,
 } from "@/server/db/schema";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
@@ -34,6 +35,21 @@ import {
   hiddenContentCommunityIds,
   viewerCanReadContentOf,
 } from "@/server/communities/content-visibility-queries";
+import {
+  requireActiveMemberOf,
+  requireReadableRosterBySlug,
+} from "@/server/communities/content-access";
+import {
+  directoryProfileColumns,
+  toDirectoryMember,
+} from "@/server/communities/directory-member";
+import { requireReplyAuthor } from "@/server/communities/forum-write-access";
+import {
+  readableChallengesWhere,
+  requireChallengeParticipant,
+  requireChannelThreadParticipant,
+  requireReadableChallenge,
+} from "@/server/hackathon/challenge-access";
 import { getPayloadClient } from "@/server/payload";
 import {
   readableArticleWhere,
@@ -539,29 +555,28 @@ export const agentRouter = createTRPCRouter({
       requireScope(ctx.agent.scopes, "read");
 
       if (input.communitySlug) {
-        const community = await ctx.db.query.communities.findFirst({
-          where: and(
-            eq(communities.slug, input.communitySlug),
-            isNull(communities.deletedAt),
-          ),
-        });
-        if (!community)
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Community not found",
-          });
+        // A community's roster follows the roster rule for the agent's
+        // owner (ADR-0050); each member's details follow their profile
+        // visibility, the same way communities.getMembers shows them.
+        const community = await requireReadableRosterBySlug(
+          ctx.db,
+          input.communitySlug,
+          ctx.agent.ownerId,
+          { notFound: "Community not found" },
+        );
 
-        const members = await ctx.db
+        const rows = await ctx.db
           .select({
             userId: communityMemberships.userId,
             role: communityMemberships.role,
             joinedAt: communityMemberships.joinedAt,
             displayName: memberProfiles.displayName,
             bio: memberProfiles.bio,
-            xp: memberProfiles.xp,
-            level: memberProfiles.level,
+            image: user.image,
+            ...directoryProfileColumns(),
           })
           .from(communityMemberships)
+          .innerJoin(user, eq(communityMemberships.userId, user.id))
           .leftJoin(
             memberProfiles,
             eq(communityMemberships.userId, memberProfiles.userId),
@@ -575,16 +590,19 @@ export const agentRouter = createTRPCRouter({
           .orderBy(desc(communityMemberships.joinedAt))
           .limit(input.limit);
 
-        return members.map((m) => ({
-          userId: m.userId,
-          displayName: m.displayName ?? null,
-          bio: m.bio ?? null,
-          skills: null,
-          company: null,
-          xp: m.xp ?? 0,
-          level: m.level ?? 1,
-          role: m.role,
-        }));
+        return rows.map((row) => {
+          const { profile } = toDirectoryMember(row, ctx.agent.ownerId);
+          return {
+            userId: row.userId,
+            displayName: row.displayName ?? null,
+            bio: row.bio ?? null,
+            skills: profile?.skills ?? null,
+            company: profile?.company ?? null,
+            xp: profile ? (row.xp ?? 0) : null,
+            level: profile?.level ?? null,
+            role: row.role,
+          };
+        });
       }
 
       // Original global logic unchanged below
@@ -1197,12 +1215,10 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      if (thread.isLocked) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Thread is locked",
-        });
-      }
+      // The owner must be allowed to reply as a member replying in the
+      // browser is (ADR-0050): active member (a thread they may not read
+      // answers like a missing one), rules accepted, thread not locked.
+      await requireReplyAuthor(ctx.db, thread, ownerId);
 
       const topic = threadTopic(thread);
       if (!shareReferencesThreadTopic(topic.title, topic.body, input.content)) {
@@ -1284,12 +1300,10 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      if (thread.isLocked) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Thread is locked",
-        });
-      }
+      // The owner must be allowed to reply as a member replying in the
+      // browser is (ADR-0050): active member (a thread they may not read
+      // answers like a missing one), rules accepted, thread not locked.
+      await requireReplyAuthor(ctx.db, thread, ownerId);
 
       const topic = threadTopic(thread);
       if (!shareReferencesThreadTopic(topic.title, topic.body, input.content)) {
@@ -1393,6 +1407,24 @@ export const agentRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
+      // The idea first: a missing idea and one in a community the owner
+      // may not read answer the same way, before anything about votes.
+      const idea = await payload.findByID({
+        collection: "community-ideas",
+        id: input.ideaId,
+        depth: 0,
+        disableErrors: true,
+      });
+      if (!idea) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Idea not found",
+        });
+      }
+      await requireActiveMemberOf(ctx.db, idea.communityId, ownerId, {
+        notFound: "Idea not found",
+      });
+
       // Check if the owner has already voted
       const { docs: existingVotes } = await payload.find({
         collection: "idea-votes",
@@ -1411,21 +1443,6 @@ export const agentRouter = createTRPCRouter({
           voted: false,
           message: "Owner has already voted on this idea",
         };
-      }
-
-      // Fetch the idea to get current vote count
-      let idea;
-      try {
-        idea = await payload.findByID({
-          collection: "community-ideas",
-          id: input.ideaId,
-          depth: 0,
-        });
-      } catch {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Idea not found",
-        });
       }
 
       // Create vote on behalf of the owner
@@ -1534,9 +1551,12 @@ export const agentRouter = createTRPCRouter({
       };
       if (input.difficulty) where.difficulty = { equals: input.difficulty };
       if (input.type) where.type = { equals: input.type };
+      // An agent reads as its owner (ADR-0050): a members-only community's
+      // challenges only through a member owner; unclaimed, public only.
+      const readable = await readableChallengesWhere(ctx.db, ctx.agent.ownerId);
       const { docs } = await payload.find({
         collection: "challenges",
-        where,
+        where: readable ? { and: [where, readable] } : where,
         sort: "-createdAt",
         limit: input.limit,
         depth: 0,
@@ -1561,12 +1581,11 @@ export const agentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
       const ownerId = requireOwner(ctx.agent.ownerId);
-      const payload = await getPayloadClient();
-      const challenge = await payload.findByID({
-        collection: "challenges",
-        id: input.challengeId,
-        depth: 0,
-      });
+      const challenge = await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ownerId,
+      );
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
@@ -1621,6 +1640,11 @@ export const agentRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.agent.ownerId,
+      );
       const [channel] = await ctx.db
         .select()
         .from(challengeChannels)
@@ -1663,12 +1687,11 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
-      const payload = await getPayloadClient();
-      const challenge = await payload.findByID({
-        collection: "challenges",
-        id: input.challengeId,
-        depth: 0,
-      });
+      const challenge = await requireChallengeParticipant(
+        ctx.db,
+        input.challengeId,
+        ownerId,
+      );
       if (challenge.status !== "active") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1779,6 +1802,9 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      // Taking part needs the challenge to be readable (ADR-0050); an
+      // enrollment alone, say one made before a ban, is not enough.
+      await requireChallengeParticipant(ctx.db, input.challengeId, ownerId);
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
@@ -1862,6 +1888,9 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      // Taking part needs the challenge to be readable (ADR-0050); an
+      // enrollment alone, say one made before a ban, is not enough.
+      await requireChallengeParticipant(ctx.db, input.challengeId, ownerId);
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
@@ -1942,6 +1971,7 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      await requireChallengeParticipant(ctx.db, input.challengeId, ownerId);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const [draft] = await ctx.db
@@ -1981,6 +2011,7 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      await requireChannelThreadParticipant(ctx.db, input.threadId, ownerId);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const [draft] = await ctx.db
@@ -2017,6 +2048,9 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      // Taking part needs the challenge to be readable (ADR-0050); an
+      // enrollment alone, say one made before a ban, is not enough.
+      await requireChallengeParticipant(ctx.db, input.challengeId, ownerId);
 
       const [enrollment] = await ctx.db
         .select()
@@ -2071,12 +2105,13 @@ export const agentRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
-      const payload = await getPayloadClient();
-      const c = await payload.findByID({
-        collection: "challenges",
-        id: input.challengeId,
-        depth: 0,
-      });
+      // Reads as the owner (unclaimed: public only); a challenge the owner
+      // may not read answers like a missing one (ADR-0050).
+      const c = await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.agent.ownerId,
+      );
       const repo = c.repo as
         | { templateUrl?: string; testCommand?: string }
         | undefined;

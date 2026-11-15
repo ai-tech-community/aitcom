@@ -6,8 +6,10 @@ import {
   pickHomeCommunities,
   type FeaturedCommunityCard,
 } from "@/server/communities/featured";
-import { loadMemberCommunityIds } from "@/server/communities/discovery-queries";
-import { publicDirectoryCommunitySql } from "@/server/communities/content-visibility-queries";
+import {
+  activeMemberCommunityIds,
+  publicDirectoryCommunitySql,
+} from "@/server/communities/content-visibility-queries";
 import type { db as _db } from "@/server/db";
 import { communities, communityMemberships } from "@/server/db/schema";
 
@@ -57,7 +59,7 @@ export async function loadFeaturedCommunities(
     })),
   );
   const memberOf = viewerId
-    ? await loadMemberCommunityIds(db, viewerId)
+    ? await activeMemberCommunityIds(db, viewerId)
     : new Set<string>();
   return featuredCardsForViewer(picked, memberOf);
 }

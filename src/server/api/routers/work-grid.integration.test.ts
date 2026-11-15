@@ -170,6 +170,63 @@ describe.skipIf(!RUN_DB)(
       });
     }
 
+    /**
+     * A real Payload challenge for a challenge-scoped grid. Claiming checks
+     * that the owner may take part in it (ADR-0050), so a grid's challenge
+     * must exist; `communityId` scopes it to a community (null: Hub-wide).
+     */
+    async function createChallenge(communityId: string | null = null) {
+      const { getPayloadClient } = await import("@/server/payload");
+      const payload = await getPayloadClient();
+      const challenge = await payload.create({
+        collection: "challenges",
+        data: {
+          title: `Work grid challenge ${Date.now()}`,
+          slug: `it-wg-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+          description: {
+            root: {
+              type: "root",
+              direction: "ltr" as const,
+              format: "" as const,
+              indent: 0,
+              version: 1,
+              children: [
+                {
+                  type: "paragraph",
+                  version: 1,
+                  children: [{ type: "text", text: "integration test" }],
+                },
+              ],
+            },
+          },
+          type: "open-ended" as const,
+          status: "active" as const,
+          difficulty: "beginner" as const,
+          publishedBy: "member" as const,
+          creatorId: fx.ownerId,
+          startsAt: new Date().toISOString(),
+          endsAt: new Date().toISOString(),
+          objectives: [
+            {
+              description: "Do it",
+              verification: "test" as const,
+              targetCount: 1,
+            },
+          ],
+          rewards: { xpReward: 0 },
+          maxParticipants: 0,
+          ...(communityId ? { communityId } : {}),
+        },
+      });
+      return {
+        id: challenge.id,
+        remove: () =>
+          payload
+            .delete({ collection: "challenges", id: challenge.id })
+            .catch(() => null),
+      };
+    }
+
     /** Build an agent caller authenticated by the real API-key middleware. */
     function agentCaller(apiKeyRaw: string) {
       const headers = new Headers();
@@ -711,7 +768,8 @@ describe.skipIf(!RUN_DB)(
       // A challenge-scoped grid inserted directly (sidesteps Payload authz; the
       // claim/list paths read enrollment, not Payload). The owner holds NO
       // enrollment in this challenge, so the cell is out of source scope.
-      const challengeId = 999_000_000 + (Date.now() % 1_000_000);
+      const challenge = await createChallenge();
+      const challengeId = challenge.id;
       const [grid] = await db
         .insert(schema.workGrids)
         .values({ mode: "collaborative", status: "active", challengeId })
@@ -759,6 +817,7 @@ describe.skipIf(!RUN_DB)(
         await db
           .delete(schema.workGrids)
           .where(eq(schema.workGrids.id, grid!.id));
+        await challenge.remove();
       }
     });
 
@@ -1128,7 +1187,8 @@ describe.skipIf(!RUN_DB)(
 
     it("competitive cell is claimable only by an agent whose owner is on the team", async () => {
       const { db, schema, eq } = m;
-      const challengeId = 990000 + Math.floor(Math.random() * 9000);
+      const challenge = await createChallenge();
+      const challengeId = challenge.id;
 
       await ownerCaller(fx.ownerId).commissions.grant({
         taskTypeAllowlist: [fx.taskType],
@@ -1195,11 +1255,13 @@ describe.skipIf(!RUN_DB)(
         .delete(schema.challengeEnrollments)
         .where(eq(schema.challengeEnrollments.challengeId, challengeId));
       await db.delete(schema.teams).where(eq(schema.teams.id, team!.id));
+      await challenge.remove();
     });
 
     it("competitive cell is NOT claimable by an agent whose owner is enrolled but not on the team", async () => {
       const { db, schema, eq, generateApiKey } = m;
-      const challengeId = 980000 + Math.floor(Math.random() * 9000);
+      const challenge = await createChallenge();
+      const challengeId = challenge.id;
 
       const outsiderId = `it-outsider-${fx.suffix}`;
       const outsiderAgentId = `it-outsider-agent-${fx.suffix}`;
@@ -1304,6 +1366,7 @@ describe.skipIf(!RUN_DB)(
         .delete(schema.challengeEnrollments)
         .where(eq(schema.challengeEnrollments.challengeId, challengeId));
       await db.delete(schema.teams).where(eq(schema.teams.id, team!.id));
+      await challenge.remove();
       await db
         .delete(schema.agentApiKeys)
         .where(eq(schema.agentApiKeys.agentId, outsiderAgentId));
@@ -1320,6 +1383,87 @@ describe.skipIf(!RUN_DB)(
         .delete(schema.memberProfiles)
         .where(eq(schema.memberProfiles.userId, outsiderId));
       await db.delete(schema.user).where(eq(schema.user.id, outsiderId));
+    });
+
+    // ── A members-only community's challenge grid needs an owner with access ──
+
+    it("hides a members-only challenge's cells from an owner who lost access, answering like a missing cell", async () => {
+      const { db, schema, eq, and } = m;
+      await ownerCaller(fx.ownerId).commissions.grant({
+        taskTypeAllowlist: [fx.taskType],
+        sourceScope: "enrolled-challenges",
+      });
+      // The fixture community is unlisted, so its content is members-only.
+      const challenge = await createChallenge(fx.communityId);
+      await db.insert(schema.challengeEnrollments).values({
+        challengeId: challenge.id,
+        userId: fx.ownerId,
+        status: "active",
+      });
+      const [grid] = await db
+        .insert(schema.workGrids)
+        .values({
+          mode: "collaborative",
+          status: "active",
+          challengeId: challenge.id,
+        })
+        .returning({ id: schema.workGrids.id });
+      const [first, second] = await db
+        .insert(schema.workCells)
+        .values(
+          [0, 1].map(() => ({
+            gridId: grid!.id,
+            taskType: fx.taskType,
+            verificationMode: "consensus" as const,
+            status: "pending" as const,
+          })),
+        )
+        .returning({ id: schema.workCells.id });
+      const ownerRow = and(
+        eq(schema.communityMemberships.communityId, fx.communityId),
+        eq(schema.communityMemberships.userId, fx.ownerId),
+      );
+      const agent = agentCaller(fx.apiKeyRaw);
+      try {
+        // While the owner is a member, the agent works as before.
+        await agent.workGrid.claimCell({ cellId: first!.id });
+
+        await db
+          .update(schema.communityMemberships)
+          .set({ status: "banned" })
+          .where(ownerRow);
+        const claimable = await agent.workGrid.listClaimable({
+          gridId: grid!.id,
+        });
+        expect(claimable.map((c) => c.id)).not.toContain(second!.id);
+        await expect(
+          agent.workGrid.claimCell({ cellId: second!.id }),
+        ).rejects.toMatchObject({
+          code: "NOT_FOUND",
+          message: "Cell not found",
+        });
+        await expect(
+          agent.workGrid.submitCellResult({ cellId: first!.id, output: "x" }),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      } finally {
+        await db
+          .update(schema.communityMemberships)
+          .set({ status: "active" })
+          .where(ownerRow);
+        await db
+          .delete(schema.workCellResults)
+          .where(eq(schema.workCellResults.cellId, first!.id));
+        await db
+          .delete(schema.workCells)
+          .where(eq(schema.workCells.gridId, grid!.id));
+        await db
+          .delete(schema.workGrids)
+          .where(eq(schema.workGrids.id, grid!.id));
+        await db
+          .delete(schema.challengeEnrollments)
+          .where(eq(schema.challengeEnrollments.challengeId, challenge.id));
+        await challenge.remove();
+      }
     });
   },
 );

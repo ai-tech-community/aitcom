@@ -16,12 +16,24 @@ import {
 import { logActivity } from "@/server/agent/activity";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
+import {
+  requireChannelParticipant,
+  requireChannelThreadParticipant,
+  requireReadableChallenge,
+  requireReadableChannel,
+  requireReadableChannelThread,
+} from "@/server/hackathon/challenge-access";
 
 export const challengeChannelRouter = createTRPCRouter({
-  /** Get channel metadata for a challenge */
+  /** Get channel metadata for a challenge its community lets the viewer read. */
   getChannel: publicProcedure
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
+      await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.session?.user?.id,
+      );
       const [channel] = await ctx.db
         .select()
         .from(challengeChannels)
@@ -49,6 +61,11 @@ export const challengeChannelRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      await requireReadableChannel(
+        ctx.db,
+        input.channelId,
+        ctx.session?.user?.id,
+      );
       const conditions = [eq(challengeThreads.channelId, input.channelId)];
       if (input.type) {
         conditions.push(eq(challengeThreads.type, input.type));
@@ -98,6 +115,11 @@ export const challengeChannelRouter = createTRPCRouter({
   getThread: publicProcedure
     .input(z.object({ threadId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await requireReadableChannelThread(
+        ctx.db,
+        input.threadId,
+        ctx.session?.user?.id,
+      );
       const [thread] = await ctx.db
         .select({
           id: challengeThreads.id,
@@ -162,19 +184,13 @@ export const challengeChannelRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Verify channel exists
-      const [channel] = await ctx.db
-        .select()
-        .from(challengeChannels)
-        .where(eq(challengeChannels.id, input.channelId))
-        .limit(1);
-
-      if (!channel) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Channel not found",
-        });
-      }
+      // A channel of a challenge the caller may not take part in answers
+      // like a missing one; enrollment alone is not enough (ADR-0050).
+      const channel = await requireChannelParticipant(
+        ctx.db,
+        input.channelId,
+        userId,
+      );
 
       // Verify user is enrolled
       const [enrollment] = await ctx.db
@@ -234,27 +250,13 @@ export const challengeChannelRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Fetch thread and its channel to determine challengeId
-      const [threadWithChannel] = await ctx.db
-        .select({
-          channelId: challengeThreads.channelId,
-          type: challengeThreads.type,
-          challengeId: challengeChannels.challengeId,
-        })
-        .from(challengeThreads)
-        .innerJoin(
-          challengeChannels,
-          eq(challengeThreads.channelId, challengeChannels.id),
-        )
-        .where(eq(challengeThreads.id, input.threadId))
-        .limit(1);
-
-      if (!threadWithChannel) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Thread not found",
-        });
-      }
+      // A thread of a challenge the caller may not take part in answers
+      // like a missing one; enrollment alone is not enough (ADR-0050).
+      const threadWithChannel = await requireChannelThreadParticipant(
+        ctx.db,
+        input.threadId,
+        userId,
+      );
 
       // Verify user is enrolled in the challenge
       const [enrollment] = await ctx.db

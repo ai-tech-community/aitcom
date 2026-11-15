@@ -2964,7 +2964,8 @@
       "toastDeleted": "Commentaire supprimé."
     },
     "vote": {
-      "signInToVote": "Connectez-vous pour voter"
+      "signInToVote": "Connectez-vous pour voter",
+      "membersOnly": "Rejoignez la communauté pour voter et commenter ses projets."
     },
     "detail": {
       "by": "par",

@@ -1,0 +1,319 @@
+/**
+ * Who may see a challenge (and a hackathon's spectator view of it): the
+ * content rule of the challenge's community, through the read seam
+ * (ADR-0030, ADR-0050). A challenge with no community is Hub-wide and
+ * public. Anything the viewer may not read answers NOT_FOUND, the same as
+ * a missing challenge or team, so a members-only community's hackathon is
+ * not confirmed to exist.
+ */
+
+import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
+import type { Where } from "payload";
+
+import type { Challenge } from "@/payload-types";
+import type { db as appDb } from "@/server/db";
+import {
+  challengeChannels,
+  challengeThreads,
+  communities,
+  teams,
+} from "@/server/db/schema";
+import { getPayloadClient } from "@/server/payload";
+import { requireReadableContentOf } from "@/server/communities/content-access";
+import { communityContentReadableWhere } from "@/server/communities/content-visibility";
+import {
+  COMMUNITY_VISIBILITY_COLUMNS,
+  hiddenContentCommunityIds,
+  viewerCanReadContent,
+  viewerCanReadContentOf,
+} from "@/server/communities/content-visibility-queries";
+import { ownerOnTeam } from "@/server/hackathon/team-membership";
+
+type DB = typeof appDb;
+
+const CHALLENGE_NOT_FOUND = "Challenge not found";
+const CHANNEL_NOT_FOUND = "Channel not found";
+const THREAD_NOT_FOUND = "Thread not found";
+const TEAM_NOT_FOUND = "Team not found";
+
+/** The NOT_FOUND message, so a hidden challenge answers like a missing row. */
+type ChallengeGuardOptions = { notFound?: string };
+
+/** The challenge with this id, when the viewer may read its community. */
+export async function requireReadableChallenge(
+  db: DB,
+  challengeId: number,
+  userId: string | null | undefined,
+  options: ChallengeGuardOptions = {},
+): Promise<Challenge> {
+  const notFound = options.notFound ?? CHALLENGE_NOT_FOUND;
+  const payload = await getPayloadClient();
+  const challenge = await payload.findByID({
+    collection: "challenges",
+    id: challengeId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!challenge) {
+    throw new TRPCError({ code: "NOT_FOUND", message: notFound });
+  }
+  await requireReadableContentOf(db, challenge.communityId, userId, {
+    notFound,
+  });
+  return challenge;
+}
+
+/**
+ * The challenge, when the caller may take part in it: enroll, form or join
+ * a team, post in its channel, report progress. Taking part follows the
+ * challenge's event (ADR-0029, ADR-0050): on the Hub or a public community
+ * anyone signed in may (public hackathons register non-members through the
+ * event); in a members-only community only an active member in good
+ * standing may, because only they may read it. Everyone else gets
+ * NOT_FOUND, the same as a missing challenge. Checked on every action, not
+ * only at enrollment: an enrollment made before a ban, or before a paid
+ * membership lapsed, grants nothing by itself.
+ */
+export async function requireChallengeParticipant(
+  db: DB,
+  challengeId: number,
+  userId: string,
+  options: ChallengeGuardOptions = {},
+): Promise<Challenge> {
+  return requireReadableChallenge(db, challengeId, userId, options);
+}
+
+/** A team's challenge id, when the viewer may read that challenge. */
+export async function requireReadableTeam(
+  db: DB,
+  teamId: string,
+  userId: string | null | undefined,
+): Promise<{ challengeId: number }> {
+  const [team] = await db
+    .select({ challengeId: teams.challengeId })
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+  if (!team) {
+    throw new TRPCError({ code: "NOT_FOUND", message: TEAM_NOT_FOUND });
+  }
+  await requireReadableChallenge(db, team.challengeId, userId, {
+    notFound: TEAM_NOT_FOUND,
+  });
+  return team;
+}
+
+/**
+ * A team the caller sits on, for the exit actions (leave; disband for its
+ * captain). These skip the read gate on purpose: someone who lost access to
+ * a members-only community must still be able to give up their seat, which
+ * reveals nothing about the challenge. Someone with no seat (not on the team
+ * and not its captain) gets "Team not found", like a missing team.
+ */
+export async function requireOwnTeamSeat<
+  T extends { id: string; captainId: string },
+>(db: DB, team: T | undefined, userId: string): Promise<T> {
+  if (
+    !team ||
+    (team.captainId !== userId && !(await ownerOnTeam(db, userId, team.id)))
+  ) {
+    throw new TRPCError({ code: "NOT_FOUND", message: TEAM_NOT_FOUND });
+  }
+  return team;
+}
+
+/**
+ * Whether the user may take part in the challenge (the boolean form of
+ * `requireChallengeParticipant`), for lists and for checking someone
+ * other than the caller. A missing challenge is false.
+ */
+export async function mayTakePartInChallenge(
+  db: DB,
+  challengeId: number,
+  userId: string,
+): Promise<boolean> {
+  const payload = await getPayloadClient();
+  const challenge = await payload.findByID({
+    collection: "challenges",
+    id: challengeId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!challenge) return false;
+  return viewerCanReadContentOf(db, challenge.communityId, userId);
+}
+
+/**
+ * The users among `userIds` who may still take part in the challenge, for
+ * lists of other participants (the looking-for-team list): someone who was
+ * banned, or whose paid membership lapsed, keeps their enrollment row but
+ * is no longer shown. The community is read once.
+ */
+export async function participantsAmong(
+  db: DB,
+  challenge: { communityId?: string | null },
+  userIds: readonly string[],
+): Promise<Set<string>> {
+  if (!challenge.communityId) return new Set(userIds);
+  const community = await db.query.communities.findFirst({
+    where: eq(communities.id, challenge.communityId),
+    columns: COMMUNITY_VISIBILITY_COLUMNS,
+  });
+  if (!community) return new Set();
+  const allowed = await Promise.all(
+    userIds.map(async (userId) =>
+      (await viewerCanReadContent(db, community, userId)) ? userId : null,
+    ),
+  );
+  return new Set(allowed.filter((id): id is string => id !== null));
+}
+
+/**
+ * The team workspace's gate: the caller may take part in the team's
+ * challenge (a team of a challenge they may not read answers "Team not
+ * found", like a missing one) and is on the team (FORBIDDEN otherwise). A
+ * member who was banned, or whose paid membership lapsed, keeps the
+ * enrollment row but loses the workspace.
+ */
+export async function requireTeamWorkspaceMember(
+  db: DB,
+  teamId: string,
+  userId: string,
+): Promise<void> {
+  const [team] = await db
+    .select({ challengeId: teams.challengeId })
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+  await requireTeamParticipant(db, team, userId);
+  if (!(await ownerOnTeam(db, userId, teamId))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You are not a member of this team.",
+    });
+  }
+}
+
+/** The challenge a channel belongs to; NOT_FOUND for a missing channel. */
+async function challengeOfChannel(
+  db: DB,
+  channelId: string,
+): Promise<{ challengeId: number }> {
+  const [channel] = await db
+    .select({ challengeId: challengeChannels.challengeId })
+    .from(challengeChannels)
+    .where(eq(challengeChannels.id, channelId))
+    .limit(1);
+  if (!channel) {
+    throw new TRPCError({ code: "NOT_FOUND", message: CHANNEL_NOT_FOUND });
+  }
+  return channel;
+}
+
+/** The challenge a channel thread belongs to; NOT_FOUND for a missing one. */
+async function challengeOfChannelThread(
+  db: DB,
+  threadId: string,
+): Promise<{ challengeId: number; type: string }> {
+  const [row] = await db
+    .select({
+      challengeId: challengeChannels.challengeId,
+      type: challengeThreads.type,
+    })
+    .from(challengeThreads)
+    .innerJoin(
+      challengeChannels,
+      eq(challengeChannels.id, challengeThreads.channelId),
+    )
+    .where(eq(challengeThreads.id, threadId))
+    .limit(1);
+  if (!row) {
+    throw new TRPCError({ code: "NOT_FOUND", message: THREAD_NOT_FOUND });
+  }
+  return row;
+}
+
+/** A challenge channel's challenge, when the viewer may read it. */
+export async function requireReadableChannel(
+  db: DB,
+  channelId: string,
+  userId: string | null | undefined,
+): Promise<{ challengeId: number }> {
+  const channel = await challengeOfChannel(db, channelId);
+  await requireReadableChallenge(db, channel.challengeId, userId, {
+    notFound: CHANNEL_NOT_FOUND,
+  });
+  return channel;
+}
+
+/** A challenge-channel thread's challenge, when the viewer may read it. */
+export async function requireReadableChannelThread(
+  db: DB,
+  threadId: string,
+  userId: string | null | undefined,
+): Promise<{ challengeId: number; type: string }> {
+  const row = await challengeOfChannelThread(db, threadId);
+  await requireReadableChallenge(db, row.challengeId, userId, {
+    notFound: THREAD_NOT_FOUND,
+  });
+  return row;
+}
+
+/** A channel the caller may post in (`requireChallengeParticipant`). */
+export async function requireChannelParticipant(
+  db: DB,
+  channelId: string,
+  userId: string,
+): Promise<{ challengeId: number }> {
+  const channel = await challengeOfChannel(db, channelId);
+  await requireChallengeParticipant(db, channel.challengeId, userId, {
+    notFound: CHANNEL_NOT_FOUND,
+  });
+  return channel;
+}
+
+/** A channel thread the caller may reply to (`requireChallengeParticipant`). */
+export async function requireChannelThreadParticipant(
+  db: DB,
+  threadId: string,
+  userId: string,
+): Promise<{ challengeId: number; type: string }> {
+  const row = await challengeOfChannelThread(db, threadId);
+  await requireChallengeParticipant(db, row.challengeId, userId, {
+    notFound: THREAD_NOT_FOUND,
+  });
+  return row;
+}
+
+/**
+ * A team the caller may act on (join, leave, disband, submit): the team
+ * row when they may take part in its challenge. A missing team and one of
+ * a challenge they may not read both answer "Team not found".
+ */
+export async function requireTeamParticipant<T extends { challengeId: number }>(
+  db: DB,
+  team: T | undefined,
+  userId: string,
+): Promise<T> {
+  if (!team) {
+    throw new TRPCError({ code: "NOT_FOUND", message: TEAM_NOT_FOUND });
+  }
+  await requireChallengeParticipant(db, team.challengeId, userId, {
+    notFound: TEAM_NOT_FOUND,
+  });
+  return team;
+}
+
+/**
+ * Payload `where` that drops challenges of communities the viewer may not
+ * read; null when nothing is hidden. Hub-wide challenges stay.
+ */
+export async function readableChallengesWhere(
+  db: DB,
+  userId: string | null | undefined,
+): Promise<Where | null> {
+  return communityContentReadableWhere(
+    await hiddenContentCommunityIds(db, userId),
+  );
+}

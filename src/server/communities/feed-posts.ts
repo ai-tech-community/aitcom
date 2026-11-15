@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import type { db as Db } from "@/server/db";
-import { communities, communityMemberships, user } from "@/server/db/schema";
+import { communities, user } from "@/server/db/schema";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { CommunityRole } from "@/server/communities/role-utils";
@@ -18,14 +18,20 @@ import {
   OUTSIDE_VIEWER,
   type FeedViewer,
 } from "@/server/communities/post-visibility";
+import {
+  NOT_AN_ACTIVE_MEMBER,
+  requireActiveMember,
+  requireReadableContentOf,
+} from "./content-access";
+import {
+  activeCommunityRole,
+  COMMUNITY_VISIBILITY_COLUMNS,
+  communityRefOf,
+} from "./content-visibility-queries";
 import { imageIdsOf } from "./feed-images";
 import { loadMentionViews, type PostMentionView } from "./post-mentions";
 import { loadPollViews } from "./post-polls";
 import type { FeedPollView } from "@/lib/poll-rules";
-import {
-  canReadPaidCommunity,
-  membershipPaymentAllowed,
-} from "@/server/payments/access";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -33,15 +39,21 @@ type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 export type FeedMemberRole = CommunityRole;
 
 /** Neutral on purpose: the same refusal covers reading, posting, and acting. */
-const NOT_A_MEMBER = "Must be an active community member";
+const NOT_A_MEMBER = NOT_AN_ACTIVE_MEMBER;
+
+/** A feed's community, named by slug or by id. */
+export type FeedCommunityKey = { slug: string } | { id: string };
 
 /**
- * The community behind a feed, for an active member only. Feeds are
- * members-only: anyone else gets FORBIDDEN, an unknown slug NOT_FOUND.
+ * The community behind a feed, for an active member in good standing only
+ * (`requireActiveMember`). Feeds are members-only: a reader who is not a
+ * member gets FORBIDDEN; someone who may not read the community, and an
+ * unknown one, get NOT_FOUND (ADR-0050). Name the community by slug (a
+ * string, as the routers do) or by `{ id }` (an agent's draft names it so).
  */
 export async function requireActiveFeedMember(
   database: Database,
-  communitySlug: string,
+  community: string | FeedCommunityKey,
   userId: string,
 ): Promise<{
   id: string;
@@ -49,39 +61,25 @@ export async function requireActiveFeedMember(
   role: FeedMemberRole;
   feedPostPolicy: "all_members" | "admins_only";
 }> {
-  const community = await database.query.communities.findFirst({
+  const key = typeof community === "string" ? { slug: community } : community;
+  const row = await database.query.communities.findFirst({
     where: and(
-      eq(communities.slug, communitySlug),
+      "slug" in key
+        ? eq(communities.slug, key.slug)
+        : eq(communities.id, key.id),
       isNull(communities.deletedAt),
     ),
-    columns: { id: true, slug: true, feedPostPolicy: true },
+    columns: { ...COMMUNITY_VISIBILITY_COLUMNS, feedPostPolicy: true },
   });
-  if (!community) {
+  if (!row) {
     throw new TRPCError({ code: "NOT_FOUND" });
   }
-  const membership = await database.query.communityMemberships.findFirst({
-    where: and(
-      eq(communityMemberships.communityId, community.id),
-      eq(communityMemberships.userId, userId),
-      eq(communityMemberships.status, "active"),
-    ),
-    columns: { id: true, role: true },
-  });
-  if (
-    !membership ||
-    (membership.role === "member" &&
-      !(await membershipPaymentAllowed(database, community.id, userId)))
-  ) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: NOT_A_MEMBER,
-    });
-  }
+  const role = await requireActiveMember(database, communityRefOf(row), userId);
   return {
-    id: community.id,
-    slug: community.slug,
-    role: membership.role as FeedMemberRole,
-    feedPostPolicy: community.feedPostPolicy ?? "all_members",
+    id: row.id,
+    slug: row.slug,
+    role,
+    feedPostPolicy: row.feedPostPolicy ?? "all_members",
   };
 }
 
@@ -90,10 +88,14 @@ export async function requireActiveFeedMember(
  * looking (a member, or an agent's owner; null for an unclaimed agent).
  *
  * - A missing or deleted post is NOT_FOUND.
- * - With `requireMembership` (liking, commenting), someone who isn't an
- *   active member of the post's community is FORBIDDEN, as before.
+ * - A post in a community whose content the viewer may not read is
+ *   NOT_FOUND, whatever its own visibility: "public" only widens access
+ *   within a community whose content is public (ADR-0050).
  * - A community post the viewer may not see (hidden, or community-only for an
  *   outsider) is NOT_FOUND, so its existence doesn't leak.
+ * - Only then, with `requireMembership` (liking, commenting), someone who
+ *   may see the post but isn't an active member in good standing is
+ *   FORBIDDEN.
  * - Hub-wide posts (no community) have no visibility rule to apply.
  */
 export async function requireViewablePost(
@@ -113,39 +115,24 @@ export async function requireViewablePost(
   if (!post || post.isDeleted) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
   }
-  if (
-    post.communityId &&
-    !(await canReadPaidCommunity(database, post.communityId, userId))
-  ) {
+  await requireReadableContentOf(database, post.communityId, userId, {
+    notFound: "Post not found",
+  });
+  const role = post.communityId
+    ? await activeCommunityRole(database, post.communityId, userId)
+    : null;
+  const membership = role ? { role } : null;
+  // Visibility before membership: a post the caller may not see answers
+  // like a missing one, even on a write that would refuse them anyway.
+  const viewer = userId ? feedViewerFor(userId, membership) : OUTSIDE_VIEWER;
+  if (post.communityId && !canViewPost(post, viewer)) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
   }
-  let membership =
-    userId && post.communityId
-      ? ((await database.query.communityMemberships.findFirst({
-          where: and(
-            eq(communityMemberships.communityId, post.communityId),
-            eq(communityMemberships.userId, userId),
-            eq(communityMemberships.status, "active"),
-          ),
-          columns: { role: true },
-        })) ?? null)
-      : null;
-  if (
-    membership?.role === "member" &&
-    post.communityId &&
-    userId &&
-    !(await membershipPaymentAllowed(database, post.communityId, userId))
-  )
-    membership = null;
   if (options.requireMembership && !membership) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: NOT_A_MEMBER,
     });
-  }
-  const viewer = userId ? feedViewerFor(userId, membership) : OUTSIDE_VIEWER;
-  if (post.communityId && !canViewPost(post, viewer)) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
   }
   return { post, membership, viewer };
 }
@@ -158,21 +145,20 @@ export function canPostToFeed(
   return role === "owner" || role === "admin" || role === "moderator";
 }
 
-/** An active member who may post under the community's feed policy. */
+/**
+ * An active member who may post under the community's feed policy: the one
+ * rule for posting in the browser, an agent's post draft, and its approval.
+ */
 export async function requireFeedPoster(
   database: Database,
-  communitySlug: string,
+  community: string | FeedCommunityKey,
   userId: string,
 ) {
-  const community = await requireActiveFeedMember(
-    database,
-    communitySlug,
-    userId,
-  );
-  if (!canPostToFeed(community.feedPostPolicy, community.role)) {
+  const member = await requireActiveFeedMember(database, community, userId);
+  if (!canPostToFeed(member.feedPostPolicy, member.role)) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
-  return community;
+  return member;
 }
 
 /** What a client sees of a post's video: playback links, never storage keys. */

@@ -69,7 +69,7 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
     userIds: string[];
     communityIds: string[];
     eventIds: number[];
-    courseId: number;
+    courseIds: number[];
     open: string;
     approval: string;
     unlisted: string;
@@ -236,13 +236,26 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
         communityId: open,
       } as never,
     });
+    // A public course in a members-only community: no visitor can open
+    // it (ADR-0050), so its card does not offer "learn".
+    const privateCourse = await payload.create({
+      collection: "courses",
+      data: {
+        title: `Directory private course ${suffix}`,
+        slug: `it-dir-private-course-${suffix}`,
+        authorId: owner,
+        status: "published",
+        isPublic: true,
+        communityId: approval,
+      } as never,
+    });
 
     fx = {
       suffix,
       userIds: [owner, member],
       communityIds: [open, approval, unlisted],
       eventIds,
-      courseId: course.id,
+      courseIds: [course.id, privateCourse.id],
       open,
       approval,
       unlisted,
@@ -255,7 +268,10 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
     const { db, schema, inArray } = m;
     const payload = await m.getPayloadClient();
     try {
-      await payload.delete({ collection: "courses", id: fx.courseId });
+      await payload.delete({
+        collection: "courses",
+        where: { id: { in: fx.courseIds } },
+      });
     } catch {
       // Best-effort teardown.
     }

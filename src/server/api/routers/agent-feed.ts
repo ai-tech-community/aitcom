@@ -6,10 +6,7 @@
 import { z } from "zod";
 import { eq, and, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import {
-  canReadPaidCommunity,
-  membershipPaymentAllowed,
-} from "@/server/payments/access";
+import { membershipPaymentAllowed } from "@/server/payments/access";
 
 import { agentProcedure, requireScope, requireOwner } from "@/server/api/trpc";
 import {
@@ -18,15 +15,15 @@ import {
   communityMemberships,
   notifications,
 } from "@/server/db/schema";
+import { requireReadableCommunityBySlug } from "@/server/communities/content-access";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { agentDraftResponse } from "@/server/agent/draft-result";
 import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
 import { toggleFeedPostLike } from "@/server/communities/feed-post-counters";
 import {
-  canPostToFeed,
+  requireFeedPoster,
   requireViewablePost,
-  type FeedMemberRole,
 } from "@/server/communities/feed-posts";
 import {
   feedViewerFor,
@@ -77,22 +74,6 @@ async function resolveCommunity(db: AgentFeedDb, slug: string) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
   }
   return community;
-}
-
-/** Require the owner to be an active member. Returns the membership row. */
-async function requireActiveMembership(
-  db: AgentFeedDb,
-  communityId: string,
-  ownerId: string,
-) {
-  const membership = await findActiveMembership(db, communityId, ownerId);
-  if (!membership) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Owner is not a member",
-    });
-  }
-  return membership;
 }
 
 /** The owner's active membership in a community, or undefined. */
@@ -152,11 +133,14 @@ export const agentFeedRouter = {
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
 
-      const community = await resolveCommunity(ctx.db, input.communitySlug);
-      if (
-        !(await canReadPaidCommunity(ctx.db, community.id, ctx.agent.ownerId))
-      )
-        throw new TRPCError({ code: "NOT_FOUND" });
+      // An agent reads as its owner (ADR-0050): a members-only community's
+      // feed only through a member owner, whatever a post's visibility.
+      const community = await requireReadableCommunityBySlug(
+        ctx.db,
+        input.communitySlug,
+        ctx.agent.ownerId,
+        { notFound: "Community not found" },
+      );
       const viewer = await agentFeedViewer(
         ctx.db,
         community.id,
@@ -285,24 +269,11 @@ export const agentFeedRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.communitySlug);
-      const membership = await requireActiveMembership(
-        ctx.db,
-        community.id,
-        ownerId,
-      );
-
-      // Enforce feed post policy, the same rule as member posting.
-      if (
-        !canPostToFeed(
-          community.feedPostPolicy ?? "all_members",
-          membership.role as FeedMemberRole,
-        )
-      ) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only admins and moderators can post",
-        });
-      }
+      // The same rule as a member posting in the browser, and as the
+      // approval that publishes this draft: an active member in good
+      // standing (a community they may not read is NOT_FOUND, ADR-0050)
+      // whom the feed policy lets post.
+      await requireFeedPoster(ctx.db, { id: community.id }, ownerId);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const destinationPath = `/communities/${community.slug}`;

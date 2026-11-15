@@ -33,6 +33,11 @@ import {
   DEADLINE_MESSAGES,
 } from "@/server/hackathon/deadlines";
 import { boundHackathonEvent } from "@/server/hackathon/bound-event";
+import {
+  requireChallengeParticipant,
+  requireOwnTeamSeat,
+  requireTeamParticipant,
+} from "@/server/hackathon/challenge-access";
 
 /** Look up the published hackathon event bound to a challenge, or null. */
 async function hackathonEventForChallenge(challengeId: number) {
@@ -137,6 +142,15 @@ export const teamsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
+      // Readable first: a hidden challenge answers like a missing one, and
+      // only a challenge the caller may take part in can be "not a
+      // hackathon" (ADR-0050).
+      const challenge = await requireChallengeParticipant(
+        ctx.db,
+        input.challengeId,
+        userId,
+      );
+
       const event = await hackathonEventForChallenge(input.challengeId);
       if (!event) {
         throw new TRPCError({
@@ -154,12 +168,6 @@ export const teamsRouter = createTRPCRouter({
         });
       }
 
-      const payload = await getPayloadClient();
-      const challenge = await payload.findByID({
-        collection: "challenges",
-        id: input.challengeId,
-        depth: 0,
-      });
       const maxSize = challenge.teamConfig?.maxTeamSize ?? 5;
 
       await assertNotAlreadyOnTeam(ctx.db, userId, input.challengeId);
@@ -202,14 +210,17 @@ export const teamsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      const [team] = await ctx.db
-        .select()
-        .from(teams)
-        .where(eq(teams.joinCode, input.joinCode))
-        .limit(1);
-      if (!team) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
-      }
+      const team = await requireTeamParticipant(
+        ctx.db,
+        (
+          await ctx.db
+            .select()
+            .from(teams)
+            .where(eq(teams.joinCode, input.joinCode))
+            .limit(1)
+        )[0],
+        userId,
+      );
 
       const payload = await getPayloadClient();
       // Team pins a concrete eventId, so fetch by id directly (vs the
@@ -267,14 +278,18 @@ export const teamsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      const [team] = await ctx.db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, input.teamId))
-        .limit(1);
-      if (!team) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
-      }
+      // An exit: no read gate, only the caller's own seat (ADR-0050).
+      const team = await requireOwnTeamSeat(
+        ctx.db,
+        (
+          await ctx.db
+            .select()
+            .from(teams)
+            .where(eq(teams.id, input.teamId))
+            .limit(1)
+        )[0],
+        userId,
+      );
       if (team.status !== "forming") {
         throw new TRPCError({
           code: "CONFLICT",
@@ -313,14 +328,18 @@ export const teamsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      const [team] = await ctx.db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, input.teamId))
-        .limit(1);
-      if (!team) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
-      }
+      // An exit: no read gate, only the caller's own seat (ADR-0050).
+      const team = await requireOwnTeamSeat(
+        ctx.db,
+        (
+          await ctx.db
+            .select()
+            .from(teams)
+            .where(eq(teams.id, input.teamId))
+            .limit(1)
+        )[0],
+        userId,
+      );
       if (team.captainId !== userId) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -369,14 +388,17 @@ export const teamsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      const [team] = await ctx.db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, input.teamId))
-        .limit(1);
-      if (!team) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
-      }
+      const team = await requireTeamParticipant(
+        ctx.db,
+        (
+          await ctx.db
+            .select()
+            .from(teams)
+            .where(eq(teams.id, input.teamId))
+            .limit(1)
+        )[0],
+        userId,
+      );
       if (team.captainId !== userId) {
         throw new TRPCError({
           code: "FORBIDDEN",

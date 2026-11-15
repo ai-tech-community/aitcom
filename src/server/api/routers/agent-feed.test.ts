@@ -13,6 +13,8 @@ const hooks = {
   membership: undefined as { role: string } | undefined,
   membershipLookups: 0,
   post: null as Record<string, unknown> | null,
+  /** The community's visibility facts; listed and open makes it public. */
+  facts: {} as Record<string, unknown>,
 };
 
 const payload = {
@@ -51,8 +53,11 @@ vi.mock("@/server/db", () => ({
           id: "c-1",
           slug: "makers",
           name: "Makers",
+          isListedInDirectory: true,
+          joinPolicy: "open",
           feedPostPolicy: "all_members",
           deletedAt: null,
+          ...hooks.facts,
         }),
       },
     },
@@ -113,6 +118,7 @@ beforeEach(() => {
   };
   hooks.membership = undefined;
   hooks.membershipLookups = 0;
+  hooks.facts = {};
   hooks.post = post();
   payload.findByID.mockImplementation(async () => {
     if (!hooks.post) throw Object.assign(new Error("nf"), { status: 404 });
@@ -179,6 +185,40 @@ describe("agent.browseFeed", () => {
       }),
     );
     expect(hooks.membershipLookups).toBe(0);
+  });
+});
+
+describe.each([
+  ["listed invite_only", { joinPolicy: "invite_only" }],
+  ["listed approval_required", { joinPolicy: "approval_required" }],
+  ["unlisted", { isListedInDirectory: false }],
+])("a %s community's feed (ADR-0050)", (_label, facts) => {
+  beforeEach(() => {
+    hooks.facts = facts;
+    hooks.post = post({ visibility: "public" });
+  });
+
+  it("is not found for an agent whose owner is not a member, public posts and all", async () => {
+    for (const ownerId of ["owner-1", null]) {
+      hooks.agent = { ...hooks.agent, ownerId };
+      await expect(
+        agentCaller().agent.browseFeed({ communitySlug: "makers" }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(
+        agentCaller().agent.getFeedComments({ postId: 5 }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+    expect(payload.find).not.toHaveBeenCalled();
+  });
+
+  it("is readable through a member owner", async () => {
+    hooks.membership = { role: "member" };
+    await expect(
+      agentCaller().agent.browseFeed({ communitySlug: "makers" }),
+    ).resolves.toEqual({ posts: [], nextCursor: undefined });
+    await expect(
+      agentCaller().agent.getFeedComments({ postId: 5 }),
+    ).resolves.toEqual([]);
   });
 });
 

@@ -181,7 +181,13 @@ describe.skipIf(!RUN_DB)("gallery tab [DB integration]", () => {
     });
     const [c] = await db
       .insert(schema.communities)
-      .values({ name: `Gallery Tab ${suffix}`, slug, createdBy: userId })
+      // Listed and open, so a guest may read its nav (ADR-0050).
+      .values({
+        name: `Gallery Tab ${suffix}`,
+        slug,
+        createdBy: userId,
+        isListedInDirectory: true,
+      })
       .returning();
     communityId = c!.id;
     await db.insert(schema.communityMemberships).values({

@@ -16,6 +16,7 @@ import { communityEventVisibilityWhere } from "@/lib/events/public-event-access"
 import { loadEventSideWhere } from "@/server/events/event-side-where";
 import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
 import { createTtlMemo } from "@/server/ttl-memo";
+import { isContentPublic } from "@/server/communities/content-visibility";
 
 type DB = typeof _db;
 
@@ -114,6 +115,7 @@ async function communitiesWith(
   ids: readonly string[],
   where: Where[],
 ): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
   const { docs } = await payload.find({
     collection,
     where: { and: [{ communityId: { in: [...ids] } }, ...where] },
@@ -128,19 +130,23 @@ async function communitiesWith(
 /**
  * What the listed communities offer beyond events, by the same rules the
  * public pages use: a course visitors can open (published and public), an
- * active challenge, an open job that has not expired.
+ * active challenge, an open job that has not expired. Courses and
+ * challenges count only in communities whose content is public
+ * (`contentPublicIds`): in a members-only community no visitor can open
+ * them (ADR-0050), so the card must not say it offers them.
  */
 async function loadOfferings(
   payload: Payload,
   ids: readonly string[],
+  contentPublicIds: readonly string[],
   now: Date,
 ) {
   const [learn, build, work] = await Promise.all([
-    communitiesWith(payload, "courses", ids, [
+    communitiesWith(payload, "courses", contentPublicIds, [
       { status: { equals: "published" } },
       { isPublic: { equals: true } },
     ]),
-    communitiesWith(payload, "challenges", ids, [
+    communitiesWith(payload, "challenges", contentPublicIds, [
       { status: { equals: "active" } },
     ]),
     communitiesWith(payload, "jobs", ids, [
@@ -193,7 +199,12 @@ async function loadDirectory(
         ),
       )
       .groupBy(spaces.communityId),
-    loadOfferings(payload, ids, opts.now),
+    loadOfferings(
+      payload,
+      ids,
+      candidates.filter((c) => isContentPublic(c)).map((c) => c.communityId),
+      opts.now,
+    ),
   ]);
 
   return buildDirectory({

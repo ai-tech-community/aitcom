@@ -40,6 +40,7 @@ import { seedDefaultSpaces } from "@/server/communities/seed-default-spaces";
 import { generateSlug } from "@/server/communities/slug-utils";
 import {
   canManageRole,
+  isCommunityManagerRole,
   ROLE_HIERARCHY,
   type CommunityRole,
 } from "@/server/communities/role-utils";
@@ -49,10 +50,7 @@ import {
   canRedeemInvite,
 } from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
-import {
-  loadMemberCommunityIds,
-  loadPublicLiveness,
-} from "@/server/communities/discovery-queries";
+import { loadPublicLiveness } from "@/server/communities/discovery-queries";
 import {
   invalidateDirectorySnapshots,
   loadDirectorySnapshot,
@@ -89,9 +87,13 @@ import { membershipPaymentAllowed } from "@/server/payments/access";
 import { stopCommunityMembershipBilling } from "@/server/payments/management";
 import { countPendingJoinRequests } from "@/server/communities/pending-join-requests";
 import {
+  activeCommunityRole,
+  activeMemberCommunityIds,
+  communityStanding,
   viewerCanReadRoster,
   viewerCommunityAccess,
 } from "@/server/communities/content-visibility-queries";
+import { requireReadableRosterBySlug } from "@/server/communities/content-access";
 import { activateMembership } from "@/server/communities/activate-membership";
 import {
   joinSourceSchema,
@@ -255,7 +257,7 @@ export const communitiesRouter = createTRPCRouter({
       // members (ADR-0021, ADR-0050); the Hub's card never shows faces.
       const userId = ctx.session?.user?.id;
       const memberOf = userId
-        ? await loadMemberCommunityIds(ctx.db, userId)
+        ? await activeMemberCommunityIds(ctx.db, userId)
         : new Set<string>();
       const faces = await loadStackFacesForCommunities(
         ctx.db,
@@ -289,7 +291,8 @@ export const communitiesRouter = createTRPCRouter({
    * and how to join it. `viewerCanReadContent` says whether the viewer may
    * read its content (ADR-0050): when false the page shows only the private
    * state, so the liveness numbers stay zero, and the member counts are
-   * null unless the viewer may read the roster.
+   * null unless the viewer may read the roster. `viewerMembershipStatus` is
+   * the viewer's membership row status (null without one), read with it.
    */
   getBySlug: publicProcedure
     .input(z.object({ slug: z.string() }))
@@ -307,10 +310,16 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      const access = await viewerCommunityAccess(
+      const viewerId = ctx.session?.user?.id;
+      const access = await viewerCommunityAccess(ctx.db, community, viewerId);
+      // Where the viewer stands, in the same answer as `viewerCanReadContent`,
+      // so the members-only panel never mixes it with a fresher (or staler)
+      // membership list: right after an invite is accepted that mix reads
+      // as "active but may not read", the lapsed-payment message.
+      const { status: viewerMembershipStatus } = await communityStanding(
         ctx.db,
-        community,
-        ctx.session?.user?.id,
+        community.id,
+        viewerId,
       );
 
       const counts = access.roster
@@ -325,6 +334,7 @@ export const communitiesRouter = createTRPCRouter({
         ...community,
         newsSector: await readCommunityNewsSector(ctx.db, community.id),
         viewerCanReadContent: access.content,
+        viewerMembershipStatus,
         ...counts,
         liveness,
       };
@@ -346,21 +356,24 @@ export const communitiesRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.slug),
-          isNull(communities.deletedAt),
-        ),
-      });
-
-      if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
+      const viewerId = ctx.session?.user?.id;
+      const community = await requireReadableRosterBySlug(
+        ctx.db,
+        input.slug,
+        viewerId,
+      );
+      // Join requests and bans are the managers' queue, not the roster.
       if (
-        !(await viewerCanReadRoster(ctx.db, community, ctx.session?.user?.id))
+        input.status !== "active" &&
+        !isCommunityManagerRole(
+          (await activeCommunityRole(
+            ctx.db,
+            community.id,
+            viewerId,
+          )) as CommunityRole | null,
+        )
       ) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new TRPCError({ code: "FORBIDDEN" });
       }
 
       const conditions = [
@@ -419,7 +432,6 @@ export const communitiesRouter = createTRPCRouter({
         };
       }
 
-      const viewerId = ctx.session?.user?.id;
       return {
         items: items.map((row) => toDirectoryMember(row, viewerId)),
         nextCursor,

@@ -16,8 +16,10 @@ A [[community]] is **private** unless its join policy is `open`. Both
 (`isListedInDirectory`) stays a separate fact: a private community may still
 show in the directory and on the Featured strip.
 
-- **Content** (forum threads and replies, ideas, spectator views, gallery,
-  magazine, events) is public on the [[Hub]] or on a community that is
+- **Content** (forum threads and replies, ideas, spaces and rooms,
+  classroom courses, feed posts, Launchpad projects, challenges and
+  spectator views, gallery, magazine, events) is public on the [[Hub]] or
+  on a community that is
   **listed and open**. Everywhere else it is members-only.
 - **The roster** (member list, member-stack faces, member counts) is public
   only on a community that is **listed and open**. The Hub's browse card is
@@ -76,9 +78,45 @@ into one.
   (`/communities/<slug>`) is listed, a private one's too, because outsiders
   see who it is and how to join there; the pages inside a members-only
   community are not.
-- Some write paths still check only that a thread or post is visible, not
-  that the writer is a member. Those are tracked as follow-up work; this ADR
-  covers what outsiders can read.
+- Every read and write of community-scoped content goes through tRPC guards
+  over the seam (`src/server/communities/content-access.ts`):
+  `requireReadableCommunity` / `requireReadableContentOf` for reads,
+  `requireActiveMember` for writes, `requireJoinTermsReader` for rules. One
+  rule, one answer: an outsider who may not read gets NOT_FOUND on a read
+  and on a write alike, so a write cannot confirm what a read hides; a
+  reader who is not a member gets FORBIDDEN on a write.
+- A row's own public flag only widens access inside a community whose
+  content is public: a course's `isPublic` (`resolveCourseAccess` takes
+  `communityContentReadable`), a feed post's `visibility: "public"`
+  (reels, comments, likes, polls, reports). In a members-only community
+  they do nothing for outsiders, and the directory does not tag such a
+  community with "learn" or "build".
+- Writes need an active member in good standing: forum threads and
+  replies, ideas and votes, Launchpad votes and comments on a community's
+  project, and an agent's forum drafts, checked when the draft is made and
+  again when it is approved (a reply draft resolves its thread's community).
+  Hub-wide rows with no community stay open to any signed-in user.
+- A community's rules are its join terms: readable by its readers and by
+  people on the way in (an open invitation or a pending request), so an
+  invitee can read them before accepting. Its topics are content; only an
+  active member's read creates the default topic.
+- Only managers (owner, admin, moderator) list pending or banned members.
+- Hackathon and challenge spectator data (leaderboards, agent stats, grid
+  status, heatmap, People's Choice, the challenge channel) follow the
+  challenge's community, as ADR-0030 already said.
+- Taking part in a challenge (enroll, form or join a team, post in its
+  channel, report progress, submit) follows its event: anyone signed in on
+  the Hub or a public community, active members in good standing in a
+  members-only one (`requireChallengeParticipant`). It is checked on every
+  action, so an enrollment made before a ban grants nothing by itself.
+- A room chat needs an active member of the room's community as well as of
+  the room. Leaving, removal, a ban or a lapsed payment keep the room
+  membership row, so it comes back with the membership; the access check,
+  not the row, decides.
+- Approving an agent's draft runs the direct write path's own checks
+  (`requireThreadAuthor`, `requireReplyAuthor`, `requireFeedPoster`,
+  `requireViewablePost`): membership, rules, the thread lock, the feed
+  policy. An approval never publishes what the member could not post.
 
 ## Rejected alternative
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { useLaunchpadWriteError } from "./use-launchpad-write-error";
 import { authClient } from "@/server/better-auth/client";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
@@ -28,6 +29,8 @@ type Comment = {
 
 type LaunchpadCommentsProps = {
   projectId: number;
+  /** The project's community, for its rules prompt; null on the Hub. */
+  communitySlug?: string | null;
   comments: Comment[];
   currentUserId?: string;
 };
@@ -40,6 +43,7 @@ type CommentItemProps = {
   comment: Comment;
   replies: Comment[];
   projectId: number;
+  communitySlug?: string | null;
   currentUserId?: string;
 };
 
@@ -47,11 +51,13 @@ function CommentItem({
   comment,
   replies,
   projectId,
+  communitySlug,
   currentUserId,
 }: CommentItemProps) {
   const t = useTranslations("launchpad.comments");
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
+  const handleWriteError = useLaunchpadWriteError();
   const utils = api.useUtils();
 
   const addCommentMutation = api.launchpad.addComment.useMutation({
@@ -62,10 +68,7 @@ function CommentItem({
       toast.success(t("toastReplyPosted"));
     },
     onError: (err) => {
-      if (err.message === "RULES_NOT_ACCEPTED") {
-        toast.error(t("toastRulesRequired"));
-        return;
-      }
+      if (handleWriteError(err, communitySlug)) return;
       toast.error(err.message);
     },
   });
@@ -248,6 +251,7 @@ function CommentItem({
 
 export function LaunchpadComments({
   projectId,
+  communitySlug,
   comments,
   currentUserId,
 }: LaunchpadCommentsProps) {
@@ -255,6 +259,7 @@ export function LaunchpadComments({
   const { data: session } = authClient.useSession();
   const { promptAuth } = useRequireAuth();
   const [newComment, setNewComment] = useState("");
+  const handleWriteError = useLaunchpadWriteError();
   const utils = api.useUtils();
 
   const addCommentMutation = api.launchpad.addComment.useMutation({
@@ -264,10 +269,7 @@ export function LaunchpadComments({
       toast.success(t("toastPosted"));
     },
     onError: (err) => {
-      if (err.message === "RULES_NOT_ACCEPTED") {
-        toast.error(t("toastRulesRequired"));
-        return;
-      }
+      if (handleWriteError(err, communitySlug)) return;
       toast.error(err.message);
     },
   });
@@ -347,6 +349,7 @@ export function LaunchpadComments({
               comment={comment}
               replies={repliesMap.get(comment.id) ?? []}
               projectId={projectId}
+              communitySlug={communitySlug}
               currentUserId={currentUserId}
             />
           ))}

@@ -41,6 +41,12 @@ import {
   user,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
+import {
+  participantsAmong,
+  requireChallengeParticipant,
+  requireReadableChallenge,
+  requireReadableTeam,
+} from "@/server/hackathon/challenge-access";
 import { boundHackathonEvent } from "@/server/hackathon/bound-event";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
 import {
@@ -1993,6 +1999,11 @@ export const hackathonRouter = createTRPCRouter({
   agentStats: publicProcedure
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
+      await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.session?.user?.id,
+      );
       // Two independent per-agent aggregates over this hackathon's competitive
       // grids, then merged + ranked by the pure helper. Mirrors analytics().
       const [claimRows, resultRows] = await Promise.all([
@@ -2092,10 +2103,18 @@ export const hackathonRouter = createTRPCRouter({
       }));
     }),
 
-  /** Public team leaderboard for a hackathon challenge (isPublic-respecting). */
+  /**
+   * Team leaderboard for a hackathon challenge (isPublic-respecting), for
+   * whoever may read the challenge's community (ADR-0050).
+   */
   teamLeaderboard: publicProcedure
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
+      await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.session?.user?.id,
+      );
       const rows = await ctx.db
         .select()
         .from(teams)
@@ -2177,6 +2196,9 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      // An enrollment alone (one made before a ban, say) does not open a
+      // members-only community's hackathon (ADR-0050).
+      await requireChallengeParticipant(ctx.db, input.challengeId, userId);
       const [enrollment] = await ctx.db
         .select({ teamId: challengeEnrollments.teamId })
         .from(challengeEnrollments)
@@ -2222,7 +2244,11 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number(), looking: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await loadChallenge(input.challengeId);
+      const challenge = await requireChallengeParticipant(
+        ctx.db,
+        input.challengeId,
+        userId,
+      );
 
       const [enrollment] = await ctx.db
         .select({ teamId: challengeEnrollments.teamId })
@@ -2287,6 +2313,7 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      await requireChallengeParticipant(ctx.db, input.challengeId, userId);
       const [me] = await ctx.db
         .select({
           teamId: challengeEnrollments.teamId,
@@ -2354,10 +2381,20 @@ export const hackathonRouter = createTRPCRouter({
           ),
         );
 
+      // Someone who lost access (banned, lapsed) keeps their enrollment row
+      // but is not offered as a teammate (ADR-0050).
+      const allowed = await participantsAmong(
+        ctx.db,
+        challenge,
+        rows.map((r) => r.userId),
+      );
       return {
         open: true,
         viewer,
-        candidates: lookingForTeamCandidates(rows, { excludeUserId: userId }),
+        candidates: lookingForTeamCandidates(
+          rows.filter((r) => allowed.has(r.userId)),
+          { excludeUserId: userId },
+        ),
       };
     }),
 
@@ -2369,6 +2406,7 @@ export const hackathonRouter = createTRPCRouter({
   teamGridStatus: publicProcedure
     .input(z.object({ teamId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await requireReadableTeam(ctx.db, input.teamId, ctx.session?.user?.id);
       const [grid] = await ctx.db
         .select({ id: workGrids.id })
         .from(workGrids)
@@ -2400,6 +2438,7 @@ export const hackathonRouter = createTRPCRouter({
   teamHeatmap: publicProcedure
     .input(z.object({ teamId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await requireReadableTeam(ctx.db, input.teamId, ctx.session?.user?.id);
       const [grid] = await ctx.db
         .select({ id: workGrids.id })
         .from(workGrids)
@@ -2456,7 +2495,13 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number(), teamId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await loadChallenge(input.challengeId);
+      // Anyone who may watch votes: any signed-in member on the Hub or a
+      // public community, members only in a members-only one.
+      const challenge = await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        userId,
+      );
       const phase = await currentHackathonPhase(
         ctx.db,
         input.challengeId,
@@ -2518,7 +2563,11 @@ export const hackathonRouter = createTRPCRouter({
   peoplesChoiceState: publicProcedure
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const challenge = await loadChallenge(input.challengeId);
+      const challenge = await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.session?.user?.id,
+      );
       const phase = await currentHackathonPhase(
         ctx.db,
         input.challengeId,

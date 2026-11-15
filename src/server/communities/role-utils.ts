@@ -18,4 +18,15 @@ export function canManageRole(
   return ROLE_HIERARCHY[actorRole] > ROLE_HIERARCHY[targetRole];
 }
 
+/**
+ * Whether an active role runs the community's membership: owner, admin or
+ * moderator. They review join requests and bans, so only they may list
+ * members who are not active.
+ */
+export function isCommunityManagerRole(
+  role: CommunityRole | null | undefined,
+): boolean {
+  return role != null && ROLE_HIERARCHY[role] >= ROLE_HIERARCHY.moderator;
+}
+
 export { BROADCASTER_ROLES, canBroadcast } from "@/lib/community-broadcast";

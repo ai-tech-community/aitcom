@@ -21,6 +21,10 @@ import {
   teams,
 } from "@/server/db/schema";
 import { ownerOnTeam } from "@/server/hackathon/team-membership";
+import {
+  mayTakePartInChallenge,
+  requireTeamWorkspaceMember,
+} from "@/server/hackathon/challenge-access";
 import { cellHeatState } from "@/server/hackathon/cell-state";
 import { appendActivity } from "@/server/hackathon/activity";
 import {
@@ -29,16 +33,37 @@ import {
   TASK_PROGRESS_STATUSES,
 } from "@/server/hackathon/task-progress";
 
-/** Throw FORBIDDEN unless the caller is an active member of the team. */
+/**
+ * Throw unless `userId` may use the team's workspace: they may take part in
+ * the team's challenge (NOT_FOUND otherwise, like a missing team; ADR-0050)
+ * and are on the team (FORBIDDEN otherwise).
+ */
 async function requireTeamMember(
   db: typeof import("@/server/db").db,
   userId: string,
   teamId: string,
 ) {
-  if (!(await ownerOnTeam(db, userId, teamId))) {
+  await requireTeamWorkspaceMember(db, teamId, userId);
+}
+
+/**
+ * The assignee of a cell must be a teammate who may still take part: on
+ * the team and able to read its challenge. Anything else is FORBIDDEN; the
+ * caller is a member, so nothing is hidden from them.
+ */
+async function requireAssignableTeammate(
+  db: typeof import("@/server/db").db,
+  userId: string,
+  teamId: string,
+  challengeId: number,
+) {
+  if (
+    !(await ownerOnTeam(db, userId, teamId)) ||
+    !(await mayTakePartInChallenge(db, challengeId, userId))
+  ) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "You are not a member of this team.",
+      message: "That person is not a member of this team.",
     });
   }
 }
@@ -126,9 +151,20 @@ export const teamWorkspaceRouter = createTRPCRouter({
       await requireTeamMember(ctx.db, ctx.session.user.id, input.teamId);
       const gridId = await requireTeamGridId(ctx.db, input.teamId);
 
-      // The assignee, when set, must themselves be a team member.
+      // The assignee, when set, must themselves be a team member who may
+      // still take part in the challenge.
       if (input.userId !== null) {
-        await requireTeamMember(ctx.db, input.userId, input.teamId);
+        const [team] = await ctx.db
+          .select({ challengeId: teams.challengeId })
+          .from(teams)
+          .where(eq(teams.id, input.teamId))
+          .limit(1);
+        await requireAssignableTeammate(
+          ctx.db,
+          input.userId,
+          input.teamId,
+          team!.challengeId,
+        );
       }
 
       return ctx.db.transaction(async (tx) => {

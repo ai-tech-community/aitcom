@@ -8,18 +8,21 @@ import {
 import { getPayloadClient } from "@/server/payload";
 import { and, eq, isNull } from "drizzle-orm";
 import { communities, communityMemberships } from "@/server/db/schema";
+import { findReadableCommunityBySlug } from "@/server/communities/content-visibility-queries";
 
 export const linksRouter = createTRPCRouter({
+  /**
+   * A community's links, for whoever may read its content (ADR-0050).
+   * Unknown and unreadable answer alike: no links.
+   */
   list: publicProcedure
     .input(z.object({ communitySlug: z.string() }))
     .query(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.communitySlug),
-          isNull(communities.deletedAt),
-        ),
-        columns: { id: true },
-      });
+      const community = await findReadableCommunityBySlug(
+        ctx.db,
+        input.communitySlug,
+        ctx.session?.user?.id,
+      );
       if (!community) return [];
       const payload = await getPayloadClient();
       const { docs } = await payload.find({

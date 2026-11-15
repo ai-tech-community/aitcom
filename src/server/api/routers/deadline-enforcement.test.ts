@@ -148,6 +148,20 @@ beforeEach(() => {
   payloadHooks.find = async () => ({ docs: [] });
 });
 
+/**
+ * Team actions read the challenge first (the community read gate,
+ * ADR-0050). A Hub-wide challenge (no community) is open to anyone, so the
+ * deadline gates below stay the thing under test. `rest` answers every
+ * other collection (the bound event).
+ */
+const HUB_CHALLENGE = { id: 1, communityId: null, status: "active" };
+function withHubChallenge(
+  rest: (args: { collection: string; id: unknown }) => Promise<unknown>,
+) {
+  return async (args: { collection: string; id: unknown }) =>
+    args.collection === "challenges" ? HUB_CHALLENGE : rest(args);
+}
+
 // ── createTeam — REGISTRATION gate ──────────────────────────────────────────
 
 describe("createTeam registration deadline enforcement", () => {
@@ -158,6 +172,7 @@ describe("createTeam registration deadline enforcement", () => {
       expect(collection).toBe("events");
       return { docs: [{ id: 42, registrationDeadline: PAST }] };
     };
+    payloadHooks.findByID = withHubChallenge(async () => throwPastGate());
 
     await expect(
       callerWithDb().teams.createTeam({ challengeId: 1, name: "Team" }),
@@ -172,10 +187,11 @@ describe("createTeam registration deadline enforcement", () => {
     payloadHooks.find = async () => ({
       docs: [{ id: 42, registrationDeadline: null }],
     });
-    // After the gate, createTeam calls payload.findByID (challenge) then
-    // assertNotAlreadyOnTeam (db.query.challengeEnrollments.findFirst). We make
-    // that next step throw the sentinel: reaching it proves the gate passed.
-    payloadHooks.findByID = async () => throwPastGate();
+    // After the gate, createTeam calls assertNotAlreadyOnTeam
+    // (db.query.challengeEnrollments.findFirst). We make that next step
+    // throw the sentinel: reaching it proves the gate passed.
+    payloadHooks.findByID = withHubChallenge(async () => throwPastGate());
+    dbHooks.enrollmentFindFirst = async () => throwPastGate();
 
     await expect(
       callerWithDb().teams.createTeam({ challengeId: 1, name: "Team" }),
@@ -186,7 +202,8 @@ describe("createTeam registration deadline enforcement", () => {
     payloadHooks.find = async () => ({
       docs: [{ id: 42, registrationDeadline: FUTURE }],
     });
-    payloadHooks.findByID = async () => throwPastGate();
+    payloadHooks.findByID = withHubChallenge(async () => throwPastGate());
+    dbHooks.enrollmentFindFirst = async () => throwPastGate();
 
     await expect(
       callerWithDb().teams.createTeam({ challengeId: 1, name: "Team" }),
@@ -209,10 +226,10 @@ describe("joinTeam registration deadline enforcement", () => {
         maxSize: 5,
       },
     ];
-    payloadHooks.findByID = async ({ collection }) => {
+    payloadHooks.findByID = withHubChallenge(async ({ collection }) => {
       expect(collection).toBe("events");
       return { id: 42, registrationDeadline: PAST };
-    };
+    });
 
     await expect(
       callerWithDb().teams.joinTeam({ joinCode: "ABC123" }),
@@ -232,10 +249,10 @@ describe("joinTeam registration deadline enforcement", () => {
         maxSize: 5,
       },
     ];
-    payloadHooks.findByID = async () => ({
+    payloadHooks.findByID = withHubChallenge(async () => ({
       id: 42,
       registrationDeadline: null,
-    });
+    }));
     // Next step after the gate is assertNotAlreadyOnTeam → enrollment.findFirst.
     dbHooks.enrollmentFindFirst = async () => throwPastGate();
 
@@ -264,10 +281,10 @@ describe("submitTeam submission deadline enforcement", () => {
 
   it("throws FORBIDDEN when the submission deadline is in the past", async () => {
     dbHooks.selectResult = () => [lockedTeamRow("user-1")];
-    payloadHooks.findByID = async ({ collection }) => {
+    payloadHooks.findByID = withHubChallenge(async ({ collection }) => {
       expect(collection).toBe("events");
       return { id: 42, submissionDeadline: PAST };
-    };
+    });
 
     await expect(
       callerWithDb().teams.submitTeam({ teamId: "team-1" }),
@@ -287,7 +304,10 @@ describe("submitTeam submission deadline enforcement", () => {
       if (call === 1) return [lockedTeamRow("user-1")];
       return throwPastGate();
     };
-    payloadHooks.findByID = async () => ({ id: 42, submissionDeadline: null });
+    payloadHooks.findByID = withHubChallenge(async () => ({
+      id: 42,
+      submissionDeadline: null,
+    }));
     // The post-gate write is db.update(...), not db.select(...). Route update
     // through a throwing builder too.
     (mockedDb as unknown as { update: () => unknown }).update = () =>

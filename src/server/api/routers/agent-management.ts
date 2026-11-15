@@ -46,6 +46,7 @@ import { assertArticleNotPlaced } from "@/server/magazines/article-placement";
 import { syncFeedPostCounters } from "@/server/communities/feed-post-counters";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { createForumThread } from "@/server/communities/create-forum-thread";
+import { requireDraftPublishable } from "@/server/agent/draft-publish-access";
 import { memberDisplayName } from "@/server/members/display-name";
 import {
   CLASSROOM_COURSE_DRAFT_TYPE,
@@ -1100,6 +1101,17 @@ export const agentManagementRouter = createTRPCRouter({
           : undefined;
       const authorName =
         (await memberDisplayName(ctx.db, userId)) ?? "Community member";
+      // Whoever it is published as must still be an active member of the
+      // community it lands in (ADR-0050); checked before the claim (and
+      // before any picture is fetched) so a refusal leaves the draft pending.
+      if (input.action === "approved") {
+        await requireDraftPublishable(
+          ctx.db,
+          await getPayloadClient(),
+          existing,
+          { reviewerId: userId, thread: threadToPublish },
+        );
+      }
 
       // A feed post draft's picture is fetched before the draft is claimed,
       // so a picture that cannot be loaded leaves the draft pending instead
@@ -1200,27 +1212,9 @@ export const agentManagementRouter = createTRPCRouter({
           .limit(1);
 
         if (agent && draft.targetId) {
-          // Defense-in-depth: re-validate that the draft's target thread
-          // actually belongs to the draft's community before publishing. The
-          // draft carries the community it was authored against; never trust
-          // that targetId points at a thread in that community.
-          const thread = await payload.findByID({
-            collection: "forum-threads",
-            id: Number(draft.targetId),
-          });
-          const draftCommunityId = (draft.metadata as { communityId?: string })
-            ?.communityId;
-          if (
-            draftCommunityId &&
-            thread.communityId &&
-            thread.communityId !== draftCommunityId
-          ) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "Target thread does not belong to this community",
-            });
-          }
-
+          // requireDraftPublishable checked, before the claim, that the
+          // target thread belongs to the draft's community and that the
+          // owner may still reply there.
           await payload.create({
             collection: "forum-replies",
             data: {

@@ -1,25 +1,19 @@
-import { and, eq, isNull } from "drizzle-orm";
-
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
 import type { db as Database } from "@/server/db";
-import { communities } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 
 import { forumBodyToLexical } from "./forum-body";
-import {
-  type ForumThreadDraft,
-  forumThreadSlug,
-  threadCommunityId,
-} from "./forum-thread-draft";
-import { requireRulesAcceptance } from "./rules-acceptance";
+import { requireThreadAuthor } from "./forum-write-access";
+import { type ForumThreadDraft, forumThreadSlug } from "./forum-thread-draft";
 
 type DB = typeof Database;
 
 /**
  * Create a forum thread the way the browser form does: same length limits,
- * categories, rules check, author fields, and XP. The author of record is
- * `author` (the signed-in member, or the agent owner's account).
+ * categories, membership and rules checks, author fields, and XP. The
+ * author of record is `author` (the signed-in member, or the reviewer who
+ * approves an agent's draft).
  */
 export async function createForumThread(
   db: DB,
@@ -27,18 +21,12 @@ export async function createForumThread(
   author: { id: string; name: string },
   input: ForumThreadDraft,
 ) {
-  let communityId: string | undefined;
-  if (input.communitySlug) {
-    const community = await db.query.communities.findFirst({
-      where: and(
-        eq(communities.slug, input.communitySlug),
-        isNull(communities.deletedAt),
-      ),
-      columns: { id: true },
-    });
-    communityId = threadCommunityId(input.communitySlug, community);
-  }
-  await requireRulesAcceptance(author.id, communityId);
+  // The one thread rule, shared with the approval of an agent's draft.
+  const communityId = await requireThreadAuthor(
+    db,
+    input.communitySlug,
+    author.id,
+  );
   const payload = await getPayloadClient();
   const slug = await forumThreadSlugToPublish(payload, input.title, input.slug);
 

@@ -96,7 +96,22 @@ describe.skipIf(!RUN_DB)(
         .insert(schema.agentProfiles)
         .values({ ownerId: userId, name: `Agent ${suffix}` })
         .returning({ id: schema.agentProfiles.id });
-      const community = `c-${suffix}`;
+      // The owner is an active member of the community the post lands in;
+      // approval re-checks that (ADR-0050).
+      const [row] = await db
+        .insert(schema.communities)
+        .values({
+          name: `Draft image ${suffix}`,
+          slug: `draft-image-${suffix}`,
+          createdBy: userId,
+        })
+        .returning({ id: schema.communities.id });
+      const community = row!.id;
+      await db.insert(schema.communityMemberships).values({
+        communityId: community,
+        userId,
+        status: "active",
+      });
       const [draft] = await db
         .insert(schema.agentDrafts)
         .values({
@@ -133,6 +148,12 @@ describe.skipIf(!RUN_DB)(
       await db
         .delete(schema.agentProfiles)
         .where(eq(schema.agentProfiles.id, fx.agentId));
+      await db
+        .delete(schema.communityMemberships)
+        .where(eq(schema.communityMemberships.communityId, fx.community));
+      await db
+        .delete(schema.communities)
+        .where(eq(schema.communities.id, fx.community));
       await db.delete(schema.user).where(eq(schema.user.id, fx.userId));
       importFeedImage.mockReset();
     });
