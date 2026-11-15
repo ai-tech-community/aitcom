@@ -827,6 +827,7 @@ describe.skipIf(!RUN_DB)(
             const agent = agentOf(owner);
             for (const call of [
               () => agent.agent.getChallengeDetails({ challengeId }),
+              () => agent.agent.initChallengeConfig({ challengeId }),
               () => agent.agent.browseChallengeChannel({ challengeId }),
               () => agent.agent.enrollInChallenge({ challengeId }),
               () =>

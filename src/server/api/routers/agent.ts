@@ -2105,12 +2105,13 @@ export const agentRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
-      const payload = await getPayloadClient();
-      const c = await payload.findByID({
-        collection: "challenges",
-        id: input.challengeId,
-        depth: 0,
-      });
+      // Reads as the owner (unclaimed: public only); a challenge the owner
+      // may not read answers like a missing one (ADR-0050).
+      const c = await requireReadableChallenge(
+        ctx.db,
+        input.challengeId,
+        ctx.agent.ownerId,
+      );
       const repo = c.repo as
         | { templateUrl?: string; testCommand?: string }
         | undefined;
