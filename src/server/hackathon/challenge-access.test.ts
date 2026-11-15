@@ -24,43 +24,45 @@ beforeEach(() => {
 function fakeDb(
   community: { isListedInDirectory: boolean; joinPolicy: string } | null,
 ) {
-  return {
+  const communityRow = vi.fn(async () =>
+    community ? { id: "c1", slug: "c", ...community } : undefined,
+  );
+  const membershipRow = vi.fn(
+    async (): Promise<{ role: string } | undefined> => undefined,
+  );
+  const db = {
     query: {
-      communities: {
-        findFirst: vi.fn(async () =>
-          community ? { id: "c1", slug: "c", ...community } : undefined,
-        ),
-      },
-      communityMemberships: {
-        findFirst: vi.fn(async () => undefined),
-      },
+      communities: { findFirst: communityRow },
+      communityMemberships: { findFirst: membershipRow },
     },
-  } as unknown as Parameters<typeof participantsAmong>[0] & {
-    query: { communityMemberships: { findFirst: ReturnType<typeof vi.fn> } };
-  };
+  } as never;
+  return { db, communityRow, membershipRow };
 }
 
 describe("participantsAmong", () => {
   it("keeps everyone for a Hub-wide challenge, without a lookup", async () => {
-    const db = fakeDb(null);
+    const { db, communityRow } = fakeDb(null);
     await expect(
       participantsAmong(db, { communityId: null }, ["a", "b"]),
     ).resolves.toEqual(new Set(["a", "b"]));
-    expect(db.query.communities.findFirst).not.toHaveBeenCalled();
+    expect(communityRow).not.toHaveBeenCalled();
   });
 
   it("keeps everyone in a public community", async () => {
-    const db = fakeDb({ isListedInDirectory: true, joinPolicy: "open" });
+    const { db } = fakeDb({ isListedInDirectory: true, joinPolicy: "open" });
     await expect(
       participantsAmong(db, { communityId: "c1" }, ["a", "b"]),
     ).resolves.toEqual(new Set(["a", "b"]));
   });
 
   it("drops people who lost access to a members-only community", async () => {
-    const db = fakeDb({ isListedInDirectory: true, joinPolicy: "invite_only" });
+    const { db, membershipRow } = fakeDb({
+      isListedInDirectory: true,
+      joinPolicy: "invite_only",
+    });
     // Membership reads come in list order: "a" is still an active member,
     // "b" was banned (no active row).
-    db.query.communityMemberships.findFirst
+    membershipRow
       .mockResolvedValueOnce({ role: "member" })
       .mockResolvedValueOnce(undefined);
     const kept = await participantsAmong(db, { communityId: "c1" }, ["a", "b"]);
@@ -69,7 +71,7 @@ describe("participantsAmong", () => {
 
   it("drops everyone when the community is gone", async () => {
     await expect(
-      participantsAmong(fakeDb(null), { communityId: "c1" }, ["a"]),
+      participantsAmong(fakeDb(null).db, { communityId: "c1" }, ["a"]),
     ).resolves.toEqual(new Set());
   });
 });
