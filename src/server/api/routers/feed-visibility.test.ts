@@ -107,6 +107,18 @@ describe("feed.toggleLike", () => {
     expect(payload.update).not.toHaveBeenCalled();
   });
 
+  it("answers a community-only post like a missing one for a non-member's like", async () => {
+    // Visibility is checked before membership, so the like cannot tell a
+    // hidden post from a missing one.
+    hooks.post = post({ visibility: "community" });
+    await expect(caller().feed.toggleLike({ postId: 5 })).rejects.toMatchObject(
+      { code: "NOT_FOUND" },
+    );
+    await expect(
+      caller().feed.addComment({ postId: 5, content: "hi" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("still refuses a non-member liking a public post", async () => {
     hooks.post = post({ visibility: "public" });
     await expect(caller().feed.toggleLike({ postId: 5 })).rejects.toMatchObject(

@@ -88,10 +88,11 @@ export async function requireActiveFeedMember(
  * - A post in a community whose content the viewer may not read is
  *   NOT_FOUND, whatever its own visibility: "public" only widens access
  *   within a community whose content is public (ADR-0050).
- * - With `requireMembership` (liking, commenting), someone who may read but
- *   isn't an active member in good standing is FORBIDDEN, as before.
  * - A community post the viewer may not see (hidden, or community-only for an
  *   outsider) is NOT_FOUND, so its existence doesn't leak.
+ * - Only then, with `requireMembership` (liking, commenting), someone who
+ *   may see the post but isn't an active member in good standing is
+ *   FORBIDDEN.
  * - Hub-wide posts (no community) have no visibility rule to apply.
  */
 export async function requireViewablePost(
@@ -118,15 +119,17 @@ export async function requireViewablePost(
     ? await activeCommunityRole(database, post.communityId, userId)
     : null;
   const membership = role ? { role } : null;
+  // Visibility before membership: a post the caller may not see answers
+  // like a missing one, even on a write that would refuse them anyway.
+  const viewer = userId ? feedViewerFor(userId, membership) : OUTSIDE_VIEWER;
+  if (post.communityId && !canViewPost(post, viewer)) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+  }
   if (options.requireMembership && !membership) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: NOT_A_MEMBER,
     });
-  }
-  const viewer = userId ? feedViewerFor(userId, membership) : OUTSIDE_VIEWER;
-  if (post.communityId && !canViewPost(post, viewer)) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
   }
   return { post, membership, viewer };
 }
