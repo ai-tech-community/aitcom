@@ -125,6 +125,7 @@ export function MessageComposer({
               badge={tMedia("gifBadge")}
               removeLabel={tComposer("removeGif")}
               onRemove={removeGif}
+              size="compact"
             />
           </PromptInputHeader>
         ) : null}

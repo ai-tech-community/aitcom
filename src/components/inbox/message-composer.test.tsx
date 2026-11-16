@@ -234,6 +234,18 @@ describe("MessageComposer", () => {
     expect(document.activeElement).toBe(gifButton);
   });
 
+  it("shows the picked GIF small, so the conversation above stays in view", () => {
+    renderComposer();
+
+    fireEvent.click(screen.getByRole("button", { name: "gif" }));
+
+    const still = screen.getByRole("img", { name: "Party parrot" });
+    expect(still.closest("[data-slot='media-preview']")).toHaveAttribute(
+      "data-size",
+      "compact",
+    );
+  });
+
   it("picking another GIF replaces the first", () => {
     renderComposer();
 
