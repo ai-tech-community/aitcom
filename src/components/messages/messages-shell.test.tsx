@@ -71,6 +71,21 @@ function dmWithBob(id: string) {
   };
 }
 
+type RetryRule = (failureCount: number, error: unknown) => boolean;
+
+/** The retry rule the last `getConversation` query was given. */
+function lookUpRetry(): RetryRule | boolean | number | undefined {
+  const call = queries.one.mock.calls.at(-1) as
+    | [unknown, { retry?: RetryRule | boolean | number } | undefined]
+    | undefined;
+  return call?.[1]?.retry;
+}
+
+/** A tRPC error as React Query hands it to `retry`. */
+function trpcError(code: string) {
+  return { data: { code } };
+}
+
 function composerKind() {
   return screen.getByTestId("composer").getAttribute("data-kind");
 }
@@ -128,5 +143,21 @@ describe("MessagesShell active conversation", () => {
     expect(lookUpEnabled()).toBe(false);
     expect(composerKind()).toBe("person");
     expect(screen.getByText("Bob")).toBeInTheDocument();
+  });
+
+  it("does not retry a conversation that does not exist, but retries other failures", () => {
+    queries.list.mockReturnValue({
+      data: { conversations: [dmWithBob("other")], nextCursor: null },
+    });
+
+    render(<MessagesShell activeConversationId="gone" />);
+
+    const retry = lookUpRetry();
+    expect(typeof retry).toBe("function");
+    const rule = retry as RetryRule;
+    expect(rule(0, trpcError("NOT_FOUND"))).toBe(false);
+    expect(rule(0, trpcError("INTERNAL_SERVER_ERROR"))).toBe(true);
+    expect(rule(2, trpcError("INTERNAL_SERVER_ERROR"))).toBe(true);
+    expect(rule(3, trpcError("INTERNAL_SERVER_ERROR"))).toBe(false);
   });
 });
