@@ -1,10 +1,12 @@
 "use client";
 
 import { BotIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
 import { useInbox } from "./inbox-provider";
+import { messagePreview, type LastMessagePreview } from "./message-preview";
 
 type ConversationItemProps = {
   id: string;
@@ -12,7 +14,7 @@ type ConversationItemProps = {
   displayName: string;
   image: string | null;
   agentAvatar?: string | null;
-  lastMessage: string | null;
+  lastMessage: LastMessagePreview | null;
   lastMessageSenderType: string | null;
   lastMessageAt: string | null;
   unreadCount: number;
@@ -30,12 +32,14 @@ export function InboxConversationItem({
   unreadCount,
 }: ConversationItemProps) {
   const { openChat } = useInbox();
+  const tMedia = useTranslations("media");
 
   const avatar = type === "agent" ? agentAvatar : image;
-  const preview = lastMessage
-    ? lastMessage.length > 40
-      ? lastMessage.slice(0, 40) + "..."
-      : lastMessage
+  const line = messagePreview(lastMessage, tMedia("gifBadge"));
+  const preview = line
+    ? line.length > 40
+      ? line.slice(0, 40) + "..."
+      : line
     : null;
 
   const parsedLastMessageAt = lastMessageAt ? new Date(lastMessageAt) : null;

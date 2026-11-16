@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getInitials } from "@/lib/avatar";
 import { LIVE_MESSAGES_FALLBACK_MS } from "@/components/inbox/live-refetch";
 import { messagesQueryInput } from "@/components/inbox/conversation-messages";
+import { messagePreview } from "@/components/inbox/message-preview";
 import { cn } from "@/lib/utils";
 
 type Conversation =
@@ -64,6 +65,7 @@ export function ConversationList({
   onSelect,
 }: ConversationListProps) {
   const t = useTranslations("inbox");
+  const tMedia = useTranslations("media");
   const utils = api.useUtils();
   const [tab, setTab] = useState<"inbox" | "unread">("inbox");
   const [search, setSearch] = useState("");
@@ -228,6 +230,10 @@ export function ConversationList({
               const unread = conv.unreadCount > 0;
               const previewSender =
                 conv.lastMessage?.senderType === "agent" ? "Agent: " : "";
+              const preview = messagePreview(
+                conv.lastMessage,
+                tMedia("gifBadge"),
+              );
               return (
                 <li key={conv.id}>
                   <Link
@@ -285,7 +291,7 @@ export function ConversationList({
                           />
                         )}
                       </div>
-                      {conv.lastMessage?.content && (
+                      {preview && (
                         <p
                           className={cn(
                             "truncate text-xs",
@@ -295,7 +301,7 @@ export function ConversationList({
                           )}
                         >
                           {previewSender}
-                          {conv.lastMessage.content}
+                          {preview}
                         </p>
                       )}
                     </div>

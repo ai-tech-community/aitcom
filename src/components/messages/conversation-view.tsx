@@ -19,15 +19,10 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@/components/ai-elements/message";
+import { Message, MessageContent } from "@/components/ai-elements/message";
 import { useConversationMessages } from "@/components/inbox/conversation-messages";
 import { MessageComposer } from "@/components/inbox/message-composer";
-import { UiMessage } from "@/components/inbox/ui-message";
-import { isChatUiEnabled } from "@/lib/chat/flags";
+import { MessageBody } from "@/components/inbox/message-body";
 
 type ConversationViewProps = {
   conversationId: string;
@@ -228,17 +223,11 @@ export function ConversationView({
                   )}
                   <Message from={isUser ? "user" : "assistant"}>
                     <MessageContent>
-                      {isUser ? (
-                        <p>{msg.content}</p>
-                      ) : msg.uiResource && isChatUiEnabled() ? (
-                        <UiMessage
-                          conversationId={conversationId}
-                          resource={msg.uiResource}
-                          trust={msg.uiProducerTrust ?? "member"}
-                        />
-                      ) : (
-                        <MessageResponse>{msg.content}</MessageResponse>
-                      )}
+                      <MessageBody
+                        message={msg}
+                        isUser={isUser}
+                        conversationId={conversationId}
+                      />
                     </MessageContent>
                     <span
                       className={`text-muted-foreground font-mono text-xs ${isUser ? "ml-auto" : ""}`}

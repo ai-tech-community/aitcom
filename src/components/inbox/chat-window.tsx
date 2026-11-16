@@ -19,18 +19,13 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@/components/ai-elements/message";
+import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Link } from "@/i18n/navigation";
 import { useInbox } from "./inbox-provider";
 import { useConversationMessages } from "./conversation-messages";
 import { MessageComposer } from "./message-composer";
 import { useInboxStream } from "./use-inbox-stream";
-import { UiMessage } from "./ui-message";
-import { isChatUiEnabled } from "@/lib/chat/flags";
+import { MessageBody } from "./message-body";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -214,17 +209,11 @@ export function ChatWindow({
                   )}
                   <Message from={isUser ? "user" : "assistant"}>
                     <MessageContent>
-                      {isUser ? (
-                        <p>{msg.content}</p>
-                      ) : msg.uiResource && isChatUiEnabled() ? (
-                        <UiMessage
-                          conversationId={conversationId}
-                          resource={msg.uiResource}
-                          trust={msg.uiProducerTrust ?? "member"}
-                        />
-                      ) : (
-                        <MessageResponse>{msg.content}</MessageResponse>
-                      )}
+                      <MessageBody
+                        message={msg}
+                        isUser={isUser}
+                        conversationId={conversationId}
+                      />
                     </MessageContent>
                     <span
                       className={`text-muted-foreground text-xs ${isUser ? "ml-auto" : ""}`}

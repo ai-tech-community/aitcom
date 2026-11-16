@@ -201,7 +201,7 @@ export function InboxList() {
                     displayName={displayName}
                     image={image}
                     agentAvatar={agentAvatar}
-                    lastMessage={conv.lastMessage?.content ?? null}
+                    lastMessage={conv.lastMessage ?? null}
                     lastMessageSenderType={conv.lastMessage?.senderType ?? null}
                     lastMessageAt={
                       conv.lastMessage?.createdAt
