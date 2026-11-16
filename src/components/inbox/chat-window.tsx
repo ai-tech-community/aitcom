@@ -245,6 +245,7 @@ export function ChatWindow({
         <MessageComposer
           conversationId={conversationId}
           placeholder={t("placeholder")}
+          kind={isAgent ? "agent" : "person"}
         />
       </div>
     </div>

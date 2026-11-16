@@ -201,6 +201,7 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
         <MessageComposer
           conversationId={chatInfo.conversationId}
           placeholder={t("placeholder")}
+          kind={chatInfo.isAgent ? "agent" : "person"}
         />
       </div>
     </div>

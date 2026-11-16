@@ -255,6 +255,7 @@ export function ConversationView({
         <MessageComposer
           conversationId={conversationId}
           placeholder={t("placeholder")}
+          kind={isAgent ? "agent" : "person"}
         />
       </div>
     </div>

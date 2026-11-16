@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type Ref } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Loader2, X } from "lucide-react";
 
@@ -51,10 +51,13 @@ function errorKey(code: string | undefined) {
  * its attribution in the search UI.
  */
 export function GifPickerButton({
+  ref,
   label,
   onPick,
   disabled,
 }: {
+  /** The button, e.g. to take focus back when the picked GIF is removed. */
+  ref?: Ref<HTMLButtonElement>;
   /** Defaults to "Add GIF"; a composer may say "Replace with GIF". */
   label?: string;
   onPick: (gif: PickedGif) => void;
@@ -157,6 +160,7 @@ export function GifPickerButton({
     >
       <PopoverTrigger asChild>
         <ToolbarButton
+          ref={ref}
           label={label ?? t("gif")}
           icon={
             <span

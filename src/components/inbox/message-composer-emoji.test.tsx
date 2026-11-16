@@ -11,6 +11,10 @@ vi.mock("next-intl", () => ({
 vi.mock("./use-send-message", () => ({
   useSendMessage: () => ({ send: vi.fn(), isPending: false }),
 }));
+// The GIF button needs the tRPC provider; message-composer.test covers it.
+vi.mock("@/components/composer/gif-picker-button", () => ({
+  GifPickerButton: () => null,
+}));
 
 import { MessageComposer } from "./message-composer";
 
@@ -22,7 +26,13 @@ describe("MessageComposer with the real emoji button", () => {
   it("renders the emoji button and opens its panel", async () => {
     // The emoji data never arrives; the search box shows without it.
     vi.stubGlobal("fetch", () => new Promise(() => undefined));
-    render(<MessageComposer conversationId="c1" placeholder="Write…" />);
+    render(
+      <MessageComposer
+        conversationId="c1"
+        placeholder="Write…"
+        kind="person"
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "emoji" }));
 
