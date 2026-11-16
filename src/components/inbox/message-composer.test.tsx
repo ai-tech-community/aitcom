@@ -36,6 +36,22 @@ const partyGif = vi.hoisted(() => ({
     height: 150,
   },
 }));
+const catGif = vi.hoisted(() => ({
+  giphyId: "def456",
+  title: "Keyboard cat",
+  mp4Url: "https://media.giphy.com/media/def456/giphy.mp4",
+  stillUrl: "https://media.giphy.com/media/def456/giphy_s.gif",
+  width: 480,
+  height: 360,
+  preview: {
+    mp4Url: "https://media.giphy.com/media/def456/200w.mp4",
+    stillUrl: "https://media.giphy.com/media/def456/200w_s.gif",
+    width: 200,
+    height: 150,
+  },
+}));
+/** The GIF the mocked picker hands over on its next click. */
+const nextPick = vi.hoisted(() => ({ gif: null as PickedGif | null }));
 vi.mock("@/components/composer/gif-picker-button", () => ({
   // Like the real button: its search field lives in a panel portalled
   // out of the composer's form.
@@ -47,7 +63,11 @@ vi.mock("@/components/composer/gif-picker-button", () => ({
     onPick: (gif: PickedGif) => void;
   }) => (
     <>
-      <button ref={ref} type="button" onClick={() => onPick(partyGif)}>
+      <button
+        ref={ref}
+        type="button"
+        onClick={() => onPick(nextPick.gif ?? partyGif)}
+      >
         gif
       </button>
       {createPortal(<input aria-label="gif search" />, document.body)}
@@ -98,6 +118,7 @@ describe("MessageComposer", () => {
   beforeEach(() => {
     send.mockReset();
     send.mockResolvedValue(undefined);
+    nextPick.gif = null;
     toast.error.mockReset();
     // Run the caret fix-up at once instead of on the next frame.
     vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
@@ -250,9 +271,15 @@ describe("MessageComposer", () => {
     renderComposer();
 
     fireEvent.click(screen.getByRole("button", { name: "gif" }));
+    nextPick.gif = catGif;
     fireEvent.click(screen.getByRole("button", { name: "gif" }));
 
     expect(screen.getAllByRole("img")).toHaveLength(1);
+    expect(screen.getByRole("img", { name: "Keyboard cat" })).toHaveAttribute(
+      "src",
+      catGif.preview.stillUrl,
+    );
+    expect(screen.queryByRole("img", { name: "Party parrot" })).toBeNull();
   });
 
   it("sends a GIF-only message", async () => {
