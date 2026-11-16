@@ -29,7 +29,7 @@ import { canBroadcast } from "@/lib/community-broadcast";
 import type { ShownMention } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
-import { FeedGif, type FeedGifView } from "./feed-gif";
+import { GifPlayer, type GifView } from "@/components/media/gif-player";
 import { FeedPoll } from "./feed-poll";
 import { FeedImageGallery, type GalleryImage } from "./feed-image-gallery";
 import { PostEditForm } from "./post-edit-form";
@@ -72,7 +72,7 @@ interface FeedPost {
   /** Set when the post was reported; only its author and moderators see it. */
   hiddenAt?: string | null;
   visibility?: "community" | "public" | null;
-  gif?: FeedGifView | null;
+  gif?: GifView | null;
   images?: (GalleryImage & { id: number })[] | null;
   /** Whom the post mentions, and whether each profile is open. */
   mentions?: ShownMention[] | null;
@@ -375,7 +375,7 @@ export function FeedPostCard({
       {isEditing ? null : post.video ? (
         <FeedVideoPlayer video={post.video} onExpired={refreshVideo} />
       ) : post.gif?.mp4Url ? (
-        <FeedGif gif={post.gif} />
+        <GifPlayer gif={post.gif} />
       ) : post.images?.length ? (
         <FeedImageGallery images={post.images} />
       ) : post.imageUrl ? (

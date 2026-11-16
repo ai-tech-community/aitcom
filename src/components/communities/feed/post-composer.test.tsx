@@ -44,16 +44,17 @@ const pickedGif = vi.hoisted(() => ({
     height: 150,
   },
 }));
-vi.mock("./editor/gif-picker-button", () => ({
+vi.mock("@/components/composer/gif-picker-button", () => ({
+  // Like the real button, it says "Add GIF" unless given a label.
   GifPickerButton: ({
     label,
     onPick,
   }: {
-    label: string;
+    label?: string;
     onPick: (gif: typeof pickedGif) => void;
   }) => (
     <button type="button" onClick={() => onPick(pickedGif)}>
-      {label}
+      {label ?? "Add GIF"}
     </button>
   ),
 }));
@@ -344,9 +345,7 @@ describe("PostComposer pictures", () => {
 
   it("posts a picked GIF by its GIPHY id, and a GIF hides Add video", () => {
     renderComposer();
-    fireEvent.click(
-      screen.getByRole("button", { name: en.communities.feed.editor.gif }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: en.composer.gif }));
     expect(
       screen.getByRole("img", { name: "Party parrot" }),
     ).toBeInTheDocument();

@@ -6,10 +6,11 @@ import { Film, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
- * The picture a post carries while it is being written or edited, with a
- * button to take it off. Nothing is removed until the post is saved, so
- * the button is neutral, not destructive. Without a `src` (a video whose
- * thumbnail is missing) a film placeholder stands in.
+ * The picture a post or message carries while it is being written or
+ * edited, with a button to take it off. Nothing is removed until the post
+ * or message is saved or sent, so the button is neutral, not destructive.
+ * Without a `src` (a video whose thumbnail is missing) a film placeholder
+ * stands in.
  */
 export function MediaPreview({
   src,

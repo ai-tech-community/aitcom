@@ -31,13 +31,16 @@ import {
 import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
-import { MediaPreview } from "./media-preview";
+import { MediaPreview } from "@/components/composer/media-preview";
 import { FeedImageUploadError, uploadFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
 import { FormatButtons } from "./editor/format-buttons";
 import { TopicSelect } from "./editor/topic-select";
-import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
-import type { FeedGifView } from "./feed-gif";
+import {
+  GifPickerButton,
+  type PickedGif,
+} from "@/components/composer/gif-picker-button";
+import type { GifView } from "@/components/media/gif-player";
 import { MAX_PICTURES, PictureAttachments } from "./editor/picture-attachments";
 import { MentionButton, useMentionPicker } from "./editor/mention-picker";
 import { CurrentPoll, emptyPoll, PollBuilder } from "./editor/poll-builder";
@@ -74,7 +77,7 @@ export type EditablePost = {
   images?: { id: number; url: string; alt: string }[] | null;
   visibility?: VideoVisibility | null;
   video?: { thumbnailUrl: string | null } | null;
-  gif?: FeedGifView | null;
+  gif?: GifView | null;
   topicSlug?: string | null;
   linkPreview?: {
     url?: string | null;
@@ -662,13 +665,12 @@ export function PostEditForm({
                   onClick={() => videoInput.current?.click()}
                 />
                 <GifPickerButton
-                  communitySlug={communitySlug}
                   label={
                     pictures.length > 0
                       ? te("replacePicturesWithGif")
                       : hasMedia
                         ? t("replaceWithGif")
-                        : te("gif")
+                        : undefined
                   }
                   onPick={(gif) => {
                     videoPost.reset();

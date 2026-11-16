@@ -38,16 +38,17 @@ const pickedGif = vi.hoisted(() => ({
     height: 150,
   },
 }));
-vi.mock("./editor/gif-picker-button", () => ({
+vi.mock("@/components/composer/gif-picker-button", () => ({
+  // Like the real button, it says "Add GIF" unless given a label.
   GifPickerButton: ({
     label,
     onPick,
   }: {
-    label: string;
+    label?: string;
     onPick: (gif: typeof pickedGif) => void;
   }) => (
     <button type="button" onClick={() => onPick(pickedGif)}>
-      {label}
+      {label ?? "gif"}
     </button>
   ),
 }));

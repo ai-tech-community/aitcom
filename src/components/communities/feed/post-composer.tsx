@@ -18,11 +18,14 @@ import { mentionsEveryone } from "@/lib/post-mentions";
 import { mayGoWithoutWords } from "@/lib/feed-post-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
-import { MediaPreview } from "./media-preview";
+import { MediaPreview } from "@/components/composer/media-preview";
 import { DraftNotice } from "./editor/draft-notice";
 import { FormatButtons } from "./editor/format-buttons";
 import { TopicSelect } from "./editor/topic-select";
-import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
+import {
+  GifPickerButton,
+  type PickedGif,
+} from "@/components/composer/gif-picker-button";
 import { PictureAttachments } from "./editor/picture-attachments";
 import { emptyPoll, PollBuilder } from "./editor/poll-builder";
 import { MentionButton, useMentionPicker } from "./editor/mention-picker";
@@ -276,13 +279,12 @@ export function PostComposer({
             )}
             {videoFile || poll ? null : (
               <GifPickerButton
-                communitySlug={slug}
                 label={
                   gif
                     ? t("replaceWithGif")
                     : pictures.count > 0
                       ? te("replacePicturesWithGif")
-                      : te("gif")
+                      : undefined
                 }
                 onPick={(picked) => {
                   setGif(picked);

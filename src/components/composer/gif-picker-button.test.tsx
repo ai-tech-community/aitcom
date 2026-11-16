@@ -7,8 +7,20 @@ const m = vi.hoisted(() => ({
   reduce: false,
 }));
 
+// Only the `composer` namespace exists, holding only the keys en.json has,
+// so a string read from anywhere else fails the render.
 vi.mock("next-intl", () => ({
-  useTranslations: () => (k: string) => k,
+  useTranslations: (namespace: string) => {
+    if (namespace !== "composer") {
+      throw new Error(`unexpected namespace "${namespace}"`);
+    }
+    return (key: string) => {
+      if (!(key in en.composer)) {
+        throw new Error(`unknown key "composer.${key}"`);
+      }
+      return key;
+    };
+  },
   useLocale: () => "nl",
 }));
 vi.mock("@/hooks/use-media-query", () => ({ useMediaQuery: () => m.reduce }));
@@ -25,8 +37,10 @@ vi.mock("@/trpc/react", () => ({
   },
 }));
 
-import { GifPickerButton } from "./gif-picker-button";
+import en from "../../../messages/en.json";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
+import { GifPickerButton } from "./gif-picker-button";
 
 const gif = (id: string) => ({
   giphyId: id,
@@ -58,7 +72,7 @@ function loaded(ids: string[], more = false) {
 function open(onPick = vi.fn()) {
   render(
     <TooltipProvider>
-      <GifPickerButton communitySlug="mlops" label="gif" onPick={onPick} />
+      <GifPickerButton onPick={onPick} />
     </TooltipProvider>,
   );
   fireEvent.click(screen.getByRole("button", { name: "gif" }));
@@ -74,6 +88,26 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("GifPickerButton", () => {
+  it("uses its own label by default", () => {
+    render(
+      <TooltipProvider>
+        <GifPickerButton onPick={vi.fn()} />
+      </TooltipProvider>,
+    );
+    expect(screen.getByRole("button", { name: "gif" })).toBeVisible();
+  });
+
+  it("takes the label its composer gives it", () => {
+    render(
+      <TooltipProvider>
+        <GifPickerButton label="Replace with GIF" onPick={vi.fn()} />
+      </TooltipProvider>,
+    );
+    expect(
+      screen.getByRole("button", { name: "Replace with GIF" }),
+    ).toBeVisible();
+  });
+
   it("shows trending GIFs in the member's language and picks one", () => {
     const onPick = open();
     expect(m.calls.at(-1)).toEqual({ query: "", lang: "nl" });

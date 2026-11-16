@@ -5,8 +5,9 @@ import { useTranslations } from "next-intl";
 import { ImageOff, Pause, Play } from "lucide-react";
 
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 
-export type FeedGifView = {
+export type GifView = {
   title?: string | null;
   mp4Url?: string | null;
   stillUrl?: string | null;
@@ -17,17 +18,33 @@ export type FeedGifView = {
 /** Share of the GIF on screen before it plays, as the video player does. */
 const PLAY_RATIO = 0.6;
 
+/** Where the GIF shows: a feed post, or a message (smaller). */
+export type GifSize = "feed" | "message";
+
+/** How tall a GIF may grow in each place. */
+const MAX_HEIGHT: Record<GifSize, string> = {
+  feed: "max-h-96",
+  message: "max-h-60",
+};
+
 /**
- * A post's GIF: a muted looping video from GIPHY (lighter than a .gif
- * file) that plays only while mostly on screen, like the feed's video
- * player. Members who ask for reduced motion see the still frame (also
+ * A post's or a message's GIF: a muted looping video from GIPHY (lighter
+ * than a .gif file) that plays only while mostly on screen, like the feed's
+ * video player. Members who ask for reduced motion see the still frame (also
  * while the page is rendered on the server) and can play it themselves;
  * anyone can pause it, and the button always says what the video is
  * really doing. A GIF GIPHY no longer serves falls back to its still
  * frame, or says it is gone.
  */
-export function FeedGif({ gif }: { gif: FeedGifView }) {
-  const t = useTranslations("communities.feed");
+export function GifPlayer({
+  gif,
+  size = "feed",
+}: {
+  gif: GifView;
+  size?: GifSize;
+}) {
+  const t = useTranslations("media");
+  const maxHeight = MAX_HEIGHT[size];
   const reduce = useMediaQuery("(prefers-reduced-motion: reduce)", true);
   const ref = useRef<HTMLVideoElement>(null);
   /** The member's own play or pause; otherwise motion follows `reduce`. */
@@ -70,7 +87,10 @@ export function FeedGif({ gif }: { gif: FeedGifView }) {
 
   return (
     <figure
-      className="bg-muted relative max-h-96 w-fit max-w-full overflow-hidden rounded-lg"
+      className={cn(
+        "bg-muted relative w-fit max-w-full overflow-hidden rounded-lg",
+        maxHeight,
+      )}
       style={
         width && height ? { aspectRatio: `${width} / ${height}` } : undefined
       }
@@ -93,7 +113,7 @@ export function FeedGif({ gif }: { gif: FeedGifView }) {
             setPlaying(false);
             setVideoFailed(true);
           }}
-          className="max-h-96 w-auto max-w-full object-contain"
+          className={cn("w-auto max-w-full object-contain", maxHeight)}
         />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element -- GIPHY media
@@ -104,7 +124,7 @@ export function FeedGif({ gif }: { gif: FeedGifView }) {
           height={height}
           loading="lazy"
           onError={() => setStillFailed(true)}
-          className="max-h-96 w-auto max-w-full object-contain"
+          className={cn("w-auto max-w-full object-contain", maxHeight)}
         />
       )}
       <span
