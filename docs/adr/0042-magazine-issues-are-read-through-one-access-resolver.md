@@ -56,8 +56,16 @@ manager`, not-found on `none`). We follow its shape.
    6. the issue's effective visibility is `teaser` → `teaser`;
    7. otherwise → `none`.
 
-   `none` is answered as "not found", never "forbidden", so a members-only
-   issue is not confirmed to exist. `editor` is about _seeing_ (draft and
+   Content consumers answer `none` as "not found". The issue and article
+   reading routes make one UX exception (2026-11-16): for a published issue
+   whose audience is `members`, `loadIssueMembershipGate` returns only the
+   community slug for a generic members-only recovery page. Guests can sign
+   in and return to the reading URL; nonmembers can visit the community.
+   This confirms the membership restriction at a direct URL, as requested,
+   without exposing the issue title, cover, contents or article metadata.
+   Drafts and missing/deleted records still answer 404. Discovery, APIs and
+   search keep the same access rules; the gate is marked noindex/nofollow.
+   `editor` is about _seeing_ (draft and
    scheduled issues, unavailable-item markers, latest draft text), not a separate
    reading page.
    Moderators are readers.

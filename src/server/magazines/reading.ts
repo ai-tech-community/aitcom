@@ -42,7 +42,11 @@ import {
 
 import type { Deps } from "./deps";
 import { loadMagazineEditorship, NO_STANDING } from "./editorship";
-import { issueAccessFacts, resolveMagazineIssueAccess } from "./issue-access";
+import {
+  issueAccessFacts,
+  issueAudience,
+  resolveMagazineIssueAccess,
+} from "./issue-access";
 import { hiddenMagazineIds, isHiddenByStaff } from "./listing";
 import { itemContextFor } from "./items/context";
 import {
@@ -852,10 +856,10 @@ type ReadableIssue = {
 
 /**
  * One issue of a magazine with the viewer's access, or null when the
- * magazine, the issue or its live community is missing, or the viewer's
- * access is `none`.
+ * magazine, the issue or its live community is missing. Kept private so
+ * denied issue documents cannot escape through a content consumer.
  */
-export async function loadReadableIssue(
+async function loadIssueWithAccess(
   deps: Deps,
   opts: {
     magazineSlug: string;
@@ -863,7 +867,10 @@ export async function loadReadableIssue(
     viewerId: string | null;
     locale: AppLocale;
   },
-): Promise<ReadableIssue | null> {
+): Promise<
+  | (Omit<ReadableIssue, "access"> & { access: IssueReaderAccess | "none" })
+  | null
+> {
   const magazine = await findMagazineBySlug(deps.payload, opts.magazineSlug);
   if (!magazine) return null;
   const [{ docs }, community, viewer] = await Promise.all([
@@ -897,8 +904,38 @@ export async function loadReadableIssue(
     community: { ...community, deleted: false },
     issue: facts,
   });
-  if (access === "none") return null;
   return { access, magazine, community, issue };
+}
+
+/** Content consumers still receive nothing when reading is denied. */
+export async function loadReadableIssue(
+  deps: Deps,
+  opts: Parameters<typeof loadIssueWithAccess>[1],
+): Promise<ReadableIssue | null> {
+  const found = await loadIssueWithAccess(deps, opts);
+  if (!found || found.access === "none") return null;
+  return { ...found, access: found.access };
+}
+
+/**
+ * A recovery destination for a published issue denied only by membership.
+ * This deliberately returns no issue, magazine or article content. Drafts,
+ * missing rows and deleted communities keep their ordinary 404 response.
+ */
+export async function loadIssueMembershipGate(
+  deps: Deps,
+  opts: Parameters<typeof loadIssueWithAccess>[1],
+): Promise<{ community: { slug: string } } | null> {
+  const found = await loadIssueWithAccess(deps, opts);
+  if (!found || found.access !== "none") return null;
+  const facts = issueAccessFacts(found.issue);
+  if (
+    !facts ||
+    issueAudience({ ...found.community, deleted: false }, facts) !== "members"
+  ) {
+    return null;
+  }
+  return { community: { slug: found.community.slug } };
 }
 
 function issueLayoutOf(issue: MagazineIssue): IssueLayout {

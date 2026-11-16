@@ -14,6 +14,8 @@ import type { MagazineArticlePageData } from "@/server/magazines/reading";
 
 const state = vi.hoisted(() => ({
   data: null as MagazineArticlePageData | null,
+  gate: null as { community: { slug: string } } | null,
+  viewerId: "viewer-1" as string | null,
   calls: [] as unknown[],
   commentReads: [] as unknown[],
 }));
@@ -37,11 +39,18 @@ vi.mock("next-intl/server", () => ({
   getLocale: async () => "en",
 }));
 vi.mock("@/server/better-auth/server", () => ({
-  getSession: async () => ({ user: { id: "viewer-1" } }),
+  getSession: async () =>
+    state.viewerId ? { user: { id: state.viewerId } } : null,
 }));
 vi.mock("@/server/db", () => ({ db: {} }));
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
+}));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => ({}) }));
 vi.mock("@/server/magazines/reading", () => ({
+  loadIssueMembershipGate: async () => state.gate,
   loadMagazineArticlePage: async (_deps: unknown, opts: unknown) => {
     state.calls.push(opts);
     return state.data;
@@ -76,6 +85,8 @@ async function renderedProps() {
 
 beforeEach(() => {
   state.data = null;
+  state.gate = null;
+  state.viewerId = "viewer-1";
   state.calls = [];
   state.commentReads = [];
 });
@@ -214,4 +225,26 @@ describe("magazine article page", () => {
     expect(state.commentReads).toEqual([]);
     expect(props.comments).toEqual([]);
   });
+});
+
+describe("members-only reading destination", () => {
+  it.each([null, "outsider-1"])(
+    "shows the membership gate for viewer %s",
+    async (viewerId) => {
+      state.viewerId = viewerId;
+      state.gate = { community: { slug: "night-owls" } };
+      const page = await MagazineArticlePage({ params });
+      expect(page.props).toMatchObject({
+        communitySlug: "night-owls",
+        signedIn: viewerId !== null,
+        returnPath:
+          "/en/magazines/agents-weekly/issue-4/agents-that-know-when-to-stop",
+      });
+      const metadata = await generateMetadata({ params });
+      expect(metadata.robots).toEqual({ index: false, follow: false });
+      expect(metadata.title).toBe("This issue is for community members");
+      expect(metadata.openGraph).toBeUndefined();
+      expect(state.commentReads).toEqual([]);
+    },
+  );
 });

@@ -1,4 +1,10 @@
 {
+  "notFound": {
+    "title": "Deze pagina is niet te vinden",
+    "description": "De link is mogelijk gewijzigd of de pagina bestaat niet meer. Er is nog genoeg te ontdekken in de community.",
+    "home": "Terug naar home",
+    "magazines": "Bekijk magazines"
+  },
   "nav": {
     "home": "Home",
     "communities": "Communities",
@@ -5283,6 +5289,14 @@
     }
   },
   "magazines": {
+    "access": {
+      "membersOnlyTitle": "Dit nummer is voor communityleden",
+      "guestDescription": "Al lid? Log in om dit nummer te lezen. Ben je hier nieuw? Bekijk de community om te zien hoe je lid kunt worden.",
+      "memberDescription": "Je moet lid zijn van de community van dit magazine om dit nummer te lezen. Bekijk de community om lid te worden of je lidmaatschap te controleren.",
+      "signIn": "Log in om te lezen",
+      "viewCommunity": "Bekijk community",
+      "browseMagazines": "Bekijk magazines"
+    },
     "join": {
       "heading": "Lees het hele nummer",
       "panel": "Leden van {community} lezen elk artikel helemaal.",
