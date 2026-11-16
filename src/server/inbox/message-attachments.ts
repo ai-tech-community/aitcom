@@ -97,6 +97,16 @@ export async function withAttachments<T extends { id: string }>(
   }));
 }
 
+/**
+ * The kind of a message's first attachment, or null when it has none: what
+ * a one-line preview needs to say a message carries something.
+ */
+export function attachmentKind(
+  attachments: MessageAttachmentView[],
+): MessageAttachmentView["kind"] | null {
+  return attachments[0]?.kind ?? null;
+}
+
 /** How one attachment reads where only text can be shown. */
 function standInFor(attachment: MessageAttachmentView): string {
   switch (attachment.kind) {

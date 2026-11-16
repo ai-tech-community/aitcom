@@ -43,7 +43,12 @@ import {
   type StoredGif,
 } from "@/server/giphy/gif-lookup";
 import { insertMemberMessage } from "@/server/inbox/member-message";
-import { withAttachments } from "@/server/inbox/message-attachments";
+import {
+  attachmentKind,
+  loadAttachments,
+  textForReaders,
+  withAttachments,
+} from "@/server/inbox/message-attachments";
 import { runUiTool } from "@/server/inbox/ui-tools";
 import { countInboxUnread } from "@/server/inbox/unread-count";
 import { isHubDmConversation } from "@/server/notifications/hub-mail-prefs";
@@ -350,6 +355,7 @@ export const inboxRouter = createTRPCRouter({
           // Last message
           const [lastMessage] = await ctx.db
             .select({
+              id: messages.id,
               content: messages.content,
               senderType: messages.senderType,
               senderId: messages.senderId,
@@ -476,7 +482,28 @@ export const inboxRouter = createTRPCRouter({
         }),
       );
 
-      return { conversations: result, nextCursor };
+      // What the page's last messages carry, read in one query.
+      const lastAttachments = await loadAttachments(
+        ctx.db,
+        result.flatMap((conversation) =>
+          conversation.lastMessage ? [conversation.lastMessage.id] : [],
+        ),
+      );
+      const withLastMessages = result.map(
+        ({ lastMessage, ...conversation }) => {
+          if (!lastMessage) return { ...conversation, lastMessage: null };
+          const { id, ...preview } = lastMessage;
+          return {
+            ...conversation,
+            lastMessage: {
+              ...preview,
+              attachmentKind: attachmentKind(lastAttachments.get(id) ?? []),
+            },
+          };
+        },
+      );
+
+      return { conversations: withLastMessages, nextCursor };
     }),
 
   /**
@@ -1227,6 +1254,16 @@ export const inboxRouter = createTRPCRouter({
       // Reverse to chronological order
       rows.reverse();
 
-      return { messages: rows };
+      // Agents read text only: a GIF comes through as its stand-in.
+      const attachments = await loadAttachments(
+        ctx.db,
+        rows.map((row) => row.id),
+      );
+      return {
+        messages: rows.map((row) => ({
+          ...row,
+          content: textForReaders(row.content, attachments.get(row.id) ?? []),
+        })),
+      };
     }),
 });

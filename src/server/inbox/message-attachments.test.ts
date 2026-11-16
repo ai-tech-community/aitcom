@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  attachmentKind,
   attachmentStandIn,
   loadAttachments,
   textForReaders,
@@ -30,6 +31,16 @@ describe("attachmentStandIn", () => {
 
   it("is empty for a message with no attachments", () => {
     expect(attachmentStandIn([])).toBe("");
+  });
+});
+
+describe("attachmentKind", () => {
+  it("is the kind of the first attachment", () => {
+    expect(attachmentKind([gif])).toBe("gif");
+  });
+
+  it("is null for a message with no attachments", () => {
+    expect(attachmentKind([])).toBeNull();
   });
 });
 

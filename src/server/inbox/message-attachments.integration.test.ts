@@ -5,7 +5,10 @@
  * GIF picked by its GIPHY id is stored as one `gif` attachment of the
  * message and comes back on reads, in a direct message and in a room; that
  * a message needs words or a GIF; and that a GIF into an agent conversation,
- * or one GIPHY does not know, is refused without storing a message.
+ * or one GIPHY does not know, is refused without storing a message. Also
+ * proves the readers that show only text know about the GIF: the
+ * conversation list's last message, an agent reading its owner's DMs, and
+ * account deletion.
  *
  * Auto-skips unless RUN_DB_TESTS=1 and a local database is configured:
  *
@@ -25,9 +28,16 @@ import {
   vi,
 } from "vitest";
 
+import type { createCaller as CreateCaller } from "@/server/api/root";
+import type { db as Db } from "@/server/db";
+import type * as Schema from "@/server/db/schema";
+import type { deleteMemberAccount as DeleteMemberAccount } from "@/server/members/delete-account";
+import type * as HubDmMail from "@/server/notifications/hub-dm-mail";
+import type { eq as Eq, inArray as InArray } from "drizzle-orm";
+
 const gif = vi.hoisted(() => ({
   giphyId: "abc123",
-  title: "Party parrot",
+  title: "Happy dance",
   mp4Url: "https://media.giphy.com/media/abc123/giphy.mp4",
   stillUrl: "https://media.giphy.com/media/abc123/giphy_s.gif",
   width: 400,
@@ -39,9 +49,18 @@ const gif = vi.hoisted(() => ({
     height: 150,
   },
 }));
-vi.mock("@/server/giphy/giphy", () => ({
-  getGiphyClient: () => ({
-    byId: async (id: string) => (id === gif.giphyId ? gif : null),
+const giphy = vi.hoisted(() => ({
+  byId: vi.fn(async (id: string) => (id === gif.giphyId ? gif : null)),
+}));
+vi.mock("@/server/giphy/giphy", () => ({ getGiphyClient: () => giphy }));
+/** The agent whose API key the agent calls in these tests carry. */
+const agentKey = vi.hoisted(() => ({ agentId: "", ownerId: "" }));
+vi.mock("@/server/agent/api-key", () => ({
+  validateApiKey: async () => ({
+    agentId: agentKey.agentId,
+    ownerId: agentKey.ownerId,
+    scopes: ["read"],
+    status: "active",
   }),
 }));
 const published = vi.hoisted(
@@ -56,9 +75,7 @@ vi.mock("@/server/agent/activity", () => ({
   logActivity: async () => undefined,
 }));
 vi.mock("@/server/notifications/hub-dm-mail", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@/server/notifications/hub-dm-mail")
-  >()),
+  ...(await importOriginal<typeof HubDmMail>()),
   scheduleUnreadHubDmNotify: () => undefined,
 }));
 
@@ -77,11 +94,12 @@ const RUN_DB = isLocalDbConfigured();
 
 describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
   type Mods = {
-    db: typeof import("@/server/db").db;
-    schema: typeof import("@/server/db/schema");
-    createCaller: typeof import("@/server/api/root").createCaller;
-    eq: typeof import("drizzle-orm").eq;
-    inArray: typeof import("drizzle-orm").inArray;
+    db: typeof Db;
+    schema: typeof Schema;
+    createCaller: typeof CreateCaller;
+    eq: typeof Eq;
+    inArray: typeof InArray;
+    deleteMemberAccount: typeof DeleteMemberAccount;
   };
   let m: Mods;
   let fx: {
@@ -93,16 +111,26 @@ describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
     room: string;
     spaceId: string;
     communityId: string;
+    agentId: string;
   };
 
   beforeAll(async () => {
-    const [{ db }, schema, { createCaller }, drizzle] = await Promise.all([
-      import("@/server/db"),
-      import("@/server/db/schema"),
-      import("@/server/api/root"),
-      import("drizzle-orm"),
-    ]);
-    m = { db, schema, createCaller, eq: drizzle.eq, inArray: drizzle.inArray };
+    const [{ db }, schema, { createCaller }, drizzle, { deleteMemberAccount }] =
+      await Promise.all([
+        import("@/server/db"),
+        import("@/server/db/schema"),
+        import("@/server/api/root"),
+        import("drizzle-orm"),
+        import("@/server/members/delete-account"),
+      ]);
+    m = {
+      db,
+      schema,
+      createCaller,
+      eq: drizzle.eq,
+      inArray: drizzle.inArray,
+      deleteMemberAccount,
+    };
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
       throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
     }
@@ -111,6 +139,7 @@ describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
   beforeEach(async () => {
     const { db, schema } = m;
     published.length = 0;
+    giphy.byId.mockClear();
     const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
     const [sender, friend, roomMate] = ["sender", "friend", "mate"].map(
       (r) => `it-msg-gif-${r}-${suffix}`,
@@ -174,6 +203,18 @@ describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
       .values({ type: "space", spaceId: space!.id })
       .returning({ id: schema.conversations.id });
 
+    // The friend's agent, allowed to read its owner's DMs.
+    const [agent] = await db
+      .insert(schema.agentProfiles)
+      .values({
+        ownerId: friend,
+        name: `GIF reader ${suffix}`,
+        canReadOwnerDMs: true,
+      })
+      .returning({ id: schema.agentProfiles.id });
+    agentKey.agentId = agent!.id;
+    agentKey.ownerId = friend;
+
     fx = {
       sender,
       friend,
@@ -183,6 +224,7 @@ describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
       room: room!.id,
       spaceId: space!.id,
       communityId: community!.id,
+      agentId: agent!.id,
     };
   });
 
@@ -219,6 +261,9 @@ describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
     await db
       .delete(schema.communities)
       .where(inArray(schema.communities.id, [fx.communityId]));
+    await db
+      .delete(schema.agentProfiles)
+      .where(inArray(schema.agentProfiles.id, [fx.agentId]));
     await db.delete(schema.user).where(inArray(schema.user.id, userIds));
   });
 
@@ -227,6 +272,15 @@ describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
       db: m.db,
       headers: new Headers(),
       session: { user: { id: userId, name: "Tester" }, session: {} } as never,
+    });
+  }
+
+  /** A call made with the friend's agent API key. */
+  function agentCaller() {
+    return m.createCaller({
+      db: m.db,
+      headers: new Headers({ authorization: "Bearer test-key" }),
+      session: null,
     });
   }
 
@@ -256,6 +310,8 @@ describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
     });
     expect(sent.content).toBe("look");
     expect(sent.attachments).toEqual([expect.objectContaining(storedGif)]);
+    // The GIF's addresses come from GIPHY, looked up by its id.
+    expect(giphy.byId).toHaveBeenCalledWith(gif.giphyId);
 
     const rows = await m.db
       .select()
@@ -341,6 +397,7 @@ describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
       message: "GIFs can't be sent to an agent.",
     });
     expect(await messageCount(fx.agentChat)).toBe(before);
+    expect(giphy.byId).not.toHaveBeenCalled();
   });
 
   it("a GIF GIPHY does not know is refused and stores no message", async () => {
@@ -356,5 +413,74 @@ describe.skipIf(!RUN_DB)("inbox messages with a GIF [DB integration]", () => {
       message: "That GIF is not available. Pick another one.",
     });
     expect(await messageCount(fx.dm)).toBe(before);
+  });
+
+  it("listConversations marks a GIF-only last message", async () => {
+    await callerAs(fx.sender).inbox.sendMessage({
+      conversationId: fx.dm,
+      content: "",
+      gif: { giphyId: gif.giphyId },
+    });
+    await callerAs(fx.sender).inbox.sendMessage({
+      conversationId: fx.room,
+      content: "hi room",
+    });
+
+    const { conversations } = await callerAs(fx.sender).inbox.listConversations(
+      { limit: 50 },
+    );
+    const lastOf = (id: string) =>
+      conversations.find((conversation) => conversation.id === id)?.lastMessage;
+
+    expect(lastOf(fx.dm)).toMatchObject({ content: "", attachmentKind: "gif" });
+    // A message with only words carries no attachment kind.
+    expect(lastOf(fx.room)).toMatchObject({
+      content: "hi room",
+      attachmentKind: null,
+    });
+  });
+
+  it("agentGetOwnerDMs shows a GIF as text", async () => {
+    const sent = await callerAs(fx.sender).inbox.sendMessage({
+      conversationId: fx.dm,
+      content: "",
+      gif: { giphyId: gif.giphyId },
+    });
+
+    const { messages } = await agentCaller().inbox.agentGetOwnerDMs({});
+
+    expect(messages).toContainEqual(
+      expect.objectContaining({ id: sent.id, content: "[GIF: Happy dance]" }),
+    );
+  });
+
+  it("deleting an account removes the member's message attachments", async () => {
+    await callerAs(fx.friend).inbox.sendMessage({
+      conversationId: fx.dm,
+      content: "",
+      gif: { giphyId: gif.giphyId },
+    });
+    const kept = await callerAs(fx.sender).inbox.sendMessage({
+      conversationId: fx.dm,
+      content: "",
+      gif: { giphyId: gif.giphyId },
+    });
+
+    await m.deleteMemberAccount(m.db, fx.friend);
+
+    const attachmentsOf = (senderId: string) =>
+      m.db
+        .select({ id: m.schema.messageAttachments.id })
+        .from(m.schema.messageAttachments)
+        .innerJoin(
+          m.schema.messages,
+          m.eq(m.schema.messages.id, m.schema.messageAttachments.messageId),
+        )
+        .where(m.eq(m.schema.messages.senderId, senderId));
+    expect(await attachmentsOf(fx.friend)).toEqual([]);
+    // The other member's GIF stays.
+    expect(await attachmentsOf(fx.sender)).toEqual([
+      { id: kept.attachments[0]!.id },
+    ]);
   });
 });
