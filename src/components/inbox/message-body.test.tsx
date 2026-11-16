@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import {
+  render as renderWithTestingLibrary,
+  screen,
+} from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import type { ComponentProps, ReactElement } from "react";
 
 import type { RouterOutputs } from "@/trpc/react";
+import en from "../../../messages/en.json";
 
 // The real player needs IntersectionObserver and translations; the body
 // only decides where each GIF goes.
@@ -13,8 +19,19 @@ vi.mock("@/components/media/gif-player", () => ({
 vi.mock("./ui-message", () => ({
   UiMessage: () => <div data-testid="ui-message" />,
 }));
+vi.mock("@/i18n/navigation", () => ({
+  Link: (props: ComponentProps<"a">) => <a {...props} />,
+}));
 
 import { MessageBody } from "./message-body";
+
+function render(ui: ReactElement) {
+  return renderWithTestingLibrary(
+    <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
 
 type Msg = RouterOutputs["inbox"]["getMessages"]["messages"][number];
 
@@ -46,6 +63,54 @@ function message(overrides: Partial<Msg>): Msg {
 }
 
 describe("MessageBody", () => {
+  it("web URLs in own messages are clickable", () => {
+    const url =
+      "https://www.aitcommunity.org/en/invite/5ec5f410bc1b48829bca72a1ff582651";
+    render(
+      <MessageBody
+        message={message({ content: url })}
+        isUser
+        conversationId="c1"
+      />,
+    );
+
+    expect(screen.getByRole("link").getAttribute("href")).toBe(url);
+  });
+
+  it("own links keep Hebrew text and punctuation and open safely in a new tab", () => {
+    const { container } = render(
+      <MessageBody
+        message={message({
+          content:
+            "שלום (https://example.com/invite). עוד http://example.org/page! javascript:alert(1) <b>hello</b>",
+        })}
+        isUser
+        conversationId="c1"
+      />,
+    );
+
+    const links = screen.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "https://example.com/invite",
+      "http://example.org/page",
+    ]);
+    for (const link of links) {
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+      expect(link).toHaveAttribute(
+        "rel",
+        expect.stringContaining("noreferrer"),
+      );
+      expect(link).toHaveAttribute("dir", "ltr");
+    }
+    expect(container.textContent).toContain("שלום (");
+    expect(container.textContent).toContain("). עוד ");
+    expect(container.textContent).toContain(
+      "! javascript:alert(1) <b>hello</b>",
+    );
+    expect(container.querySelector("b")).toBeNull();
+  });
+
   it("a GIF-only message shows the GIF and no empty paragraph", () => {
     const { container } = render(
       <MessageBody

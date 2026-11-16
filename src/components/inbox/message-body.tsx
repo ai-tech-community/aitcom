@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageResponse } from "@/components/ai-elements/message";
+import { LinkifiedText } from "@/components/communities/feed/linkified-text";
 import { GifPlayer } from "@/components/media/gif-player";
 import { isChatUiEnabled } from "@/lib/chat/flags";
 import type { MessageAttachmentView } from "@/server/inbox/message-attachments";
@@ -19,7 +20,7 @@ type MessageBodyProps = {
 
 /**
  * What a message says and carries, the same in every conversation view:
- * the words first (the viewer's own as plain text, an app's UI resource as
+ * the words first (the viewer's own as text with web links, an app's UI resource as
  * its app, anyone else's as rendered markdown), then each attachment in
  * send order. A message with no words shows no empty text line.
  */
@@ -65,6 +66,12 @@ function MessageWords({ message, isUser, conversationId }: MessageBodyProps) {
     );
   }
   if (!message.content.trim()) return null;
-  if (isUser) return <p>{message.content}</p>;
+  if (isUser) {
+    return (
+      <p>
+        <LinkifiedText text={message.content} />
+      </p>
+    );
+  }
   return <MessageResponse>{message.content}</MessageResponse>;
 }
