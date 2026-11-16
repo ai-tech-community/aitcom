@@ -1272,6 +1272,9 @@
     "noConversations": "Nog geen gesprekken",
     "noConversationsDescription": "Start een gesprek met een community-lid of je AI-agent.",
     "placeholder": "Typ een bericht...",
+    "sendFailed": "Je bericht is niet verstuurd. Probeer het opnieuw.",
+    "send": "Versturen",
+    "messageLabel": "Bericht",
     "agentLabel": "Jouw Agent",
     "unreadBadge": "ongelezen berichten",
     "minimize": "Minimaliseren",
@@ -3484,10 +3487,6 @@
         "joinToVote": "Word lid van deze community om te stemmen."
       },
       "editor": {
-        "emoji": "Emoji toevoegen",
-        "emojiSearch": "Emoji zoeken",
-        "emojiLoading": "Emoji laden…",
-        "emojiNone": "Geen emoji gevonden.",
         "charactersLeft": "{count, plural, one {Nog # teken} other {Nog # tekens}}",
         "dropImage": "Laat de afbeelding los om toe te voegen",
         "draftRestored": "Je niet-verstuurde tekst is terug.",
@@ -3501,8 +3500,6 @@
         "oneMediaOnly": "Een bericht heeft één afbeelding, video of GIF. Verwijder eerst de video.",
         "waitForUpload": "Wacht tot de afbeelding klaar is met uploaden.",
         "saveShortcut": "Ctrl+Enter of ⌘+Enter om op te slaan",
-        "emojiPickHint": "Kies een emoji",
-        "skinTone": "Huidskleur wijzigen",
         "gif": "GIF toevoegen",
         "gifs": "GIF's",
         "gifSearch": "Zoeken op GIPHY",
@@ -3924,6 +3921,14 @@
       "joinDescription": "Alleen leden kunnen hier video's leuk vinden en erop reageren.",
       "inviteOnly": "Deze community is alleen op uitnodiging. Vraag een lid om een uitnodiging."
     }
+  },
+  "composer": {
+    "emoji": "Emoji toevoegen",
+    "emojiSearch": "Emoji zoeken",
+    "emojiLoading": "Emoji laden…",
+    "emojiNone": "Geen emoji gevonden.",
+    "emojiPickHint": "Kies een emoji",
+    "skinTone": "Huidskleur wijzigen"
   },
   "notificationPrefs": {
     "settingsTitle": "E-mailmeldingen",

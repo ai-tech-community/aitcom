@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import { eq } from "drizzle-orm";
 
+import { MESSAGE_MAX_LENGTH } from "@/lib/message-rules";
 import { db } from "@/server/db";
 import { agentProfiles } from "@/server/db/schema";
 import type { createCaller } from "@/server/api/root";
@@ -450,7 +451,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
         content: z
           .string()
           .min(1)
-          .max(10000)
+          .max(MESSAGE_MAX_LENGTH)
           .describe("Message content (markdown)."),
         metadata: z
           .record(z.string(), z.unknown())

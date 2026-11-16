@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { EmojiPicker } from "frimousse";
 import { Smile } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -17,7 +17,7 @@ import { ToolbarButton } from "./toolbar-button";
 const EMOJIBASE_URL = "/api/emojibase";
 
 /**
- * The editor's emoji button: a searchable, keyboard-navigable emoji panel
+ * A composer's emoji button: a searchable, keyboard-navigable emoji panel
  * (frimousse) in the member's language. Picking an emoji inserts it and
  * closes the panel.
  */
@@ -28,9 +28,11 @@ export function EmojiPickerButton({
   onPick: (emoji: string) => void;
   disabled?: boolean;
 }) {
-  const t = useTranslations("communities.feed.editor");
+  const t = useTranslations("composer");
   const locale = useLocale();
   const [open, setOpen] = useState(false);
+  // Set by a pick, read once by the close that follows it.
+  const pickedRef = useRef(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -47,15 +49,22 @@ export function EmojiPickerButton({
         aria-label={t("emoji")}
         // Focus goes to the search box, not the first emoji.
         onOpenAutoFocus={(e) => e.preventDefault()}
-        // After a pick the text field takes focus back (usePostText), not
-        // this button.
-        onCloseAutoFocus={(e) => e.preventDefault()}
+        // After a pick, `onPick` has put the caret back in the text field
+        // (applyEdit focuses it), so focus stays there. Escape returns
+        // focus to this button; a click or Tab elsewhere leaves it there.
+        onCloseAutoFocus={(e) => {
+          if (pickedRef.current) {
+            pickedRef.current = false;
+            e.preventDefault();
+          }
+        }}
       >
         <EmojiPicker.Root
           locale={locale}
           emojibaseUrl={EMOJIBASE_URL}
           columns={8}
           onEmojiSelect={({ emoji }) => {
+            pickedRef.current = true;
             onPick(emoji);
             setOpen(false);
           }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
   BotIcon,
   ChevronDownIcon,
@@ -10,7 +10,6 @@ import {
   XIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Spinner } from "@/components/ui/spinner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -25,15 +24,10 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
-import {
-  PromptInput,
-  PromptInputTextarea,
-  PromptInputFooter,
-  PromptInputSubmit,
-} from "@/components/ai-elements/prompt-input";
 import { Link } from "@/i18n/navigation";
 import { useInbox } from "./inbox-provider";
-import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
+import { useConversationMessages } from "./conversation-messages";
+import { MessageComposer } from "./message-composer";
 import { useInboxStream } from "./use-inbox-stream";
 import { UiMessage } from "./ui-message";
 import { isChatUiEnabled } from "@/lib/chat/flags";
@@ -74,7 +68,6 @@ export function ChatWindow({
   const { closeChat, minimizeChat } = useInbox();
   const { data: session } = authClient.useSession();
   const t = useTranslations("inbox");
-  const utils = api.useUtils();
   const [expanded, setExpanded] = useState(false);
 
   useInboxStream();
@@ -83,56 +76,7 @@ export function ChatWindow({
 
   const currentUserId = session?.user?.id;
 
-  const messagesQuery = api.inbox.getMessages.useQuery(
-    { conversationId, limit: 50 },
-    { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
-  );
-
-  const sendMessage = api.inbox.sendMessage.useMutation({
-    // Optimistic send: the human's own message renders instantly (ADR-0025 Tier 0).
-    onMutate: async ({ content }) => {
-      if (!currentUserId) return;
-      const key = { conversationId, limit: 50 };
-      await utils.inbox.getMessages.cancel(key);
-      const previous = utils.inbox.getMessages.getData(key);
-      utils.inbox.getMessages.setData(key, (old) => {
-        if (!old) return old;
-        const optimistic = {
-          id: `optimistic-${Date.now()}`,
-          senderId: currentUserId,
-          senderType: "human" as const,
-          content,
-          createdAt: new Date(),
-        } as (typeof old.messages)[number];
-        return { ...old, messages: [...old.messages, optimistic] };
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) {
-        utils.inbox.getMessages.setData(
-          { conversationId, limit: 50 },
-          ctx.previous,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.inbox.getMessages.invalidate();
-      void utils.inbox.listConversations.invalidate();
-      void utils.inbox.totalUnreadCount.invalidate();
-    },
-  });
-
-  // ── Handlers ────────────────────────────────────────────────────────────
-
-  const handleSubmit = useCallback(
-    async (message: { text: string }) => {
-      const text = message.text.trim();
-      if (!text) return;
-      await sendMessage.mutateAsync({ conversationId, content: text });
-    },
-    [conversationId, sendMessage],
-  );
+  const messagesQuery = useConversationMessages(conversationId);
 
   // ── Derived data ────────────────────────────────────────────────────────
 
@@ -298,16 +242,10 @@ export function ChatWindow({
 
       {/* ── Input area ────────────────────────────────────────────────── */}
       <div className="border-border border-t **:data-[slot=input-group]:rounded-none **:data-[slot=input-group]:border-0 **:data-[slot=input-group]:shadow-none">
-        <PromptInput onSubmit={handleSubmit}>
-          <PromptInputTextarea
-            placeholder={t("placeholder")}
-            className="min-h-10 text-sm"
-          />
-          <PromptInputFooter>
-            <div />
-            <PromptInputSubmit disabled={sendMessage.isPending} />
-          </PromptInputFooter>
-        </PromptInput>
+        <MessageComposer
+          conversationId={conversationId}
+          placeholder={t("placeholder")}
+        />
       </div>
     </div>
   );

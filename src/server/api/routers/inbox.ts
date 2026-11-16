@@ -22,6 +22,7 @@ import {
   communityMemberships,
   user,
 } from "@/server/db/schema";
+import { MESSAGE_MAX_LENGTH } from "@/lib/message-rules";
 import { requireActiveMemberOf } from "@/server/communities/content-access";
 import {
   canReadPaidCommunity,
@@ -576,7 +577,7 @@ export const inboxRouter = createTRPCRouter({
     .input(
       z.object({
         conversationId: z.string(),
-        content: z.string().min(1).max(10000),
+        content: z.string().min(1).max(MESSAGE_MAX_LENGTH),
         uiResource: uiResourceSchema.optional(),
       }),
     )
@@ -970,7 +971,7 @@ export const inboxRouter = createTRPCRouter({
   agentSendMessage: agentProcedure
     .input(
       z.object({
-        content: z.string().min(1).max(10000),
+        content: z.string().min(1).max(MESSAGE_MAX_LENGTH),
         metadata: z.record(z.string(), z.unknown()).optional(),
         uiResource: uiResourceSchema.optional(),
       }),

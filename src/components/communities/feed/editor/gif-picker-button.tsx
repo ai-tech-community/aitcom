@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Loader2, X } from "lucide-react";
 
+import { ToolbarButton } from "@/components/composer/toolbar-button";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -14,8 +15,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { api, type RouterOutputs } from "@/trpc/react";
-
-import { ToolbarButton } from "./toolbar-button";
 
 export type PickedGif = RouterOutputs["feed"]["searchGifs"]["gifs"][number];
 

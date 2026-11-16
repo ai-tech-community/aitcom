@@ -125,7 +125,10 @@ export function RoomView({
         </div>
         {/* Headerless chat — fills remaining height */}
         <div className="min-h-0 flex-1">
+          {/* Keyed like messages-shell: a new room gets a fresh composer,
+              so nothing typed or restored in one room lands in another. */}
           <ConversationView
+            key={room.conversationId}
             conversationId={room.conversationId}
             peer={{
               name: room.name ?? t("untitled"),

@@ -3,9 +3,12 @@
 import { useTranslations } from "next-intl";
 import { Bold, Italic, List, ListOrdered } from "lucide-react";
 
+import {
+  ToolbarButton,
+  ToolbarSeparator,
+} from "@/components/composer/toolbar-button";
 import { toggleList, toggleWrap } from "@/lib/post-format";
 
-import { ToolbarButton, ToolbarSeparator } from "./toolbar-button";
 import type { usePostText } from "./use-post-text";
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import {
   ArrowLeftIcon,
   BotIcon,
@@ -8,7 +8,6 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,13 +24,8 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
-import {
-  PromptInput,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTextarea,
-} from "@/components/ai-elements/prompt-input";
-import { LIVE_MESSAGES_FALLBACK_MS } from "@/components/inbox/live-refetch";
+import { useConversationMessages } from "@/components/inbox/conversation-messages";
+import { MessageComposer } from "@/components/inbox/message-composer";
 import { UiMessage } from "@/components/inbox/ui-message";
 import { isChatUiEnabled } from "@/lib/chat/flags";
 
@@ -67,57 +61,9 @@ export function ConversationView({
 }: ConversationViewProps) {
   const t = useTranslations("inbox");
   const { data: session } = authClient.useSession();
-  const utils = api.useUtils();
   const currentUserId = session?.user?.id;
 
-  const messagesQuery = api.inbox.getMessages.useQuery(
-    { conversationId, limit: 50 },
-    { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
-  );
-
-  const sendMessage = api.inbox.sendMessage.useMutation({
-    // Optimistic send — verbatim from chat-window.tsx (ADR-0025 Tier 0).
-    onMutate: async ({ content }) => {
-      if (!currentUserId) return;
-      const key = { conversationId, limit: 50 };
-      await utils.inbox.getMessages.cancel(key);
-      const previous = utils.inbox.getMessages.getData(key);
-      utils.inbox.getMessages.setData(key, (old) => {
-        if (!old) return old;
-        const optimistic = {
-          id: `optimistic-${Date.now()}`,
-          senderId: currentUserId,
-          senderType: "human" as const,
-          content,
-          createdAt: new Date(),
-        } as (typeof old.messages)[number];
-        return { ...old, messages: [...old.messages, optimistic] };
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) {
-        utils.inbox.getMessages.setData(
-          { conversationId, limit: 50 },
-          ctx.previous,
-        );
-      }
-    },
-    onSettled: () => {
-      void utils.inbox.getMessages.invalidate();
-      void utils.inbox.listConversations.invalidate();
-      void utils.inbox.totalUnreadCount.invalidate();
-    },
-  });
-
-  const handleSubmit = useCallback(
-    async (message: { text: string }) => {
-      const text = message.text.trim();
-      if (!text) return;
-      await sendMessage.mutateAsync({ conversationId, content: text });
-    },
-    [conversationId, sendMessage],
-  );
+  const messagesQuery = useConversationMessages(conversationId);
 
   const messages = useMemo(
     () => messagesQuery.data?.messages ?? [],
@@ -306,16 +252,10 @@ export function ConversationView({
 
       {/* Composer */}
       <div className="border-border border-t p-3 **:data-[slot=input-group]:rounded-lg">
-        <PromptInput onSubmit={handleSubmit}>
-          <PromptInputTextarea
-            placeholder={t("placeholder")}
-            className="min-h-10 text-sm"
-          />
-          <PromptInputFooter>
-            <div />
-            <PromptInputSubmit disabled={sendMessage.isPending} />
-          </PromptInputFooter>
-        </PromptInput>
+        <MessageComposer
+          conversationId={conversationId}
+          placeholder={t("placeholder")}
+        />
       </div>
     </div>
   );
