@@ -71,6 +71,10 @@ export function ConversationView({
   );
 
   const isAgent = peer?.isAgent ?? false;
+  // The GIF button shows only once the conversation is known to be with a
+  // person: the peer is null while the conversation list loads, and stays
+  // null when this conversation is not in the list's first page.
+  const composerKind = peer && !peer.isAgent ? "person" : "agent";
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -255,7 +259,7 @@ export function ConversationView({
         <MessageComposer
           conversationId={conversationId}
           placeholder={t("placeholder")}
-          kind={isAgent ? "agent" : "person"}
+          kind={composerKind}
         />
       </div>
     </div>
