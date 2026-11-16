@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
 
+import type { PickedGif } from "@/components/composer/gif-picker-button";
 import type { AppRouter } from "@/server/api/root";
 import { api, type RouterOutputs } from "@/trpc/react";
 
@@ -71,6 +72,21 @@ const earlier = {
   createdAt: new Date("2026-11-15T09:00:00Z"),
 } as Page["messages"][number];
 
+const partyGif: PickedGif = {
+  giphyId: "abc123",
+  title: "Party parrot",
+  mp4Url: "https://media.giphy.com/media/abc123/giphy.mp4",
+  stillUrl: "https://media.giphy.com/media/abc123/giphy_s.gif",
+  width: 400,
+  height: 300,
+  preview: {
+    mp4Url: "https://media.giphy.com/media/abc123/200w.mp4",
+    stillUrl: "https://media.giphy.com/media/abc123/200w_s.gif",
+    width: 200,
+    height: 150,
+  },
+};
+
 describe("useSendMessage", () => {
   afterEach(() => {
     sent.length = 0;
@@ -80,7 +96,7 @@ describe("useSendMessage", () => {
   it("sends the trimmed text", async () => {
     const { result } = setup();
 
-    await act(() => result.current.composer.send("  hi  "));
+    await act(() => result.current.composer.send({ content: "  hi  " }));
 
     expect(sent).toEqual([{ conversationId: "c1", content: "hi" }]);
   });
@@ -88,9 +104,94 @@ describe("useSendMessage", () => {
   it("sends nothing for whitespace", async () => {
     const { result } = setup();
 
-    await act(() => result.current.composer.send("   "));
+    await act(() => result.current.composer.send({ content: "   " }));
 
     expect(sent).toEqual([]);
+  });
+
+  it("sends the GIF id with the words", async () => {
+    const { result } = setup();
+
+    await act(() =>
+      result.current.composer.send({ content: " look ", gif: partyGif }),
+    );
+
+    expect(sent).toEqual([
+      { conversationId: "c1", content: "look", gif: { giphyId: "abc123" } },
+    ]);
+  });
+
+  it("sends a GIF with no words", async () => {
+    const { result } = setup();
+
+    await act(() =>
+      result.current.composer.send({ content: "  ", gif: partyGif }),
+    );
+
+    expect(sent).toEqual([
+      { conversationId: "c1", content: "", gif: { giphyId: "abc123" } },
+    ]);
+  });
+
+  it("sends nothing without words or GIF", async () => {
+    const { result } = setup();
+
+    await act(() => result.current.composer.send({ content: "", gif: null }));
+
+    expect(sent).toEqual([]);
+  });
+
+  it("the optimistic row shows the picked GIF", async () => {
+    answer = () => new Promise(() => undefined);
+    const { result } = setup();
+    act(() => {
+      result.current.utils.inbox.getMessages.setData(key, {
+        messages: [earlier],
+      } as Page);
+    });
+
+    act(() => {
+      void result.current.composer.send({ content: "", gif: partyGif });
+    });
+
+    await waitFor(() =>
+      expect(
+        result.current.utils.inbox.getMessages.getData(key)?.messages[1]
+          ?.attachments,
+      ).toEqual([
+        {
+          id: "optimistic-gif",
+          kind: "gif",
+          position: 0,
+          title: "Party parrot",
+          mp4Url: partyGif.mp4Url,
+          stillUrl: partyGif.stillUrl,
+          width: 400,
+          height: 300,
+        },
+      ]),
+    );
+  });
+
+  it("the optimistic row of words alone has no attachments", async () => {
+    answer = () => new Promise(() => undefined);
+    const { result } = setup();
+    act(() => {
+      result.current.utils.inbox.getMessages.setData(key, {
+        messages: [earlier],
+      } as Page);
+    });
+
+    act(() => {
+      void result.current.composer.send({ content: "hi" });
+    });
+
+    await waitFor(() =>
+      expect(
+        result.current.utils.inbox.getMessages.getData(key)?.messages[1]
+          ?.attachments,
+      ).toEqual([]),
+    );
   });
 
   it("shows the message at once and takes it back when the send fails", async () => {
@@ -107,7 +208,7 @@ describe("useSendMessage", () => {
 
     let sending!: Promise<void>;
     act(() => {
-      sending = result.current.composer.send("hi");
+      sending = result.current.composer.send({ content: "hi" });
     });
 
     await waitFor(() =>
@@ -146,7 +247,7 @@ describe("useSendMessage", () => {
 
     let sending!: Promise<void>;
     act(() => {
-      sending = result.current.composer.send("hi");
+      sending = result.current.composer.send({ content: "hi" });
     });
     await waitFor(() =>
       expect(

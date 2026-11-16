@@ -2,10 +2,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
 const m = vi.hoisted(() => ({ reduce: false }));
-vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+// Only the `media` namespace exists, holding only the keys en.json has,
+// so a string read from anywhere else fails the render.
+vi.mock("next-intl", () => ({
+  useTranslations: (namespace: string) => {
+    if (namespace !== "media") {
+      throw new Error(`unexpected namespace "${namespace}"`);
+    }
+    return (key: string) => {
+      if (!(key in en.media)) throw new Error(`unknown key "media.${key}"`);
+      return key;
+    };
+  },
+}));
 vi.mock("@/hooks/use-media-query", () => ({ useMediaQuery: () => m.reduce }));
 
-import { FeedGif } from "./feed-gif";
+import en from "../../../messages/en.json";
+
+import { GifPlayer } from "./gif-player";
 
 const gif = {
   title: "Party parrot",
@@ -50,10 +64,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("FeedGif", () => {
+describe("GifPlayer", () => {
   it("plays only once mostly on screen, muted, and the button follows the video", () => {
     m.reduce = false;
-    render(<FeedGif gif={gif} />);
+    render(<GifPlayer gif={gif} />);
     const video = screen.getByLabelText<HTMLVideoElement>(
       "gifBadge: Party parrot",
     );
@@ -70,7 +84,7 @@ describe("FeedGif", () => {
 
   it("pauses on request, showing the still frame", () => {
     m.reduce = false;
-    render(<FeedGif gif={gif} />);
+    render(<GifPlayer gif={gif} />);
     act(() => seen?.(1));
     fireEvent.click(screen.getByRole("button", { name: "pauseGif" }));
     expect(
@@ -80,7 +94,7 @@ describe("FeedGif", () => {
 
   it("stays still for reduced motion until the member plays it", () => {
     m.reduce = true;
-    render(<FeedGif gif={gif} />);
+    render(<GifPlayer gif={gif} />);
     expect(document.querySelector("video")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "playGif" }));
     expect(document.querySelector("video")).not.toBeNull();
@@ -88,11 +102,31 @@ describe("FeedGif", () => {
 
   it("falls back to the still frame when the video fails, then says it is gone", () => {
     m.reduce = false;
-    render(<FeedGif gif={gif} />);
+    render(<GifPlayer gif={gif} />);
     fireEvent.error(document.querySelector("video")!);
     const still = screen.getByRole("img", { name: "gifBadge: Party parrot" });
     expect(screen.queryByRole("button")).toBeNull();
     fireEvent.error(still);
     expect(screen.getByText("gifGone")).toBeVisible();
+  });
+
+  it("keeps a feed GIF up to the feed's height", () => {
+    m.reduce = true;
+    render(<GifPlayer gif={gif} />);
+    expect(document.querySelector("figure")).toHaveClass("max-h-96");
+    expect(screen.getByRole("img")).toHaveClass("max-h-96");
+  });
+
+  it("message size caps the height", () => {
+    m.reduce = true;
+    render(<GifPlayer gif={gif} size="message" />);
+    const figure = document.querySelector("figure");
+    expect(figure).toHaveClass("max-h-60");
+    expect(figure).not.toHaveClass("max-h-96");
+    expect(screen.getByRole("img")).toHaveClass("max-h-60");
+    fireEvent.click(screen.getByRole("button", { name: "playGif" }));
+    const video = document.querySelector("video");
+    expect(video).toHaveClass("max-h-60");
+    expect(video).not.toHaveClass("max-h-96");
   });
 });

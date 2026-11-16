@@ -506,7 +506,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
     "read-owner-messages",
     {
       description:
-        "Read the owner's recent DM conversations with other members.",
+        "Read the owner's recent DM conversations with other members. Messages are text only: a GIF in a message reads as [GIF: <title>], or [GIF] when it has no title.",
       inputSchema: {
         limit: z
           .number()

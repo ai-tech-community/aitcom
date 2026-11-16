@@ -4,12 +4,24 @@ import type { ReactNode } from "react";
 import { Film, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
- * The picture a post carries while it is being written or edited, with a
- * button to take it off. Nothing is removed until the post is saved, so
- * the button is neutral, not destructive. Without a `src` (a video whose
- * thumbnail is missing) a film placeholder stands in.
+ * How tall the picture may be. `default` suits a post composer;
+ * `compact` keeps a small conversation window readable while a message
+ * is being written.
+ */
+const PICTURE_SIZE = {
+  default: { image: "max-h-48", placeholder: "size-32" },
+  compact: { image: "max-h-24", placeholder: "size-24" },
+} as const;
+
+/**
+ * The picture a post or message carries while it is being written or
+ * edited, with a button to take it off. Nothing is removed until the post
+ * or message is saved or sent, so the button is neutral, not destructive.
+ * Without a `src` (a video whose thumbnail is missing) a film placeholder
+ * stands in.
  */
 export function MediaPreview({
   src,
@@ -18,6 +30,7 @@ export function MediaPreview({
   removeLabel,
   onRemove,
   disabled,
+  size = "default",
 }: {
   src: string | null;
   /** Empty when `badge` already says what this is. */
@@ -27,14 +40,29 @@ export function MediaPreview({
   removeLabel: string;
   onRemove: () => void;
   disabled?: boolean;
+  size?: keyof typeof PICTURE_SIZE;
 }) {
+  const sized = PICTURE_SIZE[size];
   return (
-    <div className="relative inline-block">
+    <div
+      data-slot="media-preview"
+      data-size={size}
+      className="relative inline-block"
+    >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- S3, signed or local blob URLs
-        <img src={src} alt={alt} className="max-h-48 rounded-lg object-cover" />
+        <img
+          src={src}
+          alt={alt}
+          className={cn(sized.image, "rounded-lg object-cover")}
+        />
       ) : (
-        <div className="bg-muted text-muted-foreground flex size-32 items-center justify-center rounded-lg">
+        <div
+          className={cn(
+            "bg-muted text-muted-foreground flex items-center justify-center rounded-lg",
+            sized.placeholder,
+          )}
+        >
           <Film aria-hidden="true" className="size-8" />
         </div>
       )}

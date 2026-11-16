@@ -25,6 +25,7 @@ import {
   hubMailPrefs,
   magazineSubscriptions,
   memberProfiles,
+  messageAttachments,
   messages,
   newsStorySuggestions,
   notifications,
@@ -210,6 +211,16 @@ describe("deleteMemberAccount", () => {
     expect(sqlText).not.toContain("SET public.");
     expect(sqlText).toContain(DELETED_AUTHOR_ID);
     expect(sqlText).toContain("user-1");
+  });
+
+  it("deleting an account removes the member's message attachments", async () => {
+    const db = recordingDb({ id: "user-1", email: "ada@example.com" });
+
+    await deleteMemberAccount(db as never, "user-1");
+
+    // Recorded by the transaction, so in the same one as the blanking.
+    expect(deleted(db.calls)).toContain(messageAttachments);
+    expect(updates(db.calls, messages)).toHaveLength(1);
   });
 
   it("keeps the member's gallery photos and batches, pointing them at no account", async () => {

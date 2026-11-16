@@ -12,12 +12,9 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@/components/ai-elements/message";
+import { Message, MessageContent } from "@/components/ai-elements/message";
 import { useInbox } from "./inbox-provider";
+import { MessageBody } from "./message-body";
 import { useConversationMessages } from "./conversation-messages";
 import { MessageComposer } from "./message-composer";
 import { useInboxStream } from "./use-inbox-stream";
@@ -176,11 +173,11 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
                   )}
                   <Message from={isUser ? "user" : "assistant"}>
                     <MessageContent>
-                      {isUser ? (
-                        <p>{msg.content}</p>
-                      ) : (
-                        <MessageResponse>{msg.content}</MessageResponse>
-                      )}
+                      <MessageBody
+                        message={msg}
+                        isUser={isUser}
+                        conversationId={chatInfo.conversationId}
+                      />
                     </MessageContent>
                     <span
                       className={`text-muted-foreground text-xs ${isUser ? "ml-auto" : ""}`}
@@ -201,6 +198,7 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
         <MessageComposer
           conversationId={chatInfo.conversationId}
           placeholder={t("placeholder")}
+          kind={chatInfo.isAgent ? "agent" : "person"}
         />
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { eq, or, sql, type SQL } from "drizzle-orm";
+import { eq, inArray, or, sql, type SQL } from "drizzle-orm";
 
 import { DELETED_AUTHOR_ID } from "@/lib/account-deletion";
 import { type db } from "@/server/db";
@@ -17,6 +17,7 @@ import {
   hubMailPrefs,
   magazineSubscriptions,
   memberProfiles,
+  messageAttachments,
   messages,
   newsStorySuggestions,
   notificationOptouts,
@@ -211,6 +212,18 @@ export async function deleteMemberAccount(
         uiProducerTrust: null,
       })
       .where(eq(messages.senderId, userId));
+    // A blanked message carries nothing: its GIFs go with its words.
+    await tx
+      .delete(messageAttachments)
+      .where(
+        inArray(
+          messageAttachments.messageId,
+          tx
+            .select({ id: messages.id })
+            .from(messages)
+            .where(eq(messages.senderId, userId)),
+        ),
+      );
     await tx
       .update(activityEvents)
       .set({ metadata: null })

@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type Ref } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Loader2, X } from "lucide-react";
 
-import { ToolbarButton } from "@/components/composer/toolbar-button";
+import { ToolbarButton } from "./toolbar-button";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -16,7 +16,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { api, type RouterOutputs } from "@/trpc/react";
 
-export type PickedGif = RouterOutputs["feed"]["searchGifs"]["gifs"][number];
+export type PickedGif = RouterOutputs["gifs"]["search"]["gifs"][number];
 
 const SEARCH_DELAY_MS = 400;
 
@@ -43,25 +43,27 @@ function errorKey(code: string | undefined) {
 }
 
 /**
- * The editor's GIF button: a GIPHY search panel, trending until the member
- * types. Results come through our server (`feed.searchGifs`), so the GIPHY
- * key never reaches the browser. Previews are still frames that play only
- * while hovered or focused (and never for reduced motion), so the panel is
- * calm and light. GIPHY's terms ask for its attribution in the search UI.
+ * A composer's GIF button (a post's or a message's): a GIPHY search panel,
+ * trending until the member types. Results come through our server
+ * (`gifs.search`), so the GIPHY key never reaches the browser. Previews are
+ * still frames that play only while hovered or focused (and never for
+ * reduced motion), so the panel is calm and light. GIPHY's terms ask for
+ * its attribution in the search UI.
  */
 export function GifPickerButton({
-  communitySlug,
+  ref,
   label,
   onPick,
   disabled,
 }: {
-  communitySlug: string;
-  /** "Add GIF" or "Replace with GIF". */
-  label: string;
+  /** The button, e.g. to take focus back when the picked GIF is removed. */
+  ref?: Ref<HTMLButtonElement>;
+  /** Defaults to "Add GIF"; a composer may say "Replace with GIF". */
+  label?: string;
   onPick: (gif: PickedGif) => void;
   disabled?: boolean;
 }) {
-  const t = useTranslations("communities.feed.editor");
+  const t = useTranslations("composer");
   const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
@@ -71,9 +73,8 @@ export function GifPickerButton({
   // On touch screens the keyboard would cover the trending GIFs.
   const touch = useMediaQuery("(pointer: coarse)", false);
 
-  const results = api.feed.searchGifs.useInfiniteQuery(
+  const results = api.gifs.search.useInfiniteQuery(
     {
-      communitySlug,
       query,
       lang: locale === "fr" ? "fr" : locale === "nl" ? "nl" : "en",
     },
@@ -159,7 +160,8 @@ export function GifPickerButton({
     >
       <PopoverTrigger asChild>
         <ToolbarButton
-          label={label}
+          ref={ref}
+          label={label ?? t("gif")}
           icon={
             <span
               aria-hidden="true"

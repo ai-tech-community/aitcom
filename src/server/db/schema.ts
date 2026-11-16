@@ -2913,6 +2913,47 @@ export const messages = appSchema.table(
   (t) => [index("messages_conv_created_idx").on(t.conversationId, t.createdAt)],
 );
 
+/**
+ * What a message carries besides its words, one row per item in send
+ * order (`position`). A `gif` row holds only the addresses the server read
+ * from GIPHY by id; GIFs are never copied to our storage. `photo` rows are
+ * reserved for member photos.
+ */
+export const messageAttachments = appSchema.table(
+  "message_attachment",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    messageId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    position: d.smallint().notNull().default(0),
+    kind: d.varchar({ length: 10 }).notNull().$type<"gif" | "photo">(),
+    giphyId: d.varchar({ length: 64 }),
+    title: d.text(),
+    mp4Url: d.text(),
+    stillUrl: d.text(),
+    width: d.integer(),
+    height: d.integer(),
+    createdAt: d.timestamp({ withTimezone: true }).defaultNow().notNull(),
+  }),
+  (t) => [
+    unique("message_attachment_message_position_uniq").on(
+      t.messageId,
+      t.position,
+    ),
+    check("message_attachment_kind_chk", sql`${t.kind} IN ('gif', 'photo')`),
+    check(
+      "message_attachment_gif_fields_chk",
+      sql`${t.kind} <> 'gif' OR (${t.giphyId} IS NOT NULL AND ${t.mp4Url} IS NOT NULL AND ${t.stillUrl} IS NOT NULL)`,
+    ),
+  ],
+);
+
 export const conversationsRelations = relations(conversations, ({ many }) => ({
   participants: many(conversationParticipants),
   messages: many(messages),
@@ -2932,7 +2973,7 @@ export const conversationParticipantsRelations = relations(
   }),
 );
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   conversation: one(conversations, {
     fields: [messages.conversationId],
     references: [conversations.id],
@@ -2941,7 +2982,18 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     fields: [messages.senderId],
     references: [user.id],
   }),
+  attachments: many(messageAttachments),
 }));
+
+export const messageAttachmentsRelations = relations(
+  messageAttachments,
+  ({ one }) => ({
+    message: one(messages, {
+      fields: [messageAttachments.messageId],
+      references: [messages.id],
+    }),
+  }),
+);
 
 // ─── AI Brand Benchmark ──────────────────────────────────────────────────────
 
