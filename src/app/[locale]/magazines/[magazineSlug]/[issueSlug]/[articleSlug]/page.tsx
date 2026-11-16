@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { cache } from "react";
 
 import { MagazineArticle } from "@/components/magazines/reading/magazine-article";
+import { MagazineMembersOnly } from "@/components/magazines/reading/members-only";
 import { MagazineFontScope } from "@/components/magazines/reading/magazine-font-scope";
 import { resolveLocale, type AppLocale } from "@/i18n/messages";
 import {
@@ -23,7 +24,10 @@ import {
 import { listArticleComments } from "@/server/articles/article-comments";
 import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
-import { loadMagazineArticlePage } from "@/server/magazines/reading";
+import {
+  loadMagazineArticlePage,
+  loadIssueMembershipGate,
+} from "@/server/magazines/reading";
 import { getPayloadClient } from "@/server/payload";
 
 // Access is decided per request: a visibility change shows on the next
@@ -50,11 +54,12 @@ const loadPage = cache(
       getPayloadClient(),
     ]);
     const viewerId = session?.user?.id ?? null;
-    const data = await loadMagazineArticlePage(
-      { db, payload },
-      { magazineSlug, issueSlug, articleSlug, viewerId, locale },
-    );
-    return data ? { data, payload, viewerId } : null;
+    const opts = { magazineSlug, issueSlug, articleSlug, viewerId, locale };
+    const data = await loadMagazineArticlePage({ db, payload }, opts);
+    const gate = data
+      ? null
+      : await loadIssueMembershipGate({ db, payload }, opts);
+    return { data, gate, payload, viewerId };
   },
 );
 
@@ -71,7 +76,14 @@ export async function generateMetadata({
   } = await params;
   const locale = resolveLocale(rawLocale);
   const loaded = await loadPage(magazineSlug, issueSlug, articleSlug, locale);
-  if (!loaded) return {};
+  if (!loaded.data) {
+    if (!loaded.gate) return {};
+    const t = await getTranslations({ locale, namespace: "magazines.access" });
+    return {
+      title: t("membersOnlyTitle"),
+      robots: { index: false, follow: false },
+    };
+  }
 
   const { magazine, issue, article } = loaded.data;
   const t = await getTranslations({ locale, namespace: "magazines.meta" });
@@ -118,7 +130,17 @@ export default async function MagazineArticlePage({
   } = await params;
   const locale = resolveLocale(rawLocale);
   const loaded = await loadPage(magazineSlug, issueSlug, articleSlug, locale);
-  if (!loaded) notFound();
+  if (!loaded.data) {
+    if (!loaded.gate) notFound();
+    return (
+      <MagazineMembersOnly
+        locale={locale}
+        communitySlug={loaded.gate.community.slug}
+        signedIn={loaded.viewerId !== null}
+        returnPath={`/${locale}${magazineArticlePath({ slug: magazineSlug }, { slug: issueSlug }, { slug: articleSlug })}`}
+      />
+    );
+  }
 
   const { data, payload, viewerId } = loaded;
   // Preview readers never fetch comments, even on a published issue.

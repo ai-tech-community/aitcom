@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { cache } from "react";
 
 import { IssueReader } from "@/components/magazines/reading/issue-reader";
+import { MagazineMembersOnly } from "@/components/magazines/reading/members-only";
 import { MagazineFontScope } from "@/components/magazines/reading/magazine-font-scope";
 import { resolveLocale, type AppLocale } from "@/i18n/messages";
 import { isIssueIndexable } from "@/lib/magazines/indexing";
@@ -16,7 +17,10 @@ import {
 } from "@/lib/metadata";
 import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
-import { loadIssuePage } from "@/server/magazines/reading";
+import {
+  loadIssuePage,
+  loadIssueMembershipGate,
+} from "@/server/magazines/reading";
 import { getPayloadClient } from "@/server/payload";
 
 // Access is decided per request: a visibility change shows on the next
@@ -36,15 +40,13 @@ const loadPage = cache(
       getSession(),
       getPayloadClient(),
     ]);
-    return loadIssuePage(
-      { db, payload },
-      {
-        magazineSlug,
-        issueSlug,
-        viewerId: session?.user?.id ?? null,
-        locale,
-      },
-    );
+    const viewerId = session?.user?.id ?? null;
+    const opts = { magazineSlug, issueSlug, viewerId, locale };
+    const data = await loadIssuePage({ db, payload }, opts);
+    const gate = data
+      ? null
+      : await loadIssueMembershipGate({ db, payload }, opts);
+    return { data, gate, signedIn: viewerId !== null };
   },
 );
 
@@ -55,8 +57,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale: rawLocale, magazineSlug, issueSlug } = await params;
   const locale = resolveLocale(rawLocale);
-  const data = await loadPage(magazineSlug, issueSlug, locale);
-  if (!data) return {};
+  const { data, gate } = await loadPage(magazineSlug, issueSlug, locale);
+  if (!data) {
+    if (!gate) return {};
+    const t = await getTranslations({ locale, namespace: "magazines.access" });
+    return {
+      title: t("membersOnlyTitle"),
+      robots: { index: false, follow: false },
+    };
+  }
 
   const { magazine, community, issue } = data;
   const t = await getTranslations({ locale, namespace: "magazines.meta" });
@@ -92,8 +101,22 @@ export async function generateMetadata({
 export default async function IssuePage({ params }: { params: Params }) {
   const { locale: rawLocale, magazineSlug, issueSlug } = await params;
   const locale = resolveLocale(rawLocale);
-  const data = await loadPage(magazineSlug, issueSlug, locale);
-  if (!data) notFound();
+  const { data, gate, signedIn } = await loadPage(
+    magazineSlug,
+    issueSlug,
+    locale,
+  );
+  if (!data) {
+    if (!gate) notFound();
+    return (
+      <MagazineMembersOnly
+        locale={locale}
+        communitySlug={gate.community.slug}
+        signedIn={signedIn}
+        returnPath={`/${locale}${issuePath({ slug: magazineSlug }, { slug: issueSlug })}`}
+      />
+    );
+  }
   return (
     <MagazineFontScope
       font={data.magazine.font}

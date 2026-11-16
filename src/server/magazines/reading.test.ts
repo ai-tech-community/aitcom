@@ -10,7 +10,12 @@ import type * as EditorshipModule from "./editorship";
 import type * as ReadableIssuesModule from "./readable-issues";
 import { loadMagazineEditorship } from "./editorship";
 import { buildIssueReadScope, loadIssueReadScope } from "./readable-issues";
-import { loadCommunityMagazineTab, loadMagazineShelf } from "./reading";
+import {
+  loadCommunityMagazineTab,
+  loadMagazineShelf,
+  loadIssueMembershipGate,
+  loadReadableIssue,
+} from "./reading";
 
 // Reader dependencies are supplied by the fixture; never initialize a real DB.
 vi.mock("@/server/db", () => ({ db: {} }));
@@ -265,5 +270,66 @@ describe("magazine reading standing", () => {
     expect(result!.viewerIsEditor).toBe(true);
     expect(result!.issues.map((row) => row.id)).toEqual([3, 2, 1]);
     expect(result!.unpublishedForEditor).toBe(true);
+  });
+});
+
+describe("issue membership gate", () => {
+  const options = {
+    magazineSlug: magazine.slug,
+    issueSlug: "issue-2",
+    viewerId: null,
+    locale: "en",
+  } as const;
+
+  it("distinguishes a published members-only issue without returning its content", async () => {
+    const fx = fixture();
+    expect(await loadReadableIssue(fx.deps, options)).toBeNull();
+    expect(await loadIssueMembershipGate(fx.deps, options)).toEqual({
+      community: { slug: community.slug },
+    });
+    expect(
+      fx.find.mock.calls.every(([input]) =>
+        ["magazines", "magazine-issues"].includes(input.collection),
+      ),
+    ).toBe(true);
+  });
+
+  it("recognizes an effectively members-only issue in an unlisted community", async () => {
+    expect(
+      await loadIssueMembershipGate(fixture().deps, {
+        ...options,
+        issueSlug: "issue-3",
+      }),
+    ).toEqual({ community: { slug: community.slug } });
+  });
+
+  it.each(["issue-4", "missing", "issue-1"])(
+    "does not label drafts, missing issues or public issues as members-only (%s)",
+    async (issueSlug) => {
+      expect(
+        await loadIssueMembershipGate(fixture().deps, {
+          ...options,
+          issueSlug,
+        }),
+      ).toBeNull();
+    },
+  );
+
+  it("does not gate members who can already read the issue", async () => {
+    const fx = fixture();
+    const member = { ...options, viewerId: "member-1" };
+    expect(await loadIssueMembershipGate(fx.deps, member)).toBeNull();
+    expect(await loadReadableIssue(fx.deps, member)).toMatchObject({
+      access: "full",
+    });
+  });
+
+  it("keeps missing magazines and deleted communities as not found", async () => {
+    expect(
+      await loadIssueMembershipGate(fixture({ magazine: null }).deps, options),
+    ).toBeNull();
+    const fx = fixture();
+    fx.communityBySlug.mockResolvedValueOnce(undefined);
+    expect(await loadIssueMembershipGate(fx.deps, options)).toBeNull();
   });
 });

@@ -1,4 +1,10 @@
 {
+  "notFound": {
+    "title": "We couldn’t find that page",
+    "description": "The link may have changed, or the page may no longer be here. There is plenty more to explore in the community.",
+    "home": "Back to home",
+    "magazines": "Browse magazines"
+  },
   "nav": {
     "home": "Home",
     "communities": "Communities",
@@ -5283,6 +5289,14 @@
     }
   },
   "magazines": {
+    "access": {
+      "membersOnlyTitle": "This issue is for community members",
+      "guestDescription": "Already a member? Sign in to read this issue. If you are new here, visit the community to see how to join.",
+      "memberDescription": "You need to be a member of this magazine’s community to read this issue. Visit the community to see how to join or check your membership.",
+      "signIn": "Sign in to read",
+      "viewCommunity": "View community",
+      "browseMagazines": "Browse magazines"
+    },
     "join": {
       "heading": "Read the whole issue",
       "panel": "{community} members read every article in full.",

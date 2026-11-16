@@ -1,4 +1,10 @@
 {
+  "notFound": {
+    "title": "Cette page est introuvable",
+    "description": "Le lien a peut-être changé ou la page n’existe plus. Il reste beaucoup à découvrir dans la communauté.",
+    "home": "Retour à l’accueil",
+    "magazines": "Parcourir les magazines"
+  },
   "nav": {
     "home": "Accueil",
     "communities": "Communautés",
@@ -5283,6 +5289,14 @@
     }
   },
   "magazines": {
+    "access": {
+      "membersOnlyTitle": "Ce numéro est réservé aux membres de la communauté",
+      "guestDescription": "Déjà membre ? Connectez-vous pour lire ce numéro. Vous découvrez la communauté ? Consultez sa page pour savoir comment la rejoindre.",
+      "memberDescription": "Vous devez être membre de la communauté de ce magazine pour lire ce numéro. Consultez sa page pour la rejoindre ou vérifier votre adhésion.",
+      "signIn": "Se connecter pour lire",
+      "viewCommunity": "Voir la communauté",
+      "browseMagazines": "Parcourir les magazines"
+    },
     "join": {
       "heading": "Lire le numéro complet",
       "panel": "Les membres de {community} lisent tous les articles en entier.",
