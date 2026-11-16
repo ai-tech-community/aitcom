@@ -183,6 +183,32 @@
 - [ ] **Step 4: Run** `pnpm vitest run src/components/inbox src/components/messages src/components/communities` → PASS; `tsc`, eslint clean.
 - [ ] **Step 5: Commit**: `feat(inbox): show GIFs in every conversation view and list`.
 
+### Task 6b: The Messages page knows any open conversation
+
+Added during execution (Task 5 review): `/messages` finds the open conversation's peer only inside `listConversations({ limit: 30 })`. A conversation older than the newest 30 gets a null peer, so its header shows "—" and (since Task 5's fail-safe) its composer offers no GIF.
+
+**Files:**
+- Create: `src/server/inbox/conversation-summaries.ts`, `src/server/inbox/conversation-summaries.integration.test.ts`
+- Modify: `src/server/api/routers/inbox.ts` (`listConversations` uses the new module; new `getConversation`), `src/components/messages/messages-shell.tsx`, its test (create `messages-shell.test.tsx` if none)
+
+**Interfaces:**
+- Produces:
+  - `conversation-summaries.ts`: the code `listConversations` runs today, split in two without behaviour change:
+    - `loadConversationRows(db, userId: string, only?: { conversationId: string }): Promise<ConvRow[]>` — the caller's dm/agent participant rows plus the room rows they may read (same access checks as today), optionally narrowed to one conversation.
+    - `summarizeConversations(db, userId: string, rows: ConvRow[]): Promise<ConversationSummary[]>` — the per-row build (last message with `attachmentKind`, participants, agent info, unread count, room fields), with the one batched attachment read.
+    - `type ConversationSummary` — exactly today's `listConversations` item shape.
+  - `listConversations` = `loadConversationRows` → sort + paginate (unchanged) → `summarizeConversations`. Output unchanged.
+  - `inbox.getConversation` — `protectedProcedure`, input `{ conversationId: string }`, returns `ConversationSummary`; `NOT_FOUND` when the caller may not read it (not a participant, or not an active member of the room's space).
+  - `messages-shell.tsx`: the active conversation is the listed one when present; otherwise `api.inbox.getConversation` for `activeConversationId`, queried only once the list has loaded without it. `peer` and `peerUserId` are derived the same way from either source.
+
+- [ ] **Step 1: Write failing tests**:
+  - Integration (local DB): `getConversation returns the same summary listConversations gives` (deep-equal for one dm); `getConversation finds a conversation beyond the first page` (create 31 dms, the oldest is returned); `getConversation refuses a conversation the caller is not in` (`NOT_FOUND`); `getConversation refuses a room the caller is not an active member of` (`NOT_FOUND`).
+  - Component: `messages-shell` with a list that lacks the active id and a mocked `getConversation` returning a dm with a person → the composer gets `kind="person"` and the header shows the person's name; the `getConversation` query is not enabled while the list is loading or when the list has the conversation.
+- [ ] **Step 2: Run** them → FAIL.
+- [ ] **Step 3: Implement.** Move code, don't copy it; `inbox.ts` shrinks by the moved block.
+- [ ] **Step 4: Run** the integration file (local DB env), `pnpm vitest run src/server src/components/messages src/components/inbox` → PASS; `tsc`, eslint clean.
+- [ ] **Step 5: Commit**: `fix(messages): the Messages page knows a conversation older than the newest 30`.
+
 ### Task 7: Full checks
 
 - [ ] **Step 1:** `SKIP_ENV_VALIDATION=1 pnpm test` → PASS except the two known local-only `google-font-css.test.ts` woff2 failures; record counts. Any other failure: fix if this branch caused it, else report with output.
