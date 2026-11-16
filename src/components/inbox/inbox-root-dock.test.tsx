@@ -12,10 +12,15 @@ const inboxState = vi.hoisted(() => ({
 vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => ({ data: { user: { id: "ada" } } }) },
 }));
+/** What `listConversations` returns; most tests need no conversations. */
+const listed = vi.hoisted(() => ({ data: undefined as unknown }));
+/** Counts each time a mobile conversation view mounts. */
+const mobileMounts = vi.hoisted(() => vi.fn());
+
 vi.mock("@/trpc/react", () => ({
   api: {
     inbox: {
-      listConversations: { useQuery: () => ({ data: undefined }) },
+      listConversations: { useQuery: () => ({ data: listed.data }) },
       totalUnreadCount: { useQuery: () => ({ data: { count: 0 } }) },
     },
   },
@@ -28,7 +33,23 @@ vi.mock("./inbox-pill", () => ({
 vi.mock("./inbox-list", () => ({ InboxList: () => <div>inbox list</div> }));
 vi.mock("./chat-window", () => ({ ChatWindow: () => null }));
 vi.mock("./chat-window-minimized", () => ({ ChatWindowMinimized: () => null }));
-vi.mock("./inbox-mobile-view", () => ({ InboxMobileView: () => null }));
+vi.mock("./inbox-mobile-view", async () => {
+  const { useEffect } = await import("react");
+  return {
+    InboxMobileView: ({
+      chatInfo,
+    }: {
+      chatInfo: { conversationId: string };
+    }) => {
+      useEffect(() => {
+        mobileMounts(chatInfo.conversationId);
+        // Mount-only on purpose: a re-render with new props is not a remount.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
+      return <div data-testid="mobile-view">{chatInfo.conversationId}</div>;
+    },
+  };
+});
 
 import { InboxRoot } from "./inbox-root";
 
@@ -41,6 +62,8 @@ beforeEach(() => {
   inboxState.openChats = [];
   inboxState.minimizedChats = [];
   inboxState.activeChat = null;
+  listed.data = undefined;
+  mobileMounts.mockReset();
 });
 
 describe("InboxRoot dock", () => {
@@ -116,5 +139,32 @@ describe("InboxRoot dock", () => {
     const { container } = render(<InboxRoot />);
     const dock = container.querySelector(".fixed");
     expect(dock).toHaveClass("sm:right-4", "max-sm:z-60");
+  });
+});
+
+/** A dm with Bob, the shape `listConversations` gives. */
+function dmWithBob(id: string) {
+  return {
+    id,
+    type: "dm",
+    isRoom: false,
+    title: null,
+    agentInfo: null,
+    participants: [{ userId: "bob", displayName: "Bob", image: null }],
+  };
+}
+
+describe("InboxRoot mobile conversation", () => {
+  it("starts a fresh conversation view when the open conversation changes", () => {
+    listed.data = { conversations: [dmWithBob("a"), dmWithBob("b")] };
+    inboxState.activeChat = "a";
+    const { rerender } = render(<InboxRoot />);
+
+    inboxState.activeChat = "b";
+    rerender(<InboxRoot />);
+
+    // A remount drops anything picked or typed for the first conversation.
+    expect(screen.getByTestId("mobile-view")).toHaveTextContent("b");
+    expect(mobileMounts.mock.calls).toEqual([["a"], ["b"]]);
   });
 });

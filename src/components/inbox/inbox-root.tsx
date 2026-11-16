@@ -75,8 +75,13 @@ export function InboxRoot({ dockLeading }: { dockLeading?: ReactNode } = {}) {
   return (
     <>
       {/* Mobile fullscreen overlay */}
+      {/* Keyed like messages-shell: a new conversation gets a fresh composer,
+          so a GIF or text picked for one never lands in another. */}
       {inbox.activeChat && activeChatInfo && (
-        <InboxMobileView chatInfo={activeChatInfo} />
+        <InboxMobileView
+          key={activeChatInfo.conversationId}
+          chatInfo={activeChatInfo}
+        />
       )}
 
       {/* Fixed bottom-right container for desktop/tablet.
