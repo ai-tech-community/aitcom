@@ -36,10 +36,12 @@
 ### Task 1: GIF search open to every member; GIPHY lookup out of the feed
 
 **Files:**
+
 - Create: `src/server/giphy/gif-lookup.ts`, `src/server/api/routers/gifs.ts`, `src/server/api/routers/gifs.test.ts`
 - Modify: `src/server/communities/post-media.ts` (remove `gifFields`, `lookUpGif`), `src/server/api/routers/feed.ts` (imports; remove `searchGifs` and `checkGifSearchLimit`; `createPost` `gifId` uses `giphyIdSchema`), `src/server/api/root.ts` (register `gifs`), `src/components/communities/feed/editor/gif-picker-button.tsx` (+ test: query `api.gifs.search`, no `communitySlug` in the query input; the prop stays until Task 2), `src/server/api/routers/feed-post-writes.test.ts` and any other test mocking the moved functions or `feed.searchGifs` (grep `searchGifs\|lookUpGif\|gifFields`)
 
 **Interfaces:**
+
 - Produces:
   - `src/server/giphy/gif-lookup.ts`: `type StoredGif = Omit<Gif, "preview">`; `gifFields(gif: Gif): StoredGif` and `lookUpGif(getGiphy: (() => GiphyClient) | undefined, giphyId: string): Promise<Gif>` moved verbatim with their doc comments (wording "a post" → "a post or a message"); `giphyIdSchema = z.string().regex(/^[A-Za-z0-9]{1,64}$/)` (the regex `createPost` uses today).
   - `gifs` router: `search` — `protectedProcedure`, input `{ query: string max 50 default "", cursor: int 0..4999 nullish, lang: enum(routing.locales) default "en" }`, output `{ gifs: Gif[]; nextCursor: number | null }`. Same body as today's `feed.searchGifs` minus `requireFeedPoster`. The 60-per-hour `checkGifSearchLimit` moves into this file with its comment.
@@ -59,12 +61,14 @@
 ### Task 2: Shared GIF picker, picked-media tile and GIF player
 
 **Files:**
+
 - Move (`git mv`): `src/components/communities/feed/editor/gif-picker-button.tsx` (+ `.test.tsx`) → `src/components/composer/gif-picker-button.tsx` (+ test)
 - Move (`git mv`): `src/components/communities/feed/media-preview.tsx` → `src/components/composer/media-preview.tsx`
 - Move (`git mv`): `src/components/communities/feed/feed-gif.tsx` (+ `.test.tsx`) → `src/components/media/gif-player.tsx` (+ `gif-player.test.tsx`)
 - Modify: importers (`post-composer.tsx`, `post-edit-form.tsx`, `feed-post-card.tsx`, their tests' `vi.mock` paths), `messages/*.json`
 
 **Interfaces:**
+
 - Consumes: `api.gifs.search` (Task 1).
 - Produces:
   - `GifPickerButton({ label?, onPick, disabled })` — `communitySlug` removed; queries `api.gifs.search`; `label` defaults to `t("gif")`. `type PickedGif = RouterOutputs["gifs"]["search"]["gifs"][number]`. `gifColumns` unchanged.
@@ -86,10 +90,12 @@
 ### Task 3: Messages carry a GIF
 
 **Files:**
+
 - Create: `src/migrations/20261116a_message_attachments.ts`, `src/server/inbox/message-attachments.ts`, `src/server/inbox/member-message.ts`, `src/server/inbox/message-attachments.integration.test.ts`, `src/server/inbox/message-attachments.test.ts`
 - Modify: `src/migrations/index.ts`, `src/server/db/schema.ts` (table + relations after `messages`), `src/server/api/routers/inbox.ts` (`sendMessage`, `getMessages`)
 
 **Interfaces:**
+
 - Produces:
   - Table `app.message_attachment`: `id varchar(255) PK`, `message_id varchar(255) NOT NULL REFERENCES app.message(id) ON DELETE CASCADE`, `position smallint NOT NULL DEFAULT 0`, `kind varchar(10) NOT NULL CHECK (kind IN ('gif','photo'))`, `giphy_id varchar(64)`, `title text`, `mp4_url text`, `still_url text`, `width integer`, `height integer`, `created_at timestamptz NOT NULL DEFAULT now()`; `UNIQUE (message_id, position)`; `CHECK (kind <> 'gif' OR (giphy_id IS NOT NULL AND mp4_url IS NOT NULL AND still_url IS NOT NULL))`. Drizzle: `messageAttachments`.
   - `message-attachments.ts`:
@@ -119,9 +125,11 @@
 ### Task 4: Every reader of messages knows about attachments
 
 **Files:**
+
 - Modify: `src/server/api/routers/inbox.ts` (`listConversations` last message, `agentGetOwnerDMs`), `src/server/members/delete-account.ts` (~L205), `src/server/inbox/message-attachments.integration.test.ts`, `src/server/members/` delete-account test (whichever covers the message blanking; grep `"[deleted]"`)
 
 **Interfaces:**
+
 - Consumes: `loadAttachments`, `textForReaders` (Task 3).
 - Produces:
   - `listConversations` → `lastMessage` gains `attachmentKind: "gif" | null` (kind of its first attachment). One `loadAttachments` call for the page's last messages, not one per conversation.
@@ -140,9 +148,11 @@
 ### Task 5: Pick and send a GIF from the message composer
 
 **Files:**
+
 - Modify: `src/components/inbox/use-send-message.ts`, `src/components/inbox/use-send-message.test.tsx`, `src/components/inbox/message-composer.tsx`, `src/components/inbox/message-composer.test.tsx`, `src/components/inbox/chat-window.tsx`, `src/components/messages/conversation-view.tsx`, `src/components/inbox/inbox-mobile-view.tsx`
 
 **Interfaces:**
+
 - Consumes: `GifPickerButton`, `PickedGif`, `MediaPreview` (Task 2); `sendMessage` `gif` input and `attachments` output (Task 3).
 - Produces:
   - `type MessageDraft = { content: string; gif?: PickedGif | null }` exported from `use-send-message.ts`; `send(draft: MessageDraft): Promise<void>` replaces `send(content)`. It trims the words; does nothing when no words and no GIF; sends `{ conversationId, content, gif: gif ? { giphyId } : undefined }`. The optimistic row has `attachments: []`, or one `MessageAttachmentView` built from the picked GIF (`id: "optimistic-gif"`, `position: 0`).
@@ -166,10 +176,12 @@
 ### Task 6: One message body and GIF previews in every view
 
 **Files:**
+
 - Create: `src/components/inbox/message-body.tsx`, `src/components/inbox/message-body.test.tsx`, `src/components/inbox/message-preview.ts`, `src/components/inbox/message-preview.test.ts`
 - Modify: `chat-window.tsx`, `conversation-view.tsx`, `inbox-mobile-view.tsx` (the `<MessageContent>` children), `src/components/inbox/inbox-list.tsx` (~L204), `src/components/inbox/inbox-conversation-item.tsx`, `src/components/messages/conversation-list.tsx` (~L287)
 
 **Interfaces:**
+
 - Consumes: `GifPlayer` (Task 2); `attachments` on messages, `attachmentKind` on last messages (Tasks 3–4).
 - Produces:
   - `MessageBody({ message, isUser, conversationId }: { message: RouterOutputs["inbox"]["getMessages"]["messages"][number]; isUser: boolean; conversationId: string })` — the three views' current text branches moved here once (own words as `<p>`, a `uiResource` with `isChatUiEnabled()` as `UiMessage`, others as `MessageResponse`), then each attachment as `<GifPlayer size="message">`. Empty words render no text element. The mobile view gains the `UiMessage` branch the other two views already have.
@@ -188,10 +200,12 @@
 Added during execution (Task 5 review): `/messages` finds the open conversation's peer only inside `listConversations({ limit: 30 })`. A conversation older than the newest 30 gets a null peer, so its header shows "—" and (since Task 5's fail-safe) its composer offers no GIF.
 
 **Files:**
+
 - Create: `src/server/inbox/conversation-summaries.ts`, `src/server/inbox/conversation-summaries.integration.test.ts`
 - Modify: `src/server/api/routers/inbox.ts` (`listConversations` uses the new module; new `getConversation`), `src/components/messages/messages-shell.tsx`, its test (create `messages-shell.test.tsx` if none)
 
 **Interfaces:**
+
 - Produces:
   - `conversation-summaries.ts`: the code `listConversations` runs today, split in two without behaviour change:
     - `loadConversationRows(db, userId: string, only?: { conversationId: string }): Promise<ConvRow[]>` — the caller's dm/agent participant rows plus the room rows they may read (same access checks as today), optionally narrowed to one conversation.

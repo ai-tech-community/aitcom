@@ -134,11 +134,7 @@ import {
   pollFields,
 } from "@/server/communities/post-polls";
 import { getGiphyClient } from "@/server/giphy/giphy";
-import {
-  gifFields,
-  giphyIdSchema,
-  lookUpGif,
-} from "@/server/giphy/gif-lookup";
+import { gifFields, giphyIdSchema, lookUpGif } from "@/server/giphy/gif-lookup";
 import {
   CLOSED_MEMBER_CARD,
   loadMemberCards,
