@@ -16,7 +16,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { api, type RouterOutputs } from "@/trpc/react";
 
-export type PickedGif = RouterOutputs["feed"]["searchGifs"]["gifs"][number];
+export type PickedGif = RouterOutputs["gifs"]["search"]["gifs"][number];
 
 const SEARCH_DELAY_MS = 400;
 
@@ -44,17 +44,17 @@ function errorKey(code: string | undefined) {
 
 /**
  * The editor's GIF button: a GIPHY search panel, trending until the member
- * types. Results come through our server (`feed.searchGifs`), so the GIPHY
+ * types. Results come through our server (`gifs.search`), so the GIPHY
  * key never reaches the browser. Previews are still frames that play only
  * while hovered or focused (and never for reduced motion), so the panel is
  * calm and light. GIPHY's terms ask for its attribution in the search UI.
  */
 export function GifPickerButton({
-  communitySlug,
   label,
   onPick,
   disabled,
 }: {
+  /** Not used: GIF search is open to every signed-in member. */
   communitySlug: string;
   /** "Add GIF" or "Replace with GIF". */
   label: string;
@@ -71,9 +71,8 @@ export function GifPickerButton({
   // On touch screens the keyboard would cover the trending GIFs.
   const touch = useMediaQuery("(pointer: coarse)", false);
 
-  const results = api.feed.searchGifs.useInfiniteQuery(
+  const results = api.gifs.search.useInfiniteQuery(
     {
-      communitySlug,
       query,
       lang: locale === "fr" ? "fr" : locale === "nl" ? "nl" : "en",
     },

@@ -15,6 +15,7 @@ import { challengeChannelRouter } from "@/server/api/routers/challenge-channel";
 import { challengeEngineRouter } from "@/server/api/routers/challenge-engine";
 import { challengesRouter } from "@/server/api/routers/challenges";
 import { forumRouter } from "@/server/api/routers/forum";
+import { gifsRouter } from "@/server/api/routers/gifs";
 import { homeRouter } from "@/server/api/routers/home";
 import { eventsRouter } from "@/server/api/routers/events";
 import { lumaRouter } from "@/server/api/routers/luma";
@@ -99,6 +100,7 @@ export const appRouter = createTRPCRouter({
   commissions: commissionsRouter,
   communities: communitiesRouter,
   feed: feedRouter,
+  gifs: gifsRouter,
   luma: lumaRouter,
   datacenters: datacentersRouter,
   insights: insightsRouter,

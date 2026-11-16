@@ -14,8 +14,8 @@ vi.mock("next-intl", () => ({
 vi.mock("@/hooks/use-media-query", () => ({ useMediaQuery: () => m.reduce }));
 vi.mock("@/trpc/react", () => ({
   api: {
-    feed: {
-      searchGifs: {
+    gifs: {
+      search: {
         useInfiniteQuery: (input: unknown) => {
           m.calls.push(input);
           return m.result;
@@ -76,16 +76,19 @@ afterEach(() => vi.useRealTimers());
 describe("GifPickerButton", () => {
   it("shows trending GIFs in the member's language and picks one", () => {
     const onPick = open();
-    expect(m.calls.at(-1)).toEqual({
-      communitySlug: "mlops",
-      query: "",
-      lang: "nl",
-    });
+    expect(m.calls.at(-1)).toEqual({ query: "", lang: "nl" });
     expect(screen.getByText("gifTrending")).toBeVisible();
     expect(screen.getByText("poweredByGiphy")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Title b" }));
     expect(onPick).toHaveBeenCalledWith(gif("b"));
     expect(screen.queryByText("gifTrending")).toBeNull();
+  });
+
+  it("searches without a community", () => {
+    open();
+    const input = m.calls.at(-1);
+    expect(input).toBeDefined();
+    expect(input).not.toHaveProperty("communitySlug");
   });
 
   it("searches once the member stops typing", () => {

@@ -1,7 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { sql } from "@payloadcms/db-postgres";
 
-import type { Gif, GiphyClient } from "@/server/giphy/giphy";
+import type { GiphyClient } from "@/server/giphy/giphy";
+import { gifFields, lookUpGif } from "@/server/giphy/gif-lookup";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
@@ -47,42 +48,6 @@ export const NO_VIDEO = {
   height: null,
   bytes: null,
 } as const;
-
-/** The `gif` group a post stores for a GIF looked up from GIPHY. */
-export function gifFields(gif: Gif) {
-  return {
-    giphyId: gif.giphyId,
-    title: gif.title,
-    mp4Url: gif.mp4Url,
-    stillUrl: gif.stillUrl,
-    width: gif.width,
-    height: gif.height,
-  };
-}
-
-/**
- * A GIF to put on a post, looked up by its GIPHY id, so a post only ever
- * stores GIPHY's own media addresses.
- */
-export async function lookUpGif(
-  getGiphy: (() => GiphyClient) | undefined,
-  giphyId: string,
-): Promise<Gif> {
-  if (!getGiphy) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "GIFs are not available right now.",
-    });
-  }
-  const gif = await getGiphy().byId(giphyId);
-  if (!gif) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "That GIF is not available. Pick another one.",
-    });
-  }
-  return gif;
-}
 
 /**
  * The author's live post in this community, ready to have its image or

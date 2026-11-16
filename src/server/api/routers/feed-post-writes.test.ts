@@ -89,11 +89,7 @@ const gif = {
     height: 150,
   },
 };
-const giphy = {
-  byId: vi.fn(),
-  search: vi.fn(),
-  trending: vi.fn(),
-};
+const giphy = { byId: vi.fn() };
 vi.mock("@/server/giphy/giphy", () => ({ getGiphyClient: () => giphy }));
 vi.mock("@/lib/gamification", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/gamification")>()),
@@ -144,8 +140,6 @@ beforeEach(() => {
   giphy.byId.mockImplementation(async (id: string) =>
     id === gif.giphyId ? gif : null,
   );
-  giphy.trending.mockResolvedValue({ gifs: [gif], nextOffset: 24 });
-  giphy.search.mockResolvedValue({ gifs: [gif], nextOffset: null });
   payload.delete.mockResolvedValue({ docs: [] });
   // A guarded media write (by `where`) answers with the posts it changed.
   payload.update.mockImplementation(
@@ -455,42 +449,6 @@ describe("feed post writes", () => {
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
-
-  it("searchGifs is for members who may post, trending without a query", async () => {
-    await expect(
-      caller().feed.searchGifs({ communitySlug: "c" }),
-    ).resolves.toEqual({ gifs: [gif], nextCursor: 24 });
-    expect(giphy.trending).toHaveBeenCalledWith({ offset: 0 });
-    await caller().feed.searchGifs({
-      communitySlug: "c",
-      query: "party",
-      cursor: 24,
-      lang: "nl",
-    });
-    expect(giphy.search).toHaveBeenCalledWith({
-      query: "party",
-      offset: 24,
-      lang: "nl",
-    });
-    const { TRPCError } = await import("@trpc/server");
-    hooks.poster = new TRPCError({ code: "FORBIDDEN" });
-    await expect(
-      caller().feed.searchGifs({ communitySlug: "c" }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
-
-  it("searchGifs limits each member, so one member cannot use up GIPHY for everyone", async () => {
-    const heavy = caller("gif-heavy-user");
-    for (let i = 0; i < 60; i++) {
-      await heavy.feed.searchGifs({ communitySlug: "c" });
-    }
-    await expect(
-      heavy.feed.searchGifs({ communitySlug: "c" }),
-    ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
-    await expect(
-      caller("someone-else").feed.searchGifs({ communitySlug: "c" }),
-    ).resolves.toBeDefined();
-  }, 30_000);
 
   it("editPost moves a post only to one of its community's topics", async () => {
     payload.count.mockImplementation(async ({ where }: { where: unknown }) => ({
