@@ -35,6 +35,15 @@ import { after } from "next/server";
 import { dispatchEventImmediately } from "@/server/agent/dispatch-immediate";
 import { resolveProducerTrust } from "@/lib/chat/trust";
 import type { UiResource } from "@/lib/chat/types";
+import { getGiphyClient } from "@/server/giphy/giphy";
+import {
+  gifFields,
+  giphyIdSchema,
+  lookUpGif,
+  type StoredGif,
+} from "@/server/giphy/gif-lookup";
+import { insertMemberMessage } from "@/server/inbox/member-message";
+import { withAttachments } from "@/server/inbox/message-attachments";
 import { runUiTool } from "@/server/inbox/ui-tools";
 import { countInboxUnread } from "@/server/inbox/unread-count";
 import { isHubDmConversation } from "@/server/notifications/hub-mail-prefs";
@@ -59,6 +68,17 @@ const uiResourceSchema = z.object({
 });
 
 type ConversationDb = typeof Database;
+
+/**
+ * The GIF a member picked, looked up from GIPHY by its id, so a message only
+ * ever stores addresses the server read from GIPHY itself.
+ */
+async function gifToStore(
+  gif: { giphyId: string } | undefined,
+): Promise<StoredGif | null> {
+  if (!gif) return null;
+  return gifFields(await lookUpGif(getGiphyClient, gif.giphyId));
+}
 
 /**
  * For a space conversation, the caller must be an active member of the
@@ -525,7 +545,10 @@ export const inboxRouter = createTRPCRouter({
         .limit(input.limit + 1);
 
       const hasMore = rows.length > input.limit;
-      const items = hasMore ? rows.slice(0, input.limit) : rows;
+      const items = await withAttachments(
+        ctx.db,
+        hasMore ? rows.slice(0, input.limit) : rows,
+      );
 
       const nextCursor = hasMore
         ? items[items.length - 1]!.createdAt.toISOString()
@@ -575,11 +598,18 @@ export const inboxRouter = createTRPCRouter({
    */
   sendMessage: protectedProcedure
     .input(
-      z.object({
-        conversationId: z.string(),
-        content: z.string().min(1).max(MESSAGE_MAX_LENGTH),
-        uiResource: uiResourceSchema.optional(),
-      }),
+      z
+        .object({
+          conversationId: z.string(),
+          /** May be empty when the message carries a GIF. */
+          content: z.string().max(MESSAGE_MAX_LENGTH),
+          uiResource: uiResourceSchema.optional(),
+          /** A GIF picked from `gifs.search`, looked up again here by id. */
+          gif: z.object({ giphyId: giphyIdSchema }).optional(),
+        })
+        .refine((v) => v.content.trim() !== "" || v.gif !== undefined, {
+          message: "A message needs words or a GIF.",
+        }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -606,20 +636,13 @@ export const inboxRouter = createTRPCRouter({
           userId,
         );
 
-        // Insert message (same shape as the dm/agent path below)
-        const [message] = await ctx.db
-          .insert(messages)
-          .values({
-            conversationId: input.conversationId,
-            senderId: userId,
-            senderType: "human",
-            content: input.content,
-            uiResource: input.uiResource as UiResource | undefined,
-            uiProducerTrust: input.uiResource
-              ? resolveProducerTrust({ kind: "member" })
-              : undefined,
-          })
-          .returning();
+        const message = await insertMemberMessage(ctx.db, {
+          conversationId: input.conversationId,
+          senderId: userId,
+          content: input.content,
+          uiResource: input.uiResource as UiResource | undefined,
+          gif: await gifToStore(input.gif),
+        });
 
         // Update conversation.updatedAt
         await ctx.db
@@ -643,10 +666,10 @@ export const inboxRouter = createTRPCRouter({
           message,
         });
 
-        return message!;
+        return message;
       }
 
-      // ── DM / agent conversations (unchanged) ────────────────────────────
+      // ── DM / agent conversations ────────────────────────────────────────
       // Verify user is a participant
       const [participant] = await ctx.db
         .select()
@@ -666,6 +689,14 @@ export const inboxRouter = createTRPCRouter({
         });
       }
 
+      // An agent reads words only; attachments stay between members.
+      if (conversationType === "agent" && input.gif) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "GIFs can't be sent to an agent.",
+        });
+      }
+
       // Find the other participant (recipient) for event isolation
       const [recipient] = await ctx.db
         .select({ userId: conversationParticipants.userId })
@@ -678,20 +709,13 @@ export const inboxRouter = createTRPCRouter({
         )
         .limit(1);
 
-      // Insert message
-      const [message] = await ctx.db
-        .insert(messages)
-        .values({
-          conversationId: input.conversationId,
-          senderId: userId,
-          senderType: "human",
-          content: input.content,
-          uiResource: input.uiResource as UiResource | undefined,
-          uiProducerTrust: input.uiResource
-            ? resolveProducerTrust({ kind: "member" })
-            : undefined,
-        })
-        .returning();
+      const message = await insertMemberMessage(ctx.db, {
+        conversationId: input.conversationId,
+        senderId: userId,
+        content: input.content,
+        uiResource: input.uiResource as UiResource | undefined,
+        gif: await gifToStore(input.gif),
+      });
 
       // Update conversation.updatedAt
       await ctx.db
@@ -760,7 +784,7 @@ export const inboxRouter = createTRPCRouter({
           console.error("[inbox] update failed:", err);
         });
 
-      return message!;
+      return message;
     }),
 
   /**
