@@ -1,6 +1,6 @@
 import type { db as Database } from "@/server/db";
 import { z } from "zod";
-import { eq, and, desc, lt, sql, ne, or, ilike, inArray } from "drizzle-orm";
+import { eq, and, desc, lt, sql, ne, or, ilike } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -18,7 +18,6 @@ import {
   memberProfiles,
   spaceMemberships,
   spaces,
-  communities,
   communityMemberships,
   user,
 } from "@/server/db/schema";
@@ -28,7 +27,6 @@ import {
   canReadPaidCommunity,
   paymentsEnabled,
 } from "@/server/payments/access";
-import { countRoomUnread } from "@/server/communities/room-unread";
 import { logActivity } from "@/server/agent/activity";
 import { publishInboxEvent } from "@/server/inbox/publish";
 import { after } from "next/server";
@@ -42,9 +40,13 @@ import {
   lookUpGif,
   type StoredGif,
 } from "@/server/giphy/gif-lookup";
+import {
+  loadConversationRows,
+  summarizeConversations,
+  type ConversationSummary,
+} from "@/server/inbox/conversation-summaries";
 import { insertMemberMessage } from "@/server/inbox/member-message";
 import {
-  attachmentKind,
   loadAttachments,
   textForReaders,
   withAttachments,
@@ -165,163 +167,7 @@ export const inboxRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-
-      // Each row carries enough to sort/paginate + resolve display. DM/agent rows
-      // come from conversationParticipants (the user IS a participant). Space
-      // (room) rows have NO participant rows — they're authorized via an ACTIVE
-      // spaceMembership, so we fetch them in a parallel query and merge.
-      type ConvRow = {
-        conversationId: string;
-        lastReadAt: Date | null;
-        isPinned: boolean;
-        convType: string;
-        convUpdatedAt: Date;
-        // Space-only metadata (null for DM/agent rows).
-        spaceId: string | null;
-        roomName: string | null;
-        roomSlug: string | null;
-        roomVisibility: "public" | "private" | null;
-        communitySlug: string | null;
-        communityName: string | null;
-        communityLogoUrl: string | null;
-        memberCount: number;
-      };
-
-      // ── DM / agent conversations (caller is a participant) ──────────────
-      const participantRowsRaw = await ctx.db
-        .select({
-          conversationId: conversationParticipants.conversationId,
-          lastReadAt: conversationParticipants.lastReadAt,
-          isPinned: conversationParticipants.isPinned,
-          convType: conversations.type,
-          convUpdatedAt: conversations.updatedAt,
-        })
-        .from(conversationParticipants)
-        .innerJoin(
-          conversations,
-          eq(conversationParticipants.conversationId, conversations.id),
-        )
-        .where(
-          and(
-            eq(conversationParticipants.userId, userId),
-            ne(conversations.type, "space"),
-          ),
-        );
-
-      const dmRows: ConvRow[] = participantRowsRaw.map((r) => ({
-        ...r,
-        spaceId: null,
-        roomName: null,
-        roomSlug: null,
-        roomVisibility: null,
-        communitySlug: null,
-        communityName: null,
-        communityLogoUrl: null,
-        memberCount: 0,
-      }));
-
-      // ── Space (room) conversations the caller is an ACTIVE member of ────
-      // Gate on spaceMemberships.status === "active". No participant rows exist,
-      // so there is no lastReadAt — unread is computed from all messages below.
-      let roomRowsRaw = await ctx.db
-        .select({
-          conversationId: conversations.id,
-          convType: conversations.type,
-          convUpdatedAt: conversations.updatedAt,
-          spaceId: conversations.spaceId,
-          roomName: spaces.name,
-          roomSlug: spaces.slug,
-          roomVisibility: spaces.visibility,
-          communitySlug: communities.slug,
-          communityId: communities.id,
-          communityName: communities.name,
-          communityLogoUrl: communities.logoUrl,
-          lastReadAt: spaceMemberships.lastReadAt,
-        })
-        .from(conversations)
-        .innerJoin(spaces, eq(spaces.id, conversations.spaceId))
-        .innerJoin(communities, eq(communities.id, spaces.communityId))
-        .innerJoin(
-          spaceMemberships,
-          eq(spaceMemberships.spaceId, conversations.spaceId),
-        )
-        // Only rooms of communities the caller is still an active member of
-        // (ADR-0050); a kept room membership alone lists nothing.
-        .innerJoin(
-          communityMemberships,
-          and(
-            eq(communityMemberships.communityId, spaces.communityId),
-            eq(communityMemberships.userId, userId),
-            eq(communityMemberships.status, "active"),
-          ),
-        )
-        .where(
-          and(
-            eq(conversations.type, "space"),
-            eq(spaceMemberships.userId, userId),
-            eq(spaceMemberships.status, "active"),
-          ),
-        );
-
-      if (paymentsEnabled()) {
-        const allowed = await Promise.all(
-          roomRowsRaw.map(async (room) => ({
-            room,
-            allowed: await canReadPaidCommunity(
-              ctx.db,
-              room.communityId,
-              userId,
-            ),
-          })),
-        );
-        roomRowsRaw = allowed
-          .filter((entry) => entry.allowed)
-          .map((entry) => entry.room);
-      }
-
-      // Active-member counts per room via a grouped query, mapped by spaceId. An
-      // inline correlated subquery mis-correlates here: Drizzle emits the
-      // interpolated outer column unqualified inside sql``, so `space_id = "id"`
-      // resolves to the membership table's own column and the count is wrong.
-      const roomSpaceIds = roomRowsRaw
-        .map((r) => r.spaceId)
-        .filter((id): id is string => id !== null);
-      const roomCounts = roomSpaceIds.length
-        ? await ctx.db
-            .select({
-              spaceId: spaceMemberships.spaceId,
-              count: sql<number>`COUNT(*)::int`,
-            })
-            .from(spaceMemberships)
-            .where(
-              and(
-                inArray(spaceMemberships.spaceId, roomSpaceIds),
-                eq(spaceMemberships.status, "active"),
-              ),
-            )
-            .groupBy(spaceMemberships.spaceId)
-        : [];
-      const roomCountBySpace = new Map(
-        roomCounts.map((c) => [c.spaceId, c.count]),
-      );
-
-      const roomRows: ConvRow[] = roomRowsRaw.map((r) => ({
-        conversationId: r.conversationId,
-        lastReadAt: r.lastReadAt,
-        isPinned: false,
-        convType: r.convType,
-        convUpdatedAt: r.convUpdatedAt,
-        spaceId: r.spaceId,
-        roomName: r.roomName,
-        roomSlug: r.roomSlug,
-        roomVisibility: r.roomVisibility,
-        communitySlug: r.communitySlug,
-        communityName: r.communityName,
-        communityLogoUrl: r.communityLogoUrl,
-        memberCount: r.spaceId ? (roomCountBySpace.get(r.spaceId) ?? 0) : 0,
-      }));
-
-      const participantRows: ConvRow[] = [...dmRows, ...roomRows];
+      const participantRows = await loadConversationRows(ctx.db, userId);
 
       if (participantRows.length === 0) {
         return { conversations: [], nextCursor: null };
@@ -349,161 +195,28 @@ export const inboxRouter = createTRPCRouter({
         ? items[items.length - 1]!.convUpdatedAt.toISOString()
         : null;
 
-      // Build full conversation objects
-      const result = await Promise.all(
-        items.map(async (row) => {
-          // Last message
-          const [lastMessage] = await ctx.db
-            .select({
-              id: messages.id,
-              content: messages.content,
-              senderType: messages.senderType,
-              senderId: messages.senderId,
-              createdAt: messages.createdAt,
-            })
-            .from(messages)
-            .where(eq(messages.conversationId, row.conversationId))
-            .orderBy(desc(messages.createdAt))
-            .limit(1);
+      return {
+        conversations: await summarizeConversations(ctx.db, userId, items),
+        nextCursor,
+      };
+    }),
 
-          const isRoom = row.convType === "space";
-
-          // Other participants — DM/agent only. Space (room) conversations have
-          // no participant rows; their display comes from the room itself.
-          const otherParticipantsRaw = isRoom
-            ? []
-            : await ctx.db
-                .select({
-                  userId: conversationParticipants.userId,
-                  displayName: memberProfiles.displayName,
-                  name: user.name,
-                  image: user.image,
-                })
-                .from(conversationParticipants)
-                .leftJoin(
-                  memberProfiles,
-                  eq(memberProfiles.userId, conversationParticipants.userId),
-                )
-                .leftJoin(user, eq(user.id, conversationParticipants.userId))
-                .where(
-                  and(
-                    eq(
-                      conversationParticipants.conversationId,
-                      row.conversationId,
-                    ),
-                    ne(conversationParticipants.userId, userId),
-                  ),
-                );
-
-          const otherParticipants = otherParticipantsRaw.map((p) => ({
-            userId: p.userId,
-            displayName: p.displayName ?? p.name ?? "Unknown",
-            image: p.image,
-          }));
-
-          // Agent info (only for agent conversations)
-          let agentInfo = null;
-          if (row.convType === "agent") {
-            const [agent] = await ctx.db
-              .select({
-                id: agentProfiles.id,
-                name: agentProfiles.name,
-                avatar: agentProfiles.avatar,
-                lastActiveAt: agentProfiles.lastActiveAt,
-              })
-              .from(agentProfiles)
-              .where(eq(agentProfiles.ownerId, userId))
-              .limit(1);
-            agentInfo = agent ?? null;
-          }
-
-          // Unread count: messages after lastReadAt not sent by the current user as "human"
-          let unreadCount = 0;
-          if (isRoom) {
-            unreadCount = await countRoomUnread(
-              ctx.db,
-              row.conversationId,
-              userId,
-              row.lastReadAt,
-            );
-          } else if (row.lastReadAt) {
-            const [unreadRow] = await ctx.db
-              .select({ count: sql<number>`count(*)::int` })
-              .from(messages)
-              .where(
-                and(
-                  eq(messages.conversationId, row.conversationId),
-                  sql`${messages.createdAt} > ${row.lastReadAt}`,
-                  or(
-                    ne(messages.senderId, userId),
-                    ne(messages.senderType, "human"),
-                  ),
-                ),
-              );
-            unreadCount = unreadRow?.count ?? 0;
-          } else {
-            // Never read - all messages not sent by the user as "human" are unread
-            const [unreadRow] = await ctx.db
-              .select({ count: sql<number>`count(*)::int` })
-              .from(messages)
-              .where(
-                and(
-                  eq(messages.conversationId, row.conversationId),
-                  or(
-                    ne(messages.senderId, userId),
-                    ne(messages.senderType, "human"),
-                  ),
-                ),
-              );
-            unreadCount = unreadRow?.count ?? 0;
-          }
-
-          return {
-            id: row.conversationId,
-            type: row.convType,
-            updatedAt: row.convUpdatedAt.toISOString(),
-            isPinned: row.isPinned,
-            lastMessage: lastMessage ?? null,
-            participants: otherParticipants,
-            agentInfo,
-            unreadCount,
-            // Room (space) fields — defaulted for DM/agent rows so the return
-            // type is uniform. The UI keys off `isRoom`.
-            isRoom,
-            title: isRoom ? (row.roomName ?? "Room") : null,
-            roomSlug: isRoom ? row.roomSlug : null,
-            spaceId: isRoom ? row.spaceId : null,
-            roomVisibility: isRoom ? row.roomVisibility : null,
-            communitySlug: isRoom ? row.communitySlug : null,
-            communityName: isRoom ? row.communityName : null,
-            communityLogoUrl: isRoom ? row.communityLogoUrl : null,
-            memberCount: isRoom ? row.memberCount : 0,
-          };
-        }),
-      );
-
-      // What the page's last messages carry, read in one query.
-      const lastAttachments = await loadAttachments(
-        ctx.db,
-        result.flatMap((conversation) =>
-          conversation.lastMessage ? [conversation.lastMessage.id] : [],
-        ),
-      );
-      const withLastMessages = result.map(
-        ({ lastMessage, ...conversation }) => {
-          if (!lastMessage) return { ...conversation, lastMessage: null };
-          const { id, ...preview } = lastMessage;
-          return {
-            ...conversation,
-            lastMessage: {
-              ...preview,
-              attachmentKind: attachmentKind(lastAttachments.get(id) ?? []),
-            },
-          };
-        },
-      );
-
-      return { conversations: withLastMessages, nextCursor };
+  /**
+   * getConversation - one conversation's summary, the same item
+   * listConversations gives, wherever it sits in the list. NOT_FOUND when
+   * the caller may not read it (not a participant, or not an active member
+   * of the room) — the same rule the list applies.
+   */
+  getConversation: protectedProcedure
+    .input(z.object({ conversationId: z.string() }))
+    .query(async ({ ctx, input }): Promise<ConversationSummary> => {
+      const userId = ctx.session.user.id;
+      const rows = await loadConversationRows(ctx.db, userId, {
+        conversationId: input.conversationId,
+      });
+      const [summary] = await summarizeConversations(ctx.db, userId, rows);
+      if (!summary) throw new TRPCError({ code: "NOT_FOUND" });
+      return summary;
     }),
 
   /**

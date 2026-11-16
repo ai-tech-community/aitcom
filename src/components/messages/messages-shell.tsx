@@ -51,13 +51,26 @@ export function MessagesShell({ activeConversationId }: MessagesShellProps) {
     { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
   );
 
-  const active = useMemo(
+  const listed = useMemo(
     () =>
       conversationsQuery.data?.conversations.find(
         (c) => c.id === activeConversationId,
       ) ?? null,
     [conversationsQuery.data, activeConversationId],
   );
+
+  // A conversation older than the list's first page is looked up on its own,
+  // once the list has loaded without it.
+  const lookUpActive =
+    activeConversationId !== undefined &&
+    conversationsQuery.data !== undefined &&
+    listed === null;
+  const activeQuery = api.inbox.getConversation.useQuery(
+    { conversationId: activeConversationId ?? "" },
+    { enabled: lookUpActive },
+  );
+
+  const active = listed ?? (lookUpActive ? (activeQuery.data ?? null) : null);
 
   const isAgent = active?.type === "agent";
   const isRoom = active?.isRoom ?? false;
