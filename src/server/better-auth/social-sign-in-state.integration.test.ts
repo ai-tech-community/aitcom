@@ -91,7 +91,10 @@ describe.skipIf(!RUN_DB)("social sign-in state [DB integration]", () => {
     );
 
     expect(response.status).toBe(200);
-    const result = (await response.json()) as { url: string; redirect: boolean };
+    const result = (await response.json()) as {
+      url: string;
+      redirect: boolean;
+    };
     expect(result.redirect).toBe(true);
     const state = new URL(result.url).searchParams.get("state");
     expect(state).toBeTruthy();
