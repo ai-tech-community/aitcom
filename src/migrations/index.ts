@@ -1,3 +1,4 @@
+import * as migration_20261117a_verification_value_text from "./20261117a_verification_value_text";
 import * as migration_20261116a_message_attachments from "./20261116a_message_attachments";
 import * as migration_20261113c_gallery_reports from "./20261113c_gallery_reports";
 import * as migration_20261114a_drop_event_gallery_media from "./20261114a_drop_event_gallery_media";
@@ -1236,5 +1237,10 @@ export const migrations = [
     up: migration_20261116a_message_attachments.up,
     down: migration_20261116a_message_attachments.down,
     name: "20261116a_message_attachments",
+  },
+  {
+    up: migration_20261117a_verification_value_text.up,
+    down: migration_20261117a_verification_value_text.down,
+    name: "20261117a_verification_value_text",
   },
 ];
