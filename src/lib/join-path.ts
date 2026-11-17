@@ -63,9 +63,19 @@ export function getJoinPageRedirect(args: {
   return null;
 }
 
-/** Locale-free signup path for the join-door CTA. Preserves invite query. */
-export function getJoinSignupHref(search = ""): string {
-  return `/auth/signup${search}`;
+/**
+ * Locale-free signup path for the join-door CTA. Preserves invite query.
+ *
+ * Bare signup lands on Explore (see `lib/auth-redirect`), but this door is
+ * the Hub's own, so it names Hub as the post-auth target unless the link
+ * already carries one.
+ */
+export function getJoinSignupHref(search = "", locale?: string): string {
+  const params = new URLSearchParams(search);
+  if (!params.has("redirect") && !params.has("callbackUrl")) {
+    params.set("redirect", getHubCommunityPath(locale));
+  }
+  return `/auth/signup?${params.toString()}`;
 }
 
 /**

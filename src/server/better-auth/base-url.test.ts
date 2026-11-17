@@ -9,6 +9,7 @@ import {
   resolveTrustedOrigins,
   sanitizeVerifyCallbackUrl,
 } from "./base-url";
+import { POST_AUTH_LANDING_PATH } from "@/lib/auth-redirect";
 import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
 
 describe("resolveBetterAuthBaseUrl", () => {
@@ -230,18 +231,18 @@ describe("canonicalizeVerificationUrl", () => {
   });
 
   it("remaps a homepage or preview callbackURL so verify does not wipe the landing", () => {
-    expect(sanitizeVerifyCallbackUrl("/")).toBe(HUB_COMMUNITY_PATH);
-    expect(sanitizeVerifyCallbackUrl("/en")).toBe(HUB_COMMUNITY_PATH);
+    expect(sanitizeVerifyCallbackUrl("/")).toBe(POST_AUTH_LANDING_PATH);
+    expect(sanitizeVerifyCallbackUrl("/en")).toBe(POST_AUTH_LANDING_PATH);
     expect(
       sanitizeVerifyCallbackUrl(
         "https://aitcom-abc123-klevox.vercel.app/en/communities/ait",
       ),
     ).toBe("/en/communities/ait");
     expect(sanitizeVerifyCallbackUrl("https://evil.example/phish")).toBe(
-      HUB_COMMUNITY_PATH,
+      POST_AUTH_LANDING_PATH,
     );
     expect(sanitizeVerifyCallbackUrl("https://www.aitcommunity.org/")).toBe(
-      HUB_COMMUNITY_PATH,
+      POST_AUTH_LANDING_PATH,
     );
   });
 

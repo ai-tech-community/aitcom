@@ -60,7 +60,7 @@ describe("sendVerificationEmail", () => {
     expect(html).toContain(
       "https://www.aitcommunity.org/api/auth/verify-email?token=qa-token",
     );
-    expect(html).toContain("callbackURL=%2Fcommunities%2Fait");
+    expect(html).toContain('callbackURL=%2Fcommunities"');
     expect(html).not.toContain("vercel.app");
     vi.unstubAllEnvs();
   });

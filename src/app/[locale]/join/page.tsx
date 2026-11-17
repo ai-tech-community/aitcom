@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { HubJoin } from "@/components/join/hub-join";
 import { joinPageMetadata } from "@/lib/join-page-metadata";
@@ -39,13 +39,16 @@ export default async function JoinPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const t = await getTranslations("hubJoin");
+  const [t, locale] = await Promise.all([
+    getTranslations("hubJoin"),
+    getLocale(),
+  ]);
   const search = searchFromRecord(await searchParams);
   const { initialUser } = await loadHubAuthSeed();
   return (
     <HubJoin
       t={t}
-      signupHref={getJoinSignupHref(search)}
+      signupHref={getJoinSignupHref(search, locale)}
       promoteJoin={shouldPromoteJoin(initialUser)}
     />
   );

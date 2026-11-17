@@ -1,5 +1,4 @@
-import { sanitizeRedirect } from "@/lib/auth-redirect";
-import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
+import { POST_AUTH_LANDING_PATH, sanitizeRedirect } from "@/lib/auth-redirect";
 
 export type AuthUrlEnv = {
   BETTER_AUTH_URL?: string;
@@ -127,12 +126,13 @@ export function resolveSessionCookieDomain(env: AuthUrlEnv) {
 }
 
 /**
- * Keep verify / OAuth callbacks on-site. Preview hosts may carry a Hub path;
- * unknown hosts fall back to Hub instead of becoming an open redirect.
+ * Keep verify / OAuth callbacks on-site. Preview hosts may carry an app path;
+ * unknown hosts fall back to the post-auth landing instead of becoming an
+ * open redirect.
  */
 export function sanitizeVerifyCallbackUrl(
   callback: string,
-  fallback = HUB_COMMUNITY_PATH,
+  fallback = POST_AUTH_LANDING_PATH,
 ) {
   if (!callback) return fallback;
   if (callback.startsWith("/") && !callback.startsWith("//")) {

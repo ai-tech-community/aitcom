@@ -1,7 +1,7 @@
 import { createAuthMiddleware } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 
-import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
+import { POST_AUTH_LANDING_PATH } from "@/lib/auth-redirect";
 import { pinVerifyRedirectLocation } from "./base-url";
 
 type ReplayEnroll = (session: { userId: string }) => Promise<void>;
@@ -46,7 +46,7 @@ export function createSignInOnReplayedVerification(
         ? readLocation(ctx.context.returned)
         : null;
     const location = pinVerifyRedirectLocation(
-      returnedLocation ?? HUB_COMMUNITY_PATH,
+      returnedLocation ?? POST_AUTH_LANDING_PATH,
       requestUrl,
     );
 
@@ -99,7 +99,7 @@ export const signInOnReplayedVerification =
 
 /**
  * Password sign-in leftover after #252: Better Auth sets a relative
- * Location / `callbackURL` (or the form `router.push`es `/en/communities/ait`).
+ * Location / `callbackURL` (or the form `router.push`es `/en/communities`).
  * Vercel primary-domain then lands Hub on apex, so the www
  * `__Secure-better-auth.session_token` is not on the document they get.
  * Rebuild the 302 onto www the same way verify does.
@@ -122,7 +122,7 @@ function pinPasswordSignInRedirect(ctx: {
       : null;
   const bodyCallback = readCallbackUrl(ctx.body);
   const location = pinVerifyRedirectLocation(
-    returnedLocation ?? bodyCallback ?? HUB_COMMUNITY_PATH,
+    returnedLocation ?? bodyCallback ?? POST_AUTH_LANDING_PATH,
     ctx.request?.url,
   );
   throw ctx.redirect(location);

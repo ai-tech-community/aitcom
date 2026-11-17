@@ -63,13 +63,13 @@ describe("SignUpForm post-signup landing", () => {
     vi.mocked(toast.success).mockClear();
   });
 
-  it("sends verification and OAuth callbacks to Hub, not the homepage", async () => {
+  it("sends verification and OAuth callbacks to Explore communities, not the homepage", async () => {
     mockSignUpEmail.mockResolvedValue({ error: null });
 
     render(<SignUpForm oauthProviders={NO_OAUTH_PROVIDERS} />);
 
     expect(screen.getByTestId("social-oauth")).toHaveTextContent(
-      "/en/communities/ait",
+      /^\/en\/communities$/,
     );
 
     fireEvent.change(screen.getByLabelText("NAME"), {
@@ -88,20 +88,20 @@ describe("SignUpForm post-signup landing", () => {
         name: "Ada",
         email: "ada@example.com",
         password: "password12",
-        callbackURL: "/en/communities/ait",
+        callbackURL: "/en/communities",
       });
     });
     expect(mockReplace).not.toHaveBeenCalledWith("/");
   });
 
-  it("replaces to Hub once a session exists after signup", () => {
+  it("replaces to Explore communities once a session exists after signup", () => {
     mockUseSession.mockReturnValue({
       data: { user: { id: "user-1" } },
     });
 
     render(<SignUpForm oauthProviders={NO_OAUTH_PROVIDERS} />);
 
-    expect(mockReplace).toHaveBeenCalledWith("/en/communities/ait");
+    expect(mockReplace).toHaveBeenCalledWith("/en/communities");
     expect(mockReplace).not.toHaveBeenCalledWith("/");
   });
 
