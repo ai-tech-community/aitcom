@@ -189,7 +189,9 @@ export const verification = appSchema.table(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     identifier: d.varchar({ length: 255 }).notNull(),
-    value: d.varchar({ length: 255 }).notNull(),
+    // OAuth sign-in state is JSON with a 128-char PKCE verifier plus the
+    // callback URLs; it does not fit 255 characters.
+    value: d.text().notNull(),
     expiresAt: d.timestamp({ withTimezone: true }).notNull(),
     createdAt: d
       .timestamp({ withTimezone: true })
