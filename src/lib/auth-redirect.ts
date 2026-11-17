@@ -7,9 +7,11 @@
  * `?redirect=`, while the agent-claim flow uses `?callbackUrl=`. Both carry a
  * full, already-locale-prefixed internal path (e.g. `/en/communities/x`).
  *
- * Bare signup / sign-in (no param) lands in the Hub community, not the
- * marketing homepage. `getPostAuthRedirect` also remaps `/` and locale roots
- * so a leftover `?redirect=/` cannot send a new member to aitcommunity.org.
+ * Bare signup / sign-in (no param) lands on the Explore communities page
+ * (`/communities`), so a new member chooses where to go instead of being
+ * dropped into one community. `getPostAuthRedirect` also remaps `/` and
+ * locale roots so a leftover `?redirect=/` cannot send a new member to the
+ * marketing homepage.
  *
  * Values are sanitized so a crafted `?redirect=https://evil.com` can never
  * turn the sign-in page into an open redirect. Push the result with the plain
@@ -17,14 +19,23 @@
  * by the next-intl router.
  */
 
-import { HUB_COMMUNITY_PATH, isMarketingHomePath } from "./join-path";
+import { isMarketingHomePath } from "./join-path";
 
 const REDIRECT_PARAMS = ["redirect", "callbackUrl"] as const;
 
-/** Accept only same-origin absolute paths; everything else falls back to Hub. */
+/** Locale-free default landing after auth. Middleware prefixes `/en` or `/nl`. */
+export const POST_AUTH_LANDING_PATH = "/communities";
+
+/** Locale-prefixed default landing for the auth forms and verify callbacks. */
+export function getPostAuthLandingPath(locale?: string): string {
+  if (!locale) return POST_AUTH_LANDING_PATH;
+  return `/${locale}${POST_AUTH_LANDING_PATH}`;
+}
+
+/** Accept only same-origin absolute paths; everything else falls back. */
 export function sanitizeRedirect(
   value: string | null | undefined,
-  fallback = HUB_COMMUNITY_PATH,
+  fallback = POST_AUTH_LANDING_PATH,
 ): string {
   if (!value) return fallback;
   // Reject protocol-relative (`//host`), backslash tricks (`/\host`), and any
@@ -43,7 +54,7 @@ export function sanitizeRedirect(
 /** Read the post-auth target from URL params (`redirect` or `callbackUrl`). */
 export function getPostAuthRedirect(
   params: URLSearchParams,
-  fallback = HUB_COMMUNITY_PATH,
+  fallback = POST_AUTH_LANDING_PATH,
 ): string {
   for (const key of REDIRECT_PARAMS) {
     const raw = params.get(key);
@@ -51,5 +62,3 @@ export function getPostAuthRedirect(
   }
   return fallback;
 }
-
-export { HUB_COMMUNITY_PATH, getHubCommunityPath } from "./join-path";

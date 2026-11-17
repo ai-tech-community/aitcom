@@ -12,8 +12,10 @@ import { SocialOAuthButtons } from "@/components/auth/social-oauth-buttons";
 import type { OAuthProvider } from "@/lib/oauth-providers";
 import { authClient } from "@/server/better-auth/client";
 import { pinVerifyRedirectLocation } from "@/server/better-auth/base-url";
-import { getPostAuthRedirect } from "@/lib/auth-redirect";
-import { getHubCommunityPath } from "@/lib/join-path";
+import {
+  getPostAuthLandingPath,
+  getPostAuthRedirect,
+} from "@/lib/auth-redirect";
 import { isEmailNotVerifiedError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 
@@ -40,8 +42,8 @@ export function SignInForm({
 
   // Target is a full, locale-prefixed path — push with the plain router so the
   // locale isn't prefixed twice. See lib/auth-redirect. On www/apex, pin to
-  // absolute www so Vercel primary-domain cannot send Hub to apex.
-  const target = getPostAuthRedirect(params, getHubCommunityPath(locale));
+  // absolute www so Vercel primary-domain cannot send the landing to apex.
+  const target = getPostAuthRedirect(params, getPostAuthLandingPath(locale));
   const pinnedTarget = pinPostAuthTarget(target);
 
   // Already signed in (e.g. landed here via a stale link) → skip the form.
@@ -65,7 +67,7 @@ export function SignInForm({
         setNeedsVerification(true);
         return;
       }
-      // A 302 to www Hub can surface as a parse error after Set-Cookie.
+      // A 302 to the www landing can surface as a parse error after Set-Cookie.
       // Better Auth credential failures still have a code — keep those here.
       if (error.code) {
         toast.error(error.message ?? "Sign in failed");

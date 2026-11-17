@@ -1,23 +1,40 @@
 import { describe, expect, it } from "vitest";
 
-import { getPostAuthRedirect, sanitizeRedirect } from "./auth-redirect";
-import { HUB_COMMUNITY_PATH, getHubCommunityPath } from "./join-path";
+import {
+  POST_AUTH_LANDING_PATH,
+  getPostAuthLandingPath,
+  getPostAuthRedirect,
+  sanitizeRedirect,
+} from "./auth-redirect";
+import { HUB_COMMUNITY_PATH } from "./join-path";
+
+describe("post-auth landing", () => {
+  it("is the Explore communities page, not one community", () => {
+    expect(POST_AUTH_LANDING_PATH).toBe("/communities");
+    expect(POST_AUTH_LANDING_PATH).not.toBe(HUB_COMMUNITY_PATH);
+    expect(getPostAuthLandingPath()).toBe("/communities");
+    expect(getPostAuthLandingPath("en")).toBe("/en/communities");
+    expect(getPostAuthLandingPath("nl")).toBe("/nl/communities");
+  });
+});
 
 describe("getPostAuthRedirect", () => {
-  it("lands in Hub when no redirect is provided", () => {
-    expect(getPostAuthRedirect(new URLSearchParams())).toBe(HUB_COMMUNITY_PATH);
+  it("lands on Explore communities when no redirect is provided", () => {
+    expect(getPostAuthRedirect(new URLSearchParams())).toBe(
+      POST_AUTH_LANDING_PATH,
+    );
     expect(getPostAuthRedirect(new URLSearchParams())).not.toBe("/");
   });
 
-  it("lands in Hub when the only target is the marketing homepage", () => {
+  it("lands on Explore communities when the only target is the marketing homepage", () => {
     expect(getPostAuthRedirect(new URLSearchParams("redirect=/"))).toBe(
-      HUB_COMMUNITY_PATH,
+      POST_AUTH_LANDING_PATH,
     );
     expect(getPostAuthRedirect(new URLSearchParams("redirect=/en"))).toBe(
-      HUB_COMMUNITY_PATH,
+      POST_AUTH_LANDING_PATH,
     );
     expect(getPostAuthRedirect(new URLSearchParams("callbackUrl=/nl"))).toBe(
-      HUB_COMMUNITY_PATH,
+      POST_AUTH_LANDING_PATH,
     );
   });
 
@@ -28,16 +45,19 @@ describe("getPostAuthRedirect", () => {
       ),
     ).toBe("/en/communities/rotterdam");
     expect(
+      getPostAuthRedirect(new URLSearchParams("redirect=/en/communities/ait")),
+    ).toBe("/en/communities/ait");
+    expect(
       getPostAuthRedirect(new URLSearchParams("callbackUrl=/en/claim/token-1")),
     ).toBe("/en/claim/token-1");
   });
 
-  it("rejects open redirects and falls back to Hub", () => {
+  it("rejects open redirects and falls back to the landing", () => {
     expect(
       getPostAuthRedirect(new URLSearchParams("redirect=https://evil.com")),
-    ).toBe(HUB_COMMUNITY_PATH);
-    expect(sanitizeRedirect("//evil.com", getHubCommunityPath("en"))).toBe(
-      "/en/communities/ait",
+    ).toBe(POST_AUTH_LANDING_PATH);
+    expect(sanitizeRedirect("//evil.com", getPostAuthLandingPath("en"))).toBe(
+      "/en/communities",
     );
   });
 });

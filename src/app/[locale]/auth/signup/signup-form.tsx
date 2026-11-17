@@ -10,9 +10,11 @@ import { Label } from "@/components/ui/label";
 import { SocialOAuthButtons } from "@/components/auth/social-oauth-buttons";
 import type { OAuthProvider } from "@/lib/oauth-providers";
 import { authClient } from "@/server/better-auth/client";
-import { getPostAuthRedirect } from "@/lib/auth-redirect";
+import {
+  getPostAuthLandingPath,
+  getPostAuthRedirect,
+} from "@/lib/auth-redirect";
 import { getAuthClientErrorMessage } from "@/lib/auth-errors";
-import { getHubCommunityPath } from "@/lib/join-path";
 import { toast } from "sonner";
 
 export function SignUpForm({
@@ -30,7 +32,7 @@ export function SignUpForm({
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
 
-  const target = getPostAuthRedirect(params, getHubCommunityPath(locale));
+  const target = getPostAuthRedirect(params, getPostAuthLandingPath(locale));
 
   useEffect(() => {
     if (session.data?.user) router.replace(target);

@@ -100,8 +100,24 @@ describe("join path landing", () => {
   });
 
   it("points the join CTA at the existing /auth/signup flow", () => {
-    expect(getJoinSignupHref()).toBe("/auth/signup");
-    expect(getJoinSignupHref("?code=abc")).toBe("/auth/signup?code=abc");
+    expect(getJoinSignupHref()).toBe(
+      "/auth/signup?redirect=%2Fcommunities%2Fait",
+    );
+    expect(getJoinSignupHref("", "nl")).toBe(
+      "/auth/signup?redirect=%2Fnl%2Fcommunities%2Fait",
+    );
+    expect(getJoinSignupHref("?code=abc", "en")).toBe(
+      "/auth/signup?code=abc&redirect=%2Fen%2Fcommunities%2Fait",
+    );
+  });
+
+  it("keeps a join-door signup target the link already carries", () => {
+    expect(
+      getJoinSignupHref("?redirect=%2Fen%2Fcommunities%2Frotterdam", "en"),
+    ).toBe("/auth/signup?redirect=%2Fen%2Fcommunities%2Frotterdam");
+    expect(getJoinSignupHref("?callbackUrl=%2Fen%2Fclaim%2Ft", "en")).toBe(
+      "/auth/signup?callbackUrl=%2Fen%2Fclaim%2Ft",
+    );
   });
 
   it("shows the first-session agent path only for Hub members without an agent", () => {

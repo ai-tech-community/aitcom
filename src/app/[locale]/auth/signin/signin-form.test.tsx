@@ -98,18 +98,18 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
     await waitFor(() => {
       expect(mockSendVerificationEmail).toHaveBeenCalledWith({
         email: "greg+qa-human@klevox.com",
-        callbackURL: "/en/communities/ait",
+        callbackURL: "/en/communities",
       });
     });
   });
 
-  it("lands in Hub after a successful sign-in with no redirect param", async () => {
+  it("lands on Explore communities after a successful sign-in with no redirect param", async () => {
     mockSignInEmail.mockResolvedValue({ error: null });
 
     render(<SignInForm oauthProviders={NO_OAUTH_PROVIDERS} />);
 
     expect(screen.getByTestId("social-oauth")).toHaveTextContent(
-      "/en/communities/ait",
+      /^\/en\/communities$/,
     );
 
     fireEvent.change(screen.getByLabelText("EMAIL"), {
@@ -124,15 +124,15 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
       expect(mockSignInEmail).toHaveBeenCalledWith({
         email: "ada@example.com",
         password: "password12",
-        callbackURL: "/en/communities/ait",
+        callbackURL: "/en/communities",
       });
-      expect(mockPush).toHaveBeenCalledWith("/en/communities/ait");
+      expect(mockPush).toHaveBeenCalledWith("/en/communities");
     });
     expect(mockRefresh).toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalledWith("/");
   });
 
-  it("www password sign-in navigates to www Hub, never apex", async () => {
+  it("www password sign-in navigates to the www landing, never apex", async () => {
     const wwwOrigin = "https://www.aitcommunity.org";
     const assign = vi.fn();
     Object.defineProperty(window, "location", {
@@ -155,21 +155,21 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "signIn" }));
 
-    const wwwHub = `${wwwOrigin}/en/communities/ait`;
+    const wwwLanding = `${wwwOrigin}/en/communities`;
     await waitFor(() => {
       expect(mockSignInEmail).toHaveBeenCalledWith({
         email: "ada@example.com",
         password: "password12",
-        callbackURL: wwwHub,
+        callbackURL: wwwLanding,
       });
-      expect(assign).toHaveBeenCalledWith(wwwHub);
+      expect(assign).toHaveBeenCalledWith(wwwLanding);
     });
     expect(assign).not.toHaveBeenCalledWith(
-      "https://aitcommunity.org/en/communities/ait",
+      "https://aitcommunity.org/en/communities",
     );
-    expect(mockPush).not.toHaveBeenCalledWith("/en/communities/ait");
+    expect(mockPush).not.toHaveBeenCalledWith("/en/communities");
     expect(mockPush).not.toHaveBeenCalledWith(
-      "https://aitcommunity.org/en/communities/ait",
+      "https://aitcommunity.org/en/communities",
     );
   });
 });

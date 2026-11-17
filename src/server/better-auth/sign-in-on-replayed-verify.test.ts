@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
+import { POST_AUTH_LANDING_PATH } from "@/lib/auth-redirect";
 import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
 import { PRODUCTION_COOKIE_DOMAIN } from "./base-url";
 import { headersForDocumentAuth } from "./document-auth-headers";
@@ -104,6 +105,8 @@ const WWW_HUB_DOCUMENT_URLS = [
 ] as const;
 const APEX_HUB_DOCUMENT_URL = `https://aitcommunity.org/en${HUB_COMMUNITY_PATH}`;
 const WWW_HUB_REDIRECT = `${ORIGIN}${HUB_COMMUNITY_PATH}`;
+/** Password sign-in with no callbackURL lands on Explore communities. */
+const WWW_LANDING_REDIRECT = `${ORIGIN}${POST_AUTH_LANDING_PATH}`;
 const WWW_LOCALE_HUB = `${ORIGIN}/en${HUB_COMMUNITY_PATH}`;
 
 function expectWwwHubLocation(location: string, hubUrl = WWW_LOCALE_HUB) {
@@ -594,7 +597,7 @@ describe("leftover after #250: Hub document cookies() reach getSession", () => {
     );
     expect(signIn.status).toBeLessThan(400);
     expect(hasSessionCookie(signIn)).toBe(true);
-    expectWwwHubLocation(redirectLocation(signIn), WWW_HUB_REDIRECT);
+    expectWwwHubLocation(redirectLocation(signIn), WWW_LANDING_REDIRECT);
     const cookie = sessionCookieLine(signIn);
     expect(cookie).toMatch(/^__Secure-better-auth\.session_token=/);
     expect(cookie).toContain(`Domain=${PRODUCTION_COOKIE_DOMAIN}`);
@@ -726,7 +729,7 @@ describe("leftover after #251: first paint + header/forum + reload still signed-
     const reload = await sessionFromJar(auth, afterGetSession, documentUrl);
     expect(reload.user.id).toBe(first.user.id);
     expectHubSignedInPaint(reload);
-    expectWwwHubLocation(redirectLocation(signIn), WWW_HUB_REDIRECT);
+    expectWwwHubLocation(redirectLocation(signIn), WWW_LANDING_REDIRECT);
   });
 
   it("first-click and burned token: reload still signed-in, not JOIN", async () => {
