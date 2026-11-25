@@ -49,6 +49,26 @@ describe("startup investigation URLs", () => {
   });
 });
 
+describe("guest join door", () => {
+  it("returns HTTP 200 for /en/join and does not redirect to signup", () => {
+    const response = middleware(
+      new NextRequest(
+        "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=events&utm_campaign=ai-events",
+      ),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("returns HTTP 200 for /nl/join", () => {
+    const response = middleware(
+      new NextRequest("https://www.aitcommunity.org/nl/join"),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+});
+
 describe("guest Join entry", () => {
   it.each([
     ["en", "better-auth.session_token"],

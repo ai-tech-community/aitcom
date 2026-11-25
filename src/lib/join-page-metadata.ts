@@ -4,7 +4,7 @@ import { buildOgMeta } from "@/lib/metadata";
 
 /** Document title for /join. Absolute so the layout template does not append the site name again. */
 export const JOIN_PAGE_TITLE =
-  "Claim Your AI Startup & Find Your Cofounder | AIT Community";
+  "Join AIT: The Free AI Startup Community in Europe";
 
 /**
  * Join-page document and social title. The description is the join
