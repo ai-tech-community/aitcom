@@ -2,10 +2,14 @@ import { Suspense } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 
+import type { CommunityThemeId } from "@/lib/communities/themes";
+
 type Community = {
   slug: string;
   name: string;
   bannerUrl: string | null;
+  bannerAlt?: string | null;
+  themeId: CommunityThemeId;
   viewerCanReadContent: boolean;
   viewerMembershipStatus: string | null;
 };
@@ -20,6 +24,7 @@ const m = vi.hoisted(() => ({
       slug: "mlops",
       name: "MLOps",
       bannerUrl: null,
+      themeId: "plain",
       viewerCanReadContent: true,
       viewerMembershipStatus: null,
     } as Community | undefined,
@@ -58,6 +63,19 @@ vi.mock("@/components/auth/session-provider", () => ({
 vi.mock("@/components/communities/use-community-join", () => ({
   useJoinDeepLink: () => undefined,
 }));
+// Next compiles font loaders; the heading faces get plain test classes.
+vi.mock("next/font/google", () => {
+  const face = ({ variable }: { variable: string }) => ({
+    variable: variable.replace(/^--/, ""),
+    className: "",
+  });
+  return {
+    Fraunces: face,
+    Nunito: face,
+    DM_Serif_Display: face,
+    Space_Grotesk: face,
+  };
+});
 vi.mock("@/components/communities/community-identity", () => ({
   CommunityIdentity: () => <div data-testid="identity" />,
 }));
@@ -103,6 +121,7 @@ const readable: Community = {
   slug: "mlops",
   name: "MLOps",
   bannerUrl: null,
+  themeId: "plain",
   viewerCanReadContent: true,
   viewerMembershipStatus: null,
 };
@@ -160,6 +179,46 @@ describe("CommunityLayoutClient frame", () => {
     expect(screen.getByTestId("page")).toBeInTheDocument();
     expect(screen.queryByTestId("identity")).toBeNull();
     expect(container.querySelector("[data-community-rail]")).toBeNull();
+  });
+
+  describe("look", () => {
+    it("paints the whole frame, rail and page, in the community's look", async () => {
+      m.community.data = { ...readable, themeId: "night" };
+      const { container } = await renderLayout();
+      const scope = container.querySelector("[data-community-theme]");
+      expect(scope).toHaveAttribute("data-community-theme", "night");
+      expect(scope).toHaveClass("px-4", "py-8", "sm:px-8");
+      expect(scope).toContainElement(
+        container.querySelector<HTMLElement>("[data-community-rail]"),
+      );
+      expect(scope).toContainElement(screen.getByTestId("page"));
+    });
+
+    it("leaves a workspace route plain", async () => {
+      m.community.data = { ...readable, themeId: "night" };
+      m.segments = ["events", "new"];
+      const { container } = await renderLayout();
+      expect(container.querySelector("[data-community-theme]")).toBeNull();
+    });
+
+    it("draws the look's cover art on the Overview when there is no banner", async () => {
+      m.community.data = { ...readable, themeId: "meadow" };
+      const { container } = await renderLayout();
+      const cover = container.querySelector("[data-community-cover-art]");
+      expect(cover).not.toBeNull();
+      const rail = container.querySelector("[data-community-rail]");
+      expect(
+        cover!.compareDocumentPosition(rail!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("keeps the cover art off the other pages", async () => {
+      m.community.data = { ...readable, themeId: "meadow" };
+      m.segments = ["forum"];
+      const { container } = await renderLayout();
+      expect(container.querySelector("[data-community-cover-art]")).toBeNull();
+    });
   });
 
   describe("banner", () => {

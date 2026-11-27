@@ -12,10 +12,12 @@ import {
   type HubAuthUser,
   type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
-import { CommunityBanner } from "@/components/communities/community-banner";
 import { CommunityIdentity } from "@/components/communities/community-identity";
 import { CommunityMembersOnly } from "@/components/communities/community-members-only";
 import { CommunityNav } from "@/components/communities/community-nav";
+import { CommunityThemeCover } from "@/components/communities/theme/community-theme-cover";
+import { CommunityThemePreviewProvider } from "@/components/communities/theme/community-theme-preview";
+import { CommunityThemeScope } from "@/components/communities/theme/community-theme-scope";
 import { Spinner } from "@/components/ui/spinner";
 import {
   isCommunityOverview,
@@ -104,30 +106,37 @@ export function CommunityLayoutClient({
         // left from `lg` — a named exception to the default page frame
         // (DESIGN.md "Page frame"). Below `lg` the rail's wrapper drops out
         // (`contents`), so identity and the sticky tab bar stack above the page.
-        // The Overview opens with the banner across the full width, and so
-        // does the members-only state on every route.
-        <div className="px-4 py-8 sm:px-8">
-          {membersOnly || isCommunityOverview(segments) ? (
-            <CommunityBanner community={community} className="mb-8" />
-          ) : null}
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
-            <div
-              data-community-rail=""
-              className="contents lg:sticky lg:top-24 lg:-m-1 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:gap-6 lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:p-1 lg:[scrollbar-width:thin]"
-            >
-              <CommunityIdentity
-                community={community}
-                membershipStatus={membershipStatus}
-                memberRole={memberRole}
-              />
-              {membersOnly ? null : (
-                <CommunityNav slug={slug} memberRole={memberRole} />
-              )}
+        // The Overview opens with the cover (banner picture or the look's
+        // art) across the full width, and so does the members-only state on
+        // every route. The frame wears the community's look edge to edge;
+        // workspace pages stay plain.
+        <CommunityThemePreviewProvider>
+          <CommunityThemeScope
+            themeId={community.themeId}
+            className="px-4 py-8 sm:px-8"
+          >
+            {membersOnly || isCommunityOverview(segments) ? (
+              <CommunityThemeCover community={community} className="mb-8" />
+            ) : null}
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
+              <div
+                data-community-rail=""
+                className="contents lg:sticky lg:top-24 lg:-m-1 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:gap-6 lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:p-1 lg:[scrollbar-width:thin]"
+              >
+                <CommunityIdentity
+                  community={community}
+                  membershipStatus={membershipStatus}
+                  memberRole={memberRole}
+                />
+                {membersOnly ? null : (
+                  <CommunityNav slug={slug} memberRole={memberRole} />
+                )}
+              </div>
+              {/* Not <main>: the root layout already provides the main landmark. */}
+              <div className="min-w-0">{page}</div>
             </div>
-            {/* Not <main>: the root layout already provides the main landmark. */}
-            <div className="min-w-0">{page}</div>
-          </div>
-        </div>
+          </CommunityThemeScope>
+        </CommunityThemePreviewProvider>
       )}
     </PageDocumentAuthProvider>
   );

@@ -45,6 +45,13 @@
 }
 
 @theme inline {
+  /* `font-community-heading`: a community look's heading face, which
+     CommunityThemeScope loads into --community-heading-face; Geist Sans
+     without one. Inline, so the face resolves on the element inside the
+     frame, not once on :root where no face is set. */
+  --font-community-heading:
+    var(--community-heading-face, var(--font-geist-sans)), ui-sans-serif,
+    system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -265,6 +272,20 @@
   top: 0;
   left: 0;
   z-index: 10;
+}
+
+/* Community looks (CommunityThemeScope): the frame paints the look's canvas
+   pattern over its background color. The pattern scrolls with the page.
+   The defaults stop a frame without a pattern from inheriting one; the
+   scope's inline style sets them when the look has a pattern. */
+@layer base {
+  [data-community-theme] {
+    --community-canvas-image: none;
+    --community-canvas-size: auto;
+    background-image: var(--community-canvas-image);
+    background-size: var(--community-canvas-size);
+    background-attachment: scroll;
+  }
 }
 
 /* Magazine reading pages. The type pair is loaded per magazine. */

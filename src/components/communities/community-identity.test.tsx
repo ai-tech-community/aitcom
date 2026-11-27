@@ -34,6 +34,7 @@ const community = {
   memberCount: 42,
   liveness: { activeContributors: 3 },
   joinPolicy: "open",
+  themeId: "plain",
 } as unknown as RouterOutputs["communities"]["getBySlug"];
 
 type Status = "active" | "invited" | null;
@@ -67,6 +68,13 @@ describe("CommunityIdentity", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "MLOps Amsterdam" }),
     ).toBeInTheDocument();
+  });
+
+  it("sets the name in the community look's heading face", () => {
+    renderIdentity();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass(
+      "font-community-heading",
+    );
   });
 
   it("stays one short row: the banner, description and members live on the Overview", () => {

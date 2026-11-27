@@ -65,7 +65,7 @@ export function CommunityIdentity({
           <h1
             ref={headingRef}
             tabIndex={-1}
-            className="min-w-0 text-lg leading-snug font-semibold tracking-tight wrap-break-word outline-none"
+            className="font-community-heading min-w-0 text-lg leading-snug font-semibold tracking-tight wrap-break-word outline-none"
           >
             {community.name}
           </h1>
