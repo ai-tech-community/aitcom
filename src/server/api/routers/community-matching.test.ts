@@ -42,6 +42,7 @@ vi.mock("@/server/communities/optional-space", async (original) => ({
   ensureOptionalBuiltinSpace: services.ensureSpace,
 }));
 import { SpaceSlugTakenError } from "@/server/communities/optional-space";
+import { MATCHING_SPACE } from "@/server/communities/space-defaults";
 import { communityMatchingRouter } from "./community-matching";
 
 const type: ConnectionType = {
@@ -264,8 +265,13 @@ describe("community matching access", () => {
 });
 
 describe("Find a match space", () => {
-  it("adds the Find a match space when a connection type is created", async () => {
+  it("adds the Find a match space in the type's transaction", async () => {
     const fake = fakeDatabase();
+    // The transaction is its own object, so the test can tell it from ctx.db.
+    const tx = fakeDatabase().db;
+    fake.db.transaction.mockImplementation((fn: (tx: unknown) => unknown) =>
+      fn(tx),
+    );
     await expect(
       caller("owner", fake.db).saveType({
         slug: "alpha",
@@ -274,13 +280,14 @@ describe("Find a match space", () => {
     ).resolves.toEqual({ id: "created-type" });
     expect(services.ensureSpace).toHaveBeenCalledTimes(1);
     expect(services.ensureSpace).toHaveBeenCalledWith(
-      fake.db,
+      tx,
       "community-a",
-      "matching",
-      "match",
+      MATCHING_SPACE.surface,
+      MATCHING_SPACE.slug,
     );
+    expect(fake.db.insert).not.toHaveBeenCalled();
     // The space joins the menu only after the type itself is written.
-    expect(fake.db.insert.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(tx.insert.mock.invocationCallOrder[0]).toBeLessThan(
       services.ensureSpace.mock.invocationCallOrder[0]!,
     );
   });

@@ -125,7 +125,9 @@ describe("ensureOptionalBuiltinSpace", () => {
   it("puts the first space at position 0", async () => {
     const fake = fakeWriter([[], []]);
 
-    await ensureOptionalBuiltinSpace(fake.db, "comm-1", "magazine", "magazine");
+    await expect(
+      ensureOptionalBuiltinSpace(fake.db, "comm-1", "magazine", "magazine"),
+    ).resolves.toEqual({ added: true });
 
     expect(fake.values).toEqual([
       expect.objectContaining({ builtinSurface: "magazine", position: 0 }),
@@ -138,9 +140,15 @@ describe("ensureOptionalBuiltinSpace", () => {
       [],
     );
 
-    await expect(
-      ensureOptionalBuiltinSpace(fake.db, "comm-1", "matching", "match"),
-    ).rejects.toBeInstanceOf(SpaceSlugTakenError);
+    const refusal = await ensureOptionalBuiltinSpace(
+      fake.db,
+      "comm-1",
+      "matching",
+      "match",
+    ).catch((error: unknown) => error);
+
+    expect(refusal).toBeInstanceOf(SpaceSlugTakenError);
+    expect((refusal as SpaceSlugTakenError).slug).toBe("match");
   });
 
   it("returns added:false when the same surface was added during the insert", async () => {

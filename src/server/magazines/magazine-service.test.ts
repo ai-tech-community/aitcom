@@ -108,4 +108,24 @@ describe("ensureMagazineSpace", () => {
     expect(magazineErrorCodeOf(refusal)).toBe("SPACE_SLUG_TAKEN");
     expect(insert).not.toHaveBeenCalled();
   });
+
+  it("rethrows any other failure unchanged", async () => {
+    const failure = new Error("connection lost");
+    const database = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => {
+              throw failure;
+            },
+          }),
+        }),
+      }),
+      insert: vi.fn(),
+    } as unknown as Deps["db"];
+
+    await expect(ensureMagazineSpace(database, "community")).rejects.toBe(
+      failure,
+    );
+  });
 });

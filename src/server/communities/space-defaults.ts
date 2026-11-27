@@ -37,6 +37,12 @@ export const OPTIONAL_BUILTIN_SURFACES = ["magazine", "matching"] as const;
 /** A builtin surface added by a feature, never seeded. */
 export type OptionalBuiltinSurface = (typeof OPTIONAL_BUILTIN_SURFACES)[number];
 
+/** The Find a match space: added when a community's matching is turned on. */
+export const MATCHING_SPACE = {
+  surface: "matching",
+  slug: "match",
+} as const satisfies { surface: OptionalBuiltinSurface; slug: string };
+
 /** Any builtin surface a space row can point at. */
 export type BuiltinSurface =
   | DefaultBuiltinSurface

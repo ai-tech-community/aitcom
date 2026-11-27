@@ -79,7 +79,7 @@ export async function writeMissingDefaultSpaces(
       if (existing.length > 0) return false;
       await seedDefaultSpaces(tx, target.id);
       if (await communityHasMagazine(db, target.id)) {
-        await ensureMagazineSpace(tx as unknown as DB, target.id);
+        await ensureMagazineSpace(tx, target.id);
       }
       return true;
     });

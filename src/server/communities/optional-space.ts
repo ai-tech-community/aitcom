@@ -43,16 +43,18 @@ async function findSlugOwner(
 }
 
 /**
- * True when the slug is held by the surface itself; throws
- * `SpaceSlugTakenError` when anything else holds it; false when it is free.
+ * Who holds the slug, for the surface that wants it: `"free"` (no one) or
+ * `"self"` (the surface's own row). Anything else holding it is a refusal,
+ * so it throws `SpaceSlugTakenError` instead of returning.
  */
-function ownedBySurface(
+function classifySlugOwner(
   owner: SlugOwner | undefined,
   surface: OptionalBuiltinSurface,
   slug: string,
-): boolean {
-  if (!owner) return false;
-  if (owner.kind === "builtin" && owner.builtinSurface === surface) return true;
+): "free" | "self" {
+  if (!owner) return "free";
+  if (owner.kind === "builtin" && owner.builtinSurface === surface)
+    return "self";
   throw new SpaceSlugTakenError(slug);
 }
 
@@ -67,7 +69,7 @@ export async function assertOptionalBuiltinSlugFree(
   surface: OptionalBuiltinSurface,
   slug: string,
 ): Promise<void> {
-  ownedBySurface(
+  classifySlugOwner(
     await findSlugOwner(database, communityId, slug),
     surface,
     slug,
@@ -87,7 +89,8 @@ export async function ensureOptionalBuiltinSpace(
   slug: string,
 ): Promise<{ added: boolean }> {
   const owner = await findSlugOwner(database, communityId, slug);
-  if (ownedBySurface(owner, surface, slug)) return { added: false };
+  if (classifySlugOwner(owner, surface, slug) === "self")
+    return { added: false };
 
   const [last] = await database
     .select({ position: spaces.position })
@@ -111,8 +114,8 @@ export async function ensureOptionalBuiltinSpace(
   if (inserted.length > 0) return { added: true };
 
   // The slug was taken between the check and the insert: by the surface
-  // itself (another request added it) or by something else.
-  ownedBySurface(
+  // itself (another request added it) or, throwing, by something else.
+  classifySlugOwner(
     await findSlugOwner(database, communityId, slug),
     surface,
     slug,
