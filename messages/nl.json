@@ -3169,7 +3169,8 @@
       "newsAll": "Al het {sector}-nieuws",
       "newsEmpty": "Voor {sector} zijn nog geen nieuwsfeeds gekoppeld. Hier wordt niets verzonnen.",
       "newsNoStories": "Nog geen berichten uit de {sector}-feeds.",
-      "magazine": "Magazine"
+      "magazine": "Magazine",
+      "matching": "Vind een match"
     },
     "manage": {
       "settings": "Instellingen",
@@ -6378,9 +6379,12 @@
     "setupMatching": "Matching instellen",
     "optionalQuestions": "Deelname is optioneel. Beantwoord alleen de vragen die voor jou relevant zijn; onbeantwoorde vragen worden niet gebruikt voor automatische matches. Je kunt je antwoorden aanpassen of je deelname op elk moment stoppen.",
     "title": "Mensen",
-    "description": "Ontdek de mensen in je community en help waardevolle contacten ontstaan.",
-    "navigation": "Mensen",
-    "peopleTab": "Ledenlijst",
+    "description": "Zie wie er in je community zit en leer ze kennen.",
+    "findTitle": "Vind een match",
+    "findDescription": "Vertel waarover je contact wilt leggen. Je organisatoren gebruiken het om je aan de juiste mensen voor te stellen.",
+    "joinToMatch": "Word lid om een match te vinden",
+    "joinToMatchDescription": "Alleen leden van deze community kunnen matching gebruiken.",
+    "joinToMatchPending": "Je hebt gevraagd om lid te worden. Zodra een organisator ja zegt, kun je hier een match vinden.",
     "matchesTab": "Matches",
     "profileTab": "Mijn matchprofiel",
     "introductionsTab": "Introducties",
@@ -6441,6 +6445,7 @@
     "typeSaved": "Verbindingstype opgeslagen",
     "invalidType": "Voeg een naam, een vraag voor elke kant en 1–30 onderwerpen toe.",
     "typeLimit": "Deze community heeft al 20 actieve verbindingstypen. Archiveer er een voordat je een nieuwe toevoegt.",
+    "spaceSlugTaken": "Een ruimte gebruikt het adres “match” al, dus Vind een match kan niet aan het menu worden toegevoegd. Neem contact op met support, dan lossen we het op.",
     "archived": "Gearchiveerd",
     "archive": "Archiveren",
     "restore": "Herstellen",
