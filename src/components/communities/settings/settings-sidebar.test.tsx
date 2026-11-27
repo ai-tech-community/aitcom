@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/components/magazines/test-intl";
@@ -28,6 +28,23 @@ describe("SettingsSidebar", () => {
           "href",
           "/communities/night-owls/settings/matching",
         );
+    },
+  );
+  it.each(["owner", "admin"] as const)(
+    "lists Themes right after General for the %s",
+    (memberRole) => {
+      renderWithIntl(
+        <SettingsSidebar slug="night-owls" memberRole={memberRole} />,
+      );
+      for (const nav of screen.getAllByRole("navigation")) {
+        const links = within(nav).getAllByRole("link");
+        const names = links.map((link) => link.textContent);
+        expect(names.slice(0, 2)).toEqual(["General", "Themes"]);
+        expect(links[1]).toHaveAttribute(
+          "href",
+          "/communities/night-owls/settings/themes",
+        );
+      }
     },
   );
   it("opens the magazine settings directly from both navigation layouts", () => {

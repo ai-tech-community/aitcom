@@ -3241,6 +3241,7 @@
       "sidebar": {
         "newsSources": "Nieuwsbronnen",
         "general": "Algemeen",
+        "themes": "Thema's",
         "members": "Leden",
         "matching": "Matching",
         "invites": "Uitnodigingen",
@@ -3405,6 +3406,16 @@
           "lastSync": "Laatst gesynchroniseerd",
           "never": "nooit"
         }
+      },
+      "themes": {
+        "title": "Thema's",
+        "intro": "Kies hoe je community eruitziet. Leden en bezoekers zien het op elke pagina.",
+        "current": "Huidig",
+        "previewing": "Voorbeeld: {name}",
+        "save": "Thema opslaan",
+        "cancel": "Annuleren",
+        "saved": "Thema opgeslagen.",
+        "error": "Het thema kon niet worden opgeslagen. Probeer het opnieuw."
       }
     },
     "invite": {

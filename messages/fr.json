@@ -3241,6 +3241,7 @@
       "sidebar": {
         "newsSources": "Sources d’actualités",
         "general": "Général",
+        "themes": "Thèmes",
         "members": "Membres",
         "matching": "Mise en relation",
         "invites": "Invitations",
@@ -3405,6 +3406,16 @@
           "lastSync": "Dernière synchronisation",
           "never": "jamais"
         }
+      },
+      "themes": {
+        "title": "Thèmes",
+        "intro": "Choisissez l’apparence de votre communauté. Les membres et les visiteurs la voient sur chaque page.",
+        "current": "Actuel",
+        "previewing": "Aperçu : {name}",
+        "save": "Enregistrer le thème",
+        "cancel": "Annuler",
+        "saved": "Thème enregistré.",
+        "error": "Le thème n’a pas pu être enregistré. Réessayez."
       }
     },
     "invite": {
