@@ -14,6 +14,7 @@ const m = vi.hoisted(() => ({
   session: null as { user: { id: string } } | null,
   memberships: {} as Record<string, unknown>,
   setup: {} as Record<string, unknown>,
+  setupQuery: vi.fn(),
   suggestions: {} as Record<string, unknown>,
   directory: {} as Record<string, unknown>,
   saveProfile: vi.fn(),
@@ -67,7 +68,12 @@ vi.mock("@/trpc/react", () => ({
       getMembers: { useInfiniteQuery: () => m.directory },
     },
     communityMatching: {
-      setup: { useQuery: () => m.setup },
+      setup: {
+        useQuery: (...args: unknown[]) => {
+          m.setupQuery(...args);
+          return m.setup;
+        },
+      },
       suggestions: { useQuery: () => m.suggestions },
       saveProfile: {
         useMutation: () => ({ mutate: m.saveProfile, isPending: m.pending }),
@@ -102,6 +108,7 @@ vi.mock("@/trpc/react", () => ({
 }));
 
 import { CommunityMembersHub } from "./members-hub";
+import { FindAMatch } from "./find-a-match";
 import { MatchingProfileForm } from "./profile-form";
 import { ConnectionTypeEditor } from "./type-editor";
 import { CommunityMatches } from "./matches";
@@ -118,12 +125,12 @@ const type: ConnectionType = {
   promptB: "",
   topics: ["Cycling", "Hiking"],
 };
-const PEOPLE_PATH = "/en/communities/alpha/members";
+const MATCH_PATH = "/en/communities/alpha/match";
 function setUrl(search: string) {
   window.history.replaceState(
     null,
     "",
-    search ? `${PEOPLE_PATH}?${search}` : PEOPLE_PATH,
+    search ? `${MATCH_PATH}?${search}` : MATCH_PATH,
   );
 }
 // Next syncs history.replaceState into useSearchParams; the mock does too.
@@ -207,7 +214,7 @@ beforeEach(() => {
 
 describe("member matching interface", () => {
   it("shows matching controls to owners", () => {
-    show(<CommunityMembersHub slug="alpha" />);
+    show(<FindAMatch slug="alpha" />);
     expect(screen.getByRole("tab", { name: "Matches" })).toBeInTheDocument();
     expect(
       screen.queryByRole("tab", { name: "Connection types" }),
@@ -266,71 +273,118 @@ describe("member matching interface", () => {
       screen.queryByRole("link", { name: "Set up matching" }),
     ).not.toBeInTheDocument();
   });
-  it("gives regular members a profile without owner controls", () => {
+  it("shows People as the member directory, without tabs", () => {
+    show(<CommunityMembersHub slug="alpha" />);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "People" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Naomi")).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(m.setupQuery).not.toHaveBeenCalled();
+  });
+  it("shows the directory to guests and inactive members too", () => {
+    m.session = null;
+    const { unmount } = show(<CommunityMembersHub slug="alpha" />);
+    expect(screen.getByText("Naomi")).toBeInTheDocument();
+    unmount();
+    m.session = { user: { id: "me" } };
+    m.memberships = { data: [{ slug: "alpha", status: "banned" }] };
+    show(<CommunityMembersHub slug="alpha" />);
+    expect(screen.getByText("Naomi")).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  });
+  it("gives owners Matches, My matching profile and Introductions, opening on Matches", () => {
+    show(<FindAMatch slug="alpha" />);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Find a match" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Matches",
+      "My matching profile",
+      "Introductions",
+    ]);
+    expect(screen.getByRole("tab", { name: "Matches" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.queryByRole("tab", { name: "Directory" }),
+    ).not.toBeInTheDocument();
+  });
+  it("gives regular members their profile, with no tab strip", () => {
     m.setup = {
       data: { types: [type], profile: emptyMatchingProfile, canManage: false },
     };
-    show(<CommunityMembersHub slug="alpha" />);
+    show(<FindAMatch slug="alpha" />);
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("tab", { name: "My matching profile" }),
+      screen.getByRole("checkbox", { name: /I’m open to introductions/ }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("tab", { name: "Matches" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("tab", { name: "Connection types" }),
+      screen.queryByRole("button", { name: "Review introduction" }),
     ).not.toBeInTheDocument();
   });
   it("opens the tab the link names", () => {
     setUrl("tab=profile");
-    show(<CommunityMembersHub slug="alpha" />);
+    show(<FindAMatch slug="alpha" />);
     expect(
       screen.getByRole("tab", { name: "My matching profile" }),
     ).toHaveAttribute("aria-selected", "true");
   });
-  it("opens the directory when a member follows a link to an organizer tab", () => {
+  it("opens the profile when a member follows a link to an organizer tab", () => {
     m.setup = {
       data: { types: [type], profile: emptyMatchingProfile, canManage: false },
     };
     setUrl("tab=matches");
-    show(<CommunityMembersHub slug="alpha" />);
-    expect(screen.getByRole("tab", { name: "Directory" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    show(<FindAMatch slug="alpha" />);
+    expect(
+      screen.getByRole("checkbox", { name: /I’m open to introductions/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Review introduction" }),
+    ).not.toBeInTheDocument();
   });
   it("puts the chosen tab in the URL without adding history entries", () => {
     setUrl("ref=mail");
     replaceState.mockClear();
-    show(<CommunityMembersHub slug="alpha" />);
+    show(<FindAMatch slug="alpha" />);
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Introductions" }));
     expect(replaceState).toHaveBeenLastCalledWith(
       null,
       "",
-      `${PEOPLE_PATH}?ref=mail&tab=introductions`,
+      `${MATCH_PATH}?ref=mail&tab=introductions`,
     );
     expect(screen.getByRole("tab", { name: "Introductions" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Directory" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Matches" }));
     expect(replaceState).toHaveBeenLastCalledWith(
       null,
       "",
-      `${PEOPLE_PATH}?ref=mail`,
+      `${MATCH_PATH}?ref=mail`,
     );
     expect(pushState).not.toHaveBeenCalled();
   });
-  it("keeps guests and inactive members in the directory, including stale signed-in cache", () => {
+  it("asks guests to join, including a stale signed-in cache, without loading matching", () => {
     m.session = null;
-    show(<CommunityMembersHub slug="alpha" />);
-    expect(screen.getByText("Naomi")).toBeInTheDocument();
+    show(<FindAMatch slug="alpha" />);
+    expect(screen.getByText("Join to find a match")).toBeInTheDocument();
+    expect(
+      screen.getByText("Only members of this community can use matching."),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(m.setupQuery).not.toHaveBeenCalled();
   });
-  it("does not offer profiles to inactive memberships", () => {
-    m.memberships = { data: [{ slug: "alpha", status: "banned" }] };
-    show(<CommunityMembersHub slug="alpha" />);
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  it("asks pending and inactive memberships to join, without loading matching", () => {
+    for (const status of ["pending", "banned"]) {
+      m.memberships = { data: [{ slug: "alpha", status }] };
+      const { unmount } = show(<FindAMatch slug="alpha" />);
+      expect(screen.getByText("Join to find a match")).toBeInTheDocument();
+      expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      unmount();
+    }
+    expect(m.setupQuery).not.toHaveBeenCalled();
   });
   it("saves explicit opt-in and community answers, and can opt back out", () => {
     show(

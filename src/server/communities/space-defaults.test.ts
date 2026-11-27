@@ -128,9 +128,6 @@ describe("resolveSpaceLabel", () => {
     expect(en.communities.profile.members).toBe("People");
     expect(nl.communities.profile.members).toBe("Mensen");
     expect(fr.communities.profile.members).toBe("Personnes");
-    expect(en.communityMatching.navigation).toBe("People");
-    expect(nl.communityMatching.navigation).toBe("Mensen");
-    expect(fr.communityMatching.navigation).toBe("Personnes");
   });
 
   it("keeps an owner's own name for the members tab", () => {
