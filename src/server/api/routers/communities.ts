@@ -62,6 +62,12 @@ import {
   readCommunityNewsSector,
   writeCommunityNewsSector,
 } from "@/server/news/sectors";
+import { COMMUNITY_THEME_IDS } from "@/lib/communities/themes";
+import {
+  isMissingCommunityThemeSchema,
+  readCommunityThemeId,
+  writeCommunityThemeId,
+} from "@/server/communities/theme-store";
 import {
   DIRECTORY_SORTS,
   DIRECTORY_WANTS,
@@ -333,6 +339,8 @@ export const communitiesRouter = createTRPCRouter({
       return {
         ...community,
         newsSector: await readCommunityNewsSector(ctx.db, community.id),
+        // The look is part of who the community is, so every viewer gets it.
+        themeId: await readCommunityThemeId(ctx.db, community.id),
         viewerCanReadContent: access.content,
         viewerMembershipStatus,
         ...counts,
@@ -1139,6 +1147,50 @@ export const communitiesRouter = createTRPCRouter({
       invalidateSquareRooms();
 
       return updated!;
+    }),
+
+  /**
+   * Pick the community's look (owner/admin). The look is not shown in the
+   * directory or the square, so neither cache needs a refresh.
+   */
+  setTheme: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        themeId: z.enum(COMMUNITY_THEME_IDS),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      try {
+        await writeCommunityThemeId(
+          ctx.db,
+          ctx.community.id,
+          input.themeId,
+          ctx.session.user.id,
+        );
+      } catch (error) {
+        if (!isMissingCommunityThemeSchema(error)) throw error;
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Themes are not available until the database migration runs.",
+        });
+      }
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.theme_updated",
+        targetType: "community",
+        targetId: ctx.community.id,
+        metadata: { themeId: input.themeId },
+      });
+
+      return { themeId: input.themeId };
     }),
 
   /** Set the agent autonomy level for this community (admin+) */
