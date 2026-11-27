@@ -96,10 +96,17 @@ export function oklchOf(hex: string): { l: number; c: number; h: number } {
   return { l: L, c, h };
 }
 
+/**
+ * The orange band on OKLCH values: hue 30–65 inclusive, chroma above 0.08.
+ * Split out so the band's exact edges can be tested; no hex sits on them.
+ */
+export function isOrangeBandOklch({ c, h }: { c: number; h: number }): boolean {
+  return h >= ORANGE_HUE_MIN && h <= ORANGE_HUE_MAX && c > ORANGE_CHROMA_MIN;
+}
+
 /** True when the color would read as a second orange next to Signal Orange. */
 export function isInOrangeBand(hex: string): boolean {
-  const { c, h } = oklchOf(hex);
-  return h >= ORANGE_HUE_MIN && h <= ORANGE_HUE_MAX && c > ORANGE_CHROMA_MIN;
+  return isOrangeBandOklch(oklchOf(hex));
 }
 
 /** True when the color is a near-white warm neutral (No-Cream Rule). */

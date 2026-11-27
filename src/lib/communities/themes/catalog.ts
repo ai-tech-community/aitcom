@@ -27,6 +27,19 @@ const PLAIN: CommunityTheme = {
   headingFont: null,
 };
 
+/**
+ * The house status colors (`:root` in globals.css) fall just under 4.5:1 on
+ * a tinted canvas and on their own 10% tint over it. The tinted light looks
+ * take these: the same hues, deeper. Orange band and cream band stay clear
+ * (destructive keeps hue 27, below the band).
+ */
+const DEEP_STATUS = {
+  success: "#067132", // oklch(0.48 0.13 150)
+  warning: "#7D5E07", // oklch(0.5 0.1 85)
+  info: "#02629C", // oklch(0.48 0.12 245)
+  destructive: "#B7191C", // oklch(0.5 0.19 27)
+} as const;
+
 const CANAL_DOT = "#C9E5F3"; // oklch(0.905 0.035 230)
 
 const CANAL_COVER_PALETTE = {
@@ -52,6 +65,7 @@ const CANAL: CommunityTheme = {
     mutedForeground: "#4C5D6A", // oklch(0.47 0.03 240)
     border: "#C1D8E4", // oklch(0.87 0.03 230)
     input: "#C1D8E4",
+    ...DEEP_STATUS,
   },
   // A quiet dot grid, like light on water.
   canvasPattern: {
@@ -87,6 +101,7 @@ const MEADOW: CommunityTheme = {
     mutedForeground: "#4F6052", // oklch(0.47 0.03 150)
     border: "#C7DBC6", // oklch(0.87 0.035 145)
     input: "#C7DBC6",
+    ...DEEP_STATUS,
   },
   canvasPattern: null,
   // Rolling hills under a clear sky, a small sun and a cloud. The name sits
@@ -104,7 +119,7 @@ const SUNSET_SKY_LOW = "#FEEEF8"; // oklch(0.965 0.022 340): soft pink
 
 const SUNSET_COVER_PALETTE = {
   skyTop: "#F8D1E6", // oklch(0.9 0.05 345): pink
-  skyBottom: "#FFDFD2", // oklch(0.93 0.045 40): peach, chroma under 0.08
+  skyBottom: "#FFDFD2", // oklch(0.927 0.04 43): peach, chroma under 0.08
   rayLight: "#FFE6D1", // oklch(0.94 0.04 62)
   rayRose: "#F9C5C8", // oklch(0.87 0.06 15)
   sun: "#FFEEB9", // oklch(0.95 0.07 92): pale gold
@@ -115,14 +130,16 @@ const SUNSET: CommunityTheme = {
   id: "sunset",
   scheme: "light",
   tokens: {
-    background: "#FFEBEE", // oklch(0.96 0.025 10): between the two sky stops
+    background: "#FFEBEE", // oklch(0.957 0.022 7): between the two sky stops
     foreground: "#1E1214", // oklch(0.2 0.02 10)
     mutedForeground: "#6A5457", // oklch(0.47 0.03 10)
     border: "#E7CDCE", // oklch(0.87 0.03 15)
     input: "#E7CDCE",
+    ...DEEP_STATUS,
   },
-  // The canvas is a sky: rose at the top fading to pink. Both stops sit below
-  // hue 30, so the canvas never reads as cream or beige (`isInCreamBand`).
+  // The canvas is a sky: rose at the top fading to pink. Both stops sit
+  // outside hue 30–100 (21 and 340), so the canvas never reads as cream or
+  // beige (`isInCreamBand`).
   canvasPattern: {
     image: `linear-gradient(180deg, ${SUNSET_SKY_HIGH}, ${SUNSET_SKY_LOW})`,
     size: "100% 100%",
@@ -142,6 +159,9 @@ const SUNSET: CommunityTheme = {
 const NIGHT_STAR = "#33364D"; // oklch(0.34 0.04 278)
 const NIGHT_STAR_FAINT = "#2B2E44"; // oklch(0.31 0.04 278): a fainter second layer
 
+/** Night's quiet fill: between the canvas and the borders. */
+const NIGHT_FILL = "#292E4A"; // oklch(0.31 0.05 275)
+
 const NIGHT_COVER_PALETTE = {
   skyTop: "#272755", // oklch(0.3 0.08 280)
   skyBottom: "#453065", // oklch(0.36 0.09 300)
@@ -155,7 +175,9 @@ const NIGHT: CommunityTheme = {
   scheme: "dark",
   // Starts from `.dark` (foreground, muted foreground) on an indigo canvas,
   // with dark indigo cards. Borders are opaque here: `.dark` uses white at
-  // 10–15% alpha, which a test cannot measure.
+  // 10–15% alpha, which a test cannot measure. Quiet fills (muted,
+  // secondary, accent) are indigo too, so no gray `.dark` patch shows.
+  // `.dark`'s destructive red is 4.1:1 on a star; this one is lighter.
   tokens: {
     background: "#181D37", // oklch(0.24 0.05 275): deep indigo
     foreground: "#FAFAFA", // oklch(0.985 0 0)
@@ -164,6 +186,12 @@ const NIGHT: CommunityTheme = {
     input: "#454B69", // oklch(0.42 0.05 275)
     card: "#131521", // oklch(0.2 0.025 275)
     cardForeground: "#FAFAFA",
+    muted: NIGHT_FILL,
+    secondary: NIGHT_FILL,
+    secondaryForeground: "#FAFAFA",
+    accent: NIGHT_FILL,
+    accentForeground: "#FAFAFA",
+    destructive: "#FF7D7C", // oklch(0.74 0.16 22)
   },
   // Two offset layers of faint stars.
   canvasPattern: {

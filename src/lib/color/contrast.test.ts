@@ -4,6 +4,7 @@ import {
   contrastRatio,
   isInCreamBand,
   isInOrangeBand,
+  isOrangeBandOklch,
   normalizeHexColor,
   oklchOf,
 } from "./contrast";
@@ -49,6 +50,12 @@ describe("isInOrangeBand", () => {
     expect(isInOrangeBand("#F54A00")).toBe(true);
   });
 
+  it("flags #FF6900, the token the theme tests measure", () => {
+    // `--primary`, oklch(0.705 0.213 47.604), clipped to sRGB: the hex
+    // catalog.test.ts uses as Signal Orange.
+    expect(isInOrangeBand("#FF6900")).toBe(true);
+  });
+
   it("lets a soft, low-chroma peach through", () => {
     expect(isInOrangeBand("#F4E6DC")).toBe(false);
   });
@@ -59,6 +66,28 @@ describe("isInOrangeBand", () => {
 
   it("lets a blue through", () => {
     expect(isInOrangeBand("#2E5E8C")).toBe(false);
+  });
+});
+
+describe("isOrangeBandOklch (the band's edges)", () => {
+  // No hex lands exactly on an edge, so the edges are pinned on the OKLCH
+  // values that isInOrangeBand reads from a hex.
+  it("includes both hue edges, 30 and 65", () => {
+    expect(isOrangeBandOklch({ c: 0.2, h: 30 })).toBe(true);
+    expect(isOrangeBandOklch({ c: 0.2, h: 65 })).toBe(true);
+    expect(isOrangeBandOklch({ c: 0.2, h: 29.99 })).toBe(false);
+    expect(isOrangeBandOklch({ c: 0.2, h: 65.01 })).toBe(false);
+  });
+
+  it("excludes chroma 0.08 itself, and takes anything above it", () => {
+    expect(isOrangeBandOklch({ c: 0.08, h: 47 })).toBe(false);
+    expect(isOrangeBandOklch({ c: 0.0801, h: 47 })).toBe(true);
+  });
+
+  it("is what isInOrangeBand applies to a hex", () => {
+    for (const hex of ["#FF6900", "#F4E6DC", "#B23A2E", "#2E5E8C"]) {
+      expect(isInOrangeBand(hex), hex).toBe(isOrangeBandOklch(oklchOf(hex)));
+    }
   });
 });
 

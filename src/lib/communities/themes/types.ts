@@ -31,6 +31,26 @@ export type CommunityThemeTokens = {
   card?: string;
   /** `--card-foreground`. */
   cardForeground?: string;
+  /** `--muted`: quiet fills. Text on it is `foreground` or `mutedForeground`. */
+  muted?: string;
+  /** `--secondary`: the active tab's fill and secondary buttons. */
+  secondary?: string;
+  /** `--secondary-foreground`. Set together with `secondary`. */
+  secondaryForeground?: string;
+  /** `--accent`: hover fills in lists and menus. */
+  accent?: string;
+  /** `--accent-foreground`. Set together with `accent`. */
+  accentForeground?: string;
+  /**
+   * `--success`, `--warning`, `--info`, `--destructive`: status text and
+   * its 10% tint. A look sets one only where the house value falls below
+   * 4.5:1 on its canvas, cards, pattern or tint; it is the same status,
+   * a little deeper (or lighter on a dark look), never a new hue.
+   */
+  success?: string;
+  warning?: string;
+  info?: string;
+  destructive?: string;
 };
 
 /** A CSS `background-image` layered on the canvas. */
