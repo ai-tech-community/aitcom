@@ -1,9 +1,10 @@
 // @vitest-environment node
 /**
  * DB-INTEGRATION test for the community look store (`app.community_theme`).
- * Proves, against a REAL local DB, that a look is written, overwritten, and
- * removed again by picking Plain, and that deleting the community removes
- * its row through the foreign key.
+ * Proves, against a REAL local DB, that a look is written, overwritten (with
+ * a fresh `updated_at`), and removed again by picking Plain; that deleting
+ * the community removes its row through the foreign key; and that deleting
+ * the user who chose it keeps the look and clears `updated_by`.
  *
  * Auto-skips unless RUN_DB_TESTS=1 and a local database is configured:
  *
@@ -13,7 +14,7 @@
  *     pnpm exec vitest run src/server/communities/theme-store.integration.test.ts
  */
 
-import type { eq as drizzleEq } from "drizzle-orm";
+import type { eq as drizzleEq, sql as drizzleSql } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type * as ThemeStore from "@/server/communities/theme-store";
@@ -38,11 +39,13 @@ describe.skipIf(!RUN_DB)("community theme store [DB integration]", () => {
     db: typeof appDb;
     schema: typeof Schema;
     eq: typeof drizzleEq;
+    sql: typeof drizzleSql;
     store: typeof ThemeStore;
   };
   let m: Mods;
   let userId: string;
-  let communityId: string;
+  let editorId: string | undefined;
+  let communityId: string | undefined;
 
   beforeAll(async () => {
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
@@ -54,11 +57,15 @@ describe.skipIf(!RUN_DB)("community theme store [DB integration]", () => {
       import("drizzle-orm"),
       import("@/server/communities/theme-store"),
     ]);
-    m = { db, schema, eq: drizzle.eq, store };
+    m = { db, schema, eq: drizzle.eq, sql: drizzle.sql, store };
   });
 
   beforeEach(async () => {
     const { db, schema } = m;
+    // Reset first: if an insert below fails, afterEach must not delete the
+    // previous test's rows (or a stranger's) by a stale id.
+    communityId = undefined;
+    editorId = undefined;
     const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
     userId = `it-theme-owner-${suffix}`;
     await db
@@ -77,55 +84,94 @@ describe.skipIf(!RUN_DB)("community theme store [DB integration]", () => {
 
   afterEach(async () => {
     const { db, schema, eq } = m;
-    await db
-      .delete(schema.communities)
-      .where(eq(schema.communities.id, communityId));
+    if (communityId) {
+      await db
+        .delete(schema.communities)
+        .where(eq(schema.communities.id, communityId));
+    }
+    if (editorId) {
+      await db.delete(schema.user).where(eq(schema.user.id, editorId));
+    }
     await db.delete(schema.user).where(eq(schema.user.id, userId));
   });
+
+  function community(): string {
+    if (!communityId) throw new Error("beforeEach made no community");
+    return communityId;
+  }
 
   async function storedRows() {
     const { db, schema, eq } = m;
     return db
       .select()
       .from(schema.communityThemes)
-      .where(eq(schema.communityThemes.communityId, communityId));
+      .where(eq(schema.communityThemes.communityId, community()));
   }
 
   it("writes, overwrites and clears a look", async () => {
-    const { db, store } = m;
-    await expect(store.readCommunityThemeId(db, communityId)).resolves.toBe(
-      "plain",
-    );
+    const { db, schema, eq, sql, store } = m;
+    const id = community();
+    await expect(store.readCommunityThemeId(db, id)).resolves.toBe("plain");
 
-    await store.writeCommunityThemeId(db, communityId, "canal", userId);
-    await expect(store.readCommunityThemeId(db, communityId)).resolves.toBe(
-      "canal",
-    );
+    await store.writeCommunityThemeId(db, id, "canal", userId);
+    await expect(store.readCommunityThemeId(db, id)).resolves.toBe("canal");
 
-    await store.writeCommunityThemeId(db, communityId, "night", userId);
-    await expect(store.readCommunityThemeId(db, communityId)).resolves.toBe(
-      "night",
-    );
+    // Back-date the first write, so the overwrite's now() is surely later.
+    await db
+      .update(schema.communityThemes)
+      .set({ updatedAt: sql`now() - interval '1 hour'` })
+      .where(eq(schema.communityThemes.communityId, id));
+    const [before] = await storedRows();
+
+    await store.writeCommunityThemeId(db, id, "night", userId);
+    await expect(store.readCommunityThemeId(db, id)).resolves.toBe("night");
     const rows = await storedRows();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ themeId: "night", updatedBy: userId });
-
-    await store.writeCommunityThemeId(db, communityId, "plain", userId);
-    await expect(storedRows()).resolves.toEqual([]);
-    await expect(store.readCommunityThemeId(db, communityId)).resolves.toBe(
-      "plain",
+    expect(rows[0]!.updatedAt.getTime()).toBeGreaterThan(
+      before!.updatedAt.getTime(),
     );
+
+    await store.writeCommunityThemeId(db, id, "plain", userId);
+    await expect(storedRows()).resolves.toEqual([]);
+    await expect(store.readCommunityThemeId(db, id)).resolves.toBe("plain");
   });
 
   it("drops the row when the community is deleted", async () => {
     const { db, schema, eq, store } = m;
-    await store.writeCommunityThemeId(db, communityId, "meadow", userId);
+    const id = community();
+    await store.writeCommunityThemeId(db, id, "meadow", userId);
     await expect(storedRows()).resolves.toHaveLength(1);
 
-    await db
-      .delete(schema.communities)
-      .where(eq(schema.communities.id, communityId));
+    await db.delete(schema.communities).where(eq(schema.communities.id, id));
 
     await expect(storedRows()).resolves.toEqual([]);
+  });
+
+  it("keeps the look and forgets who chose it when that user is deleted", async () => {
+    const { db, schema, eq, store } = m;
+    const id = community();
+    // An admin other than the creator, so deleting them leaves the
+    // community in place.
+    editorId = `${userId}-editor`;
+    await db
+      .insert(schema.user)
+      .values({
+        id: editorId,
+        email: `${editorId}@example.test`,
+        name: editorId,
+      });
+    await store.writeCommunityThemeId(db, id, "sunset", editorId);
+    await expect(storedRows()).resolves.toMatchObject([
+      { themeId: "sunset", updatedBy: editorId },
+    ]);
+
+    await db.delete(schema.user).where(eq(schema.user.id, editorId));
+    editorId = undefined;
+
+    await expect(storedRows()).resolves.toMatchObject([
+      { themeId: "sunset", updatedBy: null },
+    ]);
+    await expect(store.readCommunityThemeId(db, id)).resolves.toBe("sunset");
   });
 });

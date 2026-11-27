@@ -336,11 +336,16 @@ export const communitiesRouter = createTRPCRouter({
         ? await loadPublicLiveness(ctx.db, community.id, new Date())
         : { activeContributors: 0, recentThreads: 0 };
 
+      // The look is part of who the community is, so every viewer gets it.
+      const [newsSector, themeId] = await Promise.all([
+        readCommunityNewsSector(ctx.db, community.id),
+        readCommunityThemeId(ctx.db, community.id),
+      ]);
+
       return {
         ...community,
-        newsSector: await readCommunityNewsSector(ctx.db, community.id),
-        // The look is part of who the community is, so every viewer gets it.
-        themeId: await readCommunityThemeId(ctx.db, community.id),
+        newsSector,
+        themeId,
         viewerCanReadContent: access.content,
         viewerMembershipStatus,
         ...counts,

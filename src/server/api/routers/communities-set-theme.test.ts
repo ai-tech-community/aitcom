@@ -104,6 +104,7 @@ describe("communities.setTheme", () => {
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(fake.writeTheme).not.toHaveBeenCalled();
+    expect(fake.logActivity).not.toHaveBeenCalled();
   });
 
   it("says themes wait for the migration when the table is missing", async () => {
