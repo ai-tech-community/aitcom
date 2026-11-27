@@ -73,7 +73,7 @@ export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
           </div>
           {t.artifactUrl && (
             <a
-              className="text-sm text-blue-600"
+              className="text-foreground text-sm underline underline-offset-4"
               href={t.artifactUrl}
               target="_blank"
               rel="noreferrer"

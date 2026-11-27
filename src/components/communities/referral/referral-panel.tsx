@@ -151,7 +151,10 @@ export function ReferralPanel({ slug }: { slug: string }) {
           className="p-6 sm:p-8"
           aria-labelledby="referral-compose-title"
         >
-          <h2 id="referral-compose-title" className="text-lg font-semibold">
+          <h2
+            id="referral-compose-title"
+            className="font-community-heading text-lg font-semibold"
+          >
             {t("emailTitle")}
           </h2>
           <p className="text-muted-foreground mt-2 text-sm">
@@ -398,7 +401,10 @@ export function ReferralPanel({ slug }: { slug: string }) {
         className="border-t pt-6"
         aria-labelledby="referral-progress-title"
       >
-        <h2 id="referral-progress-title" className="text-base font-semibold">
+        <h2
+          id="referral-progress-title"
+          className="font-community-heading text-base font-semibold"
+        >
           {t("progressTitle")}
         </h2>
         {data.sent +

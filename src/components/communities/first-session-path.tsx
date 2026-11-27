@@ -21,7 +21,7 @@ export function FirstSessionPathCard({
     <aside className="border-border bg-card space-y-3 rounded-lg border p-4">
       <SectionLabel bordered={false}>{t("kicker")}</SectionLabel>
       <div className="space-y-2">
-        <h2 className="font-community-heading text-lg font-semibold tracking-tight">
+        <h2 className="text-lg font-semibold tracking-tight">
           {t("youreIn", { name: communityName })}
         </h2>
         <p className="text-sm">{t("line")}</p>

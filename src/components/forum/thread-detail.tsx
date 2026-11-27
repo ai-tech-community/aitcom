@@ -177,7 +177,7 @@ export function ThreadDetail({
       <div className="mt-6">
         <h1 className="text-foreground text-2xl font-semibold tracking-tight">
           {thread.isPinned && (
-            <span className="mr-1.5 font-mono text-xs font-semibold text-orange-600">
+            <span className="text-primary mr-1.5 font-mono text-xs font-semibold">
               {t("pinned").toUpperCase()}
             </span>
           )}

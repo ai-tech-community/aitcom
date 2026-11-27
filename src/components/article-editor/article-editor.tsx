@@ -819,7 +819,7 @@ export function ArticleEditor({
       {/* Toast messages */}
       {message && (
         <div
-          className={`mb-6 rounded border px-4 py-2 text-sm ${message.type === "success" ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
+          className={`mb-6 rounded border px-4 py-2 text-sm ${message.type === "success" ? "border-success/30 bg-success/10 text-success" : "border-destructive/30 bg-destructive/10 text-destructive"}`}
         >
           {message.text}
         </div>
@@ -929,7 +929,7 @@ export function ArticleEditor({
             {t("insertImageConfirm")}
           </button>
           {imageUrlError && (
-            <p className="w-full text-xs text-red-400">
+            <p className="text-destructive w-full text-xs">
               {t("imageUrlInvalid")}
             </p>
           )}

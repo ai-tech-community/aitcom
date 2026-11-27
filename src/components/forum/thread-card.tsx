@@ -69,9 +69,7 @@ export function ThreadCard({
           <div className="flex items-start justify-between gap-2">
             <p className="text-foreground text-sm leading-snug font-medium">
               {thread.isPinned && (
-                <span className="mr-1 font-mono text-xs text-orange-600">
-                  PIN
-                </span>
+                <span className="text-primary mr-1 font-mono text-xs">PIN</span>
               )}
               {thread.title}
             </p>
