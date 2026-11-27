@@ -67,8 +67,8 @@ export async function discoverFeed(raw: string, read = readDocument) {
       )
         continue;
       const href = publicFeedUrl(link.attr("href")!, base);
-      const title = link.attr("title")?.trim();
-      if (href) choices.set(href, title ? title : href);
+      const title = (link.attr("title") ?? "").trim();
+      if (href) choices.set(href, title.length > 0 ? title : href);
     }
     if (!choices.size) throw new Error();
     return {
