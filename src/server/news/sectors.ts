@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql, type SQL } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 import {
   DEFAULT_NEWS_SECTOR,
@@ -7,7 +7,7 @@ import {
   parseNewsSector,
   type NewsSector,
 } from "@/lib/news/sectors";
-import { communities } from "@/server/db/schema";
+import { findReadableCommunityBySlug } from "@/server/communities/content-visibility-queries";
 import { NEWS_FEEDS } from "@/server/news/feeds";
 
 /** One cron pass. A larger table finishes over later runs. */
@@ -32,6 +32,7 @@ export type CommunityNewsStory = {
 export type CommunityNewsView = {
   sector: NewsSector;
   hasRealFeeds: boolean;
+  selectedSources?: boolean;
   stories: CommunityNewsStory[];
 };
 
@@ -361,6 +362,28 @@ export async function listCommunityNews(
   limit = 5,
 ): Promise<CommunityNewsView> {
   const sector = await readCommunityNewsSector(database, communityId);
+  const selected = await database.execute(sql`
+    SELECT 1 FROM app.community_news_feed WHERE community_id = ${communityId} LIMIT 1
+  `);
+  if (asRows(selected).length) {
+    const result = await database.execute(sql`
+      SELECT i.id, i.url, i.title, i.published_at FROM app.news_item i
+      WHERE i.url LIKE 'https://%' AND btrim(i.title) <> '' AND EXISTS (
+        SELECT 1 FROM app.community_news_feed c
+        JOIN app.news_feed f ON f.id = c.feed_id AND f.enabled
+        JOIN app.news_feed_item origin ON origin.feed_id = f.id
+        WHERE c.community_id = ${communityId} AND origin.item_id = i.id
+      )
+      ORDER BY i.published_at DESC NULLS LAST, i.created_at DESC, i.id
+      LIMIT ${batchSize(limit)}
+    `);
+    return {
+      sector,
+      hasRealFeeds: true,
+      selectedSources: true,
+      stories: mapStories(result),
+    };
+  }
   const feeds = await sectorsWithRealFeeds(database);
   const hasRealFeeds = feeds.has(sector);
   if (!hasRealFeeds) return { sector, hasRealFeeds: false, stories: [] };
@@ -389,12 +412,10 @@ export async function listCommunityNews(
 
 export async function listCommunityNewsBySlug(
   slug: string,
+  userId?: string,
 ): Promise<CommunityNewsView> {
   const { db } = await import("@/server/db");
-  const community = await db.query.communities.findFirst({
-    where: and(eq(communities.slug, slug), isNull(communities.deletedAt)),
-    columns: { id: true },
-  });
+  const community = await findReadableCommunityBySlug(db, slug, userId);
   if (!community) {
     return { sector: DEFAULT_NEWS_SECTOR, hasRealFeeds: false, stories: [] };
   }

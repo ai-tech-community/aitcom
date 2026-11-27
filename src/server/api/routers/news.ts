@@ -73,10 +73,15 @@ const storylineStaffProcedure = protectedProcedure.use(
   },
 );
 
+import { communitySourcesRouter } from "./community-news-sources";
+
 export const newsRouter = createTRPCRouter({
+  sources: communitySourcesRouter,
   communityStories: publicProcedure
     .input(z.object({ slug: z.string().trim().min(1).max(200) }))
-    .query(({ input }) => listCommunityNewsBySlug(input.slug)),
+    .query(({ ctx, input }) =>
+      listCommunityNewsBySlug(input.slug, ctx.session?.user.id),
+    ),
   listStorylineResearch: publicProcedure.query(() => listStorylineResearch()),
   storylineCoverage: publicProcedure
     .input(reserveStorylineSchema.pick({ topicKey: true }))

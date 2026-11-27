@@ -5494,6 +5494,42 @@ export const newsFeeds = appSchema.table(
   ],
 );
 
+export const communityNewsFeeds = appSchema.table(
+  "community_news_feed",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id, { onDelete: "cascade" }),
+    feedId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => newsFeeds.id, { onDelete: "cascade" }),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.communityId, t.feedId] }),
+    index("community_news_feed_feed_idx").on(t.feedId),
+  ],
+);
+
+export const newsFeedItems = appSchema.table(
+  "news_feed_item",
+  (d) => ({
+    feedId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => newsFeeds.id, { onDelete: "cascade" }),
+    itemId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => newsItems.id, { onDelete: "cascade" }),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.feedId, t.itemId] }),
+    index("news_feed_item_item_idx").on(t.itemId),
+  ],
+);
+
 /** Member-submitted rumors on /news. Separate from RSS rows so the digest
  *  TL;DR never treats an unverified rumor as a collected story. */
 export const newsRumors = appSchema.table(

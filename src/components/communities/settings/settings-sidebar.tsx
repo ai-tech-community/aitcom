@@ -29,6 +29,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "matching", href: `${basePath}/matching` },
     { key: "invites", href: `${basePath}/invites` },
     { key: "rules", href: `${basePath}/rules` },
+    { key: "newsSources", href: `${basePath}/news` },
     { key: "topics", href: `${basePath}/topics` },
     { key: "links", href: `${basePath}/links` },
     { key: "classroom", href: `${basePath}/classroom` },
@@ -70,6 +71,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "matching"
                   | "invites"
                   | "rules"
+                  | "newsSources"
                   | "topics"
                   | "links"
                   | "classroom"
@@ -109,6 +111,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "matching"
                   | "invites"
                   | "rules"
+                  | "newsSources"
                   | "topics"
                   | "links"
                   | "classroom"

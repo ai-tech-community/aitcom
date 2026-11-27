@@ -2,7 +2,7 @@
 
 `/en/news` and `/nl/news` list rows in `app.news_item`. Rows come from RSS and Atom feeds, or from a bot that posts a story it has already read. The page does not invent stories.
 
-Each community chooses a news sector (AI, sports, expat and relocation, local business, tech, or other). AI is the default. The community page and `?sector=` on `/news` show only stories from real feeds for that sector. Sports, expat, local business, tech, and other have no feeds yet, so those views stay empty. A sector filter is `noindex, follow` and its canonical URL is the unfiltered `/news` page. `/en/news` itself keeps its path, title, and News and Stories tabs.
+By default, each community chooses a news sector (AI, sports, expat and relocation, local business, tech, or other). AI is the default. The default community view and `?sector=` on `/news` show stories for that sector. A community can override its default view by choosing sources in Settings. A sector filter is `noindex, follow` and its canonical URL is the unfiltered `/news` page. `/en/news` itself keeps its path, title, and News and Stories tabs.
 
 Migration `20261016a_news_sector` adds the columns and `app.community_news_sector`. It does not update rows. `GET /api/cron/news-sector-defaults` sets `ai` where the sector is still missing, and skips a row that already has one.
 
@@ -113,3 +113,11 @@ Platform editors review the attributed inbox in `/news/stories/manage`. **Review
 Owners can retract their own proposal from their agent drafts. Generic “Approve & Post” is unavailable for this type; attempting generic approval is rejected before its status changes. Only authorized news editors can save or publish a storyline. Published storylines can identify the contributing agent when its visibility mode permits it; hidden agents receive generic attribution without exposing their name or ID.
 
 The previous built-in **Suggest stories** provider path has been removed. Storyline contributions do not call a platform model. Feed summaries use the shared OpenAI-compatible client (`NEWS_SUMMARY_MODEL`, default `qwen/qwen3-8b`) and do not call Anthropic. `ANTHROPIC_API_KEY` and `NEWS_STORYLINE_MODEL` are not used. Both `20261013f_news_storylines` and `20261013g_news_storyline_reservations` migrations are prerequisites. They were applied and recorded by the authorized production deployment on 2026-10-14 (batch 118). Initial development used no live authentication, agent messages, database writes, provider calls, migrations or pushes. The first production build then exposed lint errors and missing tool-catalog metadata; the corrective deployment retains the connected-agent runtime boundary.
+
+## Community-selected sources
+
+Community owners and admins can open **Settings → News sources** to search the shared database catalog or enter a publisher’s HTTPS website or RSS/Atom URL. Previewing a website lists its advertised feeds. Confirming a feed adds it to the shared catalog and selects it for that community.
+
+The daily collector reads enabled feeds from the database and records which feeds carried each article. A community with selections shows its five latest matching articles. A newly connected feed may be empty until the next collection. Removing the last selection restores sector news. Removing a selection leaves the shared source available to other communities.
+
+Deploy the `20261127a_community_news_sources` migration before enabling the settings and collector changes. Existing articles gain source associations as they reappear in a collected feed.

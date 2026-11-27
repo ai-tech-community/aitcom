@@ -1,3 +1,4 @@
+import { newsArticleUrl } from "./draft";
 import { parseFeed, NotAFeedError } from "@/server/collectors/helpers/feed";
 
 import { NEWS_FEED_ITEM_LIMIT } from "./feeds";
@@ -35,6 +36,7 @@ export type IngestFeedsDeps = {
     items: readonly Record<string, unknown>[],
     options?: IngestNewsOptions,
   ) => Promise<RecordResult>;
+  linkOrigins?: (origins: { feed: string; article: string }[]) => Promise<void>;
   limit?: number;
   concurrency?: number;
   budgetMs?: number;
@@ -104,6 +106,7 @@ export async function ingestFeeds(
     },
   );
 
+  const origins: { feed: string; article: string }[] = [];
   const seen = new Set<string>();
   const items: Record<string, unknown>[] = [];
   const feeds: FeedIngestResult[] = [];
@@ -125,10 +128,13 @@ export async function ingestFeeds(
     let count = 0;
     const mine: string[] = [];
     for (const entry of row.entries) {
-      if (!entry.url || seen.has(entry.url)) continue;
-      seen.add(entry.url);
-      items.push({ ...entry, sector: row.feed.sector ?? "ai" });
-      mine.push(entry.url);
+      const url = newsArticleUrl(entry.url);
+      if (!url) continue;
+      origins.push({ feed: row.feed.url, article: url });
+      if (seen.has(url)) continue;
+      seen.add(url);
+      items.push({ ...entry, url, sector: row.feed.sector ?? "ai" });
+      mine.push(url);
       count += 1;
     }
     owned.push(mine);
@@ -149,6 +155,7 @@ export async function ingestFeeds(
           summaryDeadline: started + (deps.budgetMs ?? INGEST_BUDGET_MS),
         })
       : 0;
+  if (origins.length) await deps.linkOrigins?.(origins);
   const outcome = recordedUrls(recorded, items);
   for (let index = 0; index < feeds.length; index += 1) {
     const feed = feeds[index];
@@ -160,26 +167,26 @@ export async function ingestFeeds(
 }
 
 export async function fetchFeedXml(url: string): Promise<string> {
-  const { safeFetch } = await import("@/server/net/safe-fetch");
+  const { safeFetch, readBodyCapped } = await import("@/server/net/safe-fetch");
   const { response } = await safeFetch(url, {
     userAgent: "AIT-news-feeds",
     timeoutMs: 12_000,
     accept: FEED_ACCEPT,
-    allowErrorStatus: true,
   });
   if (response.status < 200 || response.status >= 300) {
     throw new Error(`The feed answered with status ${response.status}.`);
   }
-  return response.text();
+  return (await readBodyCapped(response, 4 * 1024 * 1024)).toString("utf8");
 }
 
 /** The production ingest: built-in feeds plus any staff added, through the existing store. */
 export async function ingestConfiguredNewsFeeds() {
   const { loadNewsFeeds } = await import("./catalog");
-  const { recordFeedNewsResult } = await import("./record");
+  const { recordFeedNewsResult, linkFeedOrigins } = await import("./record");
   return ingestFeeds({
     feeds: await loadNewsFeeds(),
     fetchXml: fetchFeedXml,
+    linkOrigins: linkFeedOrigins,
     record: (items, options) => recordFeedNewsResult(items, options),
   });
 }

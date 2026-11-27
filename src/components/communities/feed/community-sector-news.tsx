@@ -39,7 +39,7 @@ export function CommunitySectorNews({ slug }: { slug: string }) {
     <section data-sidebar-section="news">
       <div className="border-border flex flex-wrap items-center justify-between gap-x-3 border-b pb-2">
         <SectionLabel bordered={false}>{t("news")}</SectionLabel>
-        {data.hasRealFeeds ? (
+        {data.hasRealFeeds && !data.selectedSources ? (
           <Link
             href={`/news?sector=${data.sector}`}
             className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
@@ -74,9 +74,11 @@ export function CommunitySectorNews({ slug }: { slug: string }) {
         </ul>
       ) : (
         <p className="text-muted-foreground mt-3 text-sm">
-          {data.hasRealFeeds
-            ? t("newsNoStories", { sector: sectorName })
-            : t("newsEmpty", { sector: sectorName })}
+          {data.selectedSources
+            ? t("newsSourcesPending")
+            : data.hasRealFeeds
+              ? t("newsNoStories", { sector: sectorName })
+              : t("newsEmpty", { sector: sectorName })}
         </p>
       )}
     </section>

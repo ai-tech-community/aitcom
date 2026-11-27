@@ -3167,6 +3167,7 @@
       "newDiscussions": "{count, plural, one {nieuwe discussie} other {nieuwe discussies}}",
       "news": "Nieuws",
       "newsAll": "Al het {sector}-nieuws",
+      "newsSourcesPending": "Na het ophalen verschijnen hier artikelen van de gekozen bronnen.",
       "newsEmpty": "Voor {sector} zijn nog geen nieuwsfeeds gekoppeld. Hier wordt niets verzonnen.",
       "newsNoStories": "Nog geen berichten uit de {sector}-feeds.",
       "magazine": "Magazine"
@@ -3219,7 +3220,25 @@
       "accessDenied": "Je hebt geen toegang tot deze pagina"
     },
     "settings": {
+      "newsSources": {
+        "title": "Nieuwsbronnen",
+        "selected": "Geselecteerde bronnen",
+        "fallback": "Je community toont sectornieuws totdat je een bron kiest.",
+        "search": "Bestaande bronnen zoeken",
+        "add": "Toevoegen",
+        "remove": "Verwijderen",
+        "website": "Website of RSS-/Atom-feed-URL",
+        "preview": "Bron bekijken",
+        "choose": "Kies een feed om te bekijken",
+        "confirm": "Toevoegen aan community en gedeelde bronnen",
+        "error": "De wijziging kon niet worden opgeslagen. Probeer het opnieuw.",
+        "unreadable": "Geen leesbare feed gevonden. Voer de directe RSS- of Atom-URL in.",
+        "loading": "Bronnen laden…",
+        "loadError": "Bronnen konden niet worden geladen.",
+        "noResults": "Geen overeenkomende bronnen."
+      },
       "sidebar": {
+        "newsSources": "Nieuwsbronnen",
         "general": "Algemeen",
         "members": "Leden",
         "matching": "Matching",

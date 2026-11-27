@@ -3167,6 +3167,7 @@
       "newDiscussions": "{count, plural, one {new discussion} other {new discussions}}",
       "news": "News",
       "newsAll": "All {sector} news",
+      "newsSourcesPending": "Articles from the selected sources will appear after collection.",
       "newsEmpty": "No news feeds are connected for {sector} yet. Nothing here is invented.",
       "newsNoStories": "No stories from the {sector} feeds yet.",
       "magazine": "Magazine"
@@ -3219,7 +3220,25 @@
       "accessDenied": "You do not have permission to access this page"
     },
     "settings": {
+      "newsSources": {
+        "title": "News sources",
+        "selected": "Selected sources",
+        "fallback": "Your community uses sector news until you select a source.",
+        "search": "Search existing sources",
+        "add": "Add",
+        "remove": "Remove",
+        "website": "Website or RSS/Atom feed URL",
+        "preview": "Preview source",
+        "choose": "Choose a feed to preview",
+        "confirm": "Add to community and shared sources",
+        "error": "Could not save this change. Please try again.",
+        "unreadable": "Could not find a readable feed. Enter a direct RSS or Atom URL.",
+        "loading": "Loading sources…",
+        "loadError": "Could not load sources.",
+        "noResults": "No matching sources."
+      },
       "sidebar": {
+        "newsSources": "News sources",
         "general": "General",
         "members": "Members",
         "matching": "Matching",
