@@ -29,15 +29,19 @@ export type HiddenDefaultSurface = (typeof HIDDEN_DEFAULT_SURFACES)[number];
 /**
  * Builtin surfaces a community gains by turning a feature on, never by
  * default: the Magazine tab is added when the community's magazine is
- * created. Once added, they rename, hide and reorder like the defaults.
+ * created, the Find a match tab when matching is turned on. Once added,
+ * they rename, hide and reorder like the defaults.
  */
-export const OPTIONAL_BUILTIN_SURFACES = ["magazine"] as const;
+export const OPTIONAL_BUILTIN_SURFACES = ["magazine", "matching"] as const;
+
+/** A builtin surface added by a feature, never seeded. */
+export type OptionalBuiltinSurface = (typeof OPTIONAL_BUILTIN_SURFACES)[number];
 
 /** Any builtin surface a space row can point at. */
 export type BuiltinSurface =
   | DefaultBuiltinSurface
   | HiddenDefaultSurface
-  | (typeof OPTIONAL_BUILTIN_SURFACES)[number];
+  | OptionalBuiltinSurface;
 
 /** Shape of a default builtin space row (pre-insert; id/createdAt are DB-filled). */
 export interface DefaultSpaceRow {
@@ -105,6 +109,7 @@ const DEFAULT_BUILTIN_LABELS: Record<BuiltinSurface, readonly string[]> = {
     "Les offres de votre communauté",
   ],
   magazine: ["Magazine"],
+  matching: ["Find a match", "Vind een match", "Trouver un match"],
 };
 
 function normalizeSpaceName(value: string): string {

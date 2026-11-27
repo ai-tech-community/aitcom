@@ -3169,7 +3169,8 @@
       "newsAll": "All {sector} news",
       "newsEmpty": "No news feeds are connected for {sector} yet. Nothing here is invented.",
       "newsNoStories": "No stories from the {sector} feeds yet.",
-      "magazine": "Magazine"
+      "magazine": "Magazine",
+      "matching": "Find a match"
     },
     "manage": {
       "settings": "Settings",

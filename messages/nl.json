@@ -3169,7 +3169,8 @@
       "newsAll": "Al het {sector}-nieuws",
       "newsEmpty": "Voor {sector} zijn nog geen nieuwsfeeds gekoppeld. Hier wordt niets verzonnen.",
       "newsNoStories": "Nog geen berichten uit de {sector}-feeds.",
-      "magazine": "Magazine"
+      "magazine": "Magazine",
+      "matching": "Vind een match"
     },
     "manage": {
       "settings": "Instellingen",

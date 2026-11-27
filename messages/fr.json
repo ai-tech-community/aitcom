@@ -3169,7 +3169,8 @@
       "newsAll": "Toutes les actualités du secteur {sector}",
       "newsEmpty": "Aucun flux d’actualités n’est encore connecté pour le secteur {sector}. Rien ici n’est inventé.",
       "newsNoStories": "Aucun article issu des flux du secteur {sector} pour le moment.",
-      "magazine": "Magazine"
+      "magazine": "Magazine",
+      "matching": "Trouver un match"
     },
     "manage": {
       "settings": "Paramètres",
