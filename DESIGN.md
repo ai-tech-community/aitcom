@@ -215,7 +215,7 @@ A fixed four-color vocabulary. Each is WCAG AA verified both as colored text on 
 
 **The One Voice Rule.** Signal Orange appears on ≤10% of any given screen. It marks the single most important action or the active state — nothing else. If two things on a screen are orange, one of them is wrong. When a screen's main actions are equal peers there is no single most important action: render them all as Ink buttons and spend no orange on them.
 
-**The No-Cream Rule.** The body background is pure white (`oklch(1 0 0)`) or true dark (`oklch(0.145 0 0)`). Never a warm-tinted near-white. The instant a surface drifts toward cream/sand/parchment, it reads as a generic AI-generated landing page — the exact anti-reference. One named, scoped exception: inside the community frame, a community's chosen look may paint the canvas with a clear, non-cream hue (the Scoped-Canvas Rule in Community themes). It is never a near-white warm neutral, and it never reaches the rest of the site.
+**The No-Cream Rule.** The body background is pure white (`oklch(1 0 0)`) or true dark (`oklch(0.145 0 0)`). Never a warm-tinted near-white. The instant a surface drifts toward cream/sand/parchment, it reads as a generic AI-generated landing page — the exact anti-reference. One named, scoped exception: inside the community frame, a community's chosen look may paint the canvas with a clear, non-cream hue (the Scoped-Canvas Rule in Community themes). It is never a near-white warm neutral: no themed canvas, pattern or card color may fall in the cream band defined there (OKLCH lightness ≥ 0.85, chroma above 0.005 and at most 0.08, hue 30–100), and it never reaches the rest of the site.
 
 **The Chart-Containment Rule.** The five chart hues live inside data viz and nowhere else. UI chrome is neutral + Signal Orange, full stop. (Documented exceptions with their own tokens: the heat ramp and the emblem hues above.)
 
@@ -300,9 +300,9 @@ The catalog is typed data in code (`src/lib/communities/themes/catalog.ts`); a c
 
 ### Named Rules (community themes)
 
-**The Scoped-Canvas Rule.** The one named exception to the No-Cream Rule. Inside the community frame (`communities/[slug]/_community-layout-client.tsx`, the non-workspace variant) a look may paint the canvas behind the content, edge to edge, and may layer a quiet pattern on it (`canvasPattern`, scrolling with the page, never fixed). Nowhere else: the site nav, footer, the Explore directory and street, emails and the magazine keep the pure-white canvas. A themed canvas carries a clear hue (water blue, meadow green, sky pink, night indigo); it never reads as cream, sand, parchment or beige. Warm peach is allowed only as one stop of a canvas gradient that resolves into a non-cream hue, as Sunset's sky does. This is a visual judgment checked on screen, not by the test.
+**The Scoped-Canvas Rule.** The one named exception to the No-Cream Rule. Inside the community frame (`communities/[slug]/_community-layout-client.tsx`, the non-workspace variant) a look may paint the canvas behind the content, edge to edge, and may layer a quiet pattern on it (`canvasPattern`, scrolling with the page, never fixed). Nowhere else: the site nav, footer, the Explore directory and street, emails, the magazine reading view (`MagazineShell`) and the issue builder keep the pure-white canvas. A themed canvas carries a clear hue (water blue, meadow green, rose and pink sky, night indigo); it never reads as cream, sand, parchment or beige. Measured: no canvas color, canvas-pattern color or card color may sit in the **cream band**, OKLCH lightness **≥ 0.85** with chroma **above 0.005 and at most 0.08** and hue **30–100** (inclusive), `isInCreamBand` in `src/lib/color/contrast.ts`. Pure white and neutral grays (chroma ≤ 0.005) are outside it; so are clear tints (chroma above 0.08), which the Orange-Band Rule covers. Cover art is illustration and is exempt; a pale gold sun or a peach horizon may sit in the cover.
 
-**The Orange-Band Rule.** Signal Orange stays the single action color on a themed page (One Voice Rule). No canvas color, pattern color or cover-palette color may sit in the orange band: OKLCH hue **30–65** (inclusive) with chroma **above 0.08** (`isInOrangeBand` in `src/lib/color/contrast.ts`). A soft, low-chroma peach is fine; a saturated roof or sun ray is not (Canal's roofs are brick red, hue below 30; Sunset's rays are low-chroma peach and rose).
+**The Orange-Band Rule.** Signal Orange stays the single action color on a themed page (One Voice Rule). No canvas color, pattern color or cover-palette color may sit in the orange band: OKLCH hue **30–65** (inclusive) with chroma **above 0.08** (`isInOrangeBand` in `src/lib/color/contrast.ts`). A soft, low-chroma peach passes this band (on a canvas it still meets the cream band); a saturated roof or sun ray does not (Canal's roofs are brick red, hue below 30; Sunset's rays are low-chroma peach and rose).
 
 **The House-Controls Rule.** A look changes the ground, not the controls. `--primary` and `--ring` are never re-declared by a look; light looks keep white cards; buttons, inputs, badges, menus and focus rings stay on house tokens and follow the scoped values automatically. A dark look takes the site's `.dark` tokens first (the frame gets the `dark` class), so its Signal Orange is the house dark value (`oklch(0.646 0.222 41.116)`), not a theme color. Inside the community frame, components use tokens only: a literal color (`bg-white`, `text-zinc-*`, `text-black`, hex in a className) escapes the scope and breaks under a look. Night is the acceptance check, because a missed literal shows there first.
 
@@ -311,9 +311,9 @@ The catalog is typed data in code (`src/lib/communities/themes/catalog.ts`); a c
 ### Contrast floor (enforced per look)
 
 - `foreground` and `mutedForeground` on the canvas (`background`) **≥ 4.5:1**, and on every canvas-pattern color **≥ 4.5:1**.
-- `cardForeground` (or `foreground`) and `mutedForeground` on the card color **≥ 4.5:1**. The card is `#FFFFFF` unless the look sets `card`; a dark look must set `card` and `cardForeground`.
-- `border` and `input` on the canvas **no fainter than Plain's house lines** (`#E5E5E5` on `#FFFFFF`, about 1.26:1). The floor is relative to the house value on purpose; see Known gaps.
-- Signal Orange (`--primary`, measured as its sRGB clip `#FF6900`) and `--ring` on the canvas **≥ 2.5:1**. A dark look is checked against both the light (`#FF6900`) and the dark (`#F54900`) orange.
+- `cardForeground` (or `foreground`) and `mutedForeground` on the card color **≥ 4.5:1**. A light look's card is `#FFFFFF` unless it sets `card`; a dark look must set `card` and `cardForeground`.
+- `border` and `input` on the canvas **no fainter than Plain's** (`#E5E5E5` on `#FFFFFF`, about 1.26:1). The test reads the floor from Plain's catalog entry, which copies the house tokens in `globals.css`; see Known gaps.
+- Signal Orange (`--primary`, measured as its sRGB clip `#FF6900`) and `--ring` on the canvas **≥ 2.5:1**. This is a fixed floor, a little below Plain's 2.9:1, so a tinted light canvas can keep the house orange. A dark look is checked against both the light (`#FF6900`) and the dark (`#F54900`) orange.
 - The community name on its cover (`cover.nameColor` on `cover.nameBase`) **≥ 4.5:1**, and `nameBase` is a color the cover art actually paints (it is in the cover `palette`).
 - Every color a look uses is catalog data in `#RRGGBB`, and cover art takes no color outside its `palette` (`community-theme-scope.test.tsx` checks the art), so the test can measure all of them.
 
@@ -333,7 +333,7 @@ The catalog is typed data in code (`src/lib/communities/themes/catalog.ts`); a c
 | Plain  | `plain`  | light  | `#FFFFFF`                                | none                                       | Geist Sans (house) |
 | Canal  | `canal`  | light  | `#E0F4FE` (soft water blue)              | dot grid `#C9E5F3`                         | Fraunces           |
 | Meadow | `meadow` | light  | `#E6F8E6` (light green)                  | none                                       | Nunito             |
-| Sunset | `sunset` | light  | `#FFEBEE` (sky pink)                     | top-to-bottom sky `#FFECE4` → `#FEEEF8`    | DM Serif Display   |
+| Sunset | `sunset` | light  | `#FFEBEE` (sky pink)                     | top-to-bottom sky `#FFEBEA` → `#FEEEF8`    | DM Serif Display   |
 | Night  | `night`  | dark   | `#181D37` (deep indigo); cards `#131521` | two faint star layers `#33364D`, `#2B2E44` | Space Grotesk      |
 
 Plain is today's house look and the default: a community with no saved look, or one whose saved id the catalog no longer has, shows Plain. The catalog is the source of truth for every token (foreground, muted, border, input, cover palette); this table is the summary. Adding a look is one catalog entry, its cover art and its `communities.themes.<id>` copy in en, fr and nl; it must pass the catalog test and gets a row here.
@@ -342,10 +342,10 @@ Plain is today's house look and the default: a community with no saved look, or 
 
 Two house values sit below WCAG 2.2 SC 1.4.11 (non-text contrast, 3:1) today, on every page, themed or not:
 
-- The house border and input lines (`oklch(0.922 0 0)`, `#E5E5E5`) are about **1.26:1** on white.
+- The input boundaries (`--input`, `oklch(0.922 0 0)`, `#E5E5E5`) are about **1.26:1** on white.
 - Signal Orange (`#FF6900`) is about **2.9:1** on white, so the primary button's edge and the focus ring are just under 3:1.
 
-The theme floors above are pinned to these house values (lines no fainter than Plain's; orange ≥ 2.5:1) so no look is worse than the plain site. Raising them is a separate, site-wide change to the house tokens; when it lands, the catalog floors rise with it.
+The theme floors above follow from these values: a look's lines are no fainter than Plain's, and the orange has a fixed floor of 2.5:1, a little below Plain's 2.9:1, allowed for tinted canvases. Raising them is a separate, site-wide change to the house tokens. It also means updating Plain's catalog entry (the line floor is read from it) and the catalog test's orange constants (`SIGNAL_ORANGE`, `SIGNAL_ORANGE_DARK`) and floor (`PRIMARY_ON_CANVAS`); the floors do not move on their own.
 
 ## Elevation & Depth
 

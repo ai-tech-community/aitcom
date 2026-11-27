@@ -41,8 +41,11 @@ DESIGN.md, "Community themes".
   `src/lib/communities/themes/catalog.test.ts` checks every look against the
   floors in DESIGN.md (text ≥ 4.5:1 on canvas, pattern and card; lines no
   fainter than Plain's; Signal Orange and the ring ≥ 2.5:1 on the canvas;
-  the cover name ≥ 4.5:1) and that no canvas, pattern or cover color has
-  OKLCH hue 30–65 with chroma above 0.08.
+  the cover name ≥ 4.5:1), that no canvas, pattern or cover color has
+  OKLCH hue 30–65 with chroma above 0.08 (the orange band), and that no
+  canvas, pattern or card color is a near-white warm neutral (the cream
+  band: lightness ≥ 0.85, chroma above 0.005 and at most 0.08, hue
+  30–100).
 
 ## Why a catalog in code
 
@@ -97,11 +100,14 @@ whole frame. Rejected.
   from catalog tokens directly.
 - A banner picture always wins over a look's cover art; the art only fills
   "no banner".
-- Workspace routes stay plain, and the directory, Explore street, emails
-  and the magazine are not themed.
-- The line and orange floors are pinned to today's house values, which are
-  below WCAG 1.4.11 site-wide (DESIGN.md, "Known gaps"). When the house
-  tokens are raised, the catalog floors rise with them, and the test shows
-  which looks need new values.
+- Workspace routes stay plain, and the directory, Explore street, emails,
+  the magazine reading view (`MagazineShell`) and the issue builder are not
+  themed.
+- The line floor is read from Plain's catalog entry, which copies the house
+  tokens; the orange floor is a fixed 2.5:1, a little below Plain's 2.9:1,
+  allowed for tinted canvases. Both house values are below WCAG 1.4.11
+  site-wide (DESIGN.md, "Known gaps"). Raising them is a separate change
+  that must also update Plain's entry and the catalog test's orange
+  constants and floor; the test then shows which looks need new values.
 - Agents may later suggest a look through a `community_theme` draft that an
   admin approves, never apply one directly (spec, slice 2).

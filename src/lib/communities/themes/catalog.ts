@@ -99,7 +99,7 @@ const MEADOW: CommunityTheme = {
   headingFont: "nunito",
 };
 
-const SUNSET_SKY_HIGH = "#FFECE4"; // oklch(0.96 0.028 38): soft peach, low chroma
+const SUNSET_SKY_HIGH = "#FFEBEA"; // oklch(0.956 0.022 21): rose, outside the cream band
 const SUNSET_SKY_LOW = "#FEEEF8"; // oklch(0.965 0.022 340): soft pink
 
 const SUNSET_COVER_PALETTE = {
@@ -121,8 +121,8 @@ const SUNSET: CommunityTheme = {
     border: "#E7CDCE", // oklch(0.87 0.03 15)
     input: "#E7CDCE",
   },
-  // The canvas is a sky: peach at the top fading to pink. Pink keeps it from
-  // reading as beige.
+  // The canvas is a sky: rose at the top fading to pink. Both stops sit below
+  // hue 30, so the canvas never reads as cream or beige (`isInCreamBand`).
   canvasPattern: {
     image: `linear-gradient(180deg, ${SUNSET_SKY_HIGH}, ${SUNSET_SKY_LOW})`,
     size: "100% 100%",

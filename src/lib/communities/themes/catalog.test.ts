@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   contrastRatio,
+  isInCreamBand,
   isInOrangeBand,
   normalizeHexColor,
 } from "@/lib/color/contrast";
@@ -130,6 +131,16 @@ describe.each(COMMUNITY_THEMES)("look $id", (theme) => {
       ...Object.values(theme.cover?.palette ?? {}),
     ];
     expect(painted.filter(isInOrangeBand)).toEqual([]);
+  });
+
+  it("paints no cream canvas, pattern or card", () => {
+    // The cover palette is illustration and may use warm light tones.
+    const surfaces = [
+      tokens.background,
+      ...(theme.canvasPattern?.colors ?? []),
+      ...(tokens.card ? [tokens.card] : []),
+    ];
+    expect(surfaces.filter(isInCreamBand)).toEqual([]);
   });
 
   it("writes every color as #RRGGBB", () => {

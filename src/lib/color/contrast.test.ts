@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   contrastRatio,
+  isInCreamBand,
   isInOrangeBand,
   normalizeHexColor,
   oklchOf,
@@ -58,5 +59,31 @@ describe("isInOrangeBand", () => {
 
   it("lets a blue through", () => {
     expect(isInOrangeBand("#2E5E8C")).toBe(false);
+  });
+});
+
+describe("isInCreamBand", () => {
+  it("flags a near-white peach and a sand", () => {
+    expect(isInCreamBand("#FFECE4")).toBe(true);
+    expect(isInCreamBand("#F2E8D5")).toBe(true);
+  });
+
+  it("lets pure white and neutral grays through", () => {
+    expect(isInCreamBand("#FFFFFF")).toBe(false);
+    expect(isInCreamBand("#E5E5E5")).toBe(false);
+  });
+
+  it("lets the community canvases through", () => {
+    expect(isInCreamBand("#E0F4FE")).toBe(false); // Canal, water blue
+    expect(isInCreamBand("#E6F8E6")).toBe(false); // Meadow, light green
+    expect(isInCreamBand("#181D37")).toBe(false); // Night, deep indigo
+  });
+
+  it("lets a near-white pink through", () => {
+    expect(isInCreamBand("#FFEBEE")).toBe(false);
+  });
+
+  it("lets a dark warm color through", () => {
+    expect(isInCreamBand("#8D4540")).toBe(false);
   });
 });

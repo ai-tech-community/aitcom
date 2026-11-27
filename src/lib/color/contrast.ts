@@ -10,6 +10,18 @@ const ORANGE_HUE_MIN = 30;
 const ORANGE_HUE_MAX = 65;
 const ORANGE_CHROMA_MIN = 0.08;
 
+/**
+ * The cream band: a near-white, low-chroma, yellow-to-orange tint (cream,
+ * sand, parchment, beige) that the No-Cream Rule forbids as a canvas.
+ * Chroma at or below the floor is a neutral gray or white; above the ceiling
+ * the color is a clear tint, not a neutral.
+ */
+const CREAM_LIGHTNESS_MIN = 0.85;
+const CREAM_CHROMA_MIN = 0.005;
+const CREAM_CHROMA_MAX = 0.08;
+const CREAM_HUE_MIN = 30;
+const CREAM_HUE_MAX = 100;
+
 /** Below this chroma a color is a gray and its hue means nothing. */
 const ACHROMATIC_CHROMA = 1e-4;
 
@@ -88,4 +100,16 @@ export function oklchOf(hex: string): { l: number; c: number; h: number } {
 export function isInOrangeBand(hex: string): boolean {
   const { c, h } = oklchOf(hex);
   return h >= ORANGE_HUE_MIN && h <= ORANGE_HUE_MAX && c > ORANGE_CHROMA_MIN;
+}
+
+/** True when the color is a near-white warm neutral (No-Cream Rule). */
+export function isInCreamBand(hex: string): boolean {
+  const { l, c, h } = oklchOf(hex);
+  return (
+    l >= CREAM_LIGHTNESS_MIN &&
+    c > CREAM_CHROMA_MIN &&
+    c <= CREAM_CHROMA_MAX &&
+    h >= CREAM_HUE_MIN &&
+    h <= CREAM_HUE_MAX
+  );
 }
