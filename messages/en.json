@@ -3929,6 +3929,28 @@
       "joinTitle": "Join to like and comment",
       "joinDescription": "Only members can like and comment on videos here.",
       "inviteOnly": "This community is invite only. Ask a member for an invite."
+    },
+    "themes": {
+      "plain": {
+        "name": "Plain",
+        "description": "The standard look: a clean white page."
+      },
+      "canal": {
+        "name": "Canal",
+        "description": "Soft water blue with a row of canal houses."
+      },
+      "meadow": {
+        "name": "Meadow",
+        "description": "Light green with rolling hills and a small sun."
+      },
+      "sunset": {
+        "name": "Sunset",
+        "description": "A peach and pink sky with soft sun rays."
+      },
+      "night": {
+        "name": "Night",
+        "description": "Deep blue with faint stars and dark cards."
+      }
     }
   },
   "composer": {

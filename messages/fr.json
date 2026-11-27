@@ -3929,6 +3929,28 @@
       "joinTitle": "Rejoignez la communauté pour aimer et commenter",
       "joinDescription": "Seuls les membres peuvent aimer et commenter les vidéos ici.",
       "inviteOnly": "Cette communauté est accessible sur invitation uniquement. Demandez une invitation à un membre."
+    },
+    "themes": {
+      "plain": {
+        "name": "Simple",
+        "description": "Le style standard : une page blanche et nette."
+      },
+      "canal": {
+        "name": "Canal",
+        "description": "Un bleu d’eau doux avec une rangée de maisons au bord du canal."
+      },
+      "meadow": {
+        "name": "Prairie",
+        "description": "Un vert clair avec des collines et un petit soleil."
+      },
+      "sunset": {
+        "name": "Coucher de soleil",
+        "description": "Un ciel pêche et rose avec de doux rayons de soleil."
+      },
+      "night": {
+        "name": "Nuit",
+        "description": "Un bleu profond avec de petites étoiles et des cartes sombres."
+      }
     }
   },
   "composer": {
