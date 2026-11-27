@@ -17,7 +17,10 @@ DESIGN.md, "Community themes".
 - **The catalog is typed data in code.** `src/lib/communities/themes/`
   holds one `CommunityTheme` entry per look: its scheme (light or dark), the
   site tokens it re-declares (`background`, `foreground`, `mutedForeground`,
-  `border`, `input`, and optionally `card` / `cardForeground`), an optional
+  `border`, `input`, and optionally `card` / `cardForeground`, the quiet
+  fills `muted`, `secondary` / `secondaryForeground`, `accent` /
+  `accentForeground`, and the status colors `success`, `warning`, `info`,
+  `destructive`), an optional
   canvas pattern, the cover palette with the name's color pair, and a
   heading face id. Every color is `#RRGGBB` so it can be measured. Plain is
   a real entry with today's house tokens, not a special case.
@@ -33,19 +36,26 @@ DESIGN.md, "Community themes".
   missing or unknown id into Plain, so removing a look never breaks a page.
 - **The look is applied by token scoping.** `CommunityThemeScope` wraps the
   non-workspace community frame, adds `dark` for a dark look (so the site's
-  `.dark` tokens apply first), and re-declares the look's tokens as custom
-  properties. Components inside follow without knowing looks exist.
+  `.dark` tokens apply first), sets `color-scheme` to the look's scheme, and
+  re-declares the look's tokens as custom properties. Components inside
+  follow without knowing looks exist. A look re-declares a quiet fill or a
+  status color only to keep it readable or in family on its canvas (same
+  role, same hue); the house `:root` and `.dark` values never change.
   `--primary` and `--ring` are never re-declared. The heading face reaches
   only the headings that carry `font-community-heading`.
 - **Contrast and the orange band are enforced in CI.**
   `src/lib/communities/themes/catalog.test.ts` checks every look against the
-  floors in DESIGN.md (text ≥ 4.5:1 on canvas, pattern and card; lines no
-  fainter than Plain's; Signal Orange and the ring ≥ 2.5:1 on the canvas;
-  the cover name ≥ 4.5:1), that no canvas, pattern or cover color has
-  OKLCH hue 30–65 with chroma above 0.08 (the orange band), and that no
-  canvas, pattern or card color is a near-white warm neutral (the cream
-  band: lightness ≥ 0.85, chroma above 0.005 and at most 0.08, hue
-  30–100).
+  floors in DESIGN.md (text ≥ 4.5:1 on canvas, pattern, card and any quiet
+  fill the look sets; every status color in effect ≥ 4.5:1 on canvas,
+  pattern, card and its own 10% tint; lines no fainter than Plain's; Signal
+  Orange and the ring ≥ 2.5:1 on the canvas; the cover name ≥ 4.5:1), that
+  no canvas, pattern, cover or token color has OKLCH hue 30–65 with chroma
+  above 0.08 (the orange band), that no canvas, pattern or token color is
+  a near-white warm neutral (the cream band: lightness ≥ 0.85, chroma
+  above 0.005 and at most 0.08, hue 30–100), and that no surface is a
+  clear yellow (hue above 65 to 100, chroma above 0.08). Plain keeps the
+  house status colors and is excused only the house tint gaps DESIGN.md
+  lists under "Known gaps".
 
 ## Why a catalog in code
 
@@ -106,8 +116,12 @@ whole frame. Rejected.
 - The line floor is read from Plain's catalog entry, which copies the house
   tokens; the orange floor is a fixed 2.5:1, a little below Plain's 2.9:1,
   allowed for tinted canvases. Both house values are below WCAG 1.4.11
-  site-wide (DESIGN.md, "Known gaps"). Raising them is a separate change
-  that must also update Plain's entry and the catalog test's orange
-  constants and floor; the test then shows which looks need new values.
+  site-wide, and three house status colors fall just under 4.5:1 on their
+  own 10% tint (DESIGN.md, "Known gaps"). Raising them is a separate change that must also
+  update every house value the catalog test copies by hand (Plain's entry
+  and fixture, the card, orange and status constants, the tint-gap list);
+  the test then shows which looks need new values.
+- Dialogs, menus and popovers render in a portal outside the frame, so
+  they keep the house light look inside Night. Accepted for slice 1.
 - Agents may later suggest a look through a `community_theme` draft that an
   admin approves, never apply one directly (spec, slice 2).
