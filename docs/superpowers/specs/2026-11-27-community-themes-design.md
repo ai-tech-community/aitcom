@@ -214,7 +214,8 @@ properties, and every component inside follows without knowing themes exist.
 - **What the contrast test checks, for every look:** `foreground` and
   `mutedForeground` on `background` ≥ 4.5:1; `foreground` and
   `mutedForeground` on the card color ≥ 4.5:1; `border` and `input` on
-  `background` ≥ 3:1 (WCAG 1.4.11, input edges must be visible); the
+  `background` no fainter than Plain's on white (the house lines today are
+  about 1.2:1, below WCAG 1.4.11; raising them is a separate, site-wide topic); the
   `--primary` button and `--ring` focus color on `background` ≥ 3:1;
   `cover.nameColor` on `cover.nameBase` ≥ 4.5:1; and the orange-band rule over
   `background`, `canvasPattern` colors and the whole cover `palette`.
