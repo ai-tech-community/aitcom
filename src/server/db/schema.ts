@@ -3886,6 +3886,25 @@ export const communityNewsSectors = appSchema.table(
   (t) => [index("community_news_sector_sector_idx").on(t.sector)],
 );
 
+/**
+ * The look a community picked. No row means Plain. `themeId` is checked
+ * against the catalog in code, so a look removed later reads as Plain.
+ */
+export const communityThemes = appSchema.table("community_theme", (d) => ({
+  communityId: d
+    .varchar("community_id", { length: 255 })
+    .primaryKey()
+    .references(() => communities.id, { onDelete: "cascade" }),
+  themeId: d.varchar("theme_id", { length: 32 }).notNull(),
+  updatedBy: d
+    .varchar("updated_by", { length: 255 })
+    .references(() => user.id, { onDelete: "set null" }),
+  updatedAt: d
+    .timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}));
+
 // ── Classroom enrollment / completion tracking (mirrors eventRegistrations) ──
 export const courseEnrollments = appSchema.table(
   "course_enrollment",

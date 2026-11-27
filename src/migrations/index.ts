@@ -1,3 +1,4 @@
+import * as migration_20261128a_community_theme from "./20261128a_community_theme";
 import * as migration_20261127a_community_news_sources from "./20261127a_community_news_sources";
 import * as migration_20261126a_matching_space from "./20261126a_matching_space";
 import * as migration_20261117a_verification_value_text from "./20261117a_verification_value_text";
@@ -1254,5 +1255,10 @@ export const migrations = [
     up: migration_20261127a_community_news_sources.up,
     down: migration_20261127a_community_news_sources.down,
     name: "20261127a_community_news_sources",
+  },
+  {
+    up: migration_20261128a_community_theme.up,
+    down: migration_20261128a_community_theme.down,
+    name: "20261128a_community_theme",
   },
 ];
