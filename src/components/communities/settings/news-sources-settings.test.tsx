@@ -8,7 +8,13 @@ const hooks = vi.hoisted(() => ({
   select: vi.fn(),
   remove: vi.fn(),
   add: vi.fn(),
-  previewState: vi.fn(),
+  previewState:
+    vi.fn<
+      () => {
+        isError?: boolean;
+        data?: { kind: "feed"; url: string; name: string; headline: string };
+      }
+    >(),
 }));
 vi.mock("@/trpc/react", () => {
   const action = (mutate: typeof hooks.select) => ({
