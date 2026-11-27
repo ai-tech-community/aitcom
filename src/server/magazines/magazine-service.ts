@@ -1,4 +1,5 @@
-import { magazineThemeIssue, normalizeHexColor } from "@/lib/magazines/theme";
+import { normalizeHexColor } from "@/lib/color/contrast";
+import { magazineThemeIssue } from "@/lib/magazines/theme";
 import type { IssueVisibility } from "@/lib/magazines/values";
 import { MAX_MAGAZINE_TOPICS } from "@/lib/magazines/values";
 import {

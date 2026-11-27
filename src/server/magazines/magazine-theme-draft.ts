@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 
+import { normalizeHexColor } from "@/lib/color/contrast";
 import {
   magazineThemeIssue,
-  normalizeHexColor,
   type MagazineFontPairId,
 } from "@/lib/magazines/theme";
 import { magazineSettingsPath } from "@/lib/magazines/paths";
