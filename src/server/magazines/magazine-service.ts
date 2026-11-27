@@ -1,5 +1,3 @@
-import { and, desc, eq } from "drizzle-orm";
-
 import { magazineThemeIssue, normalizeHexColor } from "@/lib/magazines/theme";
 import type { IssueVisibility } from "@/lib/magazines/values";
 import { MAX_MAGAZINE_TOPICS } from "@/lib/magazines/values";
@@ -13,8 +11,13 @@ import {
 } from "@/lib/magazines/visibility";
 import type { Magazine } from "@/payload-types";
 import type { CommunityRef } from "@/server/communities/content-visibility-queries";
-import type { db } from "@/server/db";
-import { spaces } from "@/server/db/schema";
+import {
+  SpaceSlugTakenError,
+  assertOptionalBuiltinSlugFree,
+  ensureOptionalBuiltinSpace,
+  type SpaceWriter,
+} from "@/server/communities/optional-space";
+import type { OptionalBuiltinSurface } from "@/server/communities/space-defaults";
 
 import type { Deps, PayloadClient } from "./deps";
 import { magazineError } from "./errors";
@@ -42,7 +45,7 @@ export type MagazineSettingsInput = {
 export type MagazineCommunity = CommunityRef;
 
 /** The slug of the Magazine tab; also its builtin surface id. */
-const MAGAZINE_SPACE = "magazine";
+const MAGAZINE_SPACE = "magazine" satisfies OptionalBuiltinSurface;
 
 /** The community's magazine, or null when it has none yet. */
 export async function getMagazineForCommunity(
@@ -75,26 +78,19 @@ export function magazineTopicsOf(magazine: Pick<Magazine, "topics">): string[] {
     .filter((t): t is string => Boolean(t));
 }
 
-type SpaceSlugOwner = {
-  kind: "builtin" | "room";
-  builtinSurface: string | null;
-};
-
-async function findMagazineSlugOwner(
-  database: typeof db,
-  communityId: string,
-): Promise<SpaceSlugOwner | undefined> {
-  return database.query.spaces.findFirst({
-    where: and(
-      eq(spaces.communityId, communityId),
-      eq(spaces.slug, MAGAZINE_SPACE),
-    ),
-    columns: { kind: true, builtinSurface: true },
-  });
-}
-
-function isMagazineTab(owner: SpaceSlugOwner): boolean {
-  return owner.kind === "builtin" && owner.builtinSurface === MAGAZINE_SPACE;
+/**
+ * Maps the shared helper's slug clash to the magazine refusal
+ * `SPACE_SLUG_TAKEN`; anything else is rethrown as it is.
+ */
+async function asMagazineRefusal<T>(work: Promise<T>): Promise<T> {
+  try {
+    return await work;
+  } catch (error) {
+    if (error instanceof SpaceSlugTakenError) {
+      throw magazineError("SPACE_SLUG_TAKEN");
+    }
+    throw error;
+  }
 }
 
 /**
@@ -102,11 +98,17 @@ function isMagazineTab(owner: SpaceSlugOwner): boolean {
  * tab (a room, today) owns the slug "magazine" in the community.
  */
 async function assertMagazineSpaceFree(
-  database: typeof db,
+  database: SpaceWriter,
   communityId: string,
 ): Promise<void> {
-  const owner = await findMagazineSlugOwner(database, communityId);
-  if (owner && !isMagazineTab(owner)) throw magazineError("SPACE_SLUG_TAKEN");
+  await asMagazineRefusal(
+    assertOptionalBuiltinSlugFree(
+      database,
+      communityId,
+      MAGAZINE_SPACE,
+      MAGAZINE_SPACE,
+    ),
+  );
 }
 
 /**
@@ -116,32 +118,17 @@ async function assertMagazineSpaceFree(
  * slug "magazine"; the tab is never skipped silently.
  */
 export async function ensureMagazineSpace(
-  database: typeof db,
+  database: SpaceWriter,
   communityId: string,
 ): Promise<void> {
-  await assertMagazineSpaceFree(database, communityId);
-
-  const [last] = await database
-    .select({ position: spaces.position })
-    .from(spaces)
-    .where(eq(spaces.communityId, communityId))
-    .orderBy(desc(spaces.position))
-    .limit(1);
-
-  await database
-    .insert(spaces)
-    .values({
+  await asMagazineRefusal(
+    ensureOptionalBuiltinSpace(
+      database,
       communityId,
-      kind: "builtin",
-      builtinSurface: MAGAZINE_SPACE,
-      name: null,
-      slug: MAGAZINE_SPACE,
-      position: last ? last.position + 1 : 0,
-    })
-    .onConflictDoNothing({ target: [spaces.communityId, spaces.slug] });
-
-  // A room that took the slug between the check and the insert.
-  await assertMagazineSpaceFree(database, communityId);
+      MAGAZINE_SPACE,
+      MAGAZINE_SPACE,
+    ),
+  );
 }
 
 /** Both fields together, or neither. A half theme is refused. */

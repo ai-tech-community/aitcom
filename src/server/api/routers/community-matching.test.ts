@@ -1,5 +1,6 @@
 import type { db as Database } from "@/server/db";
 import type * as MatchingServices from "@/server/communities/matching";
+import type * as OptionalSpace from "@/server/communities/optional-space";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
 import {
@@ -10,6 +11,7 @@ const services = vi.hoisted(() => ({
   types: vi.fn(),
   propose: vi.fn(),
   participants: vi.fn(),
+  ensureSpace: vi.fn(),
 }));
 vi.mock("@/server/api/trpc", async () => {
   const { initTRPC, TRPCError } = await import("@trpc/server");
@@ -35,6 +37,12 @@ vi.mock("@/server/communities/matching", async (original) => ({
   matchingParticipants: services.participants,
   proposeCommunityIntroduction: services.propose,
 }));
+vi.mock("@/server/communities/optional-space", async (original) => ({
+  ...(await original<typeof OptionalSpace>()),
+  ensureOptionalBuiltinSpace: services.ensureSpace,
+}));
+import { SpaceSlugTakenError } from "@/server/communities/optional-space";
+import { MATCHING_SPACE } from "@/server/communities/space-defaults";
 import { communityMatchingRouter } from "./community-matching";
 
 const type: ConnectionType = {
@@ -100,6 +108,7 @@ function caller(
 beforeEach(() => {
   vi.clearAllMocks();
   services.types.mockResolvedValue([type]);
+  services.ensureSpace.mockResolvedValue({ added: true });
 });
 
 describe("community matching access", () => {
@@ -252,5 +261,65 @@ describe("community matching access", () => {
     await expect(
       caller("owner").archiveType({ slug: "alpha", id: type.id, active: true }),
     ).rejects.toThrow("MATCHING_TYPE_LIMIT");
+  });
+});
+
+describe("Find a match space", () => {
+  it("adds the Find a match space in the type's transaction", async () => {
+    const fake = fakeDatabase();
+    // The transaction is its own object, so the test can tell it from ctx.db.
+    const tx = fakeDatabase().db;
+    fake.db.transaction.mockImplementation((fn: (tx: unknown) => unknown) =>
+      fn(tx),
+    );
+    await expect(
+      caller("owner", fake.db).saveType({
+        slug: "alpha",
+        type: { ...type, id: undefined },
+      }),
+    ).resolves.toEqual({ id: "created-type" });
+    expect(services.ensureSpace).toHaveBeenCalledTimes(1);
+    expect(services.ensureSpace).toHaveBeenCalledWith(
+      tx,
+      "community-a",
+      MATCHING_SPACE.surface,
+      MATCHING_SPACE.slug,
+    );
+    expect(fake.db.insert).not.toHaveBeenCalled();
+    // The space joins the menu only after the type itself is written.
+    expect(tx.insert.mock.invocationCallOrder[0]).toBeLessThan(
+      services.ensureSpace.mock.invocationCallOrder[0]!,
+    );
+  });
+  it("does not touch spaces when a type is updated", async () => {
+    const fake = fakeDatabase();
+    await caller("owner", fake.db).saveType({ slug: "alpha", type });
+    expect(fake.db.update).toHaveBeenCalled();
+    expect(services.ensureSpace).not.toHaveBeenCalled();
+  });
+  it("refuses with MATCHING_SPACE_SLUG_TAKEN when a room owns match", async () => {
+    services.ensureSpace.mockRejectedValue(new SpaceSlugTakenError("match"));
+    await expect(
+      caller("owner").saveType({
+        slug: "alpha",
+        type: { ...type, id: undefined },
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "MATCHING_SPACE_SLUG_TAKEN",
+    });
+  });
+  it("passes other space failures through unchanged", async () => {
+    const failure = new Error("connection lost");
+    services.ensureSpace.mockRejectedValue(failure);
+    await expect(
+      caller("owner").saveType({
+        slug: "alpha",
+        type: { ...type, id: undefined },
+      }),
+    ).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      cause: failure,
+    });
   });
 });

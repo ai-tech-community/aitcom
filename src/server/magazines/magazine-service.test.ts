@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Deps } from "./deps";
 import type { Magazine } from "@/payload-types";
-import { saveMagazineSettings } from "./magazine-service";
+import { magazineErrorCodeOf } from "./errors";
+import { ensureMagazineSpace, saveMagazineSettings } from "./magazine-service";
 
 function fixture(existing: Partial<Magazine> | null) {
   const update = vi.fn(async (input: { data: object }) => ({
@@ -19,22 +20,17 @@ function fixture(existing: Partial<Magazine> | null) {
       create,
     },
     db: {
-      query: {
-        spaces: {
-          findFirst: vi.fn(async () => ({
-            kind: "builtin",
-            builtinSurface: "magazine",
-          })),
-        },
-      },
+      // The Magazine tab already owns the slug "magazine".
       select: () => ({
         from: () => ({
-          where: () => ({ orderBy: () => ({ limit: async () => [] }) }),
+          where: () => ({
+            limit: async () => [
+              { kind: "builtin", builtinSurface: "magazine" },
+            ],
+          }),
         }),
       }),
-      insert: () => ({
-        values: () => ({ onConflictDoNothing: async () => undefined }),
-      }),
+      insert: vi.fn(),
     },
   } as unknown as Deps;
   return { deps, update, create };
@@ -87,6 +83,49 @@ describe("saved magazine typography", () => {
       expect.objectContaining({
         data: expect.objectContaining({ font: "italiana" }),
       }),
+    );
+  });
+});
+
+describe("ensureMagazineSpace", () => {
+  it("refuses with SPACE_SLUG_TAKEN when a room owns the slug", async () => {
+    const insert = vi.fn();
+    const database = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => [{ kind: "room", builtinSurface: null }],
+          }),
+        }),
+      }),
+      insert,
+    } as unknown as Deps["db"];
+
+    const refusal = await ensureMagazineSpace(database, "community").catch(
+      (error: unknown) => error,
+    );
+
+    expect(magazineErrorCodeOf(refusal)).toBe("SPACE_SLUG_TAKEN");
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("rethrows any other failure unchanged", async () => {
+    const failure = new Error("connection lost");
+    const database = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => {
+              throw failure;
+            },
+          }),
+        }),
+      }),
+      insert: vi.fn(),
+    } as unknown as Deps["db"];
+
+    await expect(ensureMagazineSpace(database, "community")).rejects.toBe(
+      failure,
     );
   });
 });

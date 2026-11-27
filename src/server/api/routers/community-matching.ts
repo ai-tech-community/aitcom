@@ -16,6 +16,11 @@ import {
   validateMatchingAnswers,
 } from "@/server/communities/matching";
 import {
+  ensureOptionalBuiltinSpace,
+  SpaceSlugTakenError,
+} from "@/server/communities/optional-space";
+import { MATCHING_SPACE } from "@/server/communities/space-defaults";
+import {
   communityConnectionTypes,
   communityMatchingProfiles,
   communityMatchDismissals,
@@ -124,6 +129,24 @@ export const communityMatchingRouter = createTRPCRouter({
           .insert(communityConnectionTypes)
           .values({ ...values, communityId: ctx.community.id })
           .returning({ id: communityConnectionTypes.id });
+        // Every new type makes sure the Find a match space exists, in the
+        // same transaction: the first one turns matching on, later ones find
+        // the space already there and leave it as the owners set it.
+        try {
+          await ensureOptionalBuiltinSpace(
+            tx,
+            ctx.community.id,
+            MATCHING_SPACE.surface,
+            MATCHING_SPACE.slug,
+          );
+        } catch (error) {
+          if (error instanceof SpaceSlugTakenError)
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "MATCHING_SPACE_SLUG_TAKEN",
+            });
+          throw error;
+        }
         return created!;
       });
     }),
