@@ -9,6 +9,7 @@ import {
 } from "@/lib/communities/themes";
 import { cn } from "@/lib/utils";
 
+import { coverPaletteProperties } from "./community-cover-art";
 import { useShownCommunityThemeId } from "./community-theme-preview";
 import { headingFontClass } from "./heading-fonts";
 
@@ -16,7 +17,8 @@ import { headingFontClass } from "./heading-fonts";
  * The look as custom properties on the frame (token scoping): the site's own
  * tokens re-declared, so every component inside follows without knowing
  * themes exist; the canvas pattern, which `[data-community-theme]` in
- * globals.css paints; and the cover palette the cover art draws with.
+ * globals.css paints; and the cover palette, for art drawn straight in the
+ * frame (`CommunityCoverArt` carries its own).
  */
 function themeProperties(theme: CommunityTheme): CSSProperties {
   const { tokens, canvasPattern, cover } = theme;
@@ -35,10 +37,10 @@ function themeProperties(theme: CommunityTheme): CSSProperties {
     properties["--community-canvas-image"] = canvasPattern.image;
     properties["--community-canvas-size"] = canvasPattern.size;
   }
-  for (const [role, color] of Object.entries(cover?.palette ?? {})) {
-    properties[`--community-cover-${role}`] = color;
-  }
-  return properties as CSSProperties;
+  return {
+    ...properties,
+    ...coverPaletteProperties(cover),
+  } as CSSProperties;
 }
 
 /**

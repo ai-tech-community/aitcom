@@ -23,6 +23,7 @@ vi.mock("next/font/google", () => {
   };
 });
 
+import { CommunityCoverArt } from "./community-cover-art";
 import { COMMUNITY_COVER_ART } from "./cover-art";
 import { CommunityThemeCover } from "./community-theme-cover";
 import {
@@ -304,4 +305,80 @@ describe("COMMUNITY_COVER_ART", () => {
       );
     },
   );
+});
+
+describe("CommunityCoverArt", () => {
+  function paletteBox(container: HTMLElement): HTMLElement {
+    const box = container.querySelector<HTMLElement>(
+      "[data-community-cover-look]",
+    );
+    if (!box) throw new Error("no cover art box");
+    return box;
+  }
+
+  it("carries its own look's palette, inside a frame of another look", () => {
+    const night = resolveCommunityTheme("night");
+    const { container } = render(
+      <CommunityThemeScope themeId="canal">
+        <CommunityCoverArt themeId="night" className="h-20" />
+      </CommunityThemeScope>,
+    );
+    const box = paletteBox(container);
+    expect(box).toHaveAttribute("data-community-cover-look", "night");
+    expect(box).toHaveClass("h-20");
+    expect(box).toContainElement(box.querySelector("svg"));
+    for (const [role, color] of Object.entries(night.cover!.palette)) {
+      expect(box.style.getPropertyValue(`--community-cover-${role}`)).toBe(
+        color,
+      );
+    }
+  });
+
+  it("sets every role its art draws with, even where the frame sets none", () => {
+    const meadow = resolveCommunityTheme("meadow");
+    const { container } = render(
+      <CommunityThemeScope themeId="plain">
+        <CommunityCoverArt themeId="meadow" />
+      </CommunityThemeScope>,
+    );
+    const box = paletteBox(container);
+    const drawn = new Set(
+      [...box.innerHTML.matchAll(/var\(--community-cover-([A-Za-z]+)\)/g)].map(
+        ([, role]) => role!,
+      ),
+    );
+    expect(drawn.size).toBeGreaterThan(0);
+    for (const role of drawn) {
+      expect(box.style.getPropertyValue(`--community-cover-${role}`)).toBe(
+        meadow.cover!.palette[role],
+      );
+    }
+  });
+
+  it("renders nothing for a look without art", () => {
+    const { container } = render(<CommunityCoverArt themeId="plain" />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("is what the community cover draws, so the cover needs no matching frame", () => {
+    const sunset = resolveCommunityTheme("sunset");
+    const { container } = render(
+      <CommunityThemeScope themeId="night">
+        <CommunityThemeCover
+          community={{
+            name: "MLOps",
+            bannerUrl: null,
+            bannerAlt: null,
+            themeId: "sunset",
+          }}
+        />
+      </CommunityThemeScope>,
+    );
+    // The scope shows its own look (night); the cover shows the community's.
+    const box = paletteBox(container);
+    expect(box).toHaveAttribute("data-community-cover-look", "sunset");
+    expect(box.style.getPropertyValue("--community-cover-skyTop")).toBe(
+      sunset.cover!.palette.skyTop,
+    );
+  });
 });
