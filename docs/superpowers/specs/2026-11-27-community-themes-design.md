@@ -216,7 +216,9 @@ properties, and every component inside follows without knowing themes exist.
   `mutedForeground` on the card color ≥ 4.5:1; `border` and `input` on
   `background` no fainter than Plain's on white (the house lines today are
   about 1.2:1, below WCAG 1.4.11; raising them is a separate, site-wide topic); the
-  `--primary` button and `--ring` focus color on `background` ≥ 3:1;
+  `--primary` button and `--ring` focus color on `background` ≥ 2.5:1 (the
+  house orange is about 2.9:1 on white today, also below 1.4.11; same
+  site-wide topic);
   `cover.nameColor` on `cover.nameBase` ≥ 4.5:1; and the orange-band rule over
   `background`, `canvasPattern` colors and the whole cover `palette`.
 - **Hard-coded colors.** Token scoping only reaches components that use

@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Looks in this slice: `plain` (default), `canal`, `meadow`, `sunset`, `night`. Night is `scheme: "dark"`; the others are `"light"`.
-- Every look passes, by test: `foreground` and `mutedForeground` on `background` ≥ 4.5:1; the same two on the card color ≥ 4.5:1; `border` and `input` on `background` at least as high as Plain's (`#EBEBEB` on `#FFFFFF`, about 1.2:1 — the house value today); `--primary` (`oklch(0.705 0.213 47.604)`) and `--ring` on `background` ≥ 3:1; `cover.nameColor` on `cover.nameBase` ≥ 4.5:1.
+- Every look passes, by test: `foreground` and `mutedForeground` on `background` ≥ 4.5:1; the same two on the card color ≥ 4.5:1; `border` and `input` on `background` at least as high as Plain's (`#EBEBEB` on `#FFFFFF`, about 1.2:1 — the house value today); `--primary` (`oklch(0.705 0.213 47.604)`, measured as its sRGB clip `#FF6900`) and `--ring` on `background` ≥ 2.5:1 (Plain has about 2.9:1 on white; the house orange is below 3:1 today, a site-wide topic); `cover.nameColor` on `cover.nameBase` ≥ 4.5:1.
 - Orange band: no `background`, pattern or cover-palette color with OKLCH hue in **30–65** and chroma **> 0.08**.
 - `--primary` is never overridden by a theme. Body text stays Geist Sans, labels Geist Mono; a theme sets only `--font-community-heading`.
 - Heading faces: canal = Fraunces, meadow = Nunito, sunset = DM Serif Display, night = Space Grotesk, plain = none (Geist Sans). All `next/font/google`, `preload: false`, `display: "swap"`.
@@ -100,7 +100,7 @@ const B = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_;
   - `foreground` and `mutedForeground` on `background` ≥ 4.5.
   - the same two on `card ?? (scheme === "dark" ? <dark card hex> : "#FFFFFF")` ≥ 4.5, using `cardForeground ?? foreground` for the first.
   - `contrastRatio(border, background)` and `contrastRatio(input, background)` ≥ the same ratio for Plain (lines no fainter than today's house lines).
-  - `"#F54A00"` (primary) on `background` ≥ 3.
+  - `"#FF6900"` (primary, sRGB clip of the token) on `background` ≥ 2.5.
   - `cover`: `contrastRatio(nameColor, nameBase)` ≥ 4.5.
   - no color in `[tokens.background, ...canvasPattern.colors, ...Object.values(cover.palette)]` is `isInOrangeBand`.
   - every hex passes `normalizeHexColor(x) === x`.
