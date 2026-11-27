@@ -3960,7 +3960,7 @@
       },
       "night": {
         "name": "Nuit",
-        "description": "Un bleu profond avec de petites étoiles et des cartes sombres."
+        "description": "Un bleu profond avec de petites étoiles. Toute la page devient sombre."
       }
     }
   },

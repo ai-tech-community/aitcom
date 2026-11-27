@@ -3960,7 +3960,7 @@
       },
       "night": {
         "name": "Night",
-        "description": "Deep blue with faint stars and dark cards."
+        "description": "Deep blue with faint stars. The whole page turns dark."
       }
     }
   },
