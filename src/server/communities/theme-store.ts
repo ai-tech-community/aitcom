@@ -10,17 +10,44 @@ type SqlDb = {
   execute: (query: SQL) => Promise<unknown>;
 };
 
-function errorText(error: unknown): string {
-  if (typeof error === "string") return error;
-  if (!error || typeof error !== "object") return "";
-  const record = error as { message?: unknown; cause?: unknown };
-  const message = typeof record.message === "string" ? record.message : "";
-  return `${message}\n${errorText(record.cause)}`;
+/** Postgres `undefined_table`. */
+const UNDEFINED_TABLE = "42P01";
+
+/** The driver text for the same case, for drivers that drop the code. */
+const MISSING_TABLE_TEXT =
+  /relation "?(?:app\.)?community_theme"? does not exist/i;
+
+/** The error and every `cause` below it, stopping on a cycle. */
+function causeChain(error: unknown): unknown[] {
+  const chain: unknown[] = [];
+  let current: unknown = error;
+  while (
+    current !== undefined &&
+    current !== null &&
+    !chain.includes(current)
+  ) {
+    chain.push(current);
+    current =
+      typeof current === "object"
+        ? (current as { cause?: unknown }).cause
+        : undefined;
+  }
+  return chain;
 }
 
-/** Preview builds skip migrations, so the theme table may be absent. */
+/**
+ * Preview builds skip migrations, so the theme table may be absent. Only
+ * that case counts: a permission, lock or connection error on the table
+ * must still fail, even when the message quotes the SQL.
+ */
 export function isMissingCommunityThemeSchema(error: unknown): boolean {
-  return errorText(error).includes("community_theme");
+  return causeChain(error).some((link) => {
+    if (typeof link === "string") return MISSING_TABLE_TEXT.test(link);
+    if (typeof link !== "object" || link === null) return false;
+    const { code, message } = link as { code?: unknown; message?: unknown };
+    if (code === UNDEFINED_TABLE) return true;
+    return typeof message === "string" && MISSING_TABLE_TEXT.test(message);
+  });
 }
 
 function firstRow(result: unknown): Record<string, unknown> | undefined {

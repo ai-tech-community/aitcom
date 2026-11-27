@@ -86,17 +86,67 @@ describe("writeCommunityThemeId", () => {
 });
 
 describe("isMissingCommunityThemeSchema", () => {
+  const FAILED_QUERY =
+    'Failed query: SELECT "theme_id" FROM "app"."community_theme" WHERE "community_id" = $1 LIMIT 1';
+
   it("spots the missing table, also when wrapped in a cause", () => {
     expect(isMissingCommunityThemeSchema(MISSING_TABLE)).toBe(true);
     expect(
       isMissingCommunityThemeSchema(
-        new Error("Failed query", { cause: MISSING_TABLE }),
+        new Error(FAILED_QUERY, { cause: MISSING_TABLE }),
       ),
     ).toBe(true);
+  });
+
+  it("spots the Postgres undefined-table code along the cause chain", () => {
+    const coded = Object.assign(new Error("undefined table"), {
+      code: "42P01",
+    });
+    expect(isMissingCommunityThemeSchema(coded)).toBe(true);
+    expect(
+      isMissingCommunityThemeSchema(new Error(FAILED_QUERY, { cause: coded })),
+    ).toBe(true);
+  });
+
+  it("does not take a failed query that names the table as a missing table", () => {
+    expect(
+      isMissingCommunityThemeSchema(
+        new Error(FAILED_QUERY, { cause: new Error("connection reset") }),
+      ),
+    ).toBe(false);
+  });
+
+  it("does not take a permission error on the table as a missing table", () => {
+    const denied = Object.assign(
+      new Error("permission denied for table community_theme"),
+      { code: "42501" },
+    );
+    expect(isMissingCommunityThemeSchema(denied)).toBe(false);
   });
 
   it("ignores other errors", () => {
     expect(isMissingCommunityThemeSchema(new Error("timeout"))).toBe(false);
     expect(isMissingCommunityThemeSchema(undefined)).toBe(false);
+  });
+});
+
+describe("readCommunityThemeId on a failing query", () => {
+  it("rethrows a connection error even when the message names the table", async () => {
+    const failure = new Error(
+      'Failed query: SELECT "theme_id" FROM "app"."community_theme" WHERE "community_id" = $1 LIMIT 1',
+      { cause: new Error("connection reset") },
+    );
+    const db = fakeDb(() => {
+      throw failure;
+    });
+    await expect(readCommunityThemeId(db, "c1")).rejects.toBe(failure);
+  });
+
+  it("rethrows a permission error on the table", async () => {
+    const failure = new Error("permission denied for table community_theme");
+    const db = fakeDb(() => {
+      throw failure;
+    });
+    await expect(readCommunityThemeId(db, "c1")).rejects.toBe(failure);
   });
 });
