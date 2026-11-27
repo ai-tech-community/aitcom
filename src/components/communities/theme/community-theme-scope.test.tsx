@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 
 import {
@@ -45,6 +45,25 @@ function scopeOf(container: HTMLElement): HTMLElement {
   return scope;
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+/** Every token a look may re-declare, as the custom property it sets. */
+const TOKEN_PROPERTIES = [
+  "--card",
+  "--card-foreground",
+  "--muted",
+  "--secondary",
+  "--secondary-foreground",
+  "--accent",
+  "--accent-foreground",
+  "--success",
+  "--warning",
+  "--info",
+  "--destructive",
+];
+
 function renderScope(themeId: CommunityThemeId) {
   const { container } = render(
     <CommunityThemeScope themeId={themeId} className="px-4">
@@ -75,6 +94,35 @@ describe("CommunityThemeScope", () => {
     expect(scope.style.getPropertyValue("--input")).toBe(canal.tokens.input);
     expect(scope.style.getPropertyValue("--card")).toBe("");
     expect(scope).toContainElement(screen.getByText("page"));
+  });
+
+  it("deepens the status colors on a tinted light look (canal)", () => {
+    const canal = resolveCommunityTheme("canal");
+    const scope = renderScope("canal");
+    for (const name of ["success", "warning", "info", "destructive"] as const) {
+      expect(scope.style.getPropertyValue(`--${name}`)).toBe(
+        canal.tokens[name],
+      );
+    }
+  });
+
+  it("tells the browser which scheme the frame is in", () => {
+    expect(renderScope("canal").style.colorScheme).toBe("light");
+    expect(renderScope("plain").style.colorScheme).toBe("light");
+    expect(renderScope("night").style.colorScheme).toBe("dark");
+  });
+
+  it("turns off faux bold for a heading face with one weight (sunset)", () => {
+    expect(
+      renderScope("sunset").style.getPropertyValue(
+        "--community-heading-synthesis",
+      ),
+    ).toBe("none");
+    expect(
+      renderScope("canal").style.getPropertyValue(
+        "--community-heading-synthesis",
+      ),
+    ).toBe("");
   });
 
   it("paints the look's canvas pattern and hands its cover palette to the art", () => {
@@ -114,6 +162,7 @@ describe("CommunityThemeScope", () => {
         variable: "--community-heading-face",
         preload: false,
         display: "swap",
+        subsets: ["latin", "latin-ext"],
       });
       expect(call).not.toHaveProperty("adjustFontFallback", false);
     }
@@ -132,6 +181,21 @@ describe("CommunityThemeScope", () => {
     expect(scope.style.getPropertyValue("--card-foreground")).toBe(
       night.tokens.cardForeground,
     );
+    // Quiet fills are indigo too, not `.dark`'s gray.
+    expect(scope.style.getPropertyValue("--muted")).toBe(night.tokens.muted);
+    expect(scope.style.getPropertyValue("--secondary")).toBe(
+      night.tokens.secondary,
+    );
+    expect(scope.style.getPropertyValue("--secondary-foreground")).toBe(
+      night.tokens.secondaryForeground,
+    );
+    expect(scope.style.getPropertyValue("--accent")).toBe(night.tokens.accent);
+    expect(scope.style.getPropertyValue("--accent-foreground")).toBe(
+      night.tokens.accentForeground,
+    );
+    expect(scope.style.getPropertyValue("--destructive")).toBe(
+      night.tokens.destructive,
+    );
   });
 
   it("keeps the house look for plain: no card, pattern, cover or face", () => {
@@ -139,7 +203,9 @@ describe("CommunityThemeScope", () => {
 
     expect(scope).toHaveAttribute("data-community-theme", "plain");
     expect(scope).not.toHaveClass("dark");
-    expect(scope.style.getPropertyValue("--card")).toBe("");
+    for (const property of TOKEN_PROPERTIES) {
+      expect(scope.style.getPropertyValue(property), property).toBe("");
+    }
     expect(scope.style.getPropertyValue("--community-canvas-image")).toBe("");
     for (const face of FACE_CLASSES) expect(scope).not.toHaveClass(face);
     const coverVars = Array.from(scope.style).filter((name) =>
@@ -192,7 +258,6 @@ describe("CommunityThemeScope", () => {
     }
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(() => render(<Orphan />)).toThrow(/CommunityThemePreviewProvider/);
-    vi.mocked(console.error).mockRestore();
   });
 });
 
@@ -291,11 +356,12 @@ describe("COMMUNITY_COVER_ART", () => {
       for (const [, key] of used)
         expect(palette, `${id}: ${key}`).toContain(key);
       // Every palette role is drawn, so the palette the catalog test measures
-      // is the art people see. The name's base may instead be the plate the
-      // cover paints behind the name (Canal).
+      // is the art people see. Canal's name plate is the one exception: the
+      // cover paints it behind the name, outside the art.
       const drawn = new Set(used.map(([, key]) => key));
+      const paintedByCover = id === "canal" ? ["namePlate"] : [];
       for (const key of palette) {
-        if (theme.cover!.palette[key] === theme.cover!.nameBase) continue;
+        if (paintedByCover.includes(key)) continue;
         expect(drawn.has(key), `${id}: ${key} is never drawn`).toBe(true);
       }
       // No color of its own: no hex, rgb, hsl, oklch or named color.

@@ -1,9 +1,8 @@
-import { useId } from "react";
+import { CoverSvg, coverPaint, useCoverId } from "./cover-svg";
 
 type Role = "skyTop" | "skyBottom" | "rayLight" | "rayRose" | "sun" | "horizon";
 
-/** Every color comes from the look's cover palette, set on the frame. */
-const paint = (role: Role) => `var(--community-cover-${role})`;
+const paint: (role: Role) => string = coverPaint;
 
 const HORIZON = 124;
 const SUN = { cx: 700, r: 52 };
@@ -18,9 +17,10 @@ const RAYS = Array.from({ length: SLICES / 2 }, (_, i) => {
     const y = HORIZON + RAY_LENGTH * Math.sin(angle);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   };
+  const role: Role = i % 2 === 0 ? "rayRose" : "rayLight";
   return {
     points: `${SUN.cx},${HORIZON} ${at(2 * i)} ${at(2 * i + 1)}`,
-    role: (i % 2 === 0 ? "rayRose" : "rayLight") satisfies Role,
+    role,
   };
 });
 
@@ -29,15 +29,9 @@ const RAYS = Array.from({ length: SLICES / 2 }, (_, i) => {
  * below y=124, where the community name sits, whatever the crop.
  */
 export function SunsetCover() {
-  const sky = `cover-sunset-sky-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
+  const sky = useCoverId("sunset-sky");
   return (
-    <svg
-      viewBox="0 0 1400 200"
-      preserveAspectRatio="xMidYMax slice"
-      aria-hidden="true"
-      focusable="false"
-      className="absolute inset-0 size-full"
-    >
+    <CoverSvg>
       <defs>
         <linearGradient id={sky} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" style={{ stopColor: paint("skyTop") }} />
@@ -64,6 +58,6 @@ export function SunsetCover() {
         height={200 - HORIZON}
         style={{ fill: paint("horizon") }}
       />
-    </svg>
+    </CoverSvg>
   );
 }

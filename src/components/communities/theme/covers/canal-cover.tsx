@@ -1,4 +1,10 @@
-import { useId } from "react";
+import {
+  COVER_HEIGHT,
+  COVER_WIDTH,
+  CoverSvg,
+  coverPaint,
+  useCoverId,
+} from "./cover-svg";
 
 type Role =
   | "skyTop"
@@ -12,10 +18,9 @@ type Role =
   | "windowInk"
   | "windowLight";
 
-/** Every color comes from the look's cover palette, set on the frame. */
-const paint = (role: Role) => `var(--community-cover-${role})`;
+const paint: (role: Role) => string = coverPaint;
 
-const WIDTH = 1400;
+const WIDTH = COVER_WIDTH;
 const WATERLINE = 166;
 
 type House = {
@@ -108,15 +113,9 @@ const RIPPLES = [
 
 /** A row of gabled canal houses on the water, under a pale sky. */
 export function CanalCover() {
-  const sky = `cover-canal-sky-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
+  const sky = useCoverId("canal-sky");
   return (
-    <svg
-      viewBox={`0 0 ${WIDTH} 200`}
-      preserveAspectRatio="xMidYMax slice"
-      aria-hidden="true"
-      focusable="false"
-      className="absolute inset-0 size-full"
-    >
+    <CoverSvg>
       <defs>
         <linearGradient id={sky} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" style={{ stopColor: paint("skyTop") }} />
@@ -146,7 +145,7 @@ export function CanalCover() {
       <rect
         y={WATERLINE}
         width={WIDTH}
-        height={200 - WATERLINE}
+        height={COVER_HEIGHT - WATERLINE}
         style={{ fill: paint("water") }}
       />
       {RIPPLES.map(([x, y, width]) => (
@@ -160,6 +159,6 @@ export function CanalCover() {
           style={{ fill: paint("waterLight") }}
         />
       ))}
-    </svg>
+    </CoverSvg>
   );
 }

@@ -1,9 +1,8 @@
-import { useId } from "react";
+import { CoverSvg, coverPaint, useCoverId } from "./cover-svg";
 
 type Role = "skyTop" | "skyBottom" | "star" | "moon" | "ridge";
 
-/** Every color comes from the look's cover palette, set on the frame. */
-const paint = (role: Role) => `var(--community-cover-${role})`;
+const paint: (role: Role) => string = coverPaint;
 
 /**
  * Stars in the upper sky only (y < 112), clear of the community name. A
@@ -38,15 +37,9 @@ const CRESCENT = [
  * name sits; the ridge rises on the right.
  */
 export function NightCover() {
-  const sky = `cover-night-sky-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
+  const sky = useCoverId("night-sky");
   return (
-    <svg
-      viewBox="0 0 1400 200"
-      preserveAspectRatio="xMidYMax slice"
-      aria-hidden="true"
-      focusable="false"
-      className="absolute inset-0 size-full"
-    >
+    <CoverSvg>
       <defs>
         <linearGradient id={sky} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" style={{ stopColor: paint("skyTop") }} />
@@ -69,6 +62,6 @@ export function NightCover() {
         d="M760 200 C880 190 960 150 1060 146 S1220 128 1300 140 S1380 150 1400 146 V200 Z"
         style={{ fill: paint("ridge") }}
       />
-    </svg>
+    </CoverSvg>
   );
 }

@@ -274,6 +274,13 @@
   z-index: 10;
 }
 
+/* Adds to the theme's `font-community-heading` (font-family above): a face
+   that ships in one weight (DM Serif Display) must not get a fake bold.
+   CommunityThemeScope sets --community-heading-synthesis to none for it. */
+@utility font-community-heading {
+  font-synthesis-weight: var(--community-heading-synthesis, auto);
+}
+
 /* Community looks (CommunityThemeScope): the frame paints the look's canvas
    pattern over its background color. The pattern scrolls with the page.
    The defaults stop a frame without a pattern from inheriting one; the

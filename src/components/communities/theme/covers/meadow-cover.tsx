@@ -1,7 +1,8 @@
+import { CoverSvg, coverPaint } from "./cover-svg";
+
 type Role = "sky" | "cloud" | "sun" | "hillFar" | "hillMid" | "hillNear";
 
-/** Every color comes from the look's cover palette, set on the frame. */
-const paint = (role: Role) => `var(--community-cover-${role})`;
+const paint: (role: Role) => string = coverPaint;
 
 /**
  * Rolling hills under a clear sky, a small sun and a cloud. The nearest hill
@@ -10,13 +11,7 @@ const paint = (role: Role) => `var(--community-cover-${role})`;
  */
 export function MeadowCover() {
   return (
-    <svg
-      viewBox="0 0 1400 200"
-      preserveAspectRatio="xMidYMax slice"
-      aria-hidden="true"
-      focusable="false"
-      className="absolute inset-0 size-full"
-    >
+    <CoverSvg>
       <rect width="1400" height="200" style={{ fill: paint("sky") }} />
       <circle cx="880" cy="54" r="24" style={{ fill: paint("sun") }} />
       <g style={{ fill: paint("cloud") }}>
@@ -38,6 +33,6 @@ export function MeadowCover() {
         d="M0 122 C300 104 620 112 880 120 S1240 108 1400 116 V200 H0 Z"
         style={{ fill: paint("hillNear") }}
       />
-    </svg>
+    </CoverSvg>
   );
 }
