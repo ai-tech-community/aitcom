@@ -20,7 +20,7 @@ export function ReferralEmailPreview({
     <article
       aria-label={previewLabel}
       lang={locale}
-      className="bg-background overflow-hidden rounded-lg border text-left"
+      className="bg-card overflow-hidden rounded-lg border text-left"
     >
       <div className="border-b px-5 py-4">
         <p className="text-muted-foreground text-xs">

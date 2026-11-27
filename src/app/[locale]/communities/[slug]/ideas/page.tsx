@@ -23,9 +23,9 @@ import {
 import { ErrorState } from "@/components/ui/error-state";
 
 const statusStyles: Record<string, string> = {
-  open: "text-zinc-500 border-zinc-200",
-  implemented: "text-green-600 border-green-200 bg-green-50",
-  rejected: "text-zinc-400 border-zinc-200 bg-zinc-50",
+  open: "text-muted-foreground border-border",
+  implemented: "text-success border-success/30 bg-success/10",
+  rejected: "text-muted-foreground border-border bg-muted",
 };
 
 export default function CommunityIdeasPage({
@@ -191,8 +191,8 @@ export default function CommunityIdeasPage({
                   </span>
                   {isAdminOrOwner && (
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="rounded p-0.5 hover:bg-zinc-100">
-                        <MoreHorizontal className="h-3.5 w-3.5 text-zinc-400" />
+                      <DropdownMenuTrigger className="hover:bg-muted rounded p-0.5">
+                        <MoreHorizontal className="text-muted-foreground h-3.5 w-3.5" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
                         {idea.status !== "implemented" && (
