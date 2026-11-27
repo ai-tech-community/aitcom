@@ -5,6 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { documentAuthUser } from "@/server/better-auth/hub-session";
+import {
+  useInitialAuthUser,
+  usePageDocumentAuthUser,
+} from "@/components/auth/session-provider";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -114,22 +119,76 @@ function MatchingTabs({
   );
 }
 
+/** Who is looking at Find a match, as far as opening matching goes. */
+type MatchingViewer =
+  /** Not known yet: the session or the memberships are still loading. */
+  | { kind: "loading" }
+  | { kind: "failed"; retry: () => void }
+  | { kind: "member" }
+  /** Asked to join; an organizer has not answered yet. */
+  | { kind: "pending" }
+  /** Signed out, or signed in without an active membership. */
+  | { kind: "outsider" };
+
+/**
+ * The viewer's standing in this community. The user the server rendered the
+ * page for counts before the client session answers (the community frame
+ * and the forum read it the same way), so a member's memberships load at
+ * once instead of after a join prompt.
+ */
+function useMatchingViewer(slug: string): MatchingViewer {
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const user = documentAuthUser(
+    useInitialAuthUser(),
+    usePageDocumentAuthUser(),
+    session?.user,
+  );
+  const memberships = api.communities.getMyCommunities.useQuery(undefined, {
+    enabled: !!user,
+  });
+  if (!user) return sessionPending ? { kind: "loading" } : { kind: "outsider" };
+  if (memberships.isPending) return { kind: "loading" };
+  if (memberships.isError)
+    return { kind: "failed", retry: () => void memberships.refetch() };
+  const row = memberships.data.find((member) => member.slug === slug);
+  if (row?.status === "active") return { kind: "member" };
+  if (row?.status === "pending_approval") return { kind: "pending" };
+  return { kind: "outsider" };
+}
+
 /**
  * The Find a match page: Matches and Introductions for owners and admins,
  * My matching profile for every active member. Anyone else (signed out,
- * pending, inactive) is asked to join and matching is never loaded for them.
+ * pending, inactive) is told how to get in and matching is never loaded for
+ * them. The way in is the community frame's join control, the screen's one
+ * orange action (DESIGN.md One Voice Rule), so this page adds no second one.
  */
 export function FindAMatch({ slug }: { slug: string }) {
   const t = useTranslations("communityMatching");
-  const { data: session } = authClient.useSession();
-  const memberships = api.communities.getMyCommunities.useQuery(undefined, {
-    enabled: !!session?.user,
-  });
-  const active =
-    !!session?.user &&
-    memberships.data?.some(
-      (member) => member.slug === slug && member.status === "active",
-    );
+  const viewer = useMatchingViewer(slug);
+  let body: ReactNode;
+  switch (viewer.kind) {
+    case "loading":
+      body = <Skeleton className="h-40" />;
+      break;
+    case "failed":
+      body = <ErrorState onRetry={viewer.retry} />;
+      break;
+    case "member":
+      body = <MatchingWorkspace slug={slug} />;
+      break;
+    case "pending":
+      body = <EmptyState title={t("joinToMatchPending")} />;
+      break;
+    case "outsider":
+      body = (
+        <EmptyState
+          title={t("joinToMatch")}
+          description={t("joinToMatchDescription")}
+        />
+      );
+      break;
+  }
   return (
     <div className="space-y-6">
       <div>
@@ -140,18 +199,7 @@ export function FindAMatch({ slug }: { slug: string }) {
           {t("findDescription")}
         </p>
       </div>
-      {session?.user && memberships.isPending ? (
-        <Skeleton className="h-40" />
-      ) : memberships.isError && session?.user ? (
-        <ErrorState onRetry={memberships.refetch} />
-      ) : active ? (
-        <MatchingWorkspace slug={slug} />
-      ) : (
-        <EmptyState
-          title={t("joinToMatch")}
-          description={t("joinToMatchDescription")}
-        />
-      )}
+      {body}
     </div>
   );
 }

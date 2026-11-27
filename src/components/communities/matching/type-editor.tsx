@@ -69,8 +69,10 @@ export function ConnectionTypeEditor({
     onSuccess: () => {
       reset();
       invalidate();
-      // Saving the first type adds "Find a match" to the community menu.
+      // Every new type makes sure the Find a match space exists: refresh the
+      // community menu and the Spaces settings list.
       void utils.spaces.list.invalidate({ slug });
+      void utils.spaces.listForAdmin.invalidate({ slug });
       toast.success(t("typeSaved"));
     },
   });

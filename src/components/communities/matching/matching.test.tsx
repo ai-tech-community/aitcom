@@ -12,7 +12,10 @@ import {
 
 const m = vi.hoisted(() => ({
   session: null as { user: { id: string } } | null,
+  sessionPending: false,
+  seedUser: null as { id: string } | null,
   memberships: {} as Record<string, unknown>,
+  membershipsQuery: vi.fn(),
   setup: {} as Record<string, unknown>,
   setupQuery: vi.fn(),
   suggestions: {} as Record<string, unknown>,
@@ -22,6 +25,7 @@ const m = vi.hoisted(() => ({
   saveTypeOptions: {} as { onSuccess?: () => void },
   saveTypeError: null as { message: string } | null,
   invalidateSpaces: vi.fn(),
+  invalidateAdminSpaces: vi.fn(),
   propose: vi.fn(),
   dismiss: vi.fn(),
   pending: false,
@@ -41,7 +45,15 @@ vi.mock("next/navigation", () => ({
     ),
 }));
 vi.mock("@/server/better-auth/client", () => ({
-  authClient: { useSession: () => ({ data: m.session }) },
+  authClient: {
+    useSession: () => ({ data: m.session, isPending: m.sessionPending }),
+  },
+}));
+vi.mock("@/components/auth/session-provider", async (original) => ({
+  ...(await original<object>()),
+  // The user the server rendered the page for (the locale layout's seed).
+  useInitialAuthUser: () => m.seedUser,
+  usePageDocumentAuthUser: () => null,
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/i18n/navigation", () => ({
@@ -61,10 +73,18 @@ vi.mock("@/trpc/react", () => ({
         ]),
       ),
       advisory: { myPendingIntroductions: { invalidate: vi.fn() } },
-      spaces: { list: { invalidate: m.invalidateSpaces } },
+      spaces: {
+        list: { invalidate: m.invalidateSpaces },
+        listForAdmin: { invalidate: m.invalidateAdminSpaces },
+      },
     }),
     communities: {
-      getMyCommunities: { useQuery: () => m.memberships },
+      getMyCommunities: {
+        useQuery: (...args: unknown[]) => {
+          m.membershipsQuery(...args);
+          return m.memberships;
+        },
+      },
       getMembers: { useInfiniteQuery: () => m.directory },
     },
     communityMatching: {
@@ -167,6 +187,8 @@ beforeEach(() => {
   m.saveTypeOptions = {};
   m.saveTypeError = null;
   m.session = { user: { id: "me" } };
+  m.sessionPending = false;
+  m.seedUser = null;
   m.memberships = {
     data: [{ slug: "alpha", status: "active", role: "owner" }],
   };
@@ -213,16 +235,6 @@ beforeEach(() => {
 });
 
 describe("member matching interface", () => {
-  it("shows matching controls to owners", () => {
-    show(<FindAMatch slug="alpha" />);
-    expect(screen.getByRole("tab", { name: "Matches" })).toBeInTheDocument();
-    expect(
-      screen.queryByRole("tab", { name: "Connection types" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText("Topics members can choose"),
-    ).not.toBeInTheDocument();
-  });
   it("edits connection types from matching settings", () => {
     show(<MatchingSettings slug="alpha" />);
     expect(
@@ -310,6 +322,13 @@ describe("member matching interface", () => {
     expect(
       screen.queryByRole("tab", { name: "Directory" }),
     ).not.toBeInTheDocument();
+    // Connection types are edited in matching settings, not here.
+    expect(
+      screen.queryByRole("tab", { name: "Connection types" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Topics members can choose"),
+    ).not.toBeInTheDocument();
   });
   it("gives regular members their profile, with no tab strip", () => {
     m.setup = {
@@ -374,16 +393,61 @@ describe("member matching interface", () => {
       screen.getByText("Only members of this community can use matching."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    // The community frame's join control is the way in; no second one here.
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(m.setupQuery).not.toHaveBeenCalled();
   });
-  it("asks pending and inactive memberships to join, without loading matching", () => {
-    for (const status of ["pending", "banned"]) {
+  it("asks inactive memberships to join, without loading matching", () => {
+    for (const status of ["banned", "invited"]) {
       m.memberships = { data: [{ slug: "alpha", status }] };
       const { unmount } = show(<FindAMatch slug="alpha" />);
       expect(screen.getByText("Join to find a match")).toBeInTheDocument();
       expect(screen.queryByRole("tab")).not.toBeInTheDocument();
       unmount();
     }
+    expect(m.setupQuery).not.toHaveBeenCalled();
+  });
+  it("tells a viewer whose request is pending to wait, not to join", () => {
+    m.memberships = { data: [{ slug: "alpha", status: "pending_approval" }] };
+    show(<FindAMatch slug="alpha" />);
+    expect(
+      screen.getByText(en.communityMatching.joinToMatchPending),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Join to find a match")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(m.setupQuery).not.toHaveBeenCalled();
+  });
+  it("loads memberships at once for the user the server rendered, before the session answers", () => {
+    m.session = null;
+    m.sessionPending = true;
+    m.seedUser = { id: "me" };
+    m.memberships = { isPending: true };
+    const { container, unmount } = show(<FindAMatch slug="alpha" />);
+    expect(m.membershipsQuery).toHaveBeenLastCalledWith(undefined, {
+      enabled: true,
+    });
+    expect(screen.queryByText("Join to find a match")).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[data-slot="skeleton"]'),
+    ).toBeInTheDocument();
+    unmount();
+    // The memberships answer before the session does: matching opens.
+    m.memberships = {
+      data: [{ slug: "alpha", status: "active", role: "owner" }],
+    };
+    show(<FindAMatch slug="alpha" />);
+    expect(screen.queryByText("Join to find a match")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Matches" })).toBeInTheDocument();
+  });
+  it("waits for the session instead of asking to join while it loads", () => {
+    m.session = null;
+    m.sessionPending = true;
+    m.memberships = { isPending: true };
+    const { container } = show(<FindAMatch slug="alpha" />);
+    expect(screen.queryByText("Join to find a match")).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[data-slot="skeleton"]'),
+    ).toBeInTheDocument();
     expect(m.setupQuery).not.toHaveBeenCalled();
   });
   it("saves explicit opt-in and community answers, and can opt back out", () => {
@@ -578,19 +642,17 @@ describe("member matching interface", () => {
       }),
     });
   });
-  it("refreshes the community menu after saving a connection type", () => {
+  it("refreshes the community menu and the Spaces settings after saving a connection type", () => {
     show(<ConnectionTypeEditor slug="alpha" types={[]} />);
     act(() => m.saveTypeOptions.onSuccess?.());
     expect(m.invalidateSpaces).toHaveBeenCalledWith({ slug: "alpha" });
+    expect(m.invalidateAdminSpaces).toHaveBeenCalledWith({ slug: "alpha" });
   });
   it("explains that a room already uses the match address", () => {
     m.saveTypeError = { message: "MATCHING_SPACE_SLUG_TAKEN" };
     show(<ConnectionTypeEditor slug="alpha" types={[]} />);
     expect(screen.getByRole("alert")).toHaveTextContent(
       en.communityMatching.spaceSlugTaken,
-    );
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "A room already uses the address “match”. Rename that room, then save again.",
     );
   });
   it("explains a match and requires review before proposing it", () => {
