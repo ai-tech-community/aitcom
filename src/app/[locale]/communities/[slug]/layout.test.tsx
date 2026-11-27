@@ -1,7 +1,9 @@
 // The community layout prefetches the community on the server, so the
 // client layout's `getBySlug` query already holds it on first paint
 // instead of starting with a spinner.
+import { QueryClient } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
@@ -69,6 +71,35 @@ describe("community layout", () => {
     expect(frame).toHaveAttribute("data-user", "user-1");
     expect(frame).toHaveAttribute("data-memberships", "belong");
     expect(screen.getByText("page").parentElement).toBe(frame);
+  });
+
+  it("still renders the frame when the community is missing", async () => {
+    // tRPC's `prefetch` is TanStack's `prefetchQuery`: a NOT_FOUND lands in
+    // the cache, the call itself resolves. Run that real path, so the
+    // layout hands the frame over and the client takes notFound() itself.
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    state.prefetch.mockImplementation(({ slug }) =>
+      queryClient.prefetchQuery({
+        queryKey: ["communities.getBySlug", slug],
+        queryFn: () => Promise.reject(new TRPCError({ code: "NOT_FOUND" })),
+      }),
+    );
+
+    const layout = await CommunityLayout({
+      children: <p>page</p>,
+      params: Promise.resolve({ locale: "en", slug: "gone" }),
+    });
+    render(layout);
+
+    expect(state.prefetch).toHaveBeenCalledWith({ slug: "gone" });
+    expect(
+      queryClient.getQueryState(["communities.getBySlug", "gone"])?.status,
+    ).toBe("error");
+    expect(screen.getByTestId("community-layout").parentElement).toBe(
+      screen.getByTestId("hydrate"),
+    );
   });
 
   it("waits for the prefetch before it hands over the frame", async () => {

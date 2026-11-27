@@ -18,7 +18,9 @@ export default async function CommunityLayout({
   // sends the query cache as it is when it renders, and a prefetch still
   // running then reaches the client as pending. A missing community fails
   // here quietly (prefetch never throws) and is not sent; the client then
-  // fetches it and takes the notFound() path itself.
+  // fetches it and takes the notFound() path itself. A global
+  // `queries.retry` in createQueryClient would retry that NOT_FOUND here
+  // and hold the 404 back on the server.
   const [{ initialUser, initialMemberships }] = await Promise.all([
     loadHubAuthSeed(),
     api.communities.getBySlug.prefetch({ slug }),

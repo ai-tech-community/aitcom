@@ -194,6 +194,15 @@ describe("CommunityLayoutClient frame", () => {
       expect(scope).toContainElement(screen.getByTestId("page"));
     });
 
+    it("reaches down to the footer on a short page", async () => {
+      // The navbar is h-12 plus its 1px bottom border; the frame fills the
+      // rest of the screen, so the look never stops above the footer.
+      const { container } = await renderLayout();
+      expect(container.querySelector("[data-community-theme]")).toHaveClass(
+        "min-h-[calc(100svh-3rem-1px)]",
+      );
+    });
+
     it("leaves a workspace route plain", async () => {
       m.community.data = { ...readable, themeId: "night" };
       m.segments = ["events", "new"];

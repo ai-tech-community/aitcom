@@ -109,11 +109,14 @@ export function CommunityLayoutClient({
         // The Overview opens with the cover (banner picture or the look's
         // art) across the full width, and so does the members-only state on
         // every route. The frame wears the community's look edge to edge;
-        // workspace pages stay plain.
+        // workspace pages stay plain. It is at least the screen less the
+        // navbar (`h-12` and its 1px border, components/navbar.tsx) tall, so
+        // on a short page the look reaches the footer instead of stopping
+        // above a white band.
         <CommunityThemePreviewProvider>
           <CommunityThemeScope
             themeId={community.themeId}
-            className="px-4 py-8 sm:px-8"
+            className="min-h-[calc(100svh-3rem-1px)] px-4 py-8 sm:px-8"
           >
             {membersOnly || isCommunityOverview(segments) ? (
               <CommunityThemeCover community={community} className="mb-8" />
