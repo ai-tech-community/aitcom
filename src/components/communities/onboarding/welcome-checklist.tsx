@@ -35,7 +35,9 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
   return (
     <div className="bg-primary/5 border-primary/20 space-y-3 rounded-md border p-4">
       <div>
-        <h2 className="font-medium">{t("welcomeTitle")}</h2>
+        <h2 className="font-community-heading font-medium">
+          {t("welcomeTitle")}
+        </h2>
         <p className="text-muted-foreground text-sm">
           {t("welcomeSubtitle", { done, total })}
         </p>

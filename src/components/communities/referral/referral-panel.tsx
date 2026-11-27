@@ -139,7 +139,7 @@ export function ReferralPanel({ slug }: { slug: string }) {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-3xl leading-tight font-semibold tracking-tight text-balance">
+        <h1 className="font-community-heading text-3xl leading-tight font-semibold tracking-tight text-balance">
           {t("heading")}
         </h1>
         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">

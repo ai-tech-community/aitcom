@@ -35,7 +35,9 @@ export function InsightsDashboard({ slug }: { slug: string }) {
   return (
     <div className="@container min-w-0 space-y-8 py-4">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1 className="font-community-heading text-2xl font-semibold tracking-tight">
+          {t("title")}
+        </h1>
         <p className="text-muted-foreground mt-2 max-w-prose text-sm">
           {t(canViewStatistics ? "description" : "operationalDescription")}
         </p>

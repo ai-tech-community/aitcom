@@ -65,7 +65,9 @@ export default async function MagazineAutoDraftPage({
         {t("back")}
       </Link>
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1 className="font-community-heading text-2xl font-semibold tracking-tight">
+          {t("title")}
+        </h1>
         <p className="text-muted-foreground max-w-prose text-sm">
           {t("intro")}
         </p>

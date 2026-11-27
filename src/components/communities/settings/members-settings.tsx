@@ -159,7 +159,7 @@ export function MembersSettings({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">
+        <h2 className="font-community-heading text-lg font-semibold tracking-tight">
           {tManage("members")}
         </h2>
       </div>

@@ -126,7 +126,9 @@ export function ComposeSpaces({ slug }: { slug: string }) {
       {/* ── Surfaces section ── */}
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
+          <h2 className="font-community-heading text-lg font-semibold tracking-tight">
+            {t("title")}
+          </h2>
           <p className="text-muted-foreground text-sm">{t("description")}</p>
         </div>
 
@@ -229,7 +231,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
       {/* ── Rooms section ── */}
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">
+          <h2 className="font-community-heading text-lg font-semibold tracking-tight">
             {tRooms("title")}
           </h2>
         </div>

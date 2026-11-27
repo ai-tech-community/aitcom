@@ -85,7 +85,7 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">
+        <h2 className="font-community-heading text-lg font-semibold tracking-tight">
           {tPage("title")}
         </h2>
         <p className="text-muted-foreground text-sm">{tPage("description")}</p>

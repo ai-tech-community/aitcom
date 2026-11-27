@@ -172,7 +172,9 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
+          <h2 className="font-community-heading text-lg font-semibold tracking-tight">
+            {t("title")}
+          </h2>
           {hasRules && (
             <p className="text-muted-foreground text-sm">
               {t("currentVersion", {

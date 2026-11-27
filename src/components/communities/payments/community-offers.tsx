@@ -39,7 +39,9 @@ export function CommunityOffers({
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">{t("offersTitle")}</h1>
+        <h1 className="font-community-heading text-2xl font-semibold">
+          {t("offersTitle")}
+        </h1>
         <p className="text-muted-foreground text-sm">
           {t("seller", { name: query.data.name })}
         </p>

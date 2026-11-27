@@ -42,7 +42,9 @@ export function AcquireSettings({ slug }: { slug: string }) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Acquire settings</h2>
+        <h2 className="font-community-heading text-lg font-semibold">
+          Acquire settings
+        </h2>
         <p className="text-muted-foreground text-sm">
           Configure how your community acquires new members.
         </p>

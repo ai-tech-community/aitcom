@@ -23,7 +23,9 @@ export function AutonomySettings({ slug }: { slug: string }) {
   return (
     <div className="max-w-2xl space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">{t("title")}</h2>
+        <h2 className="font-community-heading text-lg font-semibold">
+          {t("title")}
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">{t("description")}</p>
       </div>
       <div className="flex items-center justify-between rounded-lg border p-4">

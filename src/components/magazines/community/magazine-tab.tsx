@@ -173,7 +173,7 @@ export function MagazineTab({
     <div className="@container flex flex-col gap-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight text-balance break-words">
+          <h2 className="font-community-heading text-2xl font-semibold tracking-tight text-balance break-words">
             {magazine.name}
           </h2>
           {magazine.description && (

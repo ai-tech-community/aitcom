@@ -74,7 +74,9 @@ export function OwnershipSettings({ slug }: OwnershipSettingsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
+        <h2 className="font-community-heading text-lg font-semibold tracking-tight">
+          {t("title")}
+        </h2>
         <p className="text-muted-foreground text-sm">{t("description")}</p>
       </div>
 

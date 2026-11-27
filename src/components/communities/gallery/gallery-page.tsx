@@ -235,7 +235,7 @@ export function GalleryPage({ slug }: { slug: string }) {
           <h2
             ref={headingRef}
             tabIndex={-1}
-            className="text-2xl leading-tight font-semibold tracking-tight outline-none"
+            className="font-community-heading text-2xl leading-tight font-semibold tracking-tight outline-none"
           >
             {t("page.title")}
           </h2>

@@ -92,7 +92,7 @@ export function CommunityMembersOnly({
         <Lock className="text-muted-foreground size-5" aria-hidden="true" />
         <h2
           id={headingId}
-          className="text-lg leading-snug font-semibold text-balance"
+          className="font-community-heading text-lg leading-snug font-semibold text-balance"
         >
           {isPrivateCommunity(community)
             ? t("titlePrivate")

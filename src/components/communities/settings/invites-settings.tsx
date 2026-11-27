@@ -94,7 +94,9 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
+        <h2 className="font-community-heading text-lg font-semibold tracking-tight">
+          {t("title")}
+        </h2>
         {!showForm && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="mr-1.5 size-3.5" />

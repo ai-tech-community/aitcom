@@ -54,7 +54,7 @@ export function ThemeSettings({ slug }: { slug: string }) {
 
   const header = (
     <div>
-      <h1 id={titleId} className="text-lg font-semibold">
+      <h1 id={titleId} className="font-community-heading text-lg font-semibold">
         {t("title")}
       </h1>
       <p id={introId} className="text-muted-foreground text-sm">
