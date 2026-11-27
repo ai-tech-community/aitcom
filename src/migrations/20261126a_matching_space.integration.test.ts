@@ -98,12 +98,16 @@ describe.skipIf(!isLocalDbConfigured())(
           ${slug}, ${position}, ${opts.hidden ? sql`now()` : null})`);
     }
 
-    async function connectionType(tx: Tx, communityId: string) {
+    async function connectionType(
+      tx: Tx,
+      communityId: string,
+      opts: { archived?: boolean } = {},
+    ) {
       await tx.execute(sql`
         INSERT INTO "app"."community_connection_type"
-          ("id", "community_id", "name", "mode", "prompt_a")
+          ("id", "community_id", "name", "mode", "prompt_a", "active")
         VALUES (gen_random_uuid()::text, ${communityId}, 'Mentor',
-          'shared', 'What do you want to learn?')`);
+          'shared', 'What do you want to learn?', ${!opts.archived})`);
     }
 
     async function spacesOf(tx: Tx, communityId: string): Promise<SpaceRow[]> {
@@ -115,14 +119,15 @@ describe.skipIf(!isLocalDbConfigured())(
       return res.rows as SpaceRow[];
     }
 
-    it("adds match after the last space for a community with connection types", async () => {
+    it("adds match after the last space for a community with an active connection type", async () => {
       await inRollback(async (tx) => {
         const c = await community(tx);
         await space(tx, c, "forum", 0);
         await space(tx, c, "members", 1);
         await space(tx, c, "lounge-abc123", 4, { kind: "room" });
+        // One active type is enough, next to an archived one.
         await connectionType(tx, c);
-        await connectionType(tx, c);
+        await connectionType(tx, c, { archived: true });
 
         await migration.up({ db: tx } as never);
 
@@ -191,6 +196,21 @@ describe.skipIf(!isLocalDbConfigured())(
 
         await migration.up({ db: tx } as never);
 
+        expect(await spacesOf(tx, c)).toEqual(before);
+      });
+    });
+
+    it("leaves communities whose connection types are all archived alone", async () => {
+      await inRollback(async (tx) => {
+        const c = await community(tx);
+        await space(tx, c, "forum", 0);
+        await connectionType(tx, c, { archived: true });
+        await connectionType(tx, c, { archived: true });
+        const before = await spacesOf(tx, c);
+
+        await migration.up({ db: tx } as never);
+
+        // Matching is off there: the menu must not open an empty page.
         expect(await spacesOf(tx, c)).toEqual(before);
       });
     });

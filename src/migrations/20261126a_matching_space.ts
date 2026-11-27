@@ -4,7 +4,9 @@ import { sql } from "@payloadcms/db-postgres";
 /**
  * Find a match space (spec 2026-11-26): matching moves into its own builtin
  * space, slug `match`. New communities get it when an owner saves their first
- * connection type; this backfills the communities that already have one.
+ * connection type; this backfills the communities that already have an
+ * active one. A community whose types are all archived has matching off, so
+ * it gets no row: the menu never opens an empty matching page.
  *
  * The row goes at the end of the menu (the community's highest position + 1,
  * or 0) and is shown, with no custom name. A community whose slug `match` is
@@ -23,7 +25,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       NULL
     FROM "app"."community" c
     WHERE EXISTS (
-      SELECT 1 FROM "app"."community_connection_type" t WHERE t."community_id" = c."id"
+      SELECT 1 FROM "app"."community_connection_type" t
+      WHERE t."community_id" = c."id" AND t."active"
     )
     AND NOT EXISTS (
       SELECT 1 FROM "app"."space" s WHERE s."community_id" = c."id" AND s."slug" = 'match'
