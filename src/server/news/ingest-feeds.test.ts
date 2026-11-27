@@ -107,3 +107,30 @@ describe("configured news feeds", () => {
     expect(NEWS_FEED_ITEM_LIMIT).toBeGreaterThanOrEqual(15);
   });
 });
+
+it("links a previously stored canonical article to every feed that returned it", async () => {
+  const addresses = [
+    "https://first.example/feed",
+    "https://second.example/feed",
+  ];
+  const origins: { feed: string; article: string }[] = [];
+  await ingestFeeds({
+    feeds: addresses.map((url) => ({ name: url, url })),
+    limit: 1,
+    fetchXml: async (url) =>
+      rss.replace(
+        "example.com/story",
+        "example.com/story#" + addresses.indexOf(url),
+      ),
+    record: async (items) => {
+      expect(items).toHaveLength(1);
+      return 0;
+    },
+    linkOrigins: async (rows) => {
+      origins.push(...rows);
+    },
+  });
+  expect(origins).toEqual(
+    addresses.map((feed) => ({ feed, article: "https://example.com/story" })),
+  );
+});

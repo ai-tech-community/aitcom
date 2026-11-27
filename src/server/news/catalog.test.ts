@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { mergeNewsFeeds } from "./merge-feeds";
 
@@ -46,4 +46,28 @@ describe("mergeNewsFeeds", () => {
       configured[1],
     ]);
   });
+});
+
+it("fetches enabled stored rows after seeding built-in addresses and propagates catalog outages", async () => {
+  const orderBy = vi
+    .fn()
+    .mockResolvedValue([
+      { name: "Local", url: "https://local.example/rss", sector: "other" },
+    ]);
+  const where = vi.fn(() => ({ orderBy }));
+  const values = vi.fn(() => ({ onConflictDoNothing: vi.fn() }));
+  vi.doMock("@/server/db", () => ({
+    db: {
+      insert: () => ({ values }),
+      select: () => ({ from: () => ({ where }) }),
+    },
+  }));
+  const { loadNewsFeeds } = await import("./catalog");
+  expect(await loadNewsFeeds()).toEqual([
+    { name: "Local", url: "https://local.example/rss", sector: "other" },
+  ]);
+  expect(values.mock.calls).toHaveLength(1);
+  expect(where).toHaveBeenCalledTimes(1);
+  orderBy.mockRejectedValueOnce(new Error("catalog unavailable"));
+  await expect(loadNewsFeeds()).rejects.toThrow("catalog unavailable");
 });

@@ -55,3 +55,38 @@ describe("sector story reads", () => {
     });
   });
 });
+
+it.each([true, false])(
+  "keeps selected mode even while awaiting collection (has articles %s)",
+  async (hasArticles) => {
+    const story = {
+      id: "1",
+      url: "https://example.org/article",
+      title: "Local news",
+      published_at: null,
+    };
+    const database = {
+      execute: async (query: Parameters<PgDialect["sqlToQuery"]>[0]) => {
+        const rendered = dialect.sqlToQuery(query);
+        if (rendered.sql.includes("community_news_sector"))
+          return { rows: [{ sector: "sports" }] };
+        if (
+          rendered.sql
+            .trimStart()
+            .startsWith("SELECT 1 FROM app.community_news_feed")
+        )
+          return { rows: [{}] };
+        expect(rendered.sql).toContain("EXISTS");
+        expect(rendered.sql).toContain("origin.item_id = i.id");
+        expect(rendered.params).toEqual(["community", 5]);
+        return { rows: hasArticles ? [story] : [] };
+      },
+    };
+    const { listCommunityNews } = await import("./sectors");
+    const result = await listCommunityNews(database, "community");
+    expect(result.selectedSources).toBe(true);
+    expect(result.stories.map((story) => story.id)).toEqual(
+      hasArticles ? ["1"] : [],
+    );
+  },
+);

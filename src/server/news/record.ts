@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { classifyNewsAi } from "@/lib/news/news-ai";
 import { parseNewsSector, type NewsSector } from "@/lib/news/sectors";
@@ -112,4 +112,17 @@ export async function recordFeedNews(
   options?: IngestNewsOptions,
 ): Promise<number> {
   return (await recordFeedNewsResult(items, options)).inserted;
+}
+
+export async function linkFeedOrigins(
+  origins: { feed: string; article: string }[],
+) {
+  await db.execute(sql`
+    INSERT INTO app.news_feed_item (feed_id, item_id)
+    SELECT f.id, i.id
+    FROM jsonb_to_recordset(${JSON.stringify(origins)}::jsonb) AS origin(feed text, article text)
+    JOIN app.news_feed f ON f.url = origin.feed
+    JOIN app.news_item i ON i.url = origin.article
+    ON CONFLICT DO NOTHING
+  `);
 }

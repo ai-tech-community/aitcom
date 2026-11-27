@@ -3167,6 +3167,7 @@
       "newDiscussions": "{count, plural, one {nouvelle discussion} other {nouvelles discussions}}",
       "news": "Actualités",
       "newsAll": "Toutes les actualités du secteur {sector}",
+      "newsSourcesPending": "Les articles des sources sélectionnées apparaîtront ici après la collecte.",
       "newsEmpty": "Aucun flux d’actualités n’est encore connecté pour le secteur {sector}. Rien ici n’est inventé.",
       "newsNoStories": "Aucun article issu des flux du secteur {sector} pour le moment.",
       "magazine": "Magazine",
@@ -3220,7 +3221,25 @@
       "accessDenied": "Vous n’avez pas l’autorisation d’accéder à cette page"
     },
     "settings": {
+      "newsSources": {
+        "title": "Sources d’actualités",
+        "selected": "Sources sélectionnées",
+        "fallback": "Votre communauté utilise les actualités du secteur jusqu’à la sélection d’une source.",
+        "search": "Rechercher une source existante",
+        "add": "Ajouter",
+        "remove": "Retirer",
+        "website": "URL du site ou du flux RSS/Atom",
+        "preview": "Aperçu de la source",
+        "choose": "Choisissez un flux à prévisualiser",
+        "confirm": "Ajouter à la communauté et aux sources partagées",
+        "error": "Impossible d’enregistrer cette modification. Réessayez.",
+        "unreadable": "Aucun flux lisible trouvé. Saisissez l’URL directe d’un flux RSS ou Atom.",
+        "loading": "Chargement des sources…",
+        "loadError": "Impossible de charger les sources.",
+        "noResults": "Aucune source correspondante."
+      },
       "sidebar": {
+        "newsSources": "Sources d’actualités",
         "general": "Général",
         "members": "Membres",
         "matching": "Mise en relation",
