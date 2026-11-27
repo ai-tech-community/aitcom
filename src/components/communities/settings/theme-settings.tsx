@@ -18,6 +18,9 @@ import { api } from "@/trpc/react";
 
 import { ThemeTile } from "./theme-tile";
 
+/** The tile grid, shared by the loading skeleton and the radio group. */
+const TILE_GRID = "grid grid-cols-1 gap-4 @md:grid-cols-2 @3xl:grid-cols-3";
+
 /**
  * Settings → Themes. Choosing a look previews it on the real page around
  * the form (the community frame reads the preview); the sticky bar saves
@@ -54,9 +57,9 @@ export function ThemeSettings({ slug }: { slug: string }) {
 
   const header = (
     <div>
-      <h1 id={titleId} className="font-community-heading text-lg font-semibold">
+      <h2 id={titleId} className="font-community-heading text-lg font-semibold">
         {t("title")}
-      </h1>
+      </h2>
       <p id={introId} className="text-muted-foreground text-sm">
         {t("intro")}
       </p>
@@ -79,7 +82,7 @@ export function ThemeSettings({ slug }: { slug: string }) {
     return (
       <div className="@container space-y-6">
         {header}
-        <div className="grid grid-cols-1 gap-4 @md:grid-cols-2 @3xl:grid-cols-3">
+        <div className={TILE_GRID}>
           {COMMUNITY_THEMES.map((theme) => (
             <Skeleton key={theme.id} className="h-52 rounded-xl" />
           ))}
@@ -97,15 +100,18 @@ export function ThemeSettings({ slug }: { slug: string }) {
     <div className="@container space-y-6">
       {header}
 
+      {/* Locked while saving, so a newer choice cannot be dropped by the
+          save of an older one. */}
       <RadioGroupPrimitive.Root
         value={chosenId}
+        disabled={setTheme.isPending}
         onValueChange={(value) => {
           if (!isCommunityThemeId(value)) return;
           setPreviewId(value === savedId ? null : value);
         }}
         aria-labelledby={titleId}
         aria-describedby={introId}
-        className="grid grid-cols-1 gap-4 @md:grid-cols-2 @3xl:grid-cols-3"
+        className={TILE_GRID}
       >
         {COMMUNITY_THEMES.map((theme) => (
           <ThemeTile

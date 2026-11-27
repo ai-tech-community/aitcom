@@ -24,6 +24,7 @@ const m = vi.hoisted(() => ({
   invalidate: vi.fn(() => Promise.resolve()),
   setPreviewId: vi.fn(),
   mutationOptions: {} as MutationOptions,
+  isPending: false,
   community: {
     data: undefined as
       | {
@@ -48,7 +49,7 @@ vi.mock("@/trpc/react", () => ({
       setTheme: {
         useMutation: (options: MutationOptions) => {
           m.mutationOptions = options;
-          return { mutate: m.mutate, isPending: false };
+          return { mutate: m.mutate, isPending: m.isPending };
         },
       },
     },
@@ -111,6 +112,7 @@ const shownLook = () => screen.getByTestId("shown-look").textContent;
 beforeEach(() => {
   vi.clearAllMocks();
   m.mutationOptions = {};
+  m.isPending = false;
   m.community = {
     data: {
       name: "Belong",
@@ -143,6 +145,14 @@ describe("ThemeSettings", () => {
     expect(radio("Night")).not.toHaveAccessibleDescription(
       expect.stringContaining(copy.current),
     );
+  });
+
+  it("titles the section with an h2, under the identity's h1", () => {
+    render(<Harness />);
+    expect(screen.getByRole("heading", { name: copy.title }).tagName).toBe(
+      "H2",
+    );
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 
   it("is one tab stop that lands on the chosen look", () => {
@@ -233,6 +243,26 @@ describe("ThemeSettings", () => {
     expect(m.setPreviewId).not.toHaveBeenCalled();
     expect(shownLook()).toBe("night");
     expect(screen.getByRole("button", { name: copy.save })).toBeInTheDocument();
+  });
+
+  it("locks the choice while a save is on its way", () => {
+    const { rerender } = render(<Harness />);
+    fireEvent.click(radio("Night"));
+
+    m.isPending = true;
+    rerender(<Harness />);
+
+    for (const look of screen.getAllByRole("radio")) {
+      expect(look).toBeDisabled();
+    }
+    expect(screen.getByRole("button", { name: copy.save })).toBeDisabled();
+    expect(screen.getByRole("button", { name: copy.cancel })).toBeDisabled();
+
+    // A click on another look cannot replace the one being saved.
+    m.setPreviewId.mockClear();
+    fireEvent.click(radio("Meadow"));
+    expect(m.setPreviewId).not.toHaveBeenCalled();
+    expect(shownLook()).toBe("night");
   });
 
   it("cancels the preview without saving", () => {
