@@ -6442,6 +6442,7 @@
     "typeSaved": "Type de relation enregistré",
     "invalidType": "Ajoutez un nom, une question pour chaque côté et 1 à 30 sujets.",
     "typeLimit": "Cette communauté a déjà 20 types de relations actifs. Archivez-en un avant d’en ajouter un autre.",
+    "spaceSlugTaken": "Un salon utilise déjà l’adresse « match ». Renommez ce salon, puis enregistrez à nouveau.",
     "archived": "Archivé",
     "archive": "Archiver",
     "restore": "Restaurer",

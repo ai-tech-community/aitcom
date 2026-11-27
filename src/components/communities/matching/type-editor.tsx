@@ -69,6 +69,8 @@ export function ConnectionTypeEditor({
     onSuccess: () => {
       reset();
       invalidate();
+      // Saving the first type adds "Find a match" to the community menu.
+      void utils.spaces.list.invalidate({ slug });
       toast.success(t("typeSaved"));
     },
   });
@@ -299,7 +301,9 @@ export function ConnectionTypeEditor({
               ? t("invalidType")
               : save.error?.message === "MATCHING_TYPE_LIMIT"
                 ? t("typeLimit")
-                : t("saveFailed")}
+                : save.error?.message === "MATCHING_SPACE_SLUG_TAKEN"
+                  ? t("spaceSlugTaken")
+                  : t("saveFailed")}
           </p>
         )}
         <div className="flex gap-2">

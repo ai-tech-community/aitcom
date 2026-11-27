@@ -16,6 +16,10 @@ import {
   validateMatchingAnswers,
 } from "@/server/communities/matching";
 import {
+  ensureOptionalBuiltinSpace,
+  SpaceSlugTakenError,
+} from "@/server/communities/optional-space";
+import {
   communityConnectionTypes,
   communityMatchingProfiles,
   communityMatchDismissals,
@@ -124,6 +128,23 @@ export const communityMatchingRouter = createTRPCRouter({
           .insert(communityConnectionTypes)
           .values({ ...values, communityId: ctx.community.id })
           .returning({ id: communityConnectionTypes.id });
+        // The first connection type turns matching on, so its space joins
+        // the community menu in the same transaction.
+        try {
+          await ensureOptionalBuiltinSpace(
+            tx,
+            ctx.community.id,
+            "matching",
+            "match",
+          );
+        } catch (error) {
+          if (error instanceof SpaceSlugTakenError)
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "MATCHING_SPACE_SLUG_TAKEN",
+            });
+          throw error;
+        }
         return created!;
       });
     }),

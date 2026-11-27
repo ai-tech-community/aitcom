@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSyncExternalStore, type ReactNode } from "react";
@@ -18,6 +18,9 @@ const m = vi.hoisted(() => ({
   directory: {} as Record<string, unknown>,
   saveProfile: vi.fn(),
   saveType: vi.fn(),
+  saveTypeOptions: {} as { onSuccess?: () => void },
+  saveTypeError: null as { message: string } | null,
+  invalidateSpaces: vi.fn(),
   propose: vi.fn(),
   dismiss: vi.fn(),
   pending: false,
@@ -57,6 +60,7 @@ vi.mock("@/trpc/react", () => ({
         ]),
       ),
       advisory: { myPendingIntroductions: { invalidate: vi.fn() } },
+      spaces: { list: { invalidate: m.invalidateSpaces } },
     }),
     communities: {
       getMyCommunities: { useQuery: () => m.memberships },
@@ -69,7 +73,15 @@ vi.mock("@/trpc/react", () => ({
         useMutation: () => ({ mutate: m.saveProfile, isPending: m.pending }),
       },
       saveType: {
-        useMutation: () => ({ mutate: m.saveType, isPending: m.pending }),
+        useMutation: (options: { onSuccess?: () => void }) => {
+          m.saveTypeOptions = options;
+          return {
+            mutate: m.saveType,
+            isPending: m.pending,
+            isError: m.saveTypeError !== null,
+            error: m.saveTypeError,
+          };
+        },
       },
       archiveType: { useMutation: () => ({ mutate: vi.fn() }) },
       dismiss: { useMutation: () => ({ mutate: m.dismiss }) },
@@ -145,6 +157,8 @@ beforeEach(() => {
   setUrl("");
   replaceState.mockClear();
   m.pending = false;
+  m.saveTypeOptions = {};
+  m.saveTypeError = null;
   m.session = { user: { id: "me" } };
   m.memberships = {
     data: [{ slug: "alpha", status: "active", role: "owner" }],
@@ -509,6 +523,21 @@ describe("member matching interface", () => {
         topics: ["Parks", "Forests"],
       }),
     });
+  });
+  it("refreshes the community menu after saving a connection type", () => {
+    show(<ConnectionTypeEditor slug="alpha" types={[]} />);
+    act(() => m.saveTypeOptions.onSuccess?.());
+    expect(m.invalidateSpaces).toHaveBeenCalledWith({ slug: "alpha" });
+  });
+  it("explains that a room already uses the match address", () => {
+    m.saveTypeError = { message: "MATCHING_SPACE_SLUG_TAKEN" };
+    show(<ConnectionTypeEditor slug="alpha" types={[]} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      en.communityMatching.spaceSlugTaken,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "A room already uses the address “match”. Rename that room, then save again.",
+    );
   });
   it("explains a match and requires review before proposing it", () => {
     show(<CommunityMatches slug="alpha" types={[type]} />);

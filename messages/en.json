@@ -6442,6 +6442,7 @@
     "typeSaved": "Connection type saved",
     "invalidType": "Add a name, a question for each side, and 1–30 topics.",
     "typeLimit": "This community already has 20 active connection types. Archive one before adding another.",
+    "spaceSlugTaken": "A room already uses the address “match”. Rename that room, then save again.",
     "archived": "Archived",
     "archive": "Archive",
     "restore": "Restore",

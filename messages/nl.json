@@ -6442,6 +6442,7 @@
     "typeSaved": "Verbindingstype opgeslagen",
     "invalidType": "Voeg een naam, een vraag voor elke kant en 1–30 onderwerpen toe.",
     "typeLimit": "Deze community heeft al 20 actieve verbindingstypen. Archiveer er een voordat je een nieuwe toevoegt.",
+    "spaceSlugTaken": "Een ruimte gebruikt het adres “match” al. Geef die ruimte een andere naam en sla daarna opnieuw op.",
     "archived": "Gearchiveerd",
     "archive": "Archiveren",
     "restore": "Herstellen",
