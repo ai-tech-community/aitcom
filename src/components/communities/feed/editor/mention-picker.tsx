@@ -8,6 +8,7 @@ import { AtSign, Users } from "lucide-react";
 
 import { ToolbarButton } from "@/components/composer/toolbar-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { usePortalContainer } from "@/components/ui/portal-container";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getInitials } from "@/lib/avatar";
 import { couldMeanEveryone, mentionQueryAt } from "@/lib/post-mentions";
@@ -83,6 +84,8 @@ export function useMentionPicker({
 }) {
   const t = useTranslations("communities.feed.editor");
   const listId = useId();
+  // Inside a community look the list opens in the look's layer.
+  const portalContainer = usePortalContainer();
   const [typed, setTyped] = useState<Typed | null>(null);
   // Escape (or a pick) closes the list for this "@" until a new one.
   const [closedAt, setClosedAt] = useState<number | null>(null);
@@ -316,7 +319,7 @@ export function useMentionPicker({
                   </p>
                 )}
               </div>,
-              document.body,
+              portalContainer ?? document.body,
             )
           : null}
       </>
