@@ -10,8 +10,28 @@ interface SettingsSidebarProps {
   memberRole: "owner" | "admin" | "moderator" | "member";
 }
 
+type SettingsSectionKey =
+  | "general"
+  | "themes"
+  | "spaces"
+  | "members"
+  | "matching"
+  | "invites"
+  | "rules"
+  | "newsSources"
+  | "topics"
+  | "links"
+  | "classroom"
+  | "magazine"
+  | "broadcast"
+  | "autonomy"
+  | "acquire"
+  | "integrations"
+  | "payments"
+  | "ownership";
+
 interface NavItem {
-  key: string;
+  key: SettingsSectionKey;
   href: string;
   ownerOnly?: boolean;
 }
@@ -24,6 +44,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
 
   const items: NavItem[] = [
     { key: "general", href: `${basePath}/general` },
+    { key: "themes", href: `${basePath}/themes` },
     { key: "spaces", href: `${basePath}/spaces` },
     { key: "members", href: `${basePath}/members` },
     { key: "matching", href: `${basePath}/matching` },
@@ -63,26 +84,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
               )}
             >
-              {t(
-                item.key as
-                  | "general"
-                  | "spaces"
-                  | "members"
-                  | "matching"
-                  | "invites"
-                  | "rules"
-                  | "newsSources"
-                  | "topics"
-                  | "links"
-                  | "classroom"
-                  | "magazine"
-                  | "broadcast"
-                  | "autonomy"
-                  | "acquire"
-                  | "integrations"
-                  | "payments"
-                  | "ownership",
-              )}
+              {t(item.key)}
             </Link>
           );
         })}
@@ -103,26 +105,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {t(
-                item.key as
-                  | "general"
-                  | "spaces"
-                  | "members"
-                  | "matching"
-                  | "invites"
-                  | "rules"
-                  | "newsSources"
-                  | "topics"
-                  | "links"
-                  | "classroom"
-                  | "magazine"
-                  | "broadcast"
-                  | "autonomy"
-                  | "acquire"
-                  | "integrations"
-                  | "payments"
-                  | "ownership",
-              )}
+              {t(item.key)}
             </Link>
           );
         })}

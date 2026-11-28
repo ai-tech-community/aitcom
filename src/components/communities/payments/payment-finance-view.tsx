@@ -30,7 +30,10 @@ export function PaymentFinanceView({ data }: { data: PaymentFinanceData }) {
       aria-labelledby="payouts-heading"
       className="border-border space-y-4 border-t pt-6"
     >
-      <h2 id="payouts-heading" className="text-lg font-semibold">
+      <h2
+        id="payouts-heading"
+        className="font-community-heading text-lg font-semibold"
+      >
         {t("balanceAndPayouts")}
       </h2>
       <dl className="flex flex-wrap gap-x-10 gap-y-4">

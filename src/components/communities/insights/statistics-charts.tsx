@@ -44,7 +44,10 @@ export function StatisticsChart({
   return (
     <section aria-labelledby={headingId} className="min-w-0 space-y-4">
       <div>
-        <h2 id={headingId} className="text-base font-semibold">
+        <h2
+          id={headingId}
+          className="font-community-heading text-base font-semibold"
+        >
           {title}
         </h2>
         <p className="text-muted-foreground mt-1 text-sm @4xl:min-h-16">

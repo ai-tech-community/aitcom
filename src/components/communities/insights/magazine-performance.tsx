@@ -29,7 +29,9 @@ function MagazinePerformanceQuery({ slug }: { slug: string }) {
       className="min-w-0 space-y-5 border-t pt-8"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">{t("title")}</h2>
+        <h2 className="font-community-heading text-lg font-semibold">
+          {t("title")}
+        </h2>
         <p className="text-muted-foreground text-sm">{t("scope")}</p>
       </div>
       {query.isError ? (

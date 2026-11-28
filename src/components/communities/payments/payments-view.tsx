@@ -98,7 +98,7 @@ export function PaymentsView({
     <div className="space-y-9">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-prose space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="font-community-heading text-2xl font-semibold tracking-tight">
             {t("title")}
           </h1>
           <p className="text-muted-foreground text-sm">{t("intro")}</p>
@@ -140,7 +140,10 @@ export function PaymentsView({
       </div>
       <section aria-labelledby="provider-heading" className="space-y-4">
         <div>
-          <h2 id="provider-heading" className="text-lg font-semibold">
+          <h2
+            id="provider-heading"
+            className="font-community-heading text-lg font-semibold"
+          >
             {t("providerTitle")}
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -287,7 +290,10 @@ export function PaymentsView({
       <section aria-labelledby="offers-heading" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 id="offers-heading" className="text-lg font-semibold">
+            <h2
+              id="offers-heading"
+              className="font-community-heading text-lg font-semibold"
+            >
               {t("offersTitle")}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
@@ -443,7 +449,10 @@ export function PaymentsView({
       <section aria-labelledby="sales-heading" className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 id="sales-heading" className="text-lg font-semibold">
+            <h2
+              id="sales-heading"
+              className="font-community-heading text-lg font-semibold"
+            >
               {t("sales")}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
@@ -563,7 +572,7 @@ export function PaymentsView({
       </section>
       {!!data.complimentaryMembers.length && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">
+          <h2 className="font-community-heading text-lg font-semibold">
             {t(
               data.paidEntry ? "complimentaryMembers" : "complimentaryPreview",
             )}
@@ -582,7 +591,10 @@ export function PaymentsView({
         </section>
       )}
       <section aria-labelledby="subscriptions-heading" className="space-y-3">
-        <h2 id="subscriptions-heading" className="text-lg font-semibold">
+        <h2
+          id="subscriptions-heading"
+          className="font-community-heading text-lg font-semibold"
+        >
           {t("subscriptions")}
         </h2>
         {!data.subscriptions.length ? (

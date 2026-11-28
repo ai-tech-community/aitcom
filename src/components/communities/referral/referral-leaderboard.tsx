@@ -14,7 +14,9 @@ export function ReferralLeaderboard() {
 
   return (
     <div className="space-y-4 rounded-lg border p-6">
-      <h2 className="text-lg font-semibold">{t("leaderboardTitle")}</h2>
+      <h2 className="font-community-heading text-lg font-semibold">
+        {t("leaderboardTitle")}
+      </h2>
 
       {isLoading ? (
         <div className="space-y-2">

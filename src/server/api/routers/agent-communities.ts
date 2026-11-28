@@ -74,6 +74,7 @@ import {
 import type { db as appDb } from "@/server/db";
 import { getPayloadClient } from "@/server/payload";
 import { membershipPaymentAllowed } from "@/server/payments/access";
+import { readCommunityThemeId } from "@/server/communities/theme-store";
 import { stopCommunityMembershipBilling } from "@/server/payments/management";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -351,6 +352,8 @@ export const agentCommunityRouter = {
         ...imageIds,
         bannerMediaId: community.bannerMediaId ?? imageIds.bannerMediaId,
         bannerAlt: community.bannerAlt ?? null,
+        // The look is public, as on communities.getBySlug.
+        themeId: await readCommunityThemeId(ctx.db, community.id),
         viewerCanReadContent: access.content,
         magazine: magazine
           ? {

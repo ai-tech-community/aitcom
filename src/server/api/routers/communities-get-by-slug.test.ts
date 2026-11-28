@@ -9,6 +9,7 @@ const fake = vi.hoisted(() => ({
   membership: vi.fn(),
   counts: vi.fn(),
   liveness: vi.fn(),
+  themeId: vi.fn(),
 }));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
@@ -31,6 +32,11 @@ vi.mock("@/server/news/sectors", () => ({
   isMissingNewsSectorSchema: () => false,
   readCommunityNewsSector: async () => "ai",
   writeCommunityNewsSector: vi.fn(),
+}));
+vi.mock("@/server/communities/theme-store", () => ({
+  isMissingCommunityThemeSchema: () => false,
+  readCommunityThemeId: fake.themeId,
+  writeCommunityThemeId: vi.fn(),
 }));
 
 import { communitiesRouter } from "./communities";
@@ -74,6 +80,7 @@ beforeEach(() => {
   fake.membership.mockResolvedValue(undefined);
   fake.counts.mockResolvedValue([{ memberCount: 40, adminCount: 2 }]);
   fake.liveness.mockResolvedValue({ activeContributors: 6, recentThreads: 3 });
+  fake.themeId.mockResolvedValue("plain");
 });
 
 describe("communities.getBySlug", () => {
@@ -153,6 +160,21 @@ describe("communities.getBySlug", () => {
       liveness: { activeContributors: 6, recentThreads: 3 },
     });
     expect(fake.membership).not.toHaveBeenCalled();
+  });
+
+  it("gives every viewer the community's look, read for that community", async () => {
+    fake.community.mockResolvedValue(row("invite_only"));
+    fake.themeId.mockResolvedValue("meadow");
+    for (const viewer of [null, "outsider"]) {
+      const community = await caller(viewer).getBySlug({
+        slug: "connect-inspire",
+      });
+      expect(community).toMatchObject({
+        viewerCanReadContent: false,
+        themeId: "meadow",
+      });
+    }
+    expect(fake.themeId).toHaveBeenCalledWith(expect.anything(), "c1");
   });
 
   it("keeps an unlisted open community members-only", async () => {

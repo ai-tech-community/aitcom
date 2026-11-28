@@ -58,7 +58,7 @@ export function NewCourseForm({ slug }: { slug: string }) {
         <SectionLabel as="p" bordered={false}>
           {t("newCourseKicker")}
         </SectionLabel>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="font-community-heading text-2xl font-semibold tracking-tight">
           {t("newCourseTitle")}
         </h1>
         <p className="text-muted-foreground text-sm">{t("newCourseLead")}</p>

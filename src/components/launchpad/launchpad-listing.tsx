@@ -70,7 +70,7 @@ export function LaunchpadListing() {
     <div className="@container mx-auto max-w-6xl px-6 py-12 sm:px-12">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-foreground text-2xl font-semibold tracking-tight">
+        <h1 className="font-community-heading text-foreground text-2xl font-semibold tracking-tight">
           {t("title")}
         </h1>
         <p className="text-muted-foreground mt-1 font-mono text-xs tracking-wider">

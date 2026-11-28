@@ -3241,6 +3241,7 @@
       "sidebar": {
         "newsSources": "Nieuwsbronnen",
         "general": "Algemeen",
+        "themes": "Thema's",
         "members": "Leden",
         "matching": "Matching",
         "invites": "Uitnodigingen",
@@ -3405,6 +3406,16 @@
           "lastSync": "Laatst gesynchroniseerd",
           "never": "nooit"
         }
+      },
+      "themes": {
+        "title": "Thema's",
+        "intro": "Kies hoe je community eruitziet. Leden en bezoekers zien het op elke pagina.",
+        "current": "Huidig",
+        "previewing": "Voorbeeld: {name}",
+        "save": "Thema opslaan",
+        "cancel": "Annuleren",
+        "saved": "Thema opgeslagen.",
+        "error": "Het thema kon niet worden opgeslagen. Probeer het opnieuw."
       }
     },
     "invite": {
@@ -3929,6 +3940,28 @@
       "joinTitle": "Word lid om te liken en te reageren",
       "joinDescription": "Alleen leden kunnen hier video's leuk vinden en erop reageren.",
       "inviteOnly": "Deze community is alleen op uitnodiging. Vraag een lid om een uitnodiging."
+    },
+    "themes": {
+      "plain": {
+        "name": "Eenvoudig",
+        "description": "De standaardstijl: een strakke witte pagina."
+      },
+      "canal": {
+        "name": "Gracht",
+        "description": "Zacht waterblauw met een rij grachtenpanden."
+      },
+      "meadow": {
+        "name": "Weide",
+        "description": "Lichtgroen met glooiende heuvels en een kleine zon."
+      },
+      "sunset": {
+        "name": "Zonsondergang",
+        "description": "Een perzik- en roze lucht met zachte zonnestralen."
+      },
+      "night": {
+        "name": "Nacht",
+        "description": "Diepblauw met vage sterren. De hele pagina wordt donker."
+      }
     }
   },
   "composer": {

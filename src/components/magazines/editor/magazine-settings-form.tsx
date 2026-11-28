@@ -13,13 +13,13 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useRouter } from "@/i18n/navigation";
+import { normalizeHexColor } from "@/lib/color/contrast";
 import { communityMagazinePath, magazinePath } from "@/lib/magazines/paths";
 import {
   DEFAULT_MAGAZINE_ACCENT,
   DEFAULT_MAGAZINE_FONT_PAIR,
   MAGAZINE_FONT_PAIRS,
   magazineThemeIssue,
-  normalizeHexColor,
   type MagazineFontPairId,
 } from "@/lib/magazines/theme";
 import {

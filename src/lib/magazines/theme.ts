@@ -6,6 +6,13 @@
  * that does clear it.
  */
 
+import {
+  contrastRatio,
+  normalizeHexColor,
+  relativeLuminance,
+  rgbOf,
+} from "@/lib/color/contrast";
+
 export const MAGAZINE_FONT_PAIRS = [
   { id: "journal", serif: "Newsreader", sans: "Geist" },
   { id: "broadsheet", serif: "Libre Baskerville", sans: "Source Sans 3" },
@@ -43,55 +50,6 @@ export type MagazineTheme = {
 
 export function isMagazineFontPair(value: string): value is MagazineFontPairId {
   return (MAGAZINE_FONT_PAIR_IDS as readonly string[]).includes(value);
-}
-
-function hexChannel(pair: string): number {
-  return Number.parseInt(pair, 16);
-}
-
-/** `#RGB` or `#RRGGBB` as `#RRGGBB`. Anything else is null. */
-export function normalizeHexColor(raw: string): string | null {
-  const trimmed = raw.trim();
-  const match = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(trimmed);
-  if (!match?.[1]) return null;
-  const body = match[1];
-  const full =
-    body.length === 3
-      ? body
-          .split("")
-          .map((channel) => channel + channel)
-          .join("")
-      : body;
-  return `#${full.toUpperCase()}`;
-}
-
-function rgbOf(hex: string): [number, number, number] {
-  return [
-    hexChannel(hex.slice(1, 3)),
-    hexChannel(hex.slice(3, 5)),
-    hexChannel(hex.slice(5, 7)),
-  ];
-}
-
-function channelLuminance(channel: number): number {
-  const s = channel / 255;
-  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-}
-
-export function relativeLuminance(hex: string): number {
-  const [r, g, b] = rgbOf(hex);
-  return (
-    0.2126 * channelLuminance(r) +
-    0.7152 * channelLuminance(g) +
-    0.0722 * channelLuminance(b)
-  );
-}
-
-export function contrastRatio(foreground: string, background: string): number {
-  const a = relativeLuminance(foreground);
-  const b = relativeLuminance(background);
-  const [hi, lo] = a > b ? [a, b] : [b, a];
-  return (hi + 0.05) / (lo + 0.05);
 }
 
 function mixHex(from: string, toward: string, amount: number): string {

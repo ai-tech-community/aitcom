@@ -61,7 +61,7 @@ export function PrePublishDialog({
       }}
     >
       <div
-        className="bg-background border-border mx-4 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border p-6 shadow-xl"
+        className="bg-card border-border mx-4 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold">{title}</h2>
@@ -74,19 +74,19 @@ export function PrePublishDialog({
           </p>
           <div className="space-y-1.5 text-sm">
             {blockingChecks.length === 0 && warningChecks.length === 0 ? (
-              <p className="text-sm text-green-500">{t("allBlockingClear")}</p>
+              <p className="text-success text-sm">{t("allBlockingClear")}</p>
             ) : (
               <>
                 {blockingChecks.map((item) => (
                   <div key={item} className="flex items-start gap-2">
-                    <span className="mt-0.5 text-red-400">✕</span>
-                    <span className="text-red-400">{item}</span>
+                    <span className="text-destructive mt-0.5">✕</span>
+                    <span className="text-destructive">{item}</span>
                   </div>
                 ))}
                 {warningChecks.map((item) => (
                   <div key={item} className="flex items-start gap-2">
-                    <span className="mt-0.5 text-orange-400">!</span>
-                    <span className="text-orange-400">{item}</span>
+                    <span className="text-warning mt-0.5">!</span>
+                    <span className="text-warning">{item}</span>
                   </div>
                 ))}
               </>

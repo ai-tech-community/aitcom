@@ -43,7 +43,9 @@ export function ClassroomListing({ slug }: { slug: string }) {
     <div className="@container space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">{t("title")}</h1>
+          <h1 className="font-community-heading text-lg font-semibold">
+            {t("title")}
+          </h1>
           <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
         {mayCreate ? (

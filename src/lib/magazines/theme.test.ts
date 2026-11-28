@@ -1,22 +1,14 @@
 import { expect, it } from "vitest";
 
+import { contrastRatio } from "@/lib/color/contrast";
+
 import {
   DEFAULT_MAGAZINE_ACCENT,
   MAGAZINE_DARK_SURFACE,
   MAGAZINE_LIGHT_SURFACE,
-  contrastRatio,
   magazineThemeIssue,
-  normalizeHexColor,
   resolveMagazineTheme,
 } from "./theme";
-
-it("expands short hex and refuses anything that is not a hex color", () => {
-  expect(normalizeHexColor(" #9a3 ")).toBe("#99AA33");
-  expect(normalizeHexColor("#9A3412")).toBe("#9A3412");
-  expect(normalizeHexColor("9A3412")).toBeNull();
-  expect(normalizeHexColor("#xyzxyz")).toBeNull();
-  expect(normalizeHexColor("red")).toBeNull();
-});
 
 it("accepts the default accent and a light accent that clears the dark page", () => {
   expect(magazineThemeIssue("journal", DEFAULT_MAGAZINE_ACCENT)).toBeNull();

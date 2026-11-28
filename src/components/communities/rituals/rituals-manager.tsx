@@ -41,7 +41,9 @@ export function RitualsManager({ slug }: { slug: string }) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Rituals</h2>
+            <h2 className="font-community-heading text-lg font-semibold">
+              Rituals
+            </h2>
             <p className="text-muted-foreground text-sm">
               Recurring prompts that post on a weekly cadence.
             </p>

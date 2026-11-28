@@ -38,7 +38,7 @@ export default function GeneralSettingsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">
+        <h2 className="font-community-heading text-lg font-semibold tracking-tight">
           {t("settings")}
         </h2>
         <p className="text-muted-foreground text-sm">{community.name}</p>
