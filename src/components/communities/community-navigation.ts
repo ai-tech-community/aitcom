@@ -54,6 +54,7 @@ export function useCommunityNavigation({
   const t = useTranslations("communities.profile");
   const tRooms = useTranslations("communities.rooms");
   const shell = useTranslations("redesign.shell");
+  const courses = useTranslations("redesign.classroom");
   const basePath = `/communities/${slug}`;
   const roomAccess = allowed && signedIn;
   const isAdminOrOwner = memberRole === "owner" || memberRole === "admin";
@@ -83,7 +84,10 @@ export function useCommunityNavigation({
             ? [
                 {
                   href: `${basePath}/${s.slug}`,
-                  label: resolveSpaceLabel(s, t),
+                  label:
+                    redesign && s.builtinSurface === "classroom"
+                      ? courses("courses")
+                      : resolveSpaceLabel(s, t),
                   icon: surfaceIcons[s.builtinSurface],
                 },
               ]

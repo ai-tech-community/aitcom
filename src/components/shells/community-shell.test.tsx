@@ -324,3 +324,24 @@ describe("community switcher", () => {
     expect(usableMemberships(rows)).toEqual([rows[0]]);
   });
 });
+
+it("uses Courses for the redesigned course destination and its page breadcrumb", () => {
+  m.pathname = "/communities/workbench-notes/classroom/repair";
+  m.listSpaces.mockReturnValue({
+    data: [
+      {
+        id: "course",
+        kind: "builtin",
+        builtinSurface: "classroom",
+        name: "Course",
+        slug: "classroom",
+      },
+    ],
+  });
+  renderShell(true, "member");
+  expect(screen.getByRole("link", { name: "Courses" })).toHaveAttribute(
+    "href",
+    "/communities/workbench-notes/classroom",
+  );
+  expect(screen.getByRole("banner")).toHaveTextContent("/ Courses");
+});

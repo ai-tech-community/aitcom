@@ -22,12 +22,15 @@ export type CourseDetailsPaneProps = {
   canUpload: boolean;
   isPublic: boolean;
   readOnly: boolean;
+  redesigned?: boolean;
+  onToggleVisibility?: () => void;
+  visibilityPending?: boolean;
 };
 
 /**
  * The course's own fields — title, summary, cover. Edits go into the
- * builder's course draft, which autosaves. Visibility is shown but changed
- * elsewhere (staff decide it on the course page).
+ * builder's course draft, which autosaves. Staff use the separate visibility
+ * action when the redesigned details pane supplies it.
  *
  * Below them, the course's uploaded files. Files belong to the course, not
  * to one lesson (any lesson may use any of them), so they are managed here.
@@ -41,8 +44,14 @@ export function CourseDetailsPane({
   canUpload,
   isPublic,
   readOnly,
+  redesigned = false,
+  onToggleVisibility,
+  visibilityPending = false,
 }: CourseDetailsPaneProps) {
   const t = useTranslations("classroomBuilder");
+  const classroom = useTranslations("classroom");
+  const learning = useTranslations("redesign.classroom");
+  const visibilityId = useId();
   const { draft, setDraft, titleValid } = details;
 
   const titleId = useId();
@@ -86,6 +95,40 @@ export function CourseDetailsPane({
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8 px-4 py-8 sm:px-6">
       <SectionLabel>{t("courseDetails")}</SectionLabel>
+
+      {redesigned ? (
+        <section
+          aria-labelledby={visibilityId}
+          className="border-border flex flex-wrap items-center justify-between gap-3 border-b pb-5"
+        >
+          <div className="space-y-1">
+            <h2 id={visibilityId} className="text-sm font-medium">
+              {t("visibilityLabel")}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              {isPublic ? t("visibilityPublic") : t("visibilityMembers")}
+            </p>
+            {!onToggleVisibility && !readOnly ? (
+              <p className="text-muted-foreground text-sm">
+                {learning("visibilityStaffOnly")}
+              </p>
+            ) : null}
+          </div>
+          {onToggleVisibility ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="shadow-none"
+              disabled={visibilityPending}
+              onClick={onToggleVisibility}
+            >
+              {isPublic
+                ? classroom("makeMembersOnly")
+                : classroom("makePublic")}
+            </Button>
+          ) : null}
+        </section>
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={titleId}>{t("titleLabel")}</Label>
@@ -204,15 +247,19 @@ export function CourseDetailsPane({
         />
       </div>
 
-      <dl className="flex flex-col gap-1.5">
-        <dt className="text-sm leading-none font-medium">
-          {t("visibilityLabel")}
-        </dt>
-        <dd className="text-sm">
-          {isPublic ? t("visibilityPublic") : t("visibilityMembers")}
-        </dd>
-        <dd className="text-muted-foreground text-sm">{t("visibilityHint")}</dd>
-      </dl>
+      {redesigned ? null : (
+        <dl className="flex flex-col gap-1.5">
+          <dt className="text-sm leading-none font-medium">
+            {t("visibilityLabel")}
+          </dt>
+          <dd className="text-sm">
+            {isPublic ? t("visibilityPublic") : t("visibilityMembers")}
+          </dd>
+          <dd className="text-muted-foreground text-sm">
+            {t("visibilityHint")}
+          </dd>
+        </dl>
+      )}
 
       {readOnly ? null : (
         <CourseFilesPanel courseId={courseId} canUpload={canUpload} />

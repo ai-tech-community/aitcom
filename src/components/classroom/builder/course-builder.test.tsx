@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,6 +25,10 @@ const trpc = vi.hoisted(() => ({
   updateLesson: vi.fn(),
   deleteLesson: vi.fn(),
   invalidate: vi.fn(),
+  fetch: vi.fn(),
+  setPublic: vi.fn(),
+  redesigned: false,
+  role: "member",
   setData: vi.fn(),
   toastError: vi.fn(),
   routerPush: vi.fn(),
@@ -27,13 +38,23 @@ const trpc = vi.hoisted(() => ({
   courseFiles: [] as unknown[],
 }));
 
-vi.mock("sonner", () => ({ toast: { error: trpc.toastError } }));
+vi.mock("sonner", () => ({
+  toast: { error: trpc.toastError, success: vi.fn() },
+}));
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => trpc.redesigned,
+}));
 
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
       classrooms: {
-        get: { invalidate: trpc.invalidate, setData: trpc.setData },
+        get: {
+          invalidate: trpc.invalidate,
+          setData: trpc.setData,
+          fetch: trpc.fetch,
+        },
+        list: { invalidate: vi.fn() },
       },
       classroomMaterials: {
         listCourseMaterials: { invalidate: vi.fn() },
@@ -56,8 +77,16 @@ vi.mock("@/trpc/react", () => ({
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
     },
+    communities: {
+      getMyCommunities: {
+        useQuery: () => ({
+          data: [{ slug: "hub", status: "active", role: trpc.role }],
+        }),
+      },
+    },
     classrooms: {
       get: { useQuery: () => trpc.query },
+      setPublic: { useMutation: () => ({ mutateAsync: trpc.setPublic }) },
       update: { useMutation: () => ({ mutateAsync: trpc.mutateAsync }) },
       updateLesson: {
         useMutation: () => ({ mutateAsync: trpc.updateLesson }),
@@ -1348,5 +1377,107 @@ describe("CourseBuilder course files", () => {
     expect(
       screen.getByRole("button", { name: en.classroom.files.download }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("redesigned course visibility", () => {
+  beforeEach(() => {
+    trpc.redesigned = true;
+    trpc.role = "member";
+    trpc.fetch.mockReset();
+    trpc.setPublic.mockReset();
+    trpc.query = {
+      data: courseData,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  });
+
+  it("uses the existing staff mutation for an eligible author", async () => {
+    trpc.role = "owner";
+    trpc.setPublic.mockResolvedValue({ ok: true });
+    trpc.fetch.mockResolvedValueOnce(courseData).mockResolvedValueOnce({
+      ...courseData,
+      course: {
+        ...courseData.course,
+        isPublic: true,
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+    });
+    renderBuilder();
+    fireEvent.click(screen.getByRole("button", { name: "Make public" }));
+    await waitFor(() =>
+      expect(trpc.setPublic).toHaveBeenCalledWith({
+        courseId: courseData.course.id,
+        isPublic: true,
+      }),
+    );
+    await waitFor(() => expect(trpc.fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it("keeps visibility read-only for authors without a staff role", () => {
+    renderBuilder();
+    expect(
+      screen.getByText("Community staff can change who can see the course."),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Make public" })).toBeNull();
+    expect(screen.getAllByText("Members only", { exact: true })).toHaveLength(
+      1,
+    );
+  });
+});
+
+describe("redesigned module rename", () => {
+  it("keeps the saved title and waits before navigating away", async () => {
+    trpc.redesigned = true;
+    trpc.role = "owner";
+    trpc.routerPush.mockReset();
+    window.history.replaceState(
+      null,
+      "",
+      "/communities/hub/classroom/intro-1/edit",
+    );
+    trpc.query = {
+      data: {
+        ...courseData,
+        modules: [{ id: 30, title: "Module 1", order: 0 }],
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+    let finish!: () => void;
+    const save = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    trpc.outline.renameModule!.mockReturnValueOnce(save);
+    renderBuilder();
+    fireEvent.click(screen.getByRole("button", { name: "Rename Module 1" }));
+    const title = screen.getByRole("textbox", { name: "Module title" });
+    fireEvent.change(title, {
+      target: { value: "Record and verify the repair" },
+    });
+    fireEvent.keyDown(title, { key: "Enter" });
+
+    expect(trpc.outline.renameModule).toHaveBeenCalledWith({
+      moduleId: 30,
+      title: "Record and verify the repair",
+    });
+    expect(
+      screen.getByRole("button", { name: "Rename Module 1" }),
+    ).toBeDisabled();
+    expect(
+      within(screen.getByTestId("outline-module-30")).getByRole("status"),
+    ).toHaveTextContent("Saving");
+    expect(fireEvent.click(screen.getByRole("link", { name: "Courses" }))).toBe(
+      false,
+    );
+    expect(trpc.routerPush).not.toHaveBeenCalled();
+
+    await act(async () => finish());
+    expect(trpc.routerPush).toHaveBeenCalledWith("/communities/hub/classroom");
   });
 });

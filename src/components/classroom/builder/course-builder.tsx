@@ -1,13 +1,15 @@
 "use client";
 
+import styles from "../classroom.module.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Archive } from "lucide-react";
+import { Archive, X } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
+  SheetClose,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -158,6 +161,8 @@ export function CourseBuilder({
   slug: string;
   courseSlug: string;
 }) {
+  const redesigned = isOpenCommunitiesEnabled();
+  const learning = useTranslations("redesign.classroom");
   const t = useTranslations("classroomBuilder");
   const utils = api.useUtils();
   const query = api.classrooms.get.useQuery({ slug: courseSlug });
@@ -170,7 +175,7 @@ export function CourseBuilder({
     setGeneration((g) => g + 1);
   }, [utils, courseSlug]);
 
-  if (query.isLoading) return <BuilderSkeleton />;
+  if (query.isLoading) return <BuilderSkeleton redesigned={redesigned} />;
 
   // Once loaded, the workspace stays mounted even if a background refetch
   // (window focus) fails: unmounting it would drop the author's draft and turn
@@ -186,7 +191,7 @@ export function CourseBuilder({
         action={
           <Button asChild variant="outline" size="sm">
             <Link href={`/communities/${slug}/classroom` as never}>
-              {t("backToClassroom")}
+              {redesigned ? learning("courses") : t("backToClassroom")}
             </Link>
           </Button>
         }
@@ -201,6 +206,7 @@ export function CourseBuilder({
       courseSlug={courseSlug}
       data={query.data}
       onReload={reload}
+      redesigned={redesigned}
     />
   );
 }
@@ -221,15 +227,30 @@ function CourseWorkspace({
   courseSlug,
   data,
   onReload,
+  redesigned,
 }: {
   slug: string;
   courseSlug: string;
   data: CourseData;
   onReload: () => Promise<void>;
+  redesigned: boolean;
 }) {
   const t = useTranslations("classroomBuilder");
   const utils = api.useUtils();
+  const common = useTranslations("common");
   const update = api.classrooms.update.useMutation();
+  const setPublic = api.classrooms.setPublic.useMutation();
+  const learning = useTranslations("redesign.classroom");
+  const { data: memberships } = api.communities.getMyCommunities.useQuery(
+    undefined,
+    { enabled: redesigned },
+  );
+  const role = memberships?.find(
+    (membership) => membership.slug === slug && membership.status === "active",
+  )?.role;
+  const maySetVisibility =
+    redesigned &&
+    (role === "owner" || role === "admin" || role === "moderator");
   const { course, lessons, modules } = data;
   const readOnly = course.status === "archived";
   // Course-level file facts for the lesson editor's file blocks: which course
@@ -269,6 +290,7 @@ function CourseWorkspace({
   const searchParams = useSearchParams();
   const selection = resolveSelection(searchParams.get("lesson"), lessons);
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const outlineButton = useRef<HTMLButtonElement>(null);
   const [previewing, setPreviewing] = useState(false);
   // The outline lives in one place at a time: its column on wide screens, a
   // sheet on small ones. Mounting it twice would mean two drag contexts and
@@ -292,6 +314,29 @@ function CourseWorkspace({
     // so the selection changes without a server round trip or a scroll jump.
     window.history.replaceState(null, "", url);
     setOutlineOpen(false);
+  }, []);
+
+  // Keep the mutation and the refreshed title together when leaving the builder
+  // or entering its learner preview.
+  const moduleSaves = useRef(new Set<Promise<void>>());
+  const [moduleSaving, setModuleSaving] = useState(false);
+  const trackModuleSave = async (save: () => Promise<void>) => {
+    const pending = save();
+    moduleSaves.current.add(pending);
+    setModuleSaving(true);
+    try {
+      await pending;
+    } finally {
+      moduleSaves.current.delete(pending);
+      setModuleSaving(moduleSaves.current.size > 0);
+    }
+  };
+  const waitForModuleSaves = useCallback(async () => {
+    while (moduleSaves.current.size > 0) {
+      const results = await Promise.allSettled(moduleSaves.current);
+      if (results.some(({ status }) => status === "rejected")) return false;
+    }
+    return true;
   }, []);
 
   // Save state reported by the editing panes, keyed by pane.
@@ -352,6 +397,7 @@ function CourseWorkspace({
   );
 
   const saveAllFirst = useCallback(async (): Promise<boolean> => {
+    if (redesigned && !(await waitForModuleSaves())) return false;
     const results = await flushAll();
     if (canLeaveEditing(results.map(([, status]) => status))) return true;
     const blocking = (match: (key: string) => boolean) =>
@@ -364,7 +410,7 @@ function CourseWorkspace({
     }
     toast.error(t("finishSavingFirst"));
     return false;
-  }, [flushAll, select, t]);
+  }, [flushAll, redesigned, select, t, waitForModuleSaves]);
 
   /**
    * Every author-driven selection change. Leaving a lesson first saves it and
@@ -425,8 +471,14 @@ function CourseWorkspace({
   // Leaving with work that is not safely saved asks first; going ahead tries
   // one last save of everything, then leaves whatever could not be saved.
   useLeaveGuard({
-    active: UNSAFE.has(save.status),
+    active: UNSAFE.has(save.status) || moduleSaving,
+    hasPending: redesigned ? () => moduleSaves.current.size > 0 : undefined,
     confirmLeave: async () => {
+      if (moduleSaves.current.size > 0) {
+        if (!(await waitForModuleSaves())) return false;
+        const states = activePanes(paneStatesRef.current, selectionRef.current);
+        if (canLeaveEditing(states.map(([, pane]) => pane.status))) return true;
+      }
       const leave = await confirm({
         title: t("leaveTitle"),
         description: t("leaveDescription"),
@@ -471,6 +523,56 @@ function CourseWorkspace({
       }
       toast.error(t(builderErrorKey(code)));
       return "failed";
+    } finally {
+      setStatusChanging(false);
+    }
+  };
+
+  const changeVisibility = async () => {
+    if (!maySetVisibility || readOnly || statusChanging) return;
+    setStatusChanging(true);
+    const input = { slug: courseSlug };
+    const isPublic = !course.isPublic;
+    let wroteVisibility = false;
+    try {
+      if (!(await saveAllFirst())) return;
+      await writer.run(async (expectedUpdatedAt) => {
+        // setPublic keeps its existing staff gate and changes the course version.
+        // Guard other editor fields before adopting the new version.
+        const before = (
+          await utils.classrooms.get.fetch(input, { staleTime: 0 })
+        ).course;
+        if (
+          before.updatedAt !== expectedUpdatedAt ||
+          !!before.isPublic === isPublic
+        ) {
+          throw new Error("COURSE_CHANGED");
+        }
+        await setPublic.mutateAsync({ courseId: course.id, isPublic });
+        wroteVisibility = true;
+        const after = (
+          await utils.classrooms.get.fetch(input, { staleTime: 0 })
+        ).course;
+        if (
+          !!after.isPublic !== isPublic ||
+          before.title !== after.title ||
+          before.summary !== after.summary ||
+          before.coverImageUrl !== after.coverImageUrl ||
+          before.status !== after.status
+        ) {
+          throw new Error("COURSE_CHANGED");
+        }
+        return after.updatedAt;
+      });
+      void utils.classrooms.list.invalidate({ communitySlug: slug });
+      toast.success(learning("visibilitySaved"));
+    } catch (err) {
+      const code = err instanceof Error ? err.message : undefined;
+      if (wroteVisibility || code === "COURSE_CHANGED") {
+        reportPane("status", STATUS_CONFLICT);
+      } else {
+        toast.error(t(builderErrorKey(code)));
+      }
     } finally {
       setStatusChanging(false);
     }
@@ -551,13 +653,24 @@ function CourseWorkspace({
       onSelect={(next) => void navigate(next)}
       onLessonDeleted={markLessonDeleted}
       rewriteLessons={rewriteLessons}
+      trackModuleSave={redesigned ? trackModuleSave : undefined}
       readOnly={readOnly}
     />
   );
 
   return (
-    <div className="flex flex-col lg:h-[calc(100dvh-var(--shell-top-offset)-var(--shell-header-border))]">
+    <div
+      data-classroom-redesign={redesigned ? "" : undefined}
+      data-classroom-builder={redesigned ? "" : undefined}
+      className={cn(
+        "flex flex-col lg:h-[calc(100dvh-var(--shell-top-offset)-var(--shell-header-border))]",
+        redesigned && [styles.controls, styles.builder],
+        redesigned && previewing && "max-lg:h-dvh",
+      )}
+    >
       <BuilderTopBar
+        redesigned={redesigned}
+        outlineButtonRef={redesigned ? outlineButton : undefined}
         slug={slug}
         courseSlug={courseSlug}
         title={details.draft.title}
@@ -599,19 +712,39 @@ function CourseWorkspace({
         <MaterialsManifestProvider manifest={data.materials}>
           <div
             className={cn(
-              "grid min-h-0 flex-1 lg:grid-cols-[18rem_minmax(0,1fr)_auto]",
+              "grid min-h-0 flex-1",
+              redesigned
+                ? "lg:grid-cols-[20rem_minmax(0,1fr)_auto]"
+                : "lg:grid-cols-[18rem_minmax(0,1fr)_auto]",
               previewing && "hidden",
             )}
           >
             {outlineColumn ? (
               <nav
                 aria-label={t("outline")}
-                className="border-border hidden overflow-y-auto border-r lg:block"
+                className={cn(
+                  "border-border hidden border-r",
+                  redesigned
+                    ? "bg-muted/25 min-h-0 flex-col lg:flex"
+                    : "overflow-y-auto lg:block",
+                )}
               >
-                <SectionLabel className="mx-3 mt-4">
+                <SectionLabel
+                  className={cn(
+                    "mx-3 mt-4",
+                    redesigned &&
+                      "bg-background mx-0 mt-0 shrink-0 px-5 py-4 leading-5",
+                  )}
+                >
                   {t("outline")}
                 </SectionLabel>
-                {outline}
+                {redesigned ? (
+                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
+                    {outline}
+                  </div>
+                ) : (
+                  outline
+                )}
               </nav>
             ) : null}
 
@@ -626,6 +759,13 @@ function CourseWorkspace({
                 canUpload={data.viewerCanUpload}
                 isPublic={!!course.isPublic}
                 readOnly={readOnly}
+                redesigned={redesigned}
+                onToggleVisibility={
+                  maySetVisibility && !readOnly
+                    ? () => void changeVisibility()
+                    : undefined
+                }
+                visibilityPending={statusChanging}
               />
             </div>
 
@@ -637,6 +777,10 @@ function CourseWorkspace({
                 lesson={selectedLesson}
                 courseSlug={courseSlug}
                 readOnly={readOnly}
+                redesigned={redesigned}
+                showDraftPreview={
+                  redesigned && outlineColumn && !settingsCollapsed
+                }
                 versions={lessonVersions}
                 onStatusChange={(state) =>
                   reportPane(lessonPaneKey(selectedLesson.id), state)
@@ -654,6 +798,7 @@ function CourseWorkspace({
       </LessonEditorProvider>
 
       <PublishDialog
+        redesigned={redesigned}
         open={publishOpen}
         onOpenChange={setPublishOpen}
         input={checklistInput}
@@ -665,9 +810,48 @@ function CourseWorkspace({
 
       {outlineColumn ? null : (
         <Sheet open={outlineOpen} onOpenChange={setOutlineOpen}>
-          <SheetContent side="left" className="overflow-y-auto">
-            <SheetHeader>
+          <SheetContent
+            side="left"
+            data-classroom-redesign={redesigned ? "" : undefined}
+            data-classroom-builder={redesigned ? "" : undefined}
+            showCloseButton={!redesigned}
+            {...(redesigned ? { "aria-describedby": undefined } : {})}
+            onCloseAutoFocus={
+              redesigned
+                ? (event) => {
+                    event.preventDefault();
+                    outlineButton.current?.focus();
+                  }
+                : undefined
+            }
+            className={cn(
+              "overflow-y-auto",
+              redesigned && [
+                styles.controls,
+                styles.builder,
+                "w-[min(90vw,24rem)] max-w-none gap-0 motion-reduce:animate-none motion-reduce:transition-none",
+              ],
+            )}
+          >
+            <SheetHeader
+              className={
+                redesigned
+                  ? "bg-background border-border sticky top-0 z-10 flex-row items-center justify-between border-b"
+                  : undefined
+              }
+            >
               <SheetTitle>{t("outline")}</SheetTitle>
+              {redesigned ? (
+                <SheetClose asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={common("close")}
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                </SheetClose>
+              ) : null}
             </SheetHeader>
             {outline}
           </SheetContent>
@@ -677,7 +861,7 @@ function CourseWorkspace({
   );
 }
 
-function BuilderSkeleton() {
+function BuilderSkeleton({ redesigned }: { redesigned: boolean }) {
   return (
     <div
       aria-busy="true"
@@ -688,7 +872,14 @@ function BuilderSkeleton() {
         <Skeleton className="h-5 w-48" />
         <Skeleton className="ml-auto h-8 w-40" />
       </div>
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <div
+        className={cn(
+          "grid min-h-0 flex-1",
+          redesigned
+            ? "lg:grid-cols-[20rem_minmax(0,1fr)]"
+            : "lg:grid-cols-[18rem_minmax(0,1fr)]",
+        )}
+      >
         <div className="border-border hidden space-y-2 border-r p-3 lg:block">
           {Array.from({ length: 5 }, (_, i) => (
             <Skeleton key={i} className="h-7 w-full" />

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { Users, Plus, BookOpen } from "lucide-react";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { CourseCatalog } from "./course-catalog";
 import { canCreateCourse, type CommunityRole } from "@/lib/classroom";
 
 export function ClassroomListing({ slug }: { slug: string }) {
@@ -38,6 +40,20 @@ export function ClassroomListing({ slug }: { slug: string }) {
         | undefined
     )?.classroomCreatePolicy ?? "all_members";
   const mayCreate = canCreateCourse(policy, role);
+
+  if (isOpenCommunitiesEnabled()) {
+    return (
+      <CourseCatalog
+        slug={slug}
+        courses={courses ?? []}
+        loading={isLoading}
+        failed={isError}
+        mayCreate={mayCreate}
+        member={role !== null}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
 
   return (
     <div className="@container space-y-6">

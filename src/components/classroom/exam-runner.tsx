@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { LazyMotion, domAnimation, m } from "framer-motion";
+import { LazyMotion, domAnimation, m, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 import type { PublicExamQuestion } from "@/lib/classroom";
+import { cn } from "@/lib/utils";
 import { fireConfetti } from "./celebrate";
 
 type LessonExam = {
@@ -34,6 +35,9 @@ export function ExamRunner({
   completed,
   preview = false,
   answerKey,
+  redesigned = false,
+  accent = true,
+  onPassed,
 }: {
   exam: LessonExam;
   attempts: Attempt[];
@@ -42,9 +46,14 @@ export function ExamRunner({
   preview?: boolean;
   /** Author-only { questionId → correctIndex }; marks the right option in preview. */
   answerKey?: Record<string, number>;
+  redesigned?: boolean;
+  accent?: boolean;
+  onPassed?: () => void;
 }) {
   const t = useTranslations("classroom");
   const utils = api.useUtils();
+  const reducedMotion = useReducedMotion();
+  const submissionUrl = useRef<string>(null);
   const [picks, setPicks] = useState<Record<string, number>>({});
   const [result, setResult] = useState<{
     score: number;
@@ -70,9 +79,15 @@ export function ExamRunner({
   const attemptsUsed = mine.length;
   const outOfAttempts =
     !passed && exam.maxAttempts > 0 && attemptsUsed >= exam.maxAttempts;
+  const submitVariant =
+    redesigned && !exam.mandatory
+      ? "outline"
+      : redesigned && !accent
+        ? "ink"
+        : "default";
 
   const submit = api.classrooms.submitExamAttempt.useMutation({
-    onSuccess: (r) => {
+    onSuccess: async (r) => {
       setResult(r);
       if (r.passed) {
         fireConfetti();
@@ -80,14 +95,27 @@ export function ExamRunner({
       } else {
         toast.error(t("examFailedToast", { score: r.score }));
       }
-      void utils.classrooms.get.invalidate();
+      if (redesigned && r.passed) {
+        await Promise.all([
+          utils.classrooms.get.invalidate(),
+          utils.classrooms.list.invalidate(),
+        ]);
+        if (submissionUrl.current === window.location.href) onPassed?.();
+      } else {
+        void utils.classrooms.get.invalidate();
+      }
     },
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
   });
 
   return (
     <div className="border-border bg-muted/30 space-y-4 rounded-lg border p-4">
-      <div className="flex items-center justify-between">
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          redesigned && "flex-wrap gap-2",
+        )}
+      >
         <h4 className="font-semibold">{t("exam")}</h4>
         <span className="text-muted-foreground text-xs">
           {t("examThresholdLabel", { percent: exam.passThreshold })}
@@ -100,7 +128,9 @@ export function ExamRunner({
       {passed && !preview ? (
         <LazyMotion features={domAnimation}>
           <m.p
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={
+              redesigned && reducedMotion ? false : { scale: 0.8, opacity: 0 }
+            }
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 360, damping: 18 }}
             className="text-success text-sm font-medium"
@@ -165,9 +195,11 @@ export function ExamRunner({
           ) : (
             <Button
               type="button"
+              variant={submitVariant}
               size="sm"
               disabled={submit.isPending || Object.keys(picks).length === 0}
-              onClick={() =>
+              onClick={() => {
+                submissionUrl.current = window.location.href;
                 submit.mutate({
                   lessonId: exam.lessonId,
                   answers: Object.entries(picks).map(
@@ -176,8 +208,8 @@ export function ExamRunner({
                       selectedIndex,
                     }),
                   ),
-                })
-              }
+                });
+              }}
             >
               {mine.length > 0 ? t("examRetry") : t("examSubmit")}
             </Button>
