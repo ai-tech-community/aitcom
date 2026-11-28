@@ -4,15 +4,19 @@ import { notFound } from "next/navigation";
 import { Bot } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { buildOgMeta, localeAlternates } from "@/lib/metadata";
 import { profileTabHref } from "@/lib/member-profile-routes";
 import {
+  getMemberAgentAccess,
   getMemberAgentPage,
   requireMemberFrame,
 } from "@/server/members/profile-page";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { OwnerOnlyNotice } from "@/components/members/owner-only-notice";
+import { Button } from "@/components/ui/button";
 import { VerifiedSocials } from "@/components/verified-socials";
 
 type Params = Promise<{ id: string; locale: string }>;
@@ -24,7 +28,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id, locale } = await params;
   const data = await getMemberAgentPage(id);
-  if (!data) return {};
+  if (!data) {
+    return isOpenCommunitiesEnabled()
+      ? { robots: { index: false, follow: false } }
+      : {};
+  }
   const t = await getTranslations({
     locale: routing.locales.find((l) => l === locale) ?? routing.defaultLocale,
     namespace: "memberProfile.meta",
@@ -47,9 +55,34 @@ export async function generateMetadata({
   };
 }
 
+async function unavailableAgent(id: string) {
+  const [t, profile] = await Promise.all([
+    getTranslations("notFound"),
+    getTranslations("memberProfile.tabs"),
+  ]);
+  return (
+    <DashboardSection title={t("title")} headingStyle="title">
+      <p className="text-muted-foreground max-w-prose text-sm leading-relaxed">
+        {t("description")}
+      </p>
+      <Button asChild variant="outline" className="mt-4 min-h-11 shadow-none">
+        <Link href={profileTabHref(id, "overview")}>{profile("overview")}</Link>
+      </Button>
+    </DashboardSection>
+  );
+}
+
 /** The member's AI agent, under the same visibility rule as the profile. */
 export default async function MemberAgentPage({ params }: { params: Params }) {
   const { id } = await params;
+  const redesigned = isOpenCommunitiesEnabled();
+  if (redesigned && (await getMemberAgentAccess(id)) === null) {
+    // Keep the profile's access check. An unavailable tab on a readable
+    // profile gets a stable recovery state within the streamed frame.
+    await requireMemberFrame(id);
+    return unavailableAgent(id);
+  }
+
   const [frame, data, t, tMembers, format] = await Promise.all([
     requireMemberFrame(id),
     getMemberAgentPage(id),
@@ -57,12 +90,25 @@ export default async function MemberAgentPage({ params }: { params: Params }) {
     getTranslations("members"),
     getFormatter(),
   ]);
-  if (!data) notFound();
+  if (!data) {
+    if (redesigned) return unavailableAgent(id);
+    notFound();
+  }
 
   const { agent, social, reach } = data;
 
+  const headingStyle = redesigned ? "title" : "label";
+  const redesign = redesigned
+    ? await getTranslations("redesign.members")
+    : null;
+
   return (
     <div className="space-y-10">
+      {redesign && (
+        <p className="text-muted-foreground text-sm">
+          {redesign("agentIntro")}
+        </p>
+      )}
       {/* The frame already explains a profile visitors cannot see (or one
           not set up yet); this adds only what is true of the agent alone
           (e.g. it is not active). */}
@@ -93,6 +139,7 @@ export default async function MemberAgentPage({ params }: { params: Params }) {
             github={social.github}
             githubLabel={tMembers("github")}
             verifiedLabel={tMembers("verified")}
+            className={redesigned ? "[&_a]:min-h-11 [&_a]:min-w-11" : undefined}
           />
         </div>
       </div>
@@ -119,7 +166,7 @@ export default async function MemberAgentPage({ params }: { params: Params }) {
       </dl>
 
       {agent.expertiseTags.length > 0 && (
-        <DashboardSection title={t("expertise")}>
+        <DashboardSection headingStyle={headingStyle} title={t("expertise")}>
           <ul className="flex flex-wrap gap-2">
             {agent.expertiseTags.map((tag) => (
               <li
@@ -134,7 +181,7 @@ export default async function MemberAgentPage({ params }: { params: Params }) {
       )}
 
       {agent.bio && (
-        <DashboardSection title={t("bio")}>
+        <DashboardSection headingStyle={headingStyle} title={t("bio")}>
           <p
             dir="auto"
             className="max-w-prose text-sm leading-relaxed whitespace-pre-line"
@@ -145,7 +192,7 @@ export default async function MemberAgentPage({ params }: { params: Params }) {
       )}
 
       {agent.description && (
-        <DashboardSection title={t("description")}>
+        <DashboardSection headingStyle={headingStyle} title={t("description")}>
           <p className="max-w-prose text-sm leading-relaxed whitespace-pre-line">
             {agent.description}
           </p>

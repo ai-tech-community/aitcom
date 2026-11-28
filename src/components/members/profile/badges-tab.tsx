@@ -1,6 +1,8 @@
 import { useFormatter, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
+import { badgeShareHref } from "@/lib/member-profile-routes";
+import { cn } from "@/lib/utils";
 import type {
   BadgeSlug,
   LimitedEditionBadge,
@@ -95,12 +97,14 @@ function Facts({ items }: { items: (string | null)[] }) {
  */
 export function BadgesTab({
   held,
+  profileId,
   awards,
   rarity,
   viewer,
   showcase,
 }: {
   held: readonly HeldBadge[];
+  profileId?: string;
   awards: readonly ProfileAward[];
   rarity: BadgeRarityReport | null;
   viewer: BadgeViewer;
@@ -139,6 +143,18 @@ export function BadgesTab({
       />
     ) : null;
 
+  const badgeTitle = (slug: BadgeSlug, name: string, earned: boolean) =>
+    profileId && earned ? (
+      <Link
+        href={badgeShareHref(profileId, slug)}
+        className="inline-flex min-h-11 items-center rounded-sm font-medium underline underline-offset-4 sm:min-h-8"
+      >
+        {name}
+      </Link>
+    ) : (
+      <p className="font-medium">{name}</p>
+    );
+
   const trackRow = (group: TrackGroup) => {
     const { lead } = group;
     const name = tBadges(lead.badge.nameKey);
@@ -156,12 +172,12 @@ export function BadgesTab({
         <BadgeEmblem
           subject={{ kind: "badge", slug: lead.badge.slug }}
           state={emblemState(lead)}
-          size="lg"
+          size={profileId ? "md" : "lg"}
         />
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-0.5">
-              <p className="font-medium">{name}</p>
+              {badgeTitle(lead.badge.slug, name, earned)}
               <p className="text-muted-foreground text-sm">
                 {tBadges(
                   lead.badge.descriptionKey,
@@ -184,8 +200,8 @@ export function BadgesTab({
               })}
               className="flex items-center gap-2 pt-1"
             >
-              {others.map((tier) => (
-                <li key={tier.badge.slug} className="flex">
+              {others.map((tier) => {
+                const emblem = (
                   <BadgeEmblem
                     subject={{ kind: "badge", slug: tier.badge.slug }}
                     state={emblemState(tier)}
@@ -195,8 +211,22 @@ export function BadgesTab({
                       emblemState(tier),
                     )}
                   />
-                </li>
-              ))}
+                );
+                return (
+                  <li key={tier.badge.slug} className="flex">
+                    {profileId && tier.earnedAt !== null ? (
+                      <Link
+                        href={badgeShareHref(profileId, tier.badge.slug)}
+                        className="hover:bg-muted flex min-h-11 min-w-11 items-center justify-center rounded-md sm:min-h-8 sm:min-w-8"
+                      >
+                        {emblem}
+                      </Link>
+                    ) : (
+                      emblem
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
           {owner && nextLocked?.progress && (
@@ -236,7 +266,7 @@ export function BadgesTab({
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-0.5">
-              <p className="font-medium">{name}</p>
+              {badgeTitle(entry.badge.slug, name, earned)}
               <p className="text-muted-foreground text-sm">
                 {tBadges(
                   entry.badge.descriptionKey,
@@ -260,7 +290,7 @@ export function BadgesTab({
   const earnedMilestones = groups.milestones.filter((m) => m.earnedAt !== null);
 
   return (
-    <div className="space-y-10">
+    <div className={cn("space-y-10", profileId && "space-y-7")}>
       {pins && (
         <p
           id={SHOWCASE_HINT_ID}

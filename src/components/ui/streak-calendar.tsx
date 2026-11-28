@@ -111,6 +111,8 @@ interface StreakCalendarProps extends React.HTMLAttributes<HTMLDivElement> {
   streak: StreakPeriod[];
   /** Calendar layout variant. */
   view?: "week" | "month" | "year";
+  /** Use denser year cells and start at the latest date when scrolled. */
+  compactYear?: boolean;
   /** Month to display (default: current month). */
   month?: Date;
   /** Date used for week view (default: today). */
@@ -225,6 +227,7 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
       className,
       streak,
       view = "week",
+      compactYear = false,
       month = new Date(),
       referenceDate = new Date(),
       showFreezes = true,
@@ -236,6 +239,13 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
     },
     ref,
   ) => {
+    const yearScrollRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+      const yearScroll = yearScrollRef.current;
+      if (compactYear && yearScroll)
+        yearScroll.scrollLeft = yearScroll.scrollWidth;
+    }, [compactYear, view]);
+
     const year = month.getFullYear();
     const monthIndex = month.getMonth();
     const daysInMonth = getDaysInMonth(year, monthIndex);
@@ -268,7 +278,8 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
       startOfWeek,
     );
     const gitColumnCount = Math.ceil(gitCells.length / 7);
-    const gitGridTemplateColumns = `repeat(${gitColumnCount}, 1rem)`;
+    const gitCellSize = compactYear ? "0.75rem" : "1rem";
+    const gitGridTemplateColumns = `repeat(${gitColumnCount}, ${gitCellSize})`;
     const gitMonthLabels: Array<{ column: number; label: string }> = [];
     const seenGitMonths = new Set<string>();
 
@@ -287,7 +298,11 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
     const firstDate = gitDates[0];
     if (firstDate) {
       const firstMonthKey = `${firstDate.getFullYear()}-${firstDate.getMonth()}`;
-      if (!seenGitMonths.has(firstMonthKey)) {
+      const firstFullMonthColumn = gitMonthLabels[0]?.column ?? 3;
+      if (
+        !seenGitMonths.has(firstMonthKey) &&
+        (!compactYear || firstFullMonthColumn >= 3)
+      ) {
         gitMonthLabels.unshift({
           column: 0,
           label: firstDate.toLocaleDateString(locale, { month: "short" }),
@@ -495,11 +510,26 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                 {labels.endingOn(gitEndDate)}
               </p>
             </div>
-            <div className="overflow-x-auto">
-              <div className="inline-block pr-16">
+            <div
+              ref={yearScrollRef}
+              tabIndex={compactYear ? 0 : undefined}
+              className={cn(
+                "overflow-x-auto",
+                compactYear &&
+                  "focus-visible:ring-ring rounded-md focus-visible:ring-2 focus-visible:ring-inset",
+              )}
+              role={compactYear ? "region" : undefined}
+              aria-label={compactYear ? labels.lastYear : undefined}
+            >
+              <div
+                className={cn(
+                  "inline-block pr-16",
+                  compactYear && "px-1 pt-1 pb-2",
+                )}
+              >
                 <div
                   aria-hidden="true"
-                  className="mb-2 grid gap-1"
+                  className={cn("mb-2 grid gap-1", compactYear && "gap-0.5")}
                   style={{ gridTemplateColumns: gitGridTemplateColumns }}
                 >
                   {gitMonthLabels.map((month) => (
@@ -515,13 +545,19 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                 <TooltipProvider>
                   <div
                     role="rowgroup"
-                    className="grid grid-flow-col grid-rows-7 gap-1"
+                    className={cn(
+                      "grid grid-flow-col grid-rows-7 gap-1",
+                      compactYear && "gap-0.5",
+                    )}
                     style={{ gridTemplateColumns: gitGridTemplateColumns }}
                   >
                     {gitCells.map((date, index) => {
                       if (!date) {
                         return (
-                          <div key={`git-empty-${index}`} className="h-4 w-4" />
+                          <div
+                            key={`git-empty-${index}`}
+                            className={compactYear ? "size-3" : "size-4"}
+                          />
                         );
                       }
                       const { isToday, isActive, usedFreeze } =
@@ -544,6 +580,8 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                               }
                               className={cn(
                                 "border-border/40 h-4 w-4 rounded-sm border transition-colors",
+                                compactYear &&
+                                  "size-3 motion-reduce:transition-none",
                                 onDayClick && "hover:ring-ring hover:ring-1",
                                 isToday &&
                                   "border-foreground ring-foreground ring-1",

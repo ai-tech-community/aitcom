@@ -11,15 +11,20 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DirectoryMemberRow } from "./directory-member-row";
 
-export function MemberDirectory({ slug }: { slug: string }) {
-  const t = useTranslations("communityMatching");
-  const [search, setSearch] = useState("");
+function useDirectory(slug: string, search: string) {
   const q = useDeferredValue(search);
   const query = api.communities.getMembers.useInfiniteQuery(
     { slug, limit: 50, q },
     { getNextPageParam: (page) => page.nextCursor },
   );
   const items = query.data?.pages.flatMap((page) => page.items) ?? [];
+  return { query, items, q };
+}
+
+export function MemberDirectory({ slug }: { slug: string }) {
+  const t = useTranslations("communityMatching");
+  const [search, setSearch] = useState("");
+  const { query, items } = useDirectory(slug, search);
   return (
     <div className="space-y-5">
       <div className="max-w-md space-y-2">

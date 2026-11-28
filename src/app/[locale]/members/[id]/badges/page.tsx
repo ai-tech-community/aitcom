@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { Link } from "@/i18n/navigation";
 import {
   getBadgeRarityReport,
@@ -56,8 +57,12 @@ export default async function MemberBadgesPage({ params }: { params: Params }) {
   const { badges } = data;
   const isEmpty = !isOwner && badges.length === 0 && shownAwards.length === 0;
 
+  const redesigned = isOpenCommunitiesEnabled();
+  const headingStyle = redesigned ? "title" : "label";
+
   return (
     <DashboardSection
+      headingStyle={headingStyle}
       title={t("title")}
       action={
         badges.length > 0 ? (
@@ -83,6 +88,7 @@ export default async function MemberBadgesPage({ params }: { params: Params }) {
     >
       <BadgesTab
         held={badges}
+        profileId={redesigned ? id : undefined}
         awards={shownAwards}
         rarity={rarity}
         viewer={

@@ -4,6 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { getInitials } from "@/lib/avatar";
 import type { CatalogBadge } from "@/lib/badges/catalog";
 import { profileTabHref } from "@/lib/member-profile-routes";
+import { cn } from "@/lib/utils";
 import type { BadgeRarityReport } from "@/server/badges/rarity";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,12 +31,14 @@ export function BadgeShare({
   member,
   rarity,
   viewer,
+  redesigned = false,
 }: {
   badge: CatalogBadge;
   earnedAt: Date | string;
   member: { userId: string; displayName: string; avatarUrl: string | null };
   rarity: BadgeRarityReport | null;
   viewer: BadgeShareViewer;
+  redesigned?: boolean;
 }) {
   const t = useTranslations("badgeMoment");
   const format = useFormatter();
@@ -50,9 +53,17 @@ export function BadgeShare({
   return (
     <section
       aria-labelledby="badge-share-title"
-      className="bg-card rounded-xl border p-6 sm:p-8"
+      className={cn(
+        "bg-card rounded-xl border p-6 sm:p-8",
+        redesigned && "border-border p-4 sm:p-7",
+      )}
     >
-      <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:gap-8 sm:text-left">
+      <div
+        className={cn(
+          "flex flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:gap-8 sm:text-left",
+          redesigned && "items-start gap-4 text-left sm:gap-6",
+        )}
+      >
         {/* The heading and facts beside it say everything the emblem does. */}
         <BadgeEmblem
           subject={{ kind: "badge", slug: badge.slug }}
@@ -63,16 +74,29 @@ export function BadgeShare({
           <div className="space-y-1.5">
             <h2
               id="badge-share-title"
-              className="text-2xl font-semibold tracking-tight text-balance"
+              className={cn(
+                "text-2xl font-semibold tracking-tight text-balance",
+                redesigned && "sm:text-3xl",
+              )}
             >
               {text.name}
             </h2>
-            <p className="text-muted-foreground font-mono text-xs">
+            <p
+              className={cn(
+                "text-muted-foreground font-mono text-xs",
+                redesigned && "font-sans text-sm",
+              )}
+            >
               {text.kind}
             </p>
           </div>
           <p className="max-w-prose text-sm">{text.description}</p>
-          <dl className="text-muted-foreground flex flex-wrap justify-center gap-x-4 gap-y-1 font-mono text-xs sm:justify-start">
+          <dl
+            className={cn(
+              "text-muted-foreground flex flex-wrap justify-center gap-x-4 gap-y-1 font-mono text-xs sm:justify-start",
+              redesigned && "justify-start",
+            )}
+          >
             <div>
               <dt className="sr-only">{t("share.earnedLabel")}</dt>
               <dd>{t("earnedOn", { date })}</dd>
@@ -84,17 +108,30 @@ export function BadgeShare({
               </div>
             )}
           </dl>
-          <p className="flex items-center justify-center gap-2 text-sm sm:justify-start">
+          <p
+            className={cn(
+              "flex items-center justify-center gap-2 text-sm sm:justify-start",
+              redesigned && "flex-wrap justify-start",
+            )}
+          >
             <span className="text-muted-foreground">{t("share.earnedBy")}</span>
             <Link
               href={profileTabHref(member.userId, "overview")}
-              className="inline-flex items-center gap-2 font-medium underline-offset-4 hover:underline"
+              className={cn(
+                "inline-flex items-center gap-2 font-medium underline-offset-4 hover:underline",
+                redesigned && "min-h-11 rounded-sm underline",
+              )}
             >
               <Avatar size="sm">
                 {member.avatarUrl && (
                   <AvatarImage src={member.avatarUrl} alt="" />
                 )}
-                <AvatarFallback className="font-mono text-[10px]">
+                <AvatarFallback
+                  className={cn(
+                    "font-mono text-[10px]",
+                    redesigned && "font-sans",
+                  )}
+                >
                   {getInitials(member.displayName)}
                 </AvatarFallback>
               </Avatar>
@@ -104,10 +141,20 @@ export function BadgeShare({
         </div>
       </div>
 
-      <div className="mt-8 flex flex-col items-center gap-3 border-t pt-6 sm:flex-row sm:justify-between">
+      <div
+        className={cn(
+          "mt-8 flex flex-col items-center gap-3 border-t pt-6 sm:flex-row sm:justify-between",
+          redesigned && "mt-5 items-start pt-4 sm:items-center",
+        )}
+      >
         {viewer.kind === "guest" ? (
           <>
-            <p className="text-muted-foreground max-w-prose text-center text-sm sm:text-left">
+            <p
+              className={cn(
+                "text-muted-foreground max-w-prose text-center text-sm sm:text-left",
+                redesigned && "text-left",
+              )}
+            >
               {t("share.joinText")}
             </p>
             <Button asChild>
@@ -118,7 +165,11 @@ export function BadgeShare({
           <>
             <Link
               href={profileTabHref(member.userId, "badges")}
-              className="text-muted-foreground text-sm underline-offset-4 hover:underline"
+              className={cn(
+                "text-muted-foreground text-sm underline-offset-4 hover:underline",
+                redesigned &&
+                  "inline-flex min-h-11 items-center rounded-sm underline",
+              )}
             >
               {viewer.kind === "owner"
                 ? t("share.ownerAllBadges")

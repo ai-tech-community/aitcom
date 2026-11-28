@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { Link } from "@/i18n/navigation";
 import { toStreakPeriods } from "@/lib/gamification";
 import {
@@ -56,9 +57,13 @@ export default async function MemberActivityPage({
   const days = activity.days;
   const periods = toStreakPeriods(days);
 
+  const redesigned = isOpenCommunitiesEnabled();
+  const headingStyle = redesigned ? "title" : "label";
+
   return (
     <>
       <DashboardSection
+        headingStyle={headingStyle}
         title={t("title")}
         status={{ kind: days.length > 0 ? "ready" : "empty" }}
         empty={
@@ -90,12 +95,13 @@ export default async function MemberActivityPage({
               value={t("days", { count: days.length })}
             />
           </dl>
-          <ActivityCalendar periods={periods} />
+          <ActivityCalendar periods={periods} redesigned={redesigned} />
           <p className="text-muted-foreground text-xs">{t("explainer")}</p>
         </div>
       </DashboardSection>
       {streak && streak.longest > 0 ? (
         <DashboardSection
+          headingStyle={headingStyle}
           title={t("contributionTitle")}
           status={{ kind: "ready" }}
         >

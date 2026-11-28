@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { getSession } from "@/server/better-auth/server";
 import {
   badgePageMetadata,
@@ -58,6 +59,7 @@ export default async function MemberBadgePage({ params }: { params: Params }) {
       }}
       rarity={rarity}
       viewer={viewer}
+      redesigned={isOpenCommunitiesEnabled()}
     />
   );
 }

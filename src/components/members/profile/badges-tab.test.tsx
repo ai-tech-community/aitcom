@@ -118,6 +118,20 @@ beforeEach(() => {
 });
 
 describe("BadgesTab — visitor", () => {
+  it("links earned badges and lower tiers to their existing share pages", () => {
+    renderTab({ viewer: { kind: "visitor" }, profileId: "u1" });
+    const urls = screen
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href"));
+    expect(urls).toEqual(
+      expect.arrayContaining([
+        "/members/u1/badges/article_author",
+        "/members/u1/badges/first_event",
+        "/members/u1/badges/regular",
+        "/members/u1/badges/profile_complete",
+      ]),
+    );
+  });
   it("shows only earned badges: no locked tier, progress or pin control", () => {
     const { container } = renderTab({ viewer: { kind: "visitor" } });
     expect(container.querySelector('[data-state="locked"]')).toBeNull();
