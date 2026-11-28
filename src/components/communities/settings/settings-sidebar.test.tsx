@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/components/magazines/test-intl";
 
+const { redesign } = vi.hoisted(() => ({ redesign: { enabled: false } }));
+
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => redesign.enabled,
+}));
+
 vi.mock("@/i18n/navigation", () => ({
   usePathname: () => "/communities/night-owls/settings/general",
   Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
@@ -56,6 +62,52 @@ describe("SettingsSidebar", () => {
         "href",
         "/communities/night-owls/magazine/settings",
       );
+    }
+  });
+  it("surfaces Integrations among the first mobile and desktop links for owners", () => {
+    redesign.enabled = true;
+    try {
+      const { rerender } = renderWithIntl(
+        <SettingsSidebar slug="night-owls" memberRole="owner" />,
+      );
+      for (const nav of screen.getAllByRole("navigation")) {
+        expect(within(nav).getAllByRole("link")[2]).toHaveTextContent(
+          "Integrations",
+        );
+      }
+      rerender(<SettingsSidebar slug="night-owls" memberRole="admin" />);
+      expect(screen.queryByRole("link", { name: "Integrations" })).toBeNull();
+    } finally {
+      redesign.enabled = false;
+    }
+  });
+  it("keeps every owner destination in the grouped navigation", () => {
+    const legacy = renderWithIntl(
+      <SettingsSidebar slug="night-owls" memberRole="owner" />,
+    );
+    const before = within(screen.getAllByRole("navigation")[0]!)
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href"))
+      .sort();
+    legacy.unmount();
+    redesign.enabled = true;
+    try {
+      renderWithIntl(<SettingsSidebar slug="night-owls" memberRole="owner" />);
+      const nav = screen.getByRole("navigation", {
+        name: "Community settings",
+      });
+      expect(within(nav).getAllByRole("heading")).toHaveLength(4);
+      expect(
+        within(nav)
+          .getAllByRole("link")
+          .map((link) => link.getAttribute("href"))
+          .sort(),
+      ).toEqual(before);
+      expect(
+        within(nav).getByRole("link", { name: "General" }),
+      ).toHaveAttribute("aria-current", "page");
+    } finally {
+      redesign.enabled = false;
     }
   });
 });

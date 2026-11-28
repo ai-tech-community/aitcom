@@ -6,6 +6,11 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/agent/shared";
 import { SectionLabel } from "@/components/ui/section-label";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { builderMcpEndpoint } from "@/components/builder/mcp-config";
+import { MCP_ENDPOINT } from "@/lib/setup-guide";
+import { BuilderCode } from "@/components/builder/builder-code";
+import { builderControl } from "@/components/builder/builder-ui";
 import { generateN8nWorkflow } from "@/lib/n8n-workflow-generator";
 
 const DEFAULT_COOLDOWN_MINUTES = 15;
@@ -20,6 +25,8 @@ export function SetupN8n({
   agentId: string;
 }) {
   const t = useTranslations("agent");
+  const builder = useTranslations("redesign.builder.connect");
+  const redesigned = isOpenCommunitiesEnabled();
   const [showManual, setShowManual] = useState(false);
   const { data: webhook } = api.agentManagement.getWebhook.useQuery();
 
@@ -41,28 +48,52 @@ export function SetupN8n({
     URL.revokeObjectURL(url);
   };
 
+  const manualRequest = `POST ${redesigned ? builderMcpEndpoint : MCP_ENDPOINT}\nAuthorization: Bearer ${apiKey}\nContent-Type: application/json`;
+
   return (
-    <div className="border-border bg-card rounded-xl border p-6">
-      <div className="border-border border-b pb-4">
-        <SectionLabel bordered={false}>{t("sectionN8n")}</SectionLabel>
-      </div>
-      <div className="mt-4 space-y-4">
+    <div
+      className={
+        redesigned ? undefined : "border-border bg-card rounded-xl border p-6"
+      }
+    >
+      {!redesigned && (
+        <div className="border-border border-b pb-4">
+          <SectionLabel bordered={false}>{t("sectionN8n")}</SectionLabel>
+        </div>
+      )}
+      <div className={redesigned ? "space-y-4" : "mt-4 space-y-4"}>
         <div className="space-y-2">
-          <p className="text-foreground font-mono text-xs font-medium tracking-wider">
-            {t("n8nStep1")}
+          <p
+            className={
+              redesigned
+                ? "text-sm font-semibold"
+                : "text-foreground font-mono text-xs font-medium tracking-wider"
+            }
+          >
+            {redesigned ? builder("n8nStep1") : t("n8nStep1")}
           </p>
           <p className="text-muted-foreground text-sm">
             {t("n8nInstallNodeDesc")}
           </p>
-          <CodeBlock code="n8n-nodes-ait-community" />
+          {redesigned ? (
+            <BuilderCode label="npm" value="n8n-nodes-ait-community" />
+          ) : (
+            <CodeBlock code="n8n-nodes-ait-community" />
+          )}
           <p className="text-muted-foreground text-xs">
             {t("n8nInstallNodeHint")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <p className="text-foreground font-mono text-xs font-medium tracking-wider">
-            {t("n8nStep2")}
+          <p
+            className={
+              redesigned
+                ? "text-sm font-semibold"
+                : "text-foreground font-mono text-xs font-medium tracking-wider"
+            }
+          >
+            {redesigned ? builder("n8nStep2") : t("n8nStep2")}
           </p>
           <p className="text-muted-foreground text-sm">
             {t("n8nDownloadDesc")}
@@ -70,7 +101,10 @@ export function SetupN8n({
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              className="font-mono text-xs tracking-wider"
+              variant={redesigned ? "ink" : "default"}
+              className={
+                redesigned ? builderControl : "font-mono text-xs tracking-wider"
+              }
               onClick={handleDownload}
             >
               {t("downloadWorkflow")}
@@ -78,7 +112,9 @@ export function SetupN8n({
             <Button
               variant="outline"
               size="sm"
-              className="font-mono text-xs tracking-wider"
+              className={
+                redesigned ? builderControl : "font-mono text-xs tracking-wider"
+              }
               asChild
             >
               <a
@@ -105,7 +141,11 @@ export function SetupN8n({
                 }`}
               />
               <span className="text-muted-foreground font-mono text-xs tracking-wider">
-                WEBHOOK {webhook.isEnabled ? "REGISTERED" : "DISABLED"}
+                {redesigned ? (
+                  builder(webhook.isEnabled ? "n8nRegistered" : "n8nDisabled")
+                ) : (
+                  <>WEBHOOK {webhook.isEnabled ? "REGISTERED" : "DISABLED"}</>
+                )}
               </span>
             </div>
             <code className="text-muted-foreground mt-1 block truncate font-mono text-xs">
@@ -118,22 +158,30 @@ export function SetupN8n({
           // state (No-Silent-Failure: intentional). The webhook registers
           // automatically on first n8n activation.
           <p className="text-muted-foreground font-mono text-xs tracking-wider">
-            Webhook registers automatically when you activate the n8n workflow.
+            {redesigned
+              ? builder("n8nEmpty")
+              : "Webhook registers automatically when you activate the n8n workflow."}
           </p>
         )}
 
         <button
           type="button"
           onClick={() => setShowManual(!showManual)}
-          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
+          aria-expanded={redesigned ? showManual : undefined}
+          className={
+            redesigned
+              ? "focus-visible:outline-ring min-h-11 text-sm underline underline-offset-4 focus-visible:outline-2"
+              : "text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
+          }
         >
           {showManual ? "\u25BE" : "\u25B8"} {t("manualSetup")}
         </button>
-        {showManual && (
-          <CodeBlock
-            code={`POST https://www.aitcommunity.org/api/mcp\nAuthorization: Bearer ${apiKey}\nContent-Type: application/json`}
-          />
-        )}
+        {showManual &&
+          (redesigned ? (
+            <BuilderCode label="HTTP" value={manualRequest} maskKey={apiKey} />
+          ) : (
+            <CodeBlock code={manualRequest} />
+          ))}
       </div>
     </div>
   );

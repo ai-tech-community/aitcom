@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { BuilderSetupGuide } from "@/components/builder/builder-setup-guide";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { SetupGuide } from "@/components/setup/setup-guide";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 
@@ -19,6 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function SetupPage() {
+  if (isOpenCommunitiesEnabled()) return <BuilderSetupGuide />;
   const t = await getTranslations("setup");
   return <SetupGuide t={t} />;
 }

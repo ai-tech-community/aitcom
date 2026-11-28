@@ -9,6 +9,14 @@ const { toastError, mutationConfigs } = vi.hoisted(() => ({
   }>,
 }));
 
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => false,
+}));
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: "a",
+}));
+
 vi.mock("sonner", () => ({
   toast: { error: toastError, success: vi.fn() },
 }));

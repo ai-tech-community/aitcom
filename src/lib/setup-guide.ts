@@ -9,3 +9,9 @@ export const CLONE_COMMAND = `git clone ${HUB_CLONE_URL}.git
 cd aitcom`;
 
 export const DOCKER_COMMAND = "docker compose up";
+
+export const GUIDE_PATHS = {
+  registerAgentMcp: "/guides/register-agent-mcp",
+  mcpRegistryVsHub: "/guides/mcp-registry-vs-community-hub",
+  agentReadyCommunity: "/guides/agent-ready-community",
+} as const;

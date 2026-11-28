@@ -391,7 +391,7 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Primary:** Signal Orange fill, padding 8px 16px, with `hover:bg-primary/90`. Solid orange controls in the redesigned Community and Hub frames use `--shell-primary-ink` for at least 4.5:1 text contrast and 3:1 icon contrast. It resolves to local foreground in light and the dark card token in dark. The creation dialog also uses a contrasting ink color on its orange submit button. Other surfaces use the primary foreground token.
 - **Ink** (`variant="ink"`): solid foreground fill, background-coloured text (`bg-foreground text-background`, hover to 85%); inverts in dark mode automatically. Use it when a surface offers **two or more equal-weight paths** and none of them is _the_ single most important action — e.g. the homepage hero's "Explore communities" (members) and "Host your community" (organizers), which the product treats as equal ways in. Ranking one of them orange would tell half the audience they are secondary. Rule of thumb: one clear next step → **Primary**; several peer paths → all **Ink**, same size; never mix one Primary with Ink peers in the same group.
 - **Secondary:** Surface-muted fill, strong-text (`bg-secondary`), hover to 80%.
-- **Outline:** White background, hairline border, `shadow-xs`; hover fills with `accent` (surface-muted) and accent-foreground.
+- **Outline:** White background, hairline border, `shadow-xs`; hover fills with `accent` (surface-muted) and accent-foreground. Builder forms drop the resting shadow and use a 44px minimum height on phones.
 - **Ghost:** No fill at rest; hover fills with `accent`. For low-emphasis and icon actions.
 - **Link:** Signal-Orange text, underline-on-hover with 4px offset.
 - **Transitions:** `transition-all`; disabled drops to 50% opacity and blocks pointer events.
@@ -449,6 +449,14 @@ Magazine tiles link directly to the newest discoverable issue for each magazine.
 ### Section Label (signature)
 
 The house kicker, now a shared primitive: `<SectionLabel>` (`src/components/ui/section-label.tsx`). Renders a monospace, muted, ruled marker with a leading `/ ` — e.g. `<SectionLabel>Communities</SectionLabel>` → `/ COMMUNITIES`. Props: `as` (element), `bordered`, `marker`. **Always use this instead of re-typing `font-mono text-xs tracking-wider text-muted-foreground`.** The single most recognizable element of the system — only as a real section divider.
+
+### Builder access
+
+Community Integrations follows a grouped settings list. The redesigned settings navigation uses four labelled link groups with horizontal scrolling on phones and a sticky, independently scrollable column on wider screens. Integrations summarizes the account agent’s access and links to its dashboard. Community calendar controls live in their own section and inherit the community’s tokens and heading face. The redesigned agent dashboard tabs use Ink text and a bottom rule for the selected tab.
+
+The agent dashboard is the home for account-wide keys, MCP connection and webhooks. The credential shows its prefix and creation time. Permissions are visible with the key. A newly issued key starts masked, with controls to show or hide it and copy the full value. Rotation and revocation share a confirmation with the key prefix, impact on clients, and latest recorded agent call when available. Revocation also names the agent.
+
+Connect uses progressive disclosure for terminal and client-specific instructions. The copyable MCP configuration precedes an authenticated handshake. Passing the handshake confirms the key works. The activity line waits for an agent call recorded after key issuance and then shows its time. Failure banners use an HTTP code when supplied, a plain reason, recovery guidance and one retry. The webhook shows the latest test from this visit above the destination form. Verification help includes an inline link. A signing secret appears only after creation, approval or rotation and can be copied until dismissed or the page is left. With an active key and supported configuration, Signing and verification offers rotation, and the fresh reveal puts Rotate beside Copy. Other configurations show the remove and recreate instructions. The setup guide opens with the choice between connecting an assistant with a key and letting an agent register itself. Technical registration instructions and local Hub commands sit lower down in disclosures for self-hosting developers.
 
 ### Storyline timeline and evidence
 

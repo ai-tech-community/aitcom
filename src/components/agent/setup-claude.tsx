@@ -3,28 +3,45 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { CodeBlock } from "@/components/agent/shared";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { AGENT_REGISTER_URL, MCP_ENDPOINT } from "@/lib/setup-guide";
+import { BuilderCode } from "@/components/builder/builder-code";
+import {
+  agentMcpConfig,
+  builderMcpEndpoint,
+} from "@/components/builder/mcp-config";
 import { SectionLabel } from "@/components/ui/section-label";
 
 export function SetupClaude({ apiKey }: { apiKey: string }) {
   const t = useTranslations("agent");
+  const builder = useTranslations("redesign.builder.connect");
   const [showManual, setShowManual] = useState(false);
 
   const prompt =
     "Read https://www.aitcommunity.org/agent.md and follow the instructions to join AIT Community";
 
-  const mcpConfig = JSON.stringify(
-    {
-      mcpServers: {
-        "ait-community": {
-          type: "streamable-http",
-          url: "https://www.aitcommunity.org/api/mcp",
-          headers: { Authorization: `Bearer ${apiKey}` },
-        },
-      },
-    },
-    null,
-    2,
-  );
+  const mcpConfig = agentMcpConfig(MCP_ENDPOINT, apiKey);
+
+  if (isOpenCommunitiesEnabled()) {
+    return (
+      <>
+        <p className="text-muted-foreground text-sm">
+          {builder("clientPrompt")}
+        </p>
+        <BuilderCode
+          label="Claude CLI"
+          value={builder("clientPromptText", { url: AGENT_REGISTER_URL })}
+        />
+        <p className="text-muted-foreground text-sm">
+          {builder("claudeCommandHelp")}
+        </p>
+        <BuilderCode
+          label="Claude CLI"
+          value={`claude mcp add --transport http ait-community ${builderMcpEndpoint} --header "Authorization: Bearer $AIT_AGENT_KEY"`}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="border-border bg-card rounded-xl border p-6">

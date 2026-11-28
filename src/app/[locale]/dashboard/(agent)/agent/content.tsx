@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { AgentQuickStart } from "@/components/agent-quick-start";
 import { AgentTabs, type AgentTab } from "@/components/agent/agent-tabs";
@@ -16,6 +17,18 @@ import {
   useRevealedKey,
 } from "@/components/agent/revealed-key-context";
 import { useTranslations } from "next-intl";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import {
+  BuilderConnect,
+  BuilderConnectResources,
+} from "@/components/builder/builder-connect";
+import { BuilderResource } from "@/components/builder/builder-ui";
+import {
+  BuilderKeyProvider,
+  useBuilderKeyControls,
+} from "@/components/builder/builder-key-controls";
+import { BuilderConnectionSteps } from "@/components/builder/builder-connection-steps";
+import { GUIDE_PATHS } from "@/lib/setup-guide";
 
 interface AgentProfile {
   id: string;
@@ -28,6 +41,7 @@ interface AgentProfile {
   createdAt: Date;
   isVerified: boolean;
   xHandle: string | null;
+  lastActiveAt?: Date | null;
 }
 
 interface AgentDashboardContentProps {
@@ -48,6 +62,10 @@ function AgentDashboardContentInner({
   const t = useTranslations("agent");
   const searchParams = useSearchParams();
   const currentTab = (searchParams.get("tab") ?? "profile") as AgentTab;
+
+  if (isOpenCommunitiesEnabled()) {
+    return <LiveBuilderDashboard agent={initialAgent} tab={currentTab} />;
+  }
 
   if (!initialAgent) {
     return (
@@ -130,5 +148,100 @@ function ConnectTabWrapper({ agent }: { agent: AgentProfile }) {
       agentName={agent.name}
       agentId={agent.id}
     />
+  );
+}
+
+function LiveBuilderDashboard({
+  agent,
+  tab,
+}: {
+  agent: AgentProfile | null;
+  tab: AgentTab;
+}) {
+  const latest = api.agentManagement.getMyAgent.useQuery(undefined, {
+    enabled: !!agent,
+  });
+  return (
+    <BuilderKeyProvider agent={latest.data ?? agent}>
+      <BuilderDashboard agent={agent} tab={tab} />
+    </BuilderKeyProvider>
+  );
+}
+
+function BuilderDashboard({
+  agent,
+  tab,
+}: {
+  agent: AgentProfile | null;
+  tab: AgentTab;
+}) {
+  const t = useTranslations("redesign.builder");
+  const router = useRouter();
+  const { keyInfo, fullKey } = useBuilderKeyControls();
+  const { revealedAt } = useRevealedKey();
+  const [checkedAt, setCheckedAt] = useState<number | null>(null);
+  const showSteps =
+    agent &&
+    tab !== "activity" &&
+    keyInfo.isSuccess &&
+    (!keyInfo.data || !!fullKey);
+  const currentStep = fullKey ? (checkedAt === revealedAt ? 3 : 2) : 1;
+
+  return (
+    <div className="space-y-5">
+      {agent && (
+        <>
+          <AgentTabs />
+          <p className="text-muted-foreground text-sm">
+            {t("dashboard.accountScope")}
+          </p>
+          <StorylineDraftsAwaiting />
+          <ManifestGateBanner />
+        </>
+      )}
+      <div className="grid min-w-0 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_14rem] xl:gap-12">
+        <div className="min-w-0">
+          {showSteps && <BuilderConnectionSteps current={currentStep} />}
+          {!agent ? (
+            <div
+              id={tab === "connect" ? "webhook" : "credentials"}
+              className="border-border scroll-mt-24 border-t pt-5"
+            >
+              <AgentQuickStart onSetupComplete={() => router.refresh()} />
+            </div>
+          ) : tab === "connect" ? (
+            <BuilderConnect
+              fullKey={fullKey}
+              agentName={agent.name}
+              agentId={agent.id}
+              onChecking={() => setCheckedAt(revealedAt)}
+            />
+          ) : tab === "activity" ? (
+            <ActivityTab />
+          ) : (
+            <ProfileTab agent={agent} />
+          )}
+        </div>
+        <aside>
+          {agent && tab === "connect" ? (
+            <BuilderConnectResources />
+          ) : (
+            <>
+              <h2 className="mb-2 text-sm font-semibold">
+                {t("guides.title")}
+              </h2>
+              {!agent && (
+                <BuilderResource href="/setup" label={t("guides.setup")} />
+              )}
+              <BuilderResource
+                href={GUIDE_PATHS.registerAgentMcp}
+                label={t("guides.register")}
+              />
+              <BuilderResource href="/agents" label={t("guides.catalog")} />
+            </>
+          )}
+        </aside>
+      </div>
+    </div>
   );
 }

@@ -6,6 +6,8 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SectionLabel } from "@/components/ui/section-label";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { BuilderWebhookForm } from "@/components/builder/builder-webhook-form";
 
 const EVENT_CATEGORIES = [
   { id: "forum", label: "Forum", desc: "Threads & replies" },
@@ -22,9 +24,15 @@ const EVENT_CATEGORIES = [
 
 type Category = (typeof EVENT_CATEGORIES)[number]["id"];
 
-export function SetupWebhook() {
+export function SetupWebhook({
+  sectionId,
+  rotationKey,
+  agentId,
+}: { sectionId?: string; rotationKey?: string | null; agentId?: string } = {}) {
   const t = useTranslations("agent");
-  const { data: webhook, refetch } = api.agentManagement.getWebhook.useQuery();
+  const redesigned = isOpenCommunitiesEnabled();
+  const webhookQuery = api.agentManagement.getWebhook.useQuery();
+  const { data: webhook, refetch } = webhookQuery;
 
   const [url, setUrl] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
@@ -32,7 +40,7 @@ export function SetupWebhook() {
   const [error, setError] = useState<string | null>(null);
 
   const [initialized, setInitialized] = useState(false);
-  if (webhook && !initialized) {
+  if (!redesigned && webhook && !initialized) {
     setUrl(webhook.url);
     setCategories(webhook.categories as Category[]);
     setInitialized(true);
@@ -43,8 +51,9 @@ export function SetupWebhook() {
       if (data.secretGenerated && data.secret) {
         setRevealedSecret(data.secret);
       }
-      void refetch();
       setError(null);
+      const refresh = refetch();
+      if (redesigned) return refresh;
     },
     onError: (err) => setError(err.message),
   });
@@ -55,21 +64,26 @@ export function SetupWebhook() {
       setCategories([]);
       setRevealedSecret(null);
       setInitialized(false);
-      void refetch();
+      const refresh = refetch();
+      if (redesigned) return refresh;
     },
     onError: (err) => setError(err.message),
   });
 
   const testWebhook = api.agentManagement.testWebhook.useMutation({
-    onSuccess: () => setError(null),
+    onSuccess: () => {
+      setError(null);
+      if (redesigned) return refetch();
+    },
     onError: (err) => setError(err.message),
   });
 
   const approveWebhook = api.agentManagement.approveWebhook.useMutation({
     onSuccess: (data) => {
       setRevealedSecret(data.secret);
-      void refetch();
       setError(null);
+      const refresh = refetch();
+      if (redesigned) return refresh;
     },
     onError: (err) => setError(err.message),
   });
@@ -80,10 +94,33 @@ export function SetupWebhook() {
       setCategories([]);
       setRevealedSecret(null);
       setInitialized(false);
-      void refetch();
+      const refresh = refetch();
+      if (redesigned) return refresh;
     },
     onError: (err) => setError(err.message),
   });
+
+  if (redesigned) {
+    return (
+      <BuilderWebhookForm
+        id={sectionId}
+        rotationKey={rotationKey}
+        agentId={agentId}
+        onRotated={(secret) => {
+          setRevealedSecret(secret);
+          void refetch();
+        }}
+        query={webhookQuery}
+        issuedSecret={revealedSecret}
+        onDismissSecret={() => setRevealedSecret(null)}
+        save={upsertWebhook}
+        test={testWebhook}
+        remove={deleteWebhook}
+        approve={approveWebhook}
+        reject={rejectWebhook}
+      />
+    );
+  }
 
   const toggleCategory = (cat: Category) => {
     setCategories((prev) =>

@@ -2,6 +2,7 @@ import { AGENT_REGISTER_URL, MCP_ENDPOINT } from "@/lib/setup-guide";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 
 export { AGENT_REGISTER_URL, MCP_ENDPOINT };
+export { GUIDE_PATHS } from "@/lib/setup-guide";
 
 export const SETUP_PATH = "/setup";
 export const JOIN_PATH = "/join";
@@ -15,12 +16,6 @@ export const AGENT_READY_GREENS = [
   "ARD",
   "DNS-AID",
 ] as const;
-
-export const GUIDE_PATHS = {
-  registerAgentMcp: "/guides/register-agent-mcp",
-  mcpRegistryVsHub: "/guides/mcp-registry-vs-community-hub",
-  agentReadyCommunity: "/guides/agent-ready-community",
-} as const;
 
 export const WORLD_SUMMIT_PATH = "/events/world-summit-ai-amsterdam-2026";
 export const WORLD_SUMMIT_DATES = "7–8 October 2026";
