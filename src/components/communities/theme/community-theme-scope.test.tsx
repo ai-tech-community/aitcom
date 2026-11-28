@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { StrictMode, useEffect, useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 
@@ -425,6 +425,34 @@ describe("CommunityThemeScope floating layer", () => {
     );
 
     expect(layerOf()).toContainElement(screen.getByRole("alertdialog"));
+  });
+
+  it("keeps a confirm asked on first load visible under Strict Mode's double effects", () => {
+    function AsksOnMount() {
+      const confirm = useConfirm();
+      const asked = useRef(false);
+      useEffect(() => {
+        if (asked.current) return;
+        asked.current = true;
+        void confirm({ description: "Delete this photo?" });
+      }, [confirm]);
+      return null;
+    }
+    render(
+      <StrictMode>
+        <NextIntlClientProvider locale="en" messages={en}>
+          <ConfirmProvider>
+            <CommunityThemeScope themeId="night">
+              <AsksOnMount />
+            </CommunityThemeScope>
+          </ConfirmProvider>
+        </NextIntlClientProvider>
+      </StrictMode>,
+    );
+
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.isConnected).toBe(true);
+    expect(layerOf()).toContainElement(dialog);
   });
 
   it("removes the layer with the frame", () => {

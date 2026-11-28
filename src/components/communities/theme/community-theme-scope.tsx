@@ -135,24 +135,26 @@ function useFloatingLayer(theme: CommunityTheme): {
   resolveLayer: () => HTMLElement | undefined;
 } {
   const [layer, setLayer] = useState<HTMLElement | null>(null);
-  // Set with the element, before any passive effect of the same commit, so
-  // a dialog asked for from such an effect (a deep link on first load)
-  // finds the layer although `layer` is still the first render's null.
+  // One element for the scope's whole life, created on first attach. A
+  // dialog asked for from an effect of the commit that creates it (a deep
+  // link on first load) reads it here although `layer` is still the first
+  // render's null. Detaching keeps the node: when the effect runs again
+  // (Strict Mode in development, a Suspense boundary showing the frame
+  // again) the same node goes back on `body`, so a dialog that captured it
+  // stays visible.
   const layerRef = useRef<HTMLElement | null>(null);
-  const resolveLayer = useCallback(() => layerRef.current ?? undefined, []);
+  const resolveLayer = useCallback(() => {
+    const element = layerRef.current;
+    return element?.isConnected ? element : undefined;
+  }, []);
 
   useLayoutEffect(() => {
-    const element = document.createElement("div");
+    const element = (layerRef.current ??= document.createElement("div"));
     document.body.append(element);
-    layerRef.current = element;
     // Subscribing to a DOM node React does not render: the state is the
-    // node itself, set once it exists.
+    // node itself, set once it is attached.
     setLayer(element);
-    return () => {
-      element.remove();
-      layerRef.current = null;
-      setLayer(null);
-    };
+    return () => element.remove();
   }, []);
 
   useLayoutEffect(() => {

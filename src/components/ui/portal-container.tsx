@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  type ReactNode,
+} from "react";
 
 /**
  * Where floating layers (dialogs, menus, popovers, tooltips, selects, sheets)
@@ -43,13 +49,16 @@ export function PortalContainerProvider({
   resolve?: () => HTMLElement | undefined;
   children: ReactNode;
 }) {
+  const resolveContainer = useCallback(
+    () => container ?? undefined,
+    [container],
+  );
+  const value = useMemo(
+    () => ({ container, resolve: resolve ?? resolveContainer }),
+    [container, resolve, resolveContainer],
+  );
   return (
-    <PortalContainerContext.Provider
-      value={{
-        container,
-        resolve: resolve ?? (() => container ?? undefined),
-      }}
-    >
+    <PortalContainerContext.Provider value={value}>
       {children}
     </PortalContainerContext.Provider>
   );
