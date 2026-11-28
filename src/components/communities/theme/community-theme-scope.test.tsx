@@ -23,6 +23,12 @@ vi.mock("next/font/google", () => {
   };
 });
 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
 import { CommunityCoverArt } from "./community-cover-art";
 import { COMMUNITY_COVER_ART } from "./cover-art";
 import { CommunityThemeCover } from "./community-theme-cover";
@@ -58,6 +64,8 @@ const TOKEN_PROPERTIES = [
   "--secondary-foreground",
   "--accent",
   "--accent-foreground",
+  "--popover",
+  "--popover-foreground",
   "--success",
   "--warning",
   "--info",
@@ -258,6 +266,92 @@ describe("CommunityThemeScope", () => {
     }
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(() => render(<Orphan />)).toThrow(/CommunityThemePreviewProvider/);
+  });
+});
+
+/** The look's floating layer, which the scope mounts on `body`. */
+function layerOf(): HTMLElement {
+  const layer = document.body.querySelector<HTMLElement>(
+    ":scope > [data-community-theme-layer]",
+  );
+  if (!layer) throw new Error("no community theme layer on body");
+  return layer;
+}
+
+describe("CommunityThemeScope floating layer", () => {
+  it("wears the look on body, outside the frame, and paints nothing itself (night)", () => {
+    const night = resolveCommunityTheme("night");
+    const scope = renderScope("night");
+    const layer = layerOf();
+
+    expect(scope.contains(layer)).toBe(false);
+    expect(layer).toHaveAttribute("data-community-theme-layer", "night");
+    expect(layer).toHaveClass("dark", "space-grotesk-variable", "contents");
+    expect(layer.style.getPropertyValue("--popover")).toBe(
+      night.tokens.popover,
+    );
+    expect(layer.style.getPropertyValue("--popover-foreground")).toBe(
+      night.tokens.popoverForeground,
+    );
+    expect(layer.style.getPropertyValue("--card")).toBe(night.tokens.card);
+    expect(layer.style.colorScheme).toBe("dark");
+    // The canvas and cover belong to the page, not to a menu.
+    expect(layer).not.toHaveAttribute("data-community-theme");
+    expect(layer.style.getPropertyValue("--community-canvas-image")).toBe("");
+    const coverVars = Array.from(layer.style).filter((name) =>
+      name.startsWith("--community-cover-"),
+    );
+    expect(coverVars).toEqual([]);
+  });
+
+  it("opens a popover from the page inside the layer", () => {
+    render(
+      <CommunityThemeScope themeId="night">
+        <Popover open>
+          <PopoverTrigger>Open</PopoverTrigger>
+          <PopoverContent>Menu</PopoverContent>
+        </Popover>
+      </CommunityThemeScope>,
+    );
+
+    const content = screen.getByText("Menu");
+    expect(layerOf().contains(content)).toBe(true);
+    expect(content.closest("[data-community-theme]")).toBeNull();
+  });
+
+  it("follows a previewed look", () => {
+    let setPreview!: (id: CommunityThemeId | null) => void;
+    function Previewer() {
+      setPreview = useCommunityThemePreview().setPreviewId;
+      return null;
+    }
+    render(
+      <CommunityThemePreviewProvider>
+        <CommunityThemeScope themeId="canal">
+          <Previewer />
+        </CommunityThemeScope>
+      </CommunityThemePreviewProvider>,
+    );
+    expect(layerOf()).toHaveAttribute("data-community-theme-layer", "canal");
+    expect(layerOf()).not.toHaveClass("dark");
+
+    act(() => setPreview("night"));
+    expect(layerOf()).toHaveAttribute("data-community-theme-layer", "night");
+    expect(layerOf()).toHaveClass("dark");
+  });
+
+  it("removes the layer with the frame", () => {
+    const { unmount } = render(
+      <CommunityThemeScope themeId="meadow">
+        <p>page</p>
+      </CommunityThemeScope>,
+    );
+    expect(layerOf()).toBeInTheDocument();
+
+    unmount();
+    expect(
+      document.body.querySelector("[data-community-theme-layer]"),
+    ).toBeNull();
   });
 });
 

@@ -42,6 +42,13 @@ export type CommunityThemeTokens = {
   /** `--accent-foreground`. Set together with `accent`. */
   accentForeground?: string;
   /**
+   * `--popover`: dialogs, menus, popovers and selects, which open in the
+   * look's floating layer. A dark look sets it; light looks keep white.
+   */
+  popover?: string;
+  /** `--popover-foreground`. Set together with `popover`. */
+  popoverForeground?: string;
+  /**
    * `--success`, `--warning`, `--info`, `--destructive`: status text and
    * its 10% tint. A look sets one only where the house value falls below
    * 4.5:1 on its canvas, cards, pattern or tint; it is the same status,

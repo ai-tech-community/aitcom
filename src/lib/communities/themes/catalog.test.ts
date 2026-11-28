@@ -72,6 +72,7 @@ const SURFACE_PAIRS = [
   ["muted", "foreground"],
   ["secondary", "secondaryForeground"],
   ["accent", "accentForeground"],
+  ["popover", "popoverForeground"],
 ] as const satisfies readonly (readonly [
   keyof CommunityThemeTokens,
   keyof CommunityThemeTokens,
@@ -279,9 +280,13 @@ describe.each(COMMUNITY_THEMES)("look $id", (theme) => {
     const surfaces = [
       tokens.background,
       ...(theme.canvasPattern?.colors ?? []),
-      ...[tokens.card, tokens.muted, tokens.secondary, tokens.accent].filter(
-        (color): color is string => color !== undefined,
-      ),
+      ...[
+        tokens.card,
+        tokens.muted,
+        tokens.secondary,
+        tokens.accent,
+        tokens.popover,
+      ].filter((color): color is string => color !== undefined),
     ];
     expect(surfaces.filter(isClearYellow)).toEqual([]);
   });
@@ -303,6 +308,34 @@ describe.each(COMMUNITY_THEMES)("look $id", (theme) => {
     if (theme.scheme !== "dark") return;
     expect(tokens.card).toBeDefined();
     expect(tokens.cardForeground).toBeDefined();
+  });
+
+  it("defines its own dialogs and menus when it is a dark look", () => {
+    if (theme.scheme !== "dark") return;
+    expect(tokens.popover).toBeDefined();
+    expect(tokens.popoverForeground).toBeDefined();
+  });
+
+  it("keeps labels, lines and status text readable in its dialogs and menus", () => {
+    if (!tokens.popover) return;
+    const popover = tokens.popover;
+    expect(
+      contrastRatio(tokens.mutedForeground, popover),
+      `${theme.id}: mutedForeground on popover`,
+    ).toBeGreaterThanOrEqual(AA_TEXT);
+    expect(
+      contrastRatio(tokens.border, popover),
+      `${theme.id}: border on popover`,
+    ).toBeGreaterThanOrEqual(
+      contrastRatio(plain.tokens.border, plain.tokens.background),
+    );
+    const status = statusOf(theme);
+    for (const name of STATUS_NAMES) {
+      expect(
+        contrastRatio(status[name], popover),
+        `${theme.id}: ${name} on popover`,
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+    }
   });
 
   it.each([

@@ -177,6 +177,8 @@ const NIGHT: CommunityTheme = {
   // with dark indigo cards. Borders are opaque here: `.dark` uses white at
   // 10–15% alpha, which a test cannot measure. Quiet fills (muted,
   // secondary, accent) are indigo too, so no gray `.dark` patch shows.
+  // Dialogs and menus (popover) take the card's dark indigo, so one opened
+  // from the page matches its cards.
   // `.dark`'s destructive red is 4.1:1 on a star; this one is lighter.
   tokens: {
     background: "#181D37", // oklch(0.24 0.05 275): deep indigo
@@ -191,6 +193,8 @@ const NIGHT: CommunityTheme = {
     secondaryForeground: "#FAFAFA",
     accent: NIGHT_FILL,
     accentForeground: "#FAFAFA",
+    popover: "#131521", // the card's indigo
+    popoverForeground: "#FAFAFA",
     destructive: "#FF7D7C", // oklch(0.74 0.16 22)
   },
   // Two offset layers of faint stars.
