@@ -7399,7 +7399,7 @@
       "level": "Level {level}",
       "profileProgress": "Progression",
       "newMember": "New",
-      "messageSignIn": "Sign in to message {name}.",
+      "messageSignIn": "Sign in to message",
       "messageSelf": "You can’t message yourself.",
       "messagePrivate": "Messaging from this directory requires a visible profile.",
       "rosterViews": "Member views",

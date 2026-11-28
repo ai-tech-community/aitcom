@@ -1,5 +1,6 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import type { db } from "@/server/db";
+import { escapeLike } from "@/server/db/escape-like";
 import { communityMemberships, memberProfiles, user } from "@/server/db/schema";
 import {
   directoryProfileColumns,
@@ -44,7 +45,7 @@ export async function loadCommunityRoster(
     eq(communityMemberships.status, input.status),
   ];
   if (input.q) {
-    const search = `%${input.q.replace(/[\\%_]/g, "\\$&")}%`;
+    const search = `%${escapeLike(input.q)}%`;
     const accountName = ilike(user.name, search);
     const bioMatch = ilike(memberProfiles.bio, search);
     const profileSearch = or(accountName, bioMatch);

@@ -7399,7 +7399,7 @@
       "level": "Niveau {level}",
       "profileProgress": "Progression",
       "newMember": "Nouveau",
-      "messageSignIn": "Connectez-vous pour écrire à {name}.",
+      "messageSignIn": "Connectez-vous pour envoyer un message",
       "messageSelf": "Vous ne pouvez pas vous écrire.",
       "messagePrivate": "Un profil visible est requis pour écrire depuis cet annuaire.",
       "rosterViews": "Vues des membres",

@@ -15,6 +15,7 @@ import { Link } from "@/i18n/navigation";
 import { memberHeadline, rosterCaptions } from "@/lib/member-directory";
 import type { SearchParamsRecord } from "@/lib/search-params-record";
 import { getSession } from "@/server/better-auth/server";
+import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
 import {
   loadCommunityRoster,
   loadCommunityRosterSkills,
@@ -61,6 +62,16 @@ export async function CommunityPeopleDirectory({
     }),
   ]);
   if (community?.memberCount == null) return <MemberLoadError />;
+  const viewerId = session?.user.id ?? null;
+  const canReadRoster = await viewerCanReadRoster(
+    db,
+    community,
+    viewerId,
+  ).catch((error: unknown) => {
+    console.error("Community roster access check failed", error);
+    return false;
+  });
+  if (!canReadRoster) return <MemberLoadError />;
 
   const offset = Number(textFilter(search.offset));
   const filters: Filters = {
@@ -72,7 +83,6 @@ export async function CommunityPeopleDirectory({
         ? offset
         : 0,
   };
-  const viewerId = session?.user.id ?? null;
   const filtered = [filters.q, filters.skill, filters.role].some(Boolean);
   const label = t("directory");
 

@@ -17,6 +17,7 @@ import { holdersOf, optionalBadgeRarity } from "@/server/badges/rarity";
 import { publicCommunitySql } from "@/server/communities/content-visibility-queries";
 import { HUB_SLUG } from "@/server/communities/hub";
 import type { db } from "@/server/db";
+import { escapeLike } from "@/server/db/escape-like";
 import {
   activityEvents,
   agentProfiles,
@@ -52,6 +53,8 @@ import {
 } from "@/server/social/present";
 
 const ROSTER_BADGE_LIMIT = 3;
+const SKILL_SUGGESTION_LIMIT = 150;
+const SKILL_SUGGESTION_PROFILE_LIMIT = 300;
 
 export type PublicRosterView = "directory" | "leaderboard";
 export type PresentedRosterEntry = PublicRosterEntry & {
@@ -87,10 +90,6 @@ async function loadRosterCommunities(database: typeof db, userIds: string[]) {
   );
 }
 
-export function escapeRosterSearch(search?: string) {
-  return search?.replace(/[\\%_]/g, "\\$&");
-}
-
 /** Order before paging. Activity comes from the same member events as the profile calendar. */
 export function publicRosterOrder(view?: PublicRosterView, search?: string) {
   if (view !== "directory") {
@@ -99,14 +98,20 @@ export function publicRosterOrder(view?: PublicRosterView, search?: string) {
       : [desc(memberProfiles.xp)];
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const activityDay = sql`(${activityEvents.createdAt} at time zone 'UTC')::date`;
+  const tomorrow = new Date();
+  const today = tomorrow.toISOString().slice(0, 10);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const from = `${activityWindowStart(today)}T00:00:00Z`;
+  const until = `${tomorrow.toISOString().slice(0, 10)}T00:00:00Z`;
+  // Bare actor and timestamp columns let Postgres use the existing indexes.
+  // Convert only the latest timestamp to a UTC day to preserve day-level ties.
   const recentActivity = sql`(
-    select max(${activityDay})
+    select (max(${activityEvents.createdAt}) at time zone 'UTC')::date
     from ${activityEvents}
     where ${activityEvents.actorId} = ${memberProfiles.userId}
       and ${activityEvents.actorType} = 'member'
-      and ${activityDay} between ${activityWindowStart(today)}::date and ${today}::date
+      and ${activityEvents.createdAt} >= ${from}::timestamptz
+      and ${activityEvents.createdAt} < ${until}::timestamptz
   ) desc nulls last`;
   const recent = [
     recentActivity,
@@ -129,14 +134,29 @@ export function publicRosterOrder(view?: PublicRosterView, search?: string) {
 
 /** Real public profile skills, subject to the same roster visibility rules. */
 export async function loadPublicRosterSkills(database: typeof db) {
-  const skill = rosterSkillValue(sql`${memberProfiles.skills}`);
-  const rows = await database
-    .selectDistinct({ skill })
+  // Bound the profile input before expanding its JSON arrays. The XP index
+  // supports this sample, while skill filtering still searches the full roster.
+  const profiles = database
+    .select({ skills: memberProfiles.skills })
     .from(memberProfiles)
     .innerJoin(user, eq(memberProfiles.userId, user.id))
-    .where(and(publicRosterVisibility(), publicRosterEmailVisibility()))
+    .where(
+      and(
+        publicRosterVisibility(),
+        publicRosterEmailVisibility(),
+        sql`json_array_length(${memberProfiles.skills}) > 0`,
+      ),
+    )
+    .orderBy(desc(memberProfiles.xp), memberProfiles.userId)
+    .limit(SKILL_SUGGESTION_PROFILE_LIMIT)
+    .as("skill_profiles");
+
+  const skill = rosterSkillValue(sql`${profiles.skills}`);
+  const rows = await database
+    .selectDistinct({ skill })
+    .from(profiles)
     .orderBy(skill)
-    .limit(150);
+    .limit(SKILL_SUGGESTION_LIMIT);
   return rows.map((row) => row.skill).filter(Boolean);
 }
 
@@ -153,9 +173,8 @@ export async function loadPublicRoster(
 ): Promise<{ items: PresentedRosterEntry[]; nextCursor: number | null }> {
   const conditions = [publicRosterVisibility(), publicRosterEmailVisibility()];
 
-  const escapedSearch = input.view
-    ? escapeRosterSearch(input.search)
-    : input.search;
+  const escapedSearch =
+    input.view && input.search ? escapeLike(input.search) : input.search;
   if (escapedSearch) {
     conditions.push(
       or(
@@ -270,7 +289,7 @@ export async function loadPublicRoster(
       });
       const entry = toPublicRosterEntry({
         profile: m.profile,
-        email: input.view ? null : m.email,
+        email: m.email,
         image: m.image,
         ownedActiveAgentId: m.agentId,
         badgeCount: heldByMember.get(m.profile.userId)?.length ?? 0,

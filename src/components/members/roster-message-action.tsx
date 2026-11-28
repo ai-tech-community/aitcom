@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { useTranslations } from "next-intl";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { MessageMemberButton } from "@/components/message-member-button";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,32 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Link } from "@/i18n/navigation";
+
+const actionClassName =
+  "min-h-11 max-w-32 min-w-11 whitespace-normal sm:min-h-9";
+
+function RosterSignInLink() {
+  const t = useTranslations("redesign.members");
+  const pathname = usePathname();
+  const query = useSearchParams()?.toString();
+  const redirect = encodeURIComponent(
+    query ? `${pathname}?${query}` : pathname,
+  );
+
+  return (
+    <Button
+      asChild
+      variant="ghost"
+      size="sm"
+      className={`h-auto py-1.5 ${actionClassName}`}
+    >
+      <Link href={`/auth/signin?redirect=${redirect}`}>
+        {t("messageSignIn")}
+      </Link>
+    </Button>
+  );
+}
 
 export function RosterMessageAction({
   memberId,
@@ -24,19 +51,20 @@ export function RosterMessageAction({
 }) {
   const t = useTranslations("redesign.members");
   const descriptionId = useId();
-  const reason = !viewerId
-    ? "messageSignIn"
-    : viewerId === memberId
+  if (!viewerId) return <RosterSignInLink />;
+
+  const reason =
+    viewerId === memberId
       ? "messageSelf"
-      : !canOpenProfile
-        ? "messagePrivate"
-        : null;
+      : canOpenProfile
+        ? null
+        : "messagePrivate";
 
   if (!reason) {
     return <MessageMemberButton recipientId={memberId} recipientName={name} />;
   }
 
-  const label = t(reason, { name });
+  const label = t(reason);
   const unavailable = t(
     reason === "messageSelf" ? "messageYou" : "messagesOff",
   );
@@ -49,7 +77,7 @@ export function RosterMessageAction({
           size="sm"
           aria-describedby={descriptionId}
           title={label}
-          className="text-muted-foreground min-h-11 max-w-32 min-w-11 whitespace-normal sm:min-h-9"
+          className={`text-muted-foreground ${actionClassName}`}
         >
           {unavailable}
         </Button>

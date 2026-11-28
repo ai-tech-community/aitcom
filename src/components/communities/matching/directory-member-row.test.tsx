@@ -9,6 +9,10 @@ import {
   type DirectoryMember,
 } from "./directory-member-row";
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/en/communities/field-repair/members",
+  useSearchParams: () => new URLSearchParams("q=Ada&skill=Python"),
+}));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
     <a href={href} {...props}>
@@ -186,22 +190,31 @@ describe("DirectoryMemberRow", () => {
     expect(screen.queryByText(/Connects founders/)).toBeNull();
   });
 
-  it.each([
-    [null, "Messages off", "Sign in to message Naomi Kimhi."],
-    ["naomi-id", "You", "You can’t message yourself."],
-  ] as const)(
-    "names why messaging is unavailable for viewer %s",
-    (viewerId, label, reason) => {
-      show(member(), "en", viewerId);
-      expect(
-        screen.queryByRole("button", { name: "Message Naomi Kimhi" }),
-      ).toBeNull();
-      const unavailable = screen.getByRole("button", { name: label });
-      expect(unavailable).toHaveAccessibleDescription(reason);
-      fireEvent.click(unavailable);
-      expect(screen.getByRole("dialog", { name: "Message" })).toHaveTextContent(
-        reason,
-      );
-    },
-  );
+  it("sends signed-out visitors to sign-in with the current People filters as their return path", () => {
+    show(member(), "en", null);
+    const href = screen
+      .getByRole("link", { name: "Sign in to message" })
+      .getAttribute("href");
+    const signIn = new URL(href!, "https://ait.example");
+
+    expect(signIn.pathname).toBe("/auth/signin");
+    expect(signIn.searchParams.get("redirect")).toBe(
+      "/en/communities/field-repair/members?q=Ada&skill=Python",
+    );
+    expect(screen.queryByText("Messages off")).toBeNull();
+  });
+
+  it("explains why members cannot message themselves", () => {
+    show(member(), "en", "naomi-id");
+    expect(
+      screen.queryByRole("button", { name: "Message Naomi Kimhi" }),
+    ).toBeNull();
+    const unavailable = screen.getByRole("button", { name: "You" });
+    const reason = "You can’t message yourself.";
+    expect(unavailable).toHaveAccessibleDescription(reason);
+    fireEvent.click(unavailable);
+    expect(screen.getByRole("dialog", { name: "Message" })).toHaveTextContent(
+      reason,
+    );
+  });
 });

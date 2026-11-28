@@ -200,7 +200,7 @@ async function HubRoster({ filters }: { filters: RosterFilters }) {
     headline: member.headline,
     role:
       member.community && member.community.role !== "member"
-        ? roles(member.community.role)
+        ? `${roles(member.community.role)} · ${member.community.name}`
         : null,
     community: member.community?.name,
     handle: member.social?.github?.handle ?? member.social?.linkedin?.handle,

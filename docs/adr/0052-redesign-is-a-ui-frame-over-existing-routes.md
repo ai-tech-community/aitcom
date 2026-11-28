@@ -8,7 +8,7 @@ The redesign gives communities a consistent place to navigate spaces, keeps Hub-
 
 ## Decision
 
-Use one deployment-wide flag, `NEXT_PUBLIC_FEATURE_OPEN_COMMUNITIES`, to select the legacy or redesigned UI. Both variants use the same URLs, providers, data paths, permissions and side effects.
+Use one deployment-wide flag, `NEXT_PUBLIC_FEATURE_OPEN_COMMUNITIES`, to select the legacy or redesigned UI. Both variants use the same URLs, providers and permissions. They share data paths and side effects outside the approved exceptions below.
 
 - **Community shell.** Add the spaces sidebar, community switcher, header, mobile bottom bar and spaces drawer under the community theme. Reuse the existing community layout and show the existing forum in its sidebar when visible.
 - **Hub shell.** Add a frame for discovery, other Hub-wide pages, account and inbox. Reuse the locale layout's site navigation and share header primitives with the Community shell. Keep the same account, locale and return paths when switching between the two.
@@ -17,6 +17,13 @@ Use one deployment-wide flag, `NEXT_PUBLIC_FEATURE_OPEN_COMMUNITIES`, to select 
 Extend the path-based chrome policy in `src/components/site-chrome-gate.tsx` as the single route-to-shell resolver. The locale layout provides its result to the site chrome and community layout. The resolver checks `isWorkspacePath` from `src/lib/communities/layout-variant.ts` first, then the existing magazine reading matcher and the matched community route family. Other localized pages, including the catch-all 404, use Hub. Child pages receive their shell through the layout.
 
 Focus is a no-shell mode of the owning shell. The existing full-screen event editor, course builder and issue builder use the `workspace` layout variant and keep their page controls, access checks and shared document providers.
+
+### Read-path exceptions
+
+The product owner approved these exceptions. Each keeps the existing permissions and runs only with the redesign flag enabled or when the caller passes the relevant optional parameter.
+
+- **Item 12 (#609).** Community creation accepts an optional `slug`, and `isSlugAvailable` checks availability. The availability check is read-only. Creation remains a write under the existing create permissions.
+- **Item 7.** The public roster query accepts an optional `view`. The directory sorts by recent activity or search relevance, and the leaderboard ranks by XP. The redesigned roster filters skills in SQL and offers skill suggestions. Community People adds a role filter and search over readable profiles. Profiles show recent posts and activity recency. These paths are read-only.
 
 ## Consequences
 
