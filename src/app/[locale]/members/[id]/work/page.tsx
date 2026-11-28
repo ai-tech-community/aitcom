@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { Link } from "@/i18n/navigation";
 import type { ProfileWork } from "@/server/members/profile-work";
 import {
@@ -60,10 +61,20 @@ export default async function MemberWorkPage({ params }: { params: Params }) {
   const isOwner = data.audience === "owner";
   const entries = toWorkEntries(work, new Date());
 
+  const redesigned = isOpenCommunitiesEnabled();
+  const headingStyle = redesigned ? "title" : "label";
+  const sections = redesigned
+    ? [
+        ...WORK_SECTIONS.filter(({ list }) => entries[list].length > 0),
+        ...WORK_SECTIONS.filter(({ list }) => entries[list].length === 0),
+      ]
+    : WORK_SECTIONS;
+
   return (
     <div className="space-y-10">
-      {WORK_SECTIONS.map(({ list, ownerCta }) => (
+      {sections.map(({ list, ownerCta }) => (
         <DashboardSection
+          headingStyle={headingStyle}
           key={list}
           id={list}
           title={t(list)}
@@ -91,7 +102,7 @@ export default async function MemberWorkPage({ params }: { params: Params }) {
             ) : undefined
           }
         >
-          <WorkEntryList entries={entries[list]} />
+          <WorkEntryList entries={entries[list]} redesigned={redesigned} />
         </DashboardSection>
       ))}
     </div>

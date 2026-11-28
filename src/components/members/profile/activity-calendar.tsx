@@ -14,8 +14,10 @@ import {
  */
 export function ActivityCalendar({
   periods,
+  redesigned = false,
 }: {
   periods: readonly StreakPeriod[];
+  redesigned?: boolean;
 }) {
   const t = useTranslations("memberProfile.activity.calendar");
   const locale = useLocale();
@@ -24,6 +26,7 @@ export function ActivityCalendar({
     <StreakCalendar
       streak={[...periods]}
       view="year"
+      compactYear={redesigned}
       startOfWeek={1}
       showFreezes={false}
       locale={locale}

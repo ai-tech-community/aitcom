@@ -10,6 +10,8 @@ import {
   SetupIdentityPanel,
 } from "@/components/members/profile/identity-panel";
 import { ProfileTabs } from "@/components/members/profile/profile-tabs";
+import { RedesignedProfileFrame } from "@/components/members/profile/profile-frame";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 
 /**
  * The member profile frame, shared by every tab: the identity panel (the
@@ -37,6 +39,20 @@ export default async function MemberProfileLayout({
   ]);
   const communities =
     frame.kind === "profile" ? await getMemberCommunities(id) : null;
+
+  if (isOpenCommunitiesEnabled()) {
+    return (
+      <RedesignedProfileFrame
+        frame={frame}
+        userId={id}
+        viewerSignedIn={!!session?.user}
+        showAgent={agentAccess !== null}
+        communities={communities ?? []}
+      >
+        {children}
+      </RedesignedProfileFrame>
+    );
+  }
 
   return (
     <div className="px-4 py-8 sm:px-8">

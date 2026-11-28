@@ -38,4 +38,13 @@ describe("StreakCalendar", () => {
     fireEvent.click(days[0]!);
     expect(onDayClick).toHaveBeenCalledWith(new Date(2020, 0, 1), false);
   });
+
+  it("makes the compact year scroll region keyboard accessible without adding a stop for each day", () => {
+    render(<StreakCalendar streak={[]} view="year" compactYear />);
+    const year = screen.getByRole("region", { name: "Last 365 days" });
+    year.focus();
+    expect(year).toHaveFocus();
+    expect(year.querySelectorAll("button, [tabindex]")).toHaveLength(0);
+    expect(screen.getAllByRole("gridcell")).toHaveLength(365);
+  });
 });

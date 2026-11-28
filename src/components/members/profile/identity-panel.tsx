@@ -2,6 +2,7 @@ import { Pencil } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
 import { getInitials } from "@/lib/avatar";
 import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
 import { calculateLevel, tierForXp } from "@/lib/gamification";
@@ -105,45 +106,7 @@ export async function IdentityPanel({
         })}
       </p>
 
-      {(communities.length > 0 || isOwner) && (
-        <section aria-labelledby="profile-communities" className="space-y-3">
-          <SectionLabel id="profile-communities">
-            {t("communities.title")}
-          </SectionLabel>
-          {communities.length > 0 ? (
-            <ul className="flex flex-wrap gap-2 lg:flex-col lg:gap-1">
-              {communities.map((community) => (
-                <li key={community.slug}>
-                  <Link
-                    href={`/communities/${community.slug}`}
-                    className="hover:bg-secondary/50 focus-visible:ring-ring/50 flex min-h-8 items-center gap-2 rounded-md pr-2 text-sm outline-none focus-visible:ring-[3px] lg:-mx-1 lg:px-1"
-                  >
-                    <Avatar size="sm" className="rounded-md">
-                      {community.logoUrl && (
-                        <AvatarImage src={community.logoUrl} alt="" />
-                      )}
-                      <AvatarFallback className="rounded-md font-mono text-xs">
-                        {getInitials(community.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="min-w-0 truncate">{community.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              {t("communities.ownerEmpty")}{" "}
-              <Link
-                href="/communities"
-                className="text-foreground underline underline-offset-4"
-              >
-                {t("communities.ownerEmptyCta")}
-              </Link>
-            </p>
-          )}
-        </section>
-      )}
+      <ProfileCommunityList communities={communities} isOwner={isOwner} />
     </div>
   );
 }
@@ -171,5 +134,66 @@ export function SetupIdentityPanel({
         {name}
       </h1>
     </div>
+  );
+}
+
+export async function ProfileCommunityList({
+  communities,
+  isOwner,
+  redesigned = false,
+}: {
+  communities: readonly ProfileCommunity[];
+  isOwner: boolean;
+  redesigned?: boolean;
+}) {
+  if (communities.length === 0 && !isOwner) return null;
+  const t = await getTranslations("memberProfile");
+  return (
+    <section aria-labelledby="profile-communities" className="space-y-3">
+      <SectionLabel id="profile-communities">
+        {t("communities.title")}
+      </SectionLabel>
+      {communities.length > 0 ? (
+        <ul
+          className={
+            redesigned
+              ? "space-y-1"
+              : "flex flex-wrap gap-2 lg:flex-col lg:gap-1"
+          }
+        >
+          {communities.map((community) => (
+            <li key={community.slug}>
+              <Link
+                href={`/communities/${community.slug}`}
+                className={cn(
+                  "hover:bg-secondary/50 focus-visible:ring-ring/50 flex min-h-8 items-center gap-2 rounded-md pr-2 text-sm outline-none focus-visible:ring-[3px] lg:-mx-1 lg:px-1",
+                  redesigned && "mx-0 min-h-11 px-0",
+                )}
+              >
+                <Avatar size="sm" className="rounded-md">
+                  {community.logoUrl && (
+                    <AvatarImage src={community.logoUrl} alt="" />
+                  )}
+                  <AvatarFallback className="rounded-md font-mono text-xs">
+                    {getInitials(community.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 truncate">{community.name}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          {t("communities.ownerEmpty")}{" "}
+          <Link
+            href="/communities"
+            className="text-foreground underline underline-offset-4"
+          >
+            {t("communities.ownerEmptyCta")}
+          </Link>
+        </p>
+      )}
+    </section>
   );
 }

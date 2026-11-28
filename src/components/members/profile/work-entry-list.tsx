@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import { ArrowUpRight } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
 
 import type { WorkEntry } from "./work-entries";
 
@@ -11,10 +13,12 @@ import type { WorkEntry } from "./work-entries";
 export async function WorkEntryList({
   entries,
   showKind = false,
+  redesigned = false,
 }: {
   entries: readonly WorkEntry[];
   /** Name each row's kind, for a list that mixes them (Recent work). */
   showKind?: boolean;
+  redesigned?: boolean;
 }) {
   const [t, tStage, format] = await Promise.all([
     getTranslations("memberProfile.work"),
@@ -50,18 +54,42 @@ export async function WorkEntryList({
         return (
           <li
             key={entry.key}
-            className="flex items-baseline justify-between gap-4 py-3"
+            className={cn(
+              "flex items-baseline justify-between gap-4 py-3",
+              redesigned && "items-center gap-2 sm:gap-4",
+            )}
           >
             <div className="min-w-0 space-y-0.5">
               {entry.href ? (
                 <Link
                   href={entry.href}
-                  className="hover:text-foreground focus-visible:ring-ring/50 block truncate rounded-sm text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
+                  className={cn(
+                    "hover:text-foreground focus-visible:ring-ring/50 block truncate rounded-sm text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]",
+                    redesigned &&
+                      "flex min-h-11 items-center gap-2 wrap-break-word whitespace-normal",
+                  )}
                 >
-                  {title}
+                  {redesigned ? (
+                    <>
+                      <span>{title}</span>
+                      <ArrowUpRight
+                        aria-hidden
+                        className="text-muted-foreground size-3.5 shrink-0"
+                      />
+                    </>
+                  ) : (
+                    title
+                  )}
                 </Link>
               ) : (
-                <p className="truncate text-sm font-medium">{title}</p>
+                <p
+                  className={cn(
+                    "truncate text-sm font-medium",
+                    redesigned && "wrap-break-word whitespace-normal",
+                  )}
+                >
+                  {title}
+                </p>
               )}
               {meta.length > 0 && (
                 <p className="text-muted-foreground text-xs">

@@ -11,6 +11,8 @@ import { BotIcon } from "lucide-react";
 import { VerifiedSocials } from "@/components/verified-socials";
 import { leaderboardSkills } from "@/server/social/present";
 import { RosterBadges } from "@/components/members/roster-badges";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { HubMembersDirectory } from "@/components/members/hub-members-directory";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -29,8 +31,19 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function MembersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    skill?: string;
+    offset?: string;
+    view?: string;
+  }>;
 }) {
+  if (isOpenCommunitiesEnabled()) {
+    const { q, skill, offset, view } = await searchParams;
+    return (
+      <HubMembersDirectory q={q} skill={skill} offset={offset} view={view} />
+    );
+  }
   const [t, { q }] = await Promise.all([
     getTranslations("members"),
     searchParams,

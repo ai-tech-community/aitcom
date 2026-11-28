@@ -213,6 +213,8 @@ type DashboardSectionProps = Omit<SectionBodyProps, "status"> & {
   status?: SectionStatus;
   /** Section name, written in sentence case; the kicker uppercases it. */
   title: React.ReactNode;
+  /** A page-content heading can use the display type scale. */
+  headingStyle?: "label" | "title";
   /** Optional control on the heading row (a link or small button). */
   action?: React.ReactNode;
   /**
@@ -242,6 +244,7 @@ type DashboardSectionProps = Omit<SectionBodyProps, "status"> & {
  */
 function DashboardSection({
   title,
+  headingStyle = "label",
   action,
   variant = "plain",
   className,
@@ -271,9 +274,18 @@ function DashboardSection({
       )}
     >
       <div className="border-border flex items-center justify-between gap-3 border-b pb-2">
-        <SectionLabel id={headingId} bordered={false}>
-          {title}
-        </SectionLabel>
+        {headingStyle === "title" ? (
+          <h2
+            id={headingId}
+            className="text-lg font-semibold tracking-tight sm:text-xl"
+          >
+            {title}
+          </h2>
+        ) : (
+          <SectionLabel id={headingId} bordered={false}>
+            {title}
+          </SectionLabel>
+        )}
         {action && <div className="shrink-0">{action}</div>}
       </div>
       <div className="mt-4">

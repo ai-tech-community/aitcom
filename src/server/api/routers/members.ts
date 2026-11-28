@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, sql, and, or, ilike, inArray, desc, gte } from "drizzle-orm";
+import { eq, sql, and, desc, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -38,13 +38,10 @@ import {
   loadGithubAccountIds,
   loadSocialIdentitiesForUsers,
   presentMemberSocials,
-  toLeaderboardSocial,
   toPublicSocialJson,
 } from "@/server/social/present";
-import {
-  publicRosterEmailVisibility,
-  publicRosterVisibility,
-} from "@/server/members/public-roster";
+import { loadPublicRoster } from "@/server/members/public-roster-read";
+import type { PublicRosterEntry } from "@/server/members/public-roster-entry";
 import {
   loadProfileGate,
   profileAudience,
@@ -74,11 +71,6 @@ import {
   deleteMemberAccount,
 } from "@/server/members/delete-account";
 import {
-  publicRosterColumns,
-  toPublicRosterEntry,
-  type PublicRosterEntry,
-} from "@/server/members/public-roster-entry";
-import {
   publicMemberProfileColumns,
   toPublicMemberProfile,
 } from "@/server/members/public-member-profile";
@@ -91,11 +83,8 @@ import {
   type ProfileAward,
 } from "@/server/members/profile-awards";
 import type { BadgeSlug } from "@/lib/badges/catalog";
-import { featuredBadges, resolveShowcase } from "@/lib/badges/showcase";
+import { resolveShowcase } from "@/lib/badges/showcase";
 import { holdersOf, optionalBadgeRarity } from "@/server/badges/rarity";
-
-/** Emblems shown per member on the /members roster. */
-const ROSTER_BADGE_LIMIT = 3;
 
 const upsertProfileInput = z.object({
   displayName: z.string().min(1).max(255),
@@ -613,130 +602,11 @@ export const membersRouter = createTRPCRouter({
       }),
     )
     .query(
-      async ({
+      ({
         ctx,
         input,
-      }): Promise<{
-        items: PublicRosterEntry[];
-        nextCursor: number | null;
-      }> => {
-        const conditions = [
-          publicRosterVisibility(),
-          publicRosterEmailVisibility(),
-        ];
-
-        if (input.search) {
-          conditions.push(
-            or(
-              ilike(memberProfiles.displayName, `%${input.search}%`),
-              ilike(memberProfiles.company, `%${input.search}%`),
-            ),
-          );
-        }
-
-        const profiles = await ctx.db
-          .select({
-            profile: publicRosterColumns,
-            email: user.email,
-            image: user.image,
-            agentId: agentProfiles.id,
-          })
-          .from(memberProfiles)
-          .innerJoin(user, eq(memberProfiles.userId, user.id))
-          .leftJoin(
-            agentProfiles,
-            and(
-              eq(agentProfiles.ownerId, memberProfiles.userId),
-              eq(agentProfiles.status, "active"),
-            ),
-          )
-          .where(and(...conditions))
-          .orderBy(sql`${memberProfiles.xp} DESC`)
-          .offset(input.cursor)
-          .limit(input.limit + 1); // +1 to check if there are more
-
-        const hasMore = profiles.length > input.limit;
-        const items = hasMore ? profiles.slice(0, input.limit) : profiles;
-
-        // Filter by skill in application layer (JSON column)
-        const filtered = input.skill
-          ? items.filter((item) =>
-              (item.profile.skills ?? []).some(
-                (s) => s.toLowerCase() === input.skill?.toLowerCase(),
-              ),
-            )
-          : items;
-
-        // Each member's displayable badges: the count and the rarest few.
-        const memberIds = filtered.map((m) => m.profile.userId);
-        const [badgeRows, rarity, identitiesByUser, githubAccountIds] =
-          await Promise.all([
-            memberIds.length > 0
-              ? ctx.db
-                  .select({
-                    userId: memberBadges.userId,
-                    badgeSlug: memberBadges.badgeSlug,
-                    earnedAt: memberBadges.earnedAt,
-                  })
-                  .from(memberBadges)
-                  .where(
-                    and(
-                      inArray(memberBadges.userId, memberIds),
-                      displayableBadgeRows(),
-                    ),
-                  )
-                  // Newest first, then by slug: a stable order for the
-                  // recent fallback and for equally rare badges.
-                  .orderBy(
-                    memberBadges.userId,
-                    desc(memberBadges.earnedAt),
-                    memberBadges.badgeSlug,
-                  )
-              : Promise.resolve([]),
-            optionalBadgeRarity(ctx.db),
-            loadSocialIdentitiesForUsers(ctx.db, memberIds),
-            loadGithubAccountIds(ctx.db, memberIds),
-          ]);
-        const heldByMember = new Map<string, BadgeSlug[]>();
-        for (const badge of badgeRows) {
-          const [displayable] = toDisplayableBadges([badge]);
-          if (!displayable) continue;
-          const held = heldByMember.get(badge.userId) ?? [];
-          held.push(displayable.slug);
-          heldByMember.set(badge.userId, held);
-        }
-        const holders = rarity && holdersOf(rarity);
-
-        return {
-          items: filtered.map((m) => {
-            const social = presentMemberSocials({
-              userId: m.profile.userId,
-              identities: identitiesByUser.get(m.profile.userId) ?? [],
-              hasGithubAccount: githubAccountIds.has(m.profile.userId),
-              pasted: {
-                githubUrl: m.profile.githubUrl,
-                linkedinUrl: m.profile.linkedinUrl,
-                websiteUrl: m.profile.websiteUrl,
-              },
-              subject: "member",
-            });
-            return toPublicRosterEntry({
-              profile: m.profile,
-              email: m.email,
-              image: m.image,
-              ownedActiveAgentId: m.agentId,
-              badgeCount: heldByMember.get(m.profile.userId)?.length ?? 0,
-              topBadges: featuredBadges(
-                heldByMember.get(m.profile.userId) ?? [],
-                holders,
-                ROSTER_BADGE_LIMIT,
-              ),
-              social: toLeaderboardSocial(social),
-            });
-          }),
-          nextCursor: hasMore ? input.cursor + input.limit : null,
-        };
-      },
+      }): Promise<{ items: PublicRosterEntry[]; nextCursor: number | null }> =>
+        loadPublicRoster(ctx.db, input),
     ),
 
   /**

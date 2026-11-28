@@ -46,6 +46,16 @@ describe("profileTabs", () => {
     ).not.toContain("agent");
   });
 
+  it("puts Work first after Overview in the redesigned frame while keeping the Agent gate", () => {
+    expect(
+      profileTabs("u1", {
+        showAgent: false,
+        hasProfile: true,
+        redesigned: true,
+      }).map(({ tab }) => tab),
+    ).toEqual(["overview", "work", "activity", "badges"]);
+  });
+
   it("shows an owner without a profile only Overview and Agent", () => {
     expect(
       profileTabs("u1", { showAgent: true, hasProfile: false }).map(

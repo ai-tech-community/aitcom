@@ -1,8 +1,5 @@
 import { routing } from "@/i18n/routing";
-import {
-  directoryProfileColumns,
-  toDirectoryMember,
-} from "@/server/communities/directory-member";
+import { loadCommunityRoster } from "@/server/communities/roster-read";
 import { recordReferralEmailJoin } from "@/server/communities/referral-email/service";
 import { scrubJoinedReferralEmails } from "@/server/communities/referral-email/privacy";
 import {
@@ -11,17 +8,7 @@ import {
 } from "@/server/communities/referral-email/signup-attribution";
 // src/server/api/routers/communities.ts
 import { z } from "zod";
-import {
-  and,
-  eq,
-  isNull,
-  sql,
-  desc,
-  count,
-  inArray,
-  ilike,
-  or,
-} from "drizzle-orm";
+import { and, eq, isNull, sql, desc, count, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
@@ -33,7 +20,6 @@ import {
   communities,
   communityMemberships,
   communityInvites,
-  memberProfiles,
   user,
 } from "@/server/db/schema";
 import { seedDefaultSpaces } from "@/server/communities/seed-default-spaces";
@@ -419,66 +405,11 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const conditions = [
-        eq(communityMemberships.communityId, community.id),
-        eq(communityMemberships.status, input.status),
-      ];
-
-      if (input.q) {
-        const search = `%${input.q.replace(/[\\%_]/g, "\\$&")}%`;
-        conditions.push(
-          or(
-            ilike(memberProfiles.displayName, search),
-            ilike(user.name, search),
-            ilike(memberProfiles.bio, search),
-          )!,
-        );
-      }
-
-      // Keyset pagination: (joinedAt, userId) descending
-      if (input.cursor) {
-        conditions.push(
-          sql`(${communityMemberships.joinedAt}, ${communityMemberships.userId}) < (${input.cursor.joinedAt}, ${input.cursor.userId})`,
-        );
-      }
-
-      const items = await ctx.db
-        .select({
-          userId: communityMemberships.userId,
-          role: communityMemberships.role,
-          joinedAt: communityMemberships.joinedAt,
-          displayName: memberProfiles.displayName,
-          bio: memberProfiles.bio,
-          image: user.image,
-          ...directoryProfileColumns(),
-        })
-        .from(communityMemberships)
-        .innerJoin(user, eq(communityMemberships.userId, user.id))
-        .leftJoin(
-          memberProfiles,
-          eq(communityMemberships.userId, memberProfiles.userId),
-        )
-        .where(and(...conditions))
-        .orderBy(
-          desc(communityMemberships.joinedAt),
-          desc(communityMemberships.userId),
-        )
-        .limit(input.limit + 1);
-
-      let nextCursor: typeof input.cursor | undefined;
-      if (items.length > input.limit) {
-        items.pop();
-        const next = items.at(-1)!;
-        nextCursor = {
-          joinedAt: next.joinedAt.toISOString(),
-          userId: next.userId,
-        };
-      }
-
-      return {
-        items: items.map((row) => toDirectoryMember(row, viewerId)),
-        nextCursor,
-      };
+      return loadCommunityRoster(ctx.db, {
+        ...input,
+        communityId: community.id,
+        viewerId,
+      });
     }),
 
   /** Stack faces + active total for a single community (header use). Never

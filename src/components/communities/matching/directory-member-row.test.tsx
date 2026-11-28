@@ -16,6 +16,11 @@ vi.mock("@/i18n/navigation", () => ({
     </a>
   ),
 }));
+vi.mock("@/components/message-member-button", () => ({
+  MessageMemberButton: ({ recipientName }: { recipientName: string }) => (
+    <button>Message {recipientName}</button>
+  ),
+}));
 
 function member(overrides: Partial<DirectoryMember> = {}): DirectoryMember {
   return {
@@ -36,7 +41,12 @@ function member(overrides: Partial<DirectoryMember> = {}): DirectoryMember {
   };
 }
 
-function show(row: DirectoryMember, locale: "en" | "nl" | "fr" = "en") {
+function show(
+  row: DirectoryMember,
+  locale: "en" | "nl" | "fr" = "en",
+  viewerId?: string | null,
+  communityCreatedAt = new Date("2026-09-01T12:00:00Z"),
+) {
   return render(
     <NextIntlClientProvider
       locale={locale}
@@ -45,15 +55,35 @@ function show(row: DirectoryMember, locale: "en" | "nl" | "fr" = "en") {
         throw error;
       }}
       timeZone="Europe/Amsterdam"
+      now={new Date("2026-11-28T12:00:00Z")}
     >
       <ul>
-        <DirectoryMemberRow member={row} />
+        <DirectoryMemberRow
+          member={row}
+          viewerId={viewerId}
+          communityCreatedAt={communityCreatedAt}
+        />
       </ul>
     </NextIntlClientProvider>,
   );
 }
 
 describe("DirectoryMemberRow", () => {
+  it("uses the member role as a subtitle when there is no headline", () => {
+    const { container } = show(
+      member({
+        role: "member",
+        bio: null,
+        profile: null,
+        userId: "hidden-id-fragment",
+      }),
+      "en",
+      "another-member",
+    );
+    expect(screen.getByText("Member", { exact: true })).toBeInTheDocument();
+    expect(container).not.toHaveTextContent("hidden-id-fragment");
+  });
+
   it("links the member to their profile page", () => {
     show(member());
     expect(screen.getByRole("link", { name: /Naomi Kimhi/ })).toHaveAttribute(
@@ -92,4 +122,86 @@ describe("DirectoryMemberRow", () => {
     fireEvent.pointerEnter(screen.getByText("Naomi Kimhi"));
     expect(await screen.findByText(text)).toBeInTheDocument();
   });
+
+  it("shows browseable skills and keeps the message action separate from the profile link", () => {
+    const row = member();
+    show(
+      member({
+        profile: {
+          ...row.profile!,
+          skills: ["Community building", "Events", "Meetups", "Facilitation"],
+        },
+      }),
+      "en",
+      "viewer",
+    );
+    expect(screen.getByRole("list", { name: "Skills" })).toHaveTextContent(
+      "Community building",
+    );
+    expect(
+      screen.getByRole("button", { name: "Message Naomi Kimhi" }).closest("a"),
+    ).toBeNull();
+    expect(screen.getByRole("link", { name: "Naomi Kimhi" })).toHaveAttribute(
+      "href",
+      "/members/naomi-id",
+    );
+    expect(screen.getByRole("list", { name: "Skills" }).children).toHaveLength(
+      3,
+    );
+    expect(screen.queryByText("Facilitation")).not.toBeInTheDocument();
+    expect(screen.getByText("New")).toBeInTheDocument();
+    expect(screen.queryByText(/Joined Nov/)).not.toBeInTheDocument();
+  });
+
+  it("omits the new badge for long-time members", () => {
+    show(
+      member({ joinedAt: new Date("2026-10-28T12:00:00Z") }),
+      "en",
+      "viewer",
+    );
+    expect(screen.queryByText("New")).not.toBeInTheDocument();
+  });
+
+  it("omits the New badge in a community still in its first 30 days", () => {
+    show(member(), "en", "viewer", new Date("2026-10-29T12:00:00Z"));
+    expect(screen.queryByText("New")).not.toBeInTheDocument();
+  });
+
+  it("keeps a private profile's bio out of both the row and the preview", async () => {
+    show(member({ canOpenProfile: false, profile: null }), "en", "viewer");
+    expect(screen.getByText("Private profile")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Message Naomi Kimhi" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", {
+        name: "Messages off",
+      }),
+    ).toBeInTheDocument();
+    fireEvent.pointerEnter(screen.getByText("Naomi Kimhi"));
+    expect(
+      await screen.findByText("Admin · joined November 2026"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Connects founders/)).toBeNull();
+  });
+
+  it.each([
+    [null, "Messages off", "Sign in to message Naomi Kimhi."],
+    ["naomi-id", "You", "You can’t message yourself."],
+  ] as const)(
+    "names why messaging is unavailable for viewer %s",
+    (viewerId, label, reason) => {
+      show(member(), "en", viewerId);
+      expect(
+        screen.queryByRole("button", { name: "Message Naomi Kimhi" }),
+      ).toBeNull();
+      const unavailable = screen.getByRole("button", { name: label });
+      expect(unavailable).toHaveAccessibleDescription(reason);
+      fireEvent.click(unavailable);
+      expect(screen.getByRole("dialog", { name: "Message" })).toHaveTextContent(
+        reason,
+      );
+    },
+  );
 });

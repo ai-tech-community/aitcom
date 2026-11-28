@@ -22,6 +22,7 @@ vi.mock(
   }),
 );
 import { communitiesRouter } from "./communities";
+import { loadCommunityRoster } from "@/server/communities/roster-read";
 
 function fixture() {
   const joinedAt = new Date("2026-11-12T10:00:00Z");
@@ -30,7 +31,7 @@ function fixture() {
     joinedAt,
     displayName: userId,
     role: "member",
-    bio: null,
+    bio: null as string | null,
     image: null,
     profilePublic: false,
     company: null as string | null,
@@ -128,6 +129,30 @@ describe("Members directory used by the matching hub", () => {
     });
     expect(items[1]).toMatchObject({ canOpenProfile: false, profile: null });
     expect(JSON.stringify(items[1])).not.toContain("Secret");
+  });
+  it("restricts the People search to visible account names, biographies, and skills", async () => {
+    const fake = fixture();
+    const details = [{ ...fake.rows[0]!, bio: "Private biography" }];
+    const offset = vi.fn().mockResolvedValue(details);
+    fake.chain.limit.mockReturnValueOnce(
+      Object.assign(Promise.resolve(details), { offset }),
+    );
+    const { items } = await loadCommunityRoster(fake.database as never, {
+      communityId: "community-a",
+      viewerId: "viewer",
+      q: "Search",
+      people: { role: "admin", skill: "Go", offset: 50 },
+      status: "active",
+      limit: 50,
+    });
+    const query = new PgDialect().sqlToQuery(fake.filters[0] as never);
+    expect(query.sql).toMatch(
+      /"isPublic".*and \("app"\."user"\."name" ilike.*"member_profile"\."bio" ilike/,
+    );
+    expect(query.sql).toContain("json_array_elements_text");
+    expect(query.params).toContain("admin");
+    expect(offset).toHaveBeenCalledWith(50);
+    expect(items[0]?.bio).toBeNull();
   });
   it("preserves the existing roster visibility check before searching", async () => {
     visibility.roster.mockResolvedValue(false);
