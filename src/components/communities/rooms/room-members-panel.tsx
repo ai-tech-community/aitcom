@@ -1,5 +1,8 @@
 "use client";
 
+import { X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -11,10 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { SectionLabel } from "@/components/ui/section-label";
+import { ChatAvatar } from "@/components/messages/chat-avatar";
 import { getInitials } from "@/lib/avatar";
 import {
   Sheet,
   SheetContent,
+  SheetClose,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -25,19 +30,25 @@ function PersonRow({
   name,
   avatarUrl,
   secondary,
+  redesigned = false,
   trailing,
 }: {
   name: string;
   avatarUrl: string | null;
   secondary?: string | null;
+  redesigned?: boolean;
   trailing?: ReactNode;
 }) {
   return (
     <div className="flex items-center gap-3 py-2.5">
-      <Avatar size="sm">
-        <AvatarImage src={avatarUrl ?? undefined} alt={name} />
-        <AvatarFallback>{getInitials(name)}</AvatarFallback>
-      </Avatar>
+      {redesigned ? (
+        <ChatAvatar name={name} image={avatarUrl} />
+      ) : (
+        <Avatar size="sm">
+          <AvatarImage src={avatarUrl ?? undefined} alt={name} />
+          <AvatarFallback>{getInitials(name)}</AvatarFallback>
+        </Avatar>
+      )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">{name}</p>
         {secondary ? (
@@ -54,13 +65,16 @@ export function RoomMembersPanel({
   spaceId,
   spaceSlug,
   viewerIsAdmin,
+  redesigned = false,
 }: {
   slug: string;
   spaceId: string;
   spaceSlug: string;
   viewerIsAdmin: boolean;
+  redesigned?: boolean;
 }) {
   const t = useTranslations("communities.rooms");
+  const chat = useTranslations("redesign.chat");
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id;
   const [open, setOpen] = useState(false);
@@ -123,16 +137,50 @@ export function RoomMembersPanel({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" aria-label={t("members")}>
-          {t("members")}
+        <Button
+          variant="outline"
+          className={redesigned ? "min-h-11 shadow-none" : undefined}
+          aria-label={redesigned ? chat("manageRoomMembers") : t("members")}
+        >
+          {redesigned ? chat("manageRoomMembers") : t("members")}
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="flex flex-col gap-0">
-        <SheetHeader className="border-b">
-          <SheetTitle>{t("members")}</SheetTitle>
+      <SheetContent
+        side="right"
+        className={cn(
+          "flex flex-col gap-0",
+          redesigned &&
+            "w-[min(95vw,24rem)] motion-reduce:animate-none [&_button]:min-h-11",
+        )}
+        showCloseButton={!redesigned}
+        aria-describedby={undefined}
+      >
+        <SheetHeader
+          className={cn(
+            "border-b",
+            redesigned && "flex-row items-center justify-between gap-2 py-2",
+          )}
+        >
+          <SheetTitle>
+            {redesigned ? chat("manageRoomMembers") : t("members")}
+          </SheetTitle>
+          {redesigned ? (
+            <SheetClose asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11"
+                aria-label={chat("closeDetails")}
+              >
+                <X aria-hidden />
+              </Button>
+            </SheetClose>
+          ) : null}
         </SheetHeader>
 
-        {membersQuery.isLoading ? (
+        {membersQuery.isLoading && redesigned ? (
+          <Skeleton className="m-4 h-28" />
+        ) : membersQuery.isLoading ? (
           <div className="flex justify-center py-10">
             <Spinner className="size-6" />
           </div>
@@ -152,6 +200,7 @@ export function RoomMembersPanel({
                 <div className="divide-border/60 mt-1 divide-y">
                   {pendingMembers.map((m) => (
                     <PersonRow
+                      redesigned={redesigned}
                       key={m.userId}
                       name={m.displayName ?? ""}
                       avatarUrl={m.avatarUrl}
@@ -215,6 +264,7 @@ export function RoomMembersPanel({
                         : null;
                     return (
                       <PersonRow
+                        redesigned={redesigned}
                         key={m.userId}
                         name={m.displayName ?? ""}
                         avatarUrl={m.avatarUrl}
@@ -243,7 +293,9 @@ export function RoomMembersPanel({
                   onChange={(e) => setSearch(e.target.value)}
                   className="mt-3"
                 />
-                {communityMembersQuery.isLoading ? (
+                {communityMembersQuery.isLoading && redesigned ? (
+                  <Skeleton className="my-3 h-16" />
+                ) : communityMembersQuery.isLoading ? (
                   <div className="flex justify-center py-4">
                     <Spinner className="size-4" />
                   </div>
@@ -261,6 +313,7 @@ export function RoomMembersPanel({
                   <div className="divide-border/60 mt-1 divide-y">
                     {addCandidates.map((m) => (
                       <PersonRow
+                        redesigned={redesigned}
                         key={m.profile.userId}
                         name={m.profile.displayName ?? ""}
                         avatarUrl={m.avatarUrl}

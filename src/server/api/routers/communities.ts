@@ -1,3 +1,5 @@
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { getAvatarUrl } from "@/lib/avatar";
 import { routing } from "@/i18n/routing";
 import {
   directoryProfileColumns,
@@ -450,6 +452,7 @@ export const communitiesRouter = createTRPCRouter({
           displayName: memberProfiles.displayName,
           bio: memberProfiles.bio,
           image: user.image,
+          email: user.email,
           ...directoryProfileColumns(),
         })
         .from(communityMemberships)
@@ -476,7 +479,12 @@ export const communitiesRouter = createTRPCRouter({
       }
 
       return {
-        items: items.map((row) => toDirectoryMember(row, viewerId)),
+        items: items.map(({ email, ...row }) => ({
+          ...toDirectoryMember(row, viewerId),
+          ...(isOpenCommunitiesEnabled()
+            ? { avatarUrl: getAvatarUrl(email, row.image) }
+            : {}),
+        })),
         nextCursor,
       };
     }),

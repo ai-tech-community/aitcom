@@ -1,10 +1,28 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
-const site = vi.hoisted(() => ({ shell: null as null | "community" }));
-
-vi.mock("@/components/site-chrome-gate", () => ({
-  useSiteShell: () => site.shell,
+const ui = vi.hoisted(() => ({
+  redesigned: false,
+  openSpace: vi.fn(),
+  join: vi.fn(),
+  request: vi.fn(),
+}));
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => ui.redesigned,
+}));
+vi.mock("@/components/communities/explore/space-window-provider", () => ({
+  useSpaceWindows: () => ({ openSpace: ui.openSpace, closeSpace: vi.fn() }),
+}));
+vi.mock("@/server/better-auth/client", () => ({
+  authClient: { useSession: () => ({ data: { user: { id: "viewer" } } }) },
+}));
+vi.mock("@/components/inbox/use-inbox-stream", () => ({
+  useInboxStream: vi.fn(),
+}));
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 
 const ACTIVE_ROOM = {
@@ -12,8 +30,8 @@ const ACTIVE_ROOM = {
   name: "Design",
   purpose: null,
   visibility: "public",
-  membership: "active",
-  conversationId: "c1",
+  membership: "active" as string | null,
+  conversationId: "c1" as string | null,
   memberCount: 0,
   memberAvatars: [],
   viewerIsAdmin: false,
@@ -21,7 +39,10 @@ const ACTIVE_ROOM = {
 
 vi.mock("@/trpc/react", () => ({
   api: {
-    useUtils: () => ({ spaces: { getRoom: { invalidate: vi.fn() } } }),
+    useUtils: () => ({
+      spaces: { getRoom: { invalidate: vi.fn() } },
+      communities: { getBySlug: { getData: () => ({ name: "Community" }) } },
+    }),
     spaces: {
       getRoom: {
         useQuery: vi.fn(() => ({
@@ -32,10 +53,10 @@ vi.mock("@/trpc/react", () => ({
         })),
       },
       joinRoom: {
-        useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+        useMutation: vi.fn(() => ({ mutate: ui.join, isPending: false })),
       },
       requestAccess: {
-        useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+        useMutation: vi.fn(() => ({ mutate: ui.request, isPending: false })),
       },
     },
   },
@@ -43,8 +64,8 @@ vi.mock("@/trpc/react", () => ({
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/components/messages/conversation-view", () => ({
-  ConversationView: ({ roomViewport }: { roomViewport: boolean }) => (
-    <div data-testid="cv" data-room-presentation={roomViewport} />
+  ConversationView: ({ redesigned }: { redesigned: boolean }) => (
+    <div data-testid="cv" data-room-presentation={redesigned} />
   ),
 }));
 vi.mock("./room-members-panel", () => ({ RoomMembersPanel: () => <div /> }));
@@ -69,8 +90,8 @@ describe("RoomView fillHeight", () => {
   });
 });
 
-it("uses the whole-message viewport only on a redesigned room page", () => {
-  site.shell = "community";
+it("uses the redesigned transcript on both the page and in a parallel window", () => {
+  ui.redesigned = true;
   try {
     const { rerender } = render(<RoomView slug="acme" spaceSlug="design" />);
     expect(screen.getByTestId("cv")).toHaveAttribute(
@@ -80,9 +101,57 @@ it("uses the whole-message viewport only on a redesigned room page", () => {
     rerender(<RoomView slug="acme" spaceSlug="design" fillHeight />);
     expect(screen.getByTestId("cv")).toHaveAttribute(
       "data-room-presentation",
-      "false",
+      "true",
     );
   } finally {
-    site.shell = null;
+    ui.redesigned = false;
+  }
+});
+
+it.each([
+  ["public", null, "join.label", ui.join],
+  ["private", null, "requestAccess.label", ui.request],
+  ["private", "pending_request", null, ui.request],
+] as const)(
+  "keeps the %s lobby action for membership %s",
+  (visibility, membership, button, mutation) => {
+    ui.redesigned = true;
+    const saved = { ...ACTIVE_ROOM };
+    Object.assign(ACTIVE_ROOM, {
+      visibility,
+      membership,
+      conversationId: null,
+    });
+    mutation.mockClear();
+    try {
+      render(<RoomView slug="acme" spaceSlug="design" />);
+      expect(screen.queryByTestId("cv")).not.toBeInTheDocument();
+      if (button) {
+        fireEvent.click(screen.getByRole("button", { name: button }));
+        expect(mutation).toHaveBeenCalledWith({ slug: "acme", spaceId: "s1" });
+      } else {
+        expect(screen.getByRole("status")).toHaveTextContent("pending");
+        expect(mutation).not.toHaveBeenCalled();
+      }
+    } finally {
+      Object.assign(ACTIVE_ROOM, saved);
+      ui.redesigned = false;
+    }
+  },
+);
+
+it("opens an existing room in the parallel window provider", () => {
+  ui.redesigned = true;
+  try {
+    render(<RoomView slug="acme" spaceSlug="design" />);
+    fireEvent.click(screen.getByRole("button", { name: "openInWindow" }));
+    expect(ui.openSpace).toHaveBeenCalledWith({
+      communitySlug: "acme",
+      spaceSlug: "design",
+      communityName: "Community",
+      spaceName: "Design",
+    });
+  } finally {
+    ui.redesigned = false;
   }
 });

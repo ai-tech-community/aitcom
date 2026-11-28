@@ -72,3 +72,21 @@ describe("BuildingModal maximize", () => {
     expect(win.className).not.toContain("inset-0"); // not the occluded full-screen variant
   });
 });
+
+it("resizes a room window with the keyboard", () => {
+  renderModal(
+    <BuildingModal
+      isOpen
+      onClose={vi.fn()}
+      title="Design"
+      roomWindow={{ community: "Community" }}
+    >
+      <div>room-body</div>
+    </BuildingModal>,
+  );
+  const dialog = screen.getByRole("region", { name: "Design" });
+  const title = screen.getByRole("group", { name: /arrow keys/i });
+  expect(dialog).toHaveStyle({ width: "640px" });
+  fireEvent.keyDown(title, { key: "ArrowRight", shiftKey: true });
+  expect(dialog).toHaveStyle({ width: "664px" });
+});

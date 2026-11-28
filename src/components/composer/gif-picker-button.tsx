@@ -14,6 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 export type PickedGif = RouterOutputs["gifs"]["search"]["gifs"][number];
@@ -53,6 +54,7 @@ function errorKey(code: string | undefined) {
 export function GifPickerButton({
   ref,
   label,
+  labelClassName,
   onPick,
   disabled,
 }: {
@@ -60,6 +62,7 @@ export function GifPickerButton({
   ref?: Ref<HTMLButtonElement>;
   /** Defaults to "Add GIF"; a composer may say "Replace with GIF". */
   label?: string;
+  labelClassName?: string;
   onPick: (gif: PickedGif) => void;
   disabled?: boolean;
 }) {
@@ -165,7 +168,10 @@ export function GifPickerButton({
           icon={
             <span
               aria-hidden="true"
-              className="font-mono text-[0.7rem] font-semibold"
+              className={cn(
+                "font-mono text-[0.7rem] font-semibold",
+                labelClassName,
+              )}
             >
               GIF
             </span>

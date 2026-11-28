@@ -80,9 +80,17 @@ import { MESSAGE_MAX_LENGTH } from "@/lib/message-rules";
 
 import { MessageComposer } from "./message-composer";
 
-function renderComposer(kind: "agent" | "person" = "person") {
+function renderComposer(
+  kind: "agent" | "person" = "person",
+  redesigned = false,
+) {
   render(
-    <MessageComposer conversationId="c1" placeholder="Write…" kind={kind} />,
+    <MessageComposer
+      conversationId="c1"
+      placeholder="Write…"
+      kind={kind}
+      redesigned={redesigned}
+    />,
   );
   return screen.getByRole<HTMLTextAreaElement>("textbox", {
     name: "messageLabel",
@@ -141,6 +149,45 @@ describe("MessageComposer", () => {
       "type",
       "submit",
     );
+  });
+
+  it("keeps an offline draft and enables Send after reconnect", async () => {
+    let online = true;
+    const getter = vi
+      .spyOn(navigator, "onLine", "get")
+      .mockImplementation(() => online);
+    try {
+      const field = renderComposer("person", true);
+      const button = screen.getByRole("button", { name: "send" });
+      expect(button).toBeDisabled();
+      fireEvent.change(field, { target: { value: "  " } });
+      expect(button).toBeDisabled();
+      fireEvent.change(field, { target: { value: "A draft" } });
+      expect(button).toBeEnabled();
+      online = false;
+      fireEvent(window, new Event("offline"));
+      expect(button).toBeDisabled();
+      expect(button).toHaveClass("disabled:bg-muted");
+      expect(field.form).toHaveClass("[--ring:var(--muted-foreground)]");
+      fireEvent.submit(field.form!);
+      await settle();
+      expect(send).not.toHaveBeenCalled();
+      expect(field).toHaveValue("A draft");
+      online = true;
+      fireEvent(window, new Event("online"));
+      expect(button).toBeEnabled();
+      expect(field.form).not.toHaveClass("[--ring:var(--muted-foreground)]");
+    } finally {
+      getter.mockRestore();
+    }
+  });
+
+  it("treats an existing GIF attachment as a draft", () => {
+    renderComposer("person", true);
+    const button = screen.getByRole("button", { name: "send" });
+    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "gif" }));
+    expect(button).toBeEnabled();
   });
 
   it("stops the field at the longest message the server takes", () => {

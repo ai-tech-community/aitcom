@@ -7,6 +7,7 @@ import { HubShellHeader } from "./hub-shell-header";
 
 const data = vi.hoisted(() => ({
   path: "/events/sample-event",
+  search: "",
   spaces: [
     { data: [{ builtinSurface: "events", slug: "events" }] },
     { isError: true, data: [{ builtinSurface: "events", slug: "events" }] },
@@ -15,6 +16,9 @@ const data = vi.hoisted(() => ({
   getSpaces: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(data.search),
+}));
 vi.mock("@/i18n/navigation", () => ({
   usePathname: () => data.path,
   useRouter: () => ({ push: vi.fn() }),
@@ -32,6 +36,7 @@ vi.mock("@/server/better-auth/client", () => ({
 vi.mock("@/trpc/react", () => ({
   api: {
     communities: {
+      getBySlug: { useQuery: () => ({ data: { name: "Workbench Notes" } }) },
       getMyCommunities: { useQuery: () => ({ data: undefined }) },
     },
     useQueries: (createQueries: (proxy: unknown) => unknown) => {
@@ -52,18 +57,20 @@ vi.mock("./shell-header", () => ({
   ShellHeader: ({
     location,
     leading,
+    locationControl,
     section,
     navigation,
     trailing,
   }: {
     location: string;
     leading: React.ReactNode;
+    locationControl?: React.ReactNode;
     section: string;
     navigation: React.ReactNode;
     trailing: React.ReactNode;
   }) => (
     <header>
-      {location}
+      {locationControl ?? location}
       {leading}
       <span data-testid="section">{section}</span>
       {navigation}
@@ -130,4 +137,31 @@ describe("Hub shell header", () => {
     expect(screen.getAllByRole("link", { name: "Messages" })).toHaveLength(1);
     expect(data.getSpaces).not.toHaveBeenCalledWith({ slug: "pending" });
   });
+});
+
+it("uses the full Messages title and named return link on a conversation deep link", () => {
+  const previousPath = data.path;
+  data.path = "/messages/dm";
+  data.search = "fromCommunity=workbench-notes";
+  try {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <HubShellHeader
+          initialUser={{ id: "viewer" }}
+          initialMemberships={[]}
+        />
+      </NextIntlClientProvider>,
+    );
+    const header = within(screen.getByRole("banner"));
+    expect(
+      header.getByRole("heading", { name: "Messages" }),
+    ).toBeInTheDocument();
+    expect(
+      header.getByRole("link", { name: "Back to Workbench Notes" }),
+    ).toHaveAttribute("href", "/communities/workbench-notes");
+    expect(header.getByTestId("section")).toBeEmptyDOMElement();
+  } finally {
+    data.path = previousPath;
+    data.search = "";
+  }
 });

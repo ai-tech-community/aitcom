@@ -1,3 +1,5 @@
+import { getAvatarUrl } from "@/lib/avatar";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import type { db as Database } from "@/server/db";
 import { z } from "zod";
 import { eq, and, desc, lt, sql, ne, or, ilike } from "drizzle-orm";
@@ -328,7 +330,19 @@ export const inboxRouter = createTRPCRouter({
           });
       }
 
-      return { messages: items, nextCursor, hasMore };
+      return {
+        messages: items,
+        nextCursor,
+        hasMore,
+        ...(isOpenCommunitiesEnabled()
+          ? {
+              viewerAvatarUrl: getAvatarUrl(
+                ctx.session.user.email,
+                ctx.session.user.image,
+              ),
+            }
+          : {}),
+      };
     }),
 
   /**
@@ -626,6 +640,7 @@ export const inboxRouter = createTRPCRouter({
           userId: memberProfiles.userId,
           displayName: memberProfiles.displayName,
           image: user.image,
+          email: user.email,
         })
         .from(memberProfiles)
         .innerJoin(user, eq(user.id, memberProfiles.userId))
@@ -641,7 +656,14 @@ export const inboxRouter = createTRPCRouter({
         )
         .limit(input.limit);
 
-      return { members: rows };
+      return {
+        members: rows.map(({ email, ...member }) => ({
+          ...member,
+          ...(isOpenCommunitiesEnabled()
+            ? { avatarUrl: getAvatarUrl(email, member.image) }
+            : {}),
+        })),
+      };
     }),
 
   /**

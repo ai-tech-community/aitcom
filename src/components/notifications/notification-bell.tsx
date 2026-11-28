@@ -11,15 +11,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ShellUnreadBadge } from "@/components/shells/unread-badge";
 import { NotificationPanel } from "./notification-panel";
 
 export function NotificationBell({
   compact = false,
   signedIn = false,
-}: { compact?: boolean; signedIn?: boolean } = {}) {
+  showLabel = false,
+}: { compact?: boolean; signedIn?: boolean; showLabel?: boolean } = {}) {
   return compact ? (
-    <CompactNotificationBell signedIn={signedIn} />
+    <CompactNotificationBell signedIn={signedIn} showLabel={showLabel} />
   ) : (
     <LegacyNotificationBell />
   );
@@ -38,22 +38,11 @@ function useNotificationCount() {
   return session?.user ? (unreadData?.count ?? 0) : null;
 }
 
-function NotificationIcon({
-  count,
-  unreadLabel,
-}: {
-  count: number;
-  unreadLabel?: string;
-}) {
+function LegacyNotificationIcon({ count }: { count: number }) {
   return (
     <>
-      <BellIcon
-        className="text-muted-foreground h-5 w-5"
-        aria-hidden={!!unreadLabel || undefined}
-      />
-      {unreadLabel ? (
-        <ShellUnreadBadge count={count} label={unreadLabel} />
-      ) : count > 0 ? (
+      <BellIcon className="text-muted-foreground h-5 w-5" />
+      {count > 0 ? (
         <span className="bg-primary text-primary-foreground absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold">
           {count > 99 ? "99+" : count}
         </span>
@@ -62,7 +51,13 @@ function NotificationIcon({
   );
 }
 
-function CompactNotificationBell({ signedIn }: { signedIn: boolean }) {
+function CompactNotificationBell({
+  signedIn,
+  showLabel,
+}: {
+  signedIn: boolean;
+  showLabel: boolean;
+}) {
   const unread = useNotificationCount();
   const [open, setOpen] = useState(false);
   const t = useTranslations("redesign.shell");
@@ -84,7 +79,19 @@ function CompactNotificationBell({ signedIn }: { signedIn: boolean }) {
             count ? `${t("notifications")}, ${unreadLabel}` : t("notifications")
           }
         >
-          <NotificationIcon count={count} unreadLabel={unreadLabel} />
+          <span className="relative" aria-hidden>
+            <BellIcon className="text-muted-foreground size-5" />
+            {count > 0 ? (
+              <span className="bg-secondary text-foreground ring-background absolute -top-1.5 -right-2.5 grid h-4 min-w-4 place-items-center rounded-full px-0.5 font-mono text-[10px] leading-none ring-2">
+                {count > 99 ? "99+" : count}
+              </span>
+            ) : null}
+          </span>
+          {showLabel ? (
+            <span className="text-muted-foreground mr-1 ml-2 hidden text-sm lg:inline">
+              {t("notifications")}
+            </span>
+          ) : null}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -111,7 +118,7 @@ function LegacyNotificationBell() {
         className="hover:bg-muted relative flex items-center justify-center rounded-md p-2"
         aria-label={`Notifications${count > 0 ? `, ${count} unread` : ""}`}
       >
-        <NotificationIcon count={count} />
+        <LegacyNotificationIcon count={count} />
       </button>
       {open && <NotificationPanel onClose={() => setOpen(false)} />}
     </div>

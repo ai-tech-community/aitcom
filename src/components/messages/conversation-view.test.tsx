@@ -11,9 +11,16 @@ const data = vi.hoisted(() => ({
   }[],
   roster: [] as { userId: string; displayName: string; image: string | null }[],
   getProfile: vi.fn(),
+  firstUnreadId: undefined as string | undefined,
 }));
 
-vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+vi.mock("next-intl", () => ({
+  useTranslations: () => (k: string) => k,
+  useLocale: () => "en",
+}));
+vi.mock("@/components/inbox/connection-status", () => ({
+  ConnectionStatus: () => null,
+}));
 vi.mock("@/server/better-auth/client", () => ({
   authClient: {
     useSession: () => ({
@@ -22,12 +29,15 @@ vi.mock("@/server/better-auth/client", () => ({
   },
 }));
 vi.mock("@/i18n/navigation", () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+  Link: ({ children, href }: React.ComponentProps<"a">) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 vi.mock("@/components/inbox/conversation-messages", () => ({
   useConversationMessages: () => ({
     data: { messages: data.messages },
     isLoading: false,
+    firstUnreadId: data.firstUnreadId,
   }),
 }));
 vi.mock("@/trpc/react", () => ({
@@ -53,12 +63,30 @@ vi.mock("@/components/inbox/message-composer", () => ({
   ),
 }));
 
-import { ConversationView, groupRoomMessages } from "./conversation-view";
+import { ConversationView } from "./conversation-view";
+import { groupMessages } from "./chat-transcript";
 
 beforeEach(() => {
   data.messages = [];
   data.roster = [];
+  data.firstUnreadId = undefined;
   data.getProfile.mockReset().mockReturnValue({ data: null });
+});
+
+it("labels the link from an inbox room to its community", () => {
+  const href = "/communities/workbench/spaces/repairs";
+  render(
+    <ConversationView
+      conversationId="room"
+      peer={{ name: "Repairs", image: null, isAgent: false }}
+      roomHref={href}
+      redesigned
+    />,
+  );
+  expect(screen.getByRole("link", { name: "openRoom" })).toHaveAttribute(
+    "href",
+    href,
+  );
 });
 
 describe("room author attribution", () => {
@@ -82,6 +110,7 @@ describe("room author attribution", () => {
         conversationId="room"
         peer={null}
         hideHeader
+        redesigned
         roomAuthors={{ slug: "workbench", previews }}
       />,
     );
@@ -117,7 +146,7 @@ describe("room author attribution", () => {
     const group = room([
       { userId: "ada", displayName: "Human Owner", avatarUrl: null },
     ]);
-    expect(group.querySelector('[data-slot="avatar"]')).toBeNull();
+    expect(within(group).getByText("agent")).toBeVisible();
     expect(
       within(group).queryByText(/Human Owner|Ada Session|unknownRoomAuthor/),
     ).toBeNull();
@@ -134,14 +163,84 @@ describe("room author attribution", () => {
     expect(data.getProfile).not.toHaveBeenCalled();
   });
 
-  it("keeps the original message layout when a sender has no readable public profile", () => {
+  it("labels a sender whose name is unavailable without using an identity from another message", () => {
     data.messages = [message("unavailable")];
     const group = room();
     expect(within(group).getByText("A room message")).toBeVisible();
     expect(
       within(group).queryByText(/unknownRoomAuthor|roomMessageYou/),
     ).toBeNull();
-    expect(group.querySelector('[data-slot="avatar"]')).toBeNull();
+    expect(within(group).getByText("member")).toBeVisible();
+  });
+
+  it("keeps partially visible room messages rendered when a banner shrinks the viewport at the bottom", () => {
+    let height = 200;
+    const observers: { resize: ResizeObserverCallback; targets: Element[] }[] =
+      [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        targets: Element[] = [];
+        constructor(resize: ResizeObserverCallback) {
+          observers.push({ resize, targets: this.targets });
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        disconnect() {
+          this.targets.length = 0;
+        }
+      },
+    );
+    const clientHeight = vi
+      .spyOn(Element.prototype, "clientHeight", "get")
+      .mockImplementation(() => height);
+    const geometry = vi
+      .spyOn(Element.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: Element) {
+        if (this.hasAttribute("data-chat-day-divider")) {
+          return new DOMRect(0, 0, 300, 30);
+        }
+        if (this.hasAttribute("data-room-message")) {
+          const first = this.textContent?.includes("A room message");
+          return new DOMRect(0, first && height === 160 ? 20 : 45, 300, 55);
+        }
+        return new DOMRect(0, 0, 300, height);
+      });
+    try {
+      const first = message("ada");
+      data.messages = [
+        first,
+        { ...first, id: "m2", senderId: "bob", content: "The latest message" },
+      ];
+      const row = room();
+      const log = screen.getByRole("log");
+      const viewport = log.firstElementChild as HTMLElement;
+      let scrollTop = 200;
+      Object.defineProperties(viewport, {
+        scrollTop: {
+          get: () => scrollTop,
+          set: (top: number) => {
+            scrollTop = Math.min(top, 400 - height);
+          },
+        },
+        scrollHeight: { value: 400 },
+      });
+      const resizeViewport = observers.find(({ targets }) =>
+        targets.includes(viewport),
+      )!.resize;
+      resizeViewport([], {} as ResizeObserver);
+      height = 160;
+      resizeViewport([], {} as ResizeObserver);
+
+      expect(viewport.scrollTop).toBe(240);
+      expect(row).not.toHaveAttribute("data-clipped-room-message");
+      expect(within(row).getByText("A room message")).toBeVisible();
+    } finally {
+      geometry.mockRestore();
+      clientHeight.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -164,7 +263,7 @@ it("groups consecutive posts by author, sender type and short intervals within a
   const last = make("sam", 23, 59);
   const nextDay = { ...last, createdAt: new Date(2026, 10, 29, 0, 0) };
   expect(
-    groupRoomMessages([first, second, afterPause, agent, other, last, nextDay]),
+    groupMessages([first, second, afterPause, agent, other, last, nextDay]),
   ).toEqual([
     [first, second],
     [afterPause],
@@ -208,3 +307,96 @@ describe("ConversationView composer kind", () => {
     expect(composerKind()).toBe("agent");
   });
 });
+
+it("attributes a DM to its sender and gives each text message a copy action", () => {
+  const writtenAt = new Date(2026, 10, 28, 10);
+  data.messages = [
+    {
+      id: "1",
+      senderId: "bob",
+      senderType: "human",
+      content: "Incoming",
+      createdAt: writtenAt,
+    },
+    {
+      id: "2",
+      senderId: "ada",
+      senderType: "human",
+      content: "Outgoing",
+      createdAt: writtenAt,
+    },
+  ];
+  render(
+    <ConversationView
+      conversationId="c1"
+      peer={{ name: "Bob", image: null, isAgent: false }}
+      redesigned
+    />,
+  );
+  expect(
+    within(
+      screen.getByText("Incoming").closest("[data-room-message]")!,
+    ).getByText("Bob"),
+  ).toBeVisible();
+  expect(
+    within(
+      screen.getByText("Outgoing").closest("[data-room-message]")!,
+    ).getByText("you"),
+  ).toBeVisible();
+  expect(screen.getAllByRole("button", { name: "copyMessage" })).toHaveLength(
+    2,
+  );
+});
+
+it.each([false, true])(
+  "places the unread divider before the first unread in room mode %s",
+  (room) => {
+    data.messages = [
+      {
+        id: "read",
+        senderId: "bob",
+        senderType: "human",
+        content: "Read",
+        createdAt: new Date(2026, 10, 26, 13, 49),
+      },
+      {
+        id: "unread",
+        senderId: "bob",
+        senderType: "human",
+        content: "Unread",
+        createdAt: new Date(2026, 10, 26, 13, 51),
+      },
+    ];
+    data.firstUnreadId = "unread";
+    render(
+      <ConversationView
+        conversationId="chat"
+        redesigned
+        peer={{ name: "Bob", image: null, isAgent: false }}
+        roomAuthors={
+          room
+            ? {
+                slug: "workbench",
+                previews: [
+                  { userId: "bob", displayName: "Bob", avatarUrl: null },
+                ],
+              }
+            : undefined
+        }
+      />,
+    );
+    const unread = screen
+      .getByText("Unread")
+      .closest<HTMLElement>("[data-room-message]")!;
+    expect(within(unread).getByText("newMessages")).toBeInTheDocument();
+    expect(within(unread).getByText("1:51 PM")).toBeInTheDocument();
+    expect(
+      unread
+        .closest("[data-chat-day]")
+        ?.querySelector("[data-chat-day-divider]"),
+    ).toBeInTheDocument();
+    const copy = within(unread).getByRole("button", { name: "copyMessage" });
+    copy.focus();
+    expect(copy).toHaveFocus();
+  },
+);

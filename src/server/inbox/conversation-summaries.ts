@@ -13,6 +13,8 @@ import {
   spaces,
   user,
 } from "@/server/db/schema";
+import { getAvatarUrl } from "@/lib/avatar";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { countRoomUnread } from "@/server/communities/room-unread";
 import {
   canReadPaidCommunity,
@@ -58,7 +60,12 @@ export type ConversationSummary = {
   type: string;
   updatedAt: string;
   isPinned: boolean;
-  participants: { userId: string; displayName: string; image: string | null }[];
+  participants: {
+    userId: string;
+    displayName: string;
+    image: string | null;
+    avatarUrl?: string | null;
+  }[];
   agentInfo: Pick<AgentRow, "id" | "name" | "avatar" | "lastActiveAt"> | null;
   unreadCount: number;
   // Room (space) fields — defaulted for DM/agent rows so the shape is
@@ -262,6 +269,7 @@ export async function summarizeConversations(
               displayName: memberProfiles.displayName,
               name: user.name,
               image: user.image,
+              email: user.email,
             })
             .from(conversationParticipants)
             .leftJoin(
@@ -280,6 +288,9 @@ export async function summarizeConversations(
         userId: p.userId,
         displayName: p.displayName ?? p.name ?? "Unknown",
         image: p.image,
+        ...(isOpenCommunitiesEnabled()
+          ? { avatarUrl: getAvatarUrl(p.email, p.image) }
+          : {}),
       }));
 
       // Agent info (only for agent conversations)

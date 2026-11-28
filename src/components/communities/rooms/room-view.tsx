@@ -4,7 +4,9 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
 import { api } from "@/trpc/react";
-import { useSiteShell } from "@/components/site-chrome-gate";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { ChatSignIn, useChatAccess } from "@/components/messages/chat-sign-in";
+import { RoomFrame, RoomLobby, roomFrameHeight } from "./room-frame";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ErrorState } from "@/components/ui/error-state";
@@ -15,24 +17,58 @@ import { getInitials } from "@/lib/avatar";
 import { ConversationView } from "@/components/messages/conversation-view";
 import { RoomMembersPanel } from "./room-members-panel";
 
-export function RoomView({
+type RoomViewProps = { slug: string; spaceSlug: string; fillHeight?: boolean };
+
+export function RoomView(props: RoomViewProps) {
+  return isOpenCommunitiesEnabled() ? (
+    <RedesignedRoomView {...props} />
+  ) : (
+    <RoomContent {...props} />
+  );
+}
+
+function RedesignedRoomView(props: RoomViewProps) {
+  const { user, pending } = useChatAccess();
+  if (user) return <RoomContent {...props} redesigned />;
+  if (pending) return <RoomLoading fillHeight={props.fillHeight} />;
+  return (
+    <ChatSignIn
+      room
+      redirect={`/communities/${props.slug}/spaces/${props.spaceSlug}`}
+    />
+  );
+}
+
+function RoomLoading({ fillHeight }: { fillHeight?: boolean }) {
+  return (
+    <div
+      aria-busy
+      className={cn(
+        "bg-background flex flex-col gap-6 p-4",
+        fillHeight ? "h-full" : roomFrameHeight,
+      )}
+    >
+      <Skeleton className="h-10 w-1/2" />
+      <Skeleton className="h-12 w-3/5" />
+      <Skeleton className="h-12 w-2/5" />
+      <Skeleton className="h-12 w-3/5" />
+    </div>
+  );
+}
+
+function RoomContent({
   slug,
   spaceSlug,
   fillHeight = false,
-}: {
-  slug: string;
-  spaceSlug: string;
-  fillHeight?: boolean;
-}) {
+  redesigned = false,
+}: RoomViewProps & { redesigned?: boolean }) {
   const t = useTranslations("communities.rooms");
-  const inCommunityShell = useSiteShell() === "community" && !fillHeight;
-  const shellHeight =
-    "h-[calc(100dvh-5rem-var(--community-mobile-bar-height)-1px)] min-h-96 lg:h-[calc(100dvh-6rem-1px)]";
   const utils = api.useUtils();
   const {
     data: room,
     isLoading,
     isError,
+    error,
     refetch,
   } = api.spaces.getRoom.useQuery({ slug, spaceSlug });
 
@@ -46,22 +82,47 @@ export function RoomView({
     onError: () => toast.error(t("requestAccess.error")),
   });
 
-  if (isLoading && inCommunityShell)
-    return (
-      <div aria-busy className={cn("flex flex-col gap-6 p-4", shellHeight)}>
-        <Skeleton className="h-10 w-1/2" />
-        <Skeleton className="h-12 w-3/5" />
-        <Skeleton className="ml-auto h-12 w-2/5" />
-        <Skeleton className="h-12 w-3/5" />
-      </div>
-    );
+  if (isLoading && redesigned) return <RoomLoading fillHeight={fillHeight} />;
   if (isLoading)
     return (
       <div className="flex justify-center py-16">
         <Spinner className="size-6" />
       </div>
     );
-  if (isError || !room) return <ErrorState onRetry={refetch} />;
+  const accessDenied = ["FORBIDDEN", "UNAUTHORIZED", "NOT_FOUND"].includes(
+    error?.data?.code ?? "",
+  );
+  if (!room || (isError && (!redesigned || accessDenied))) {
+    return <ErrorState onRetry={refetch} />;
+  }
+
+  if (redesigned) {
+    if (room.membership === "active" && room.conversationId) {
+      return (
+        <RoomFrame
+          room={room}
+          slug={slug}
+          spaceSlug={spaceSlug}
+          conversationId={room.conversationId}
+          inWindow={fillHeight}
+        />
+      );
+    }
+    return (
+      <RoomLobby
+        room={room}
+        inWindow={fillHeight}
+        publicJoin={{
+          pending: join.isPending,
+          run: () => join.mutate({ slug, spaceId: room.id }),
+        }}
+        privateRequest={{
+          pending: request.isPending,
+          run: () => request.mutate({ slug, spaceId: room.id }),
+        }}
+      />
+    );
+  }
 
   if (room.membership === "active" && room.conversationId) {
     const MAX_SHOWN_AVATARS = 3;
@@ -82,78 +143,38 @@ export function RoomView({
         className={cn(
           "flex flex-col",
           fillHeight && "h-full min-h-0",
-          !fillHeight && !inCommunityShell && "h-[calc(100vh-16rem)] min-h-96",
-          inCommunityShell && shellHeight,
+          !fillHeight && "h-[calc(100vh-16rem)] min-h-96",
         )}
       >
         {/* Room header */}
         <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
-          <div
-            className={cn(
-              "flex items-center gap-3",
-              inCommunityShell && "min-w-0 flex-wrap gap-x-2 gap-y-1",
-            )}
-          >
+          <div className="flex items-center gap-3">
             <div className="min-w-0">
-              <div
-                className={cn(
-                  inCommunityShell &&
-                    "flex flex-wrap items-baseline gap-x-2 gap-y-1",
-                )}
-              >
-                <h1 className="text-base leading-tight font-semibold">
-                  {room.name ?? t("untitled")}
-                </h1>
-                {inCommunityShell ? visibility : null}
-              </div>
+              <h1 className="text-base leading-tight font-semibold">
+                {room.name ?? t("untitled")}
+              </h1>
               {room.purpose ? (
                 <p className="text-muted-foreground text-xs">{room.purpose}</p>
               ) : null}
             </div>
-            {!inCommunityShell ? visibility : null}
+            {visibility}
           </div>
-          <div
-            className={cn(
-              "flex items-center gap-3",
-              inCommunityShell && "shrink-0 max-sm:gap-2 [&_button]:min-h-11",
-            )}
-          >
+          <div className="flex items-center gap-3">
             {/* Avatar stack */}
             {room.memberAvatars && room.memberAvatars.length > 0 ? (
-              <div
-                className={cn(
-                  "flex items-center",
-                  inCommunityShell && "hidden sm:flex",
-                )}
-              >
-                <div
-                  className={cn(
-                    "flex",
-                    inCommunityShell ? "gap-1" : "-space-x-2",
-                  )}
-                >
+              <div className="flex items-center">
+                <div className="flex -space-x-2">
                   {room.memberAvatars.slice(0, MAX_SHOWN_AVATARS).map((av) => (
                     <Avatar
                       key={av.userId}
                       size="sm"
-                      className={cn(
-                        !inCommunityShell &&
-                          "border-background ring-background border-2",
-                      )}
+                      className="border-background ring-background border-2"
                     >
-                      {inCommunityShell ? null : (
-                        <AvatarImage
-                          src={av.avatarUrl ?? undefined}
-                          alt={av.displayName ?? ""}
-                        />
-                      )}
-                      <AvatarFallback
-                        title={
-                          inCommunityShell
-                            ? (av.displayName ?? undefined)
-                            : undefined
-                        }
-                      >
+                      <AvatarImage
+                        src={av.avatarUrl ?? undefined}
+                        alt={av.displayName ?? ""}
+                      />
+                      <AvatarFallback>
                         {getInitials(av.displayName ?? "")}
                       </AvatarFallback>
                     </Avatar>
@@ -192,12 +213,6 @@ export function RoomView({
               isAgent: false,
             }}
             hideHeader
-            roomViewport={inCommunityShell}
-            roomAuthors={
-              inCommunityShell
-                ? { slug, previews: room.memberAvatars ?? [] }
-                : undefined
-            }
           />
         </div>
       </div>

@@ -1,15 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+const media = vi.hoisted(() => ({ desktop: false }));
+vi.mock("@/hooks/use-media-query", () => ({
+  useMediaQuery: () => media.desktop,
+}));
+vi.mock("next-intl", () => ({
+  useLocale: () => "en",
+  useTranslations: () => (k: string, values?: { community: string }) =>
+    values ? `${k} ${values.community}` : k,
+}));
 vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => ({ data: { user: { id: "ada" } } }) },
 }));
 vi.mock("@/i18n/navigation", () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+  useRouter: () => ({ replace: vi.fn() }),
+  Link: ({ children, href }: React.ComponentProps<"a">) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 vi.mock("@/components/inbox/use-inbox-stream", () => ({
   useInboxStream: () => undefined,
+  useInboxConnectionStatus: () => "idle",
 }));
 vi.mock("@/components/inbox/conversation-messages", () => ({
   useConversationMessages: () => ({
@@ -39,6 +51,9 @@ const queries = vi.hoisted(() => ({
 }));
 vi.mock("@/trpc/react", () => ({
   api: {
+    communities: {
+      getBySlug: { useQuery: () => ({ data: { name: "Workbench Notes" } }) },
+    },
     inbox: {
       listConversations: { useQuery: queries.list },
       getConversation: { useQuery: queries.one },
@@ -100,6 +115,7 @@ function lookUpEnabled(): boolean | undefined {
 
 describe("MessagesShell active conversation", () => {
   beforeEach(() => {
+    media.desktop = false;
     queries.list.mockReset();
     queries.one.mockReset();
     queries.one.mockReturnValue({ data: undefined });
@@ -159,5 +175,80 @@ describe("MessagesShell active conversation", () => {
     expect(rule(0, trpcError("INTERNAL_SERVER_ERROR"))).toBe(true);
     expect(rule(2, trpcError("INTERNAL_SERVER_ERROR"))).toBe(true);
     expect(rule(3, trpcError("INTERNAL_SERVER_ERROR"))).toBe(false);
+  });
+
+  it("selects the most recently active conversation on desktop", () => {
+    media.desktop = true;
+    queries.list.mockReturnValue({
+      data: {
+        conversations: [
+          dmWithBob("empty"),
+          {
+            ...dmWithBob("earlier"),
+            participants: [
+              { userId: "earlier", displayName: "Earlier", image: null },
+            ],
+            lastMessage: { createdAt: new Date("2026-01-02") },
+          },
+          {
+            ...dmWithBob("latest"),
+            participants: [
+              { userId: "latest", displayName: "Latest", image: null },
+            ],
+            lastMessage: { createdAt: new Date("2026-01-03") },
+          },
+        ],
+      },
+    });
+    render(<MessagesShell redesigned fromCommunity="workbench-notes" />);
+    expect(screen.getByRole("heading", { name: "Latest" })).toBeInTheDocument();
+  });
+
+  it("does not auto-read a conversation when opening the Unread view", () => {
+    media.desktop = true;
+    queries.list.mockReturnValue({
+      data: { conversations: [dmWithBob("bob")] },
+    });
+    render(<MessagesShell redesigned unreadOnly />);
+    expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
+  });
+
+  it("previews a read conversation instead of opening the newest unread DM", () => {
+    media.desktop = true;
+    queries.list.mockReturnValue({
+      data: {
+        conversations: [
+          {
+            ...dmWithBob("newest"),
+            lastMessage: { createdAt: new Date("2026-01-03") },
+            participants: [
+              { userId: "alice", displayName: "Alice", image: null },
+            ],
+            unreadCount: 1,
+          },
+          dmWithBob("read"),
+        ],
+      },
+    });
+    render(<MessagesShell redesigned />);
+    expect(screen.getByRole("heading", { name: "Bob" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Alice" })).toBeNull();
+  });
+
+  it("keeps the desktop preview closed if every conversation is unread", () => {
+    media.desktop = true;
+    queries.list.mockReturnValue({
+      data: { conversations: [{ ...dmWithBob("newest"), unreadCount: 1 }] },
+    });
+    render(<MessagesShell redesigned />);
+    expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
+  });
+
+  it("leaves the conversation unopened on a narrow inbox", () => {
+    queries.list.mockReturnValue({
+      data: { conversations: [dmWithBob("bob")] },
+    });
+    render(<MessagesShell redesigned />);
+    expect(screen.queryByTestId("composer")).not.toBeInTheDocument();
   });
 });

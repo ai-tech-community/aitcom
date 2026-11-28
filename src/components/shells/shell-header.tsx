@@ -308,6 +308,8 @@ export function ShellHeader({
   leading,
   navigation,
   locationControl,
+  messagesCommunitySlug,
+  showNotificationLabel,
   trailing,
   destinations,
   account,
@@ -321,6 +323,8 @@ export function ShellHeader({
   leading?: ReactNode;
   navigation?: ReactNode;
   locationControl?: ReactNode;
+  messagesCommunitySlug?: string;
+  showNotificationLabel?: boolean;
   trailing?: ReactNode;
   destinations: readonly ShellDestination[];
   account: readonly ShellDestination[];
@@ -450,8 +454,16 @@ export function ShellHeader({
           <PageFinder groups={searchable} />
           {user ? (
             <>
-              <NotificationBell compact signedIn />
-              <MessagesNavLink presentation="desktop" signedIn />
+              <NotificationBell
+                compact
+                signedIn
+                showLabel={showNotificationLabel}
+              />
+              <MessagesNavLink
+                presentation="desktop"
+                signedIn
+                contextCommunity={messagesCommunitySlug}
+              />
             </>
           ) : !community ? (
             <Link

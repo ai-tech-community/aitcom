@@ -21,17 +21,17 @@ vi.mock("./notification-panel", () => ({ NotificationPanel: () => null }));
 it("uses the existing notifications count in both the bell label and badge", () => {
   const bell = () => (
     <NextIntlClientProvider locale="en" messages={messages}>
-      <NotificationBell compact signedIn />
+      <NotificationBell compact signedIn showLabel />
     </NextIntlClientProvider>
   );
   const { rerender } = render(bell());
-  expect(
-    within(
-      screen.getByRole("button", {
-        name: "Notifications, 4 unread notifications",
-      }),
-    ).getByText("4"),
-  ).toBeVisible();
+  const trigger = within(
+    screen.getByRole("button", {
+      name: "Notifications, 4 unread notifications",
+    }),
+  );
+  expect(trigger.getByText("4")).toBeVisible();
+  expect(trigger.getByText("Notifications")).toBeVisible();
 
   fixture.count = 0;
   rerender(bell());

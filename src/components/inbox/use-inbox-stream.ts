@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { api } from "@/trpc/react";
 import { isChatEnabled } from "@/lib/chat/flags";
 
@@ -13,8 +13,48 @@ type Utils = ReturnType<typeof api.useUtils>;
 let es: EventSource | null = null;
 let refCount = 0;
 
+type ConnectionStatus =
+  | "idle"
+  | "connected"
+  | "reconnecting"
+  | "offline"
+  | "polling";
+let streamStatus: ConnectionStatus = "idle";
+const statusListeners = new Set<() => void>();
+
+function notifyStatus() {
+  statusListeners.forEach((listener) => listener());
+}
+
+function setStreamStatus(status: ConnectionStatus) {
+  streamStatus = status;
+  notifyStatus();
+}
+
+function subscribeToStatus(listener: () => void) {
+  statusListeners.add(listener);
+  window.addEventListener("online", listener);
+  window.addEventListener("offline", listener);
+  return () => {
+    statusListeners.delete(listener);
+    window.removeEventListener("online", listener);
+    window.removeEventListener("offline", listener);
+  };
+}
+
+/** Observe the shared stream without opening a second connection. */
+export function useInboxConnectionStatus() {
+  return useSyncExternalStore<ConnectionStatus>(
+    subscribeToStatus,
+    () => (navigator.onLine ? streamStatus : "offline"),
+    () => "idle",
+  );
+}
+
 function openConnection(utils: Utils): void {
   es = new EventSource("/api/inbox/stream");
+
+  es.onopen = () => setStreamStatus("connected");
 
   es.onmessage = (event: MessageEvent) => {
     try {
@@ -39,6 +79,9 @@ function openConnection(utils: Utils): void {
   };
 
   es.onerror = () => {
+    setStreamStatus(
+      es?.readyState === EventSource.CLOSED ? "polling" : "reconnecting",
+    );
     // Let the browser auto-reconnect; no action needed here.
     console.debug("[useInboxStream] SSE error — browser will reconnect");
   };
@@ -47,6 +90,7 @@ function openConnection(utils: Utils): void {
 function closeConnection(): void {
   es?.close();
   es = null;
+  setStreamStatus("idle");
 }
 
 /**

@@ -21,6 +21,20 @@ type UnreadRow = Pick<
   "id" | "isRoom" | "unreadCount" | "communitySlug" | "spaceId" | "lastMessage"
 >;
 
+const emptyReadThrough: ReadonlyMap<string, number> = new Map();
+const emptyRows: readonly ConversationSummary[] = [];
+
+export function conversationUnreadCount(
+  row: Pick<UnreadRow, "id" | "lastMessage" | "unreadCount">,
+  readThrough: ReadonlyMap<string, number>,
+) {
+  const latest = row.lastMessage?.createdAt;
+  return latest &&
+    new Date(latest).getTime() <= (readThrough.get(row.id) ?? -Infinity)
+    ? 0
+    : row.unreadCount;
+}
+
 export function summarizeShellUnread(
   rows: readonly UnreadRow[],
   readThrough: ReadonlyMap<string, number>,
@@ -35,14 +49,10 @@ export function summarizeShellUnread(
     if (seen.has(row.id)) continue;
     seen.add(row.id);
     accountedUnread += row.unreadCount;
-    const latest = row.lastMessage?.createdAt;
-    // Keep the visible marker clear while the server read write settles.
-    const read =
-      latest &&
-      new Date(latest).getTime() <= (readThrough.get(row.id) ?? -Infinity);
-    if (!row.unreadCount || read) continue;
+    const unread = conversationUnreadCount(row, readThrough);
+    if (!unread) continue;
     if (row.isRoom) {
-      if (row.spaceId) rooms.set(row.spaceId, row.unreadCount);
+      if (row.spaceId) rooms.set(row.spaceId, unread);
       if (row.communitySlug) communities.add(row.communitySlug);
     } else {
       messages++;
@@ -79,6 +89,8 @@ export function resolveMessageBadge(
 const ShellUnreadContext = createContext({
   ...emptyCounts,
   messagesIncludeRooms: false,
+  conversationRows: emptyRows,
+  readThrough: emptyReadThrough,
   markRead: undefined as
     | ((conversationId: string, through: number) => void)
     | undefined,
@@ -145,13 +157,19 @@ function UnreadSnapshot({
     enabled: enabled && !completeFirstPage,
     refetchInterval: LIVE_MESSAGES_FALLBACK_MS,
   });
-  const counts = useMemo(() => {
-    if (!enabled || !data) return emptyCounts;
-    return summarizeShellUnread(
-      data.pages.flatMap((page) => page.conversations),
-      read.viewerId === viewerId ? read.through : new Map(),
-    );
-  }, [enabled, data, read, viewerId]);
+  const readThrough =
+    enabled && read.viewerId === viewerId ? read.through : emptyReadThrough;
+  const conversationRows = useMemo(
+    () =>
+      enabled && data
+        ? data.pages.flatMap((page) => page.conversations)
+        : emptyRows,
+    [enabled, data],
+  );
+  const counts = useMemo(
+    () => summarizeShellUnread(conversationRows, readThrough),
+    [conversationRows, readThrough],
+  );
   const total = enabled && !completeFirstPage ? totalUnread?.count : undefined;
   const morePages = !isError && hasNextPage;
   const needsUnreadRows = total !== undefined && total > counts.accountedUnread;
@@ -191,6 +209,8 @@ function UnreadSnapshot({
         messages: badge.count,
         messagesIncludeRooms: badge.includesRooms,
         markRead: enabled ? markRead : undefined,
+        conversationRows,
+        readThrough,
       }}
     >
       {children}

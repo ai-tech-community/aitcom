@@ -1,5 +1,11 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { MessagesHeaderIdentity } from "@/components/messages/messages-header-identity";
+import {
+  isMessagesPath,
+  messageCommunitySlug,
+} from "@/lib/communities/message-return";
 import { AitLogo } from "@/components/ait-logo";
 import { ArrowUpRight, Ellipsis } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -111,6 +117,11 @@ export function HubShellHeader({
   const nav = useTranslations("nav");
   const auth = useTranslations("auth");
   const pathname = usePathname();
+  const search = useSearchParams();
+  const messagesPage = isMessagesPath(pathname);
+  const fromCommunity = messagesPage
+    ? messageCommunitySlug(search?.get("fromCommunity") ?? undefined)
+    : undefined;
   const publishedUser = useInitialAuthUser();
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(initialUser, publishedUser, session?.user);
@@ -162,7 +173,10 @@ export function HubShellHeader({
         ) : null}
         {user ? (
           <CommunitySwitchList
-            className="border-border mb-4 border-b pb-3 lg:hidden"
+            className={cn(
+              "border-border mb-4 border-b pb-3",
+              !messagesPage && "lg:hidden",
+            )}
             memberships={memberships}
             retryMemberships={
               membershipQuery.isError
@@ -182,56 +196,67 @@ export function HubShellHeader({
   return (
     <OnboardingReminderProvider enabled={!!user}>
       <ShellHeader
-        location={t("hub")}
-        section={section}
+        location={messagesPage ? nav("messages") : t("hub")}
+        section={messagesPage ? undefined : section}
+        locationControl={
+          messagesPage ? (
+            <MessagesHeaderIdentity fromCommunity={fromCommunity} />
+          ) : undefined
+        }
+        messagesCommunitySlug={fromCommunity}
+        showNotificationLabel={messagesPage}
         sectionInNavigation={primaryActive}
         user={user}
         destinations={[...pages, ...membershipHomes]}
         account={account}
         leading={
-          <div className="flex items-center gap-1">
-            <Link
-              href="/"
-              aria-label={t("hub")}
-              className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md px-2 outline-none focus-visible:ring-2 focus-visible:ring-inset"
-            >
-              <AitLogo className="h-4 w-auto" aria-hidden />
-            </Link>
-            {user ? (
-              <CommunitySwitchList
-                inline
-                className="hidden max-w-40 lg:flex xl:max-w-52"
-                memberships={memberships}
-                retryMemberships={
-                  membershipQuery.isError
-                    ? () => void membershipQuery.refetch()
-                    : undefined
-                }
-              />
-            ) : null}
-          </div>
+          messagesPage ? undefined : (
+            <div className="flex items-center gap-1">
+              <Link
+                href="/"
+                aria-label={t("hub")}
+                className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md px-2 outline-none focus-visible:ring-2 focus-visible:ring-inset"
+              >
+                <AitLogo className="h-4 w-auto" aria-hidden />
+              </Link>
+              {user ? (
+                <CommunitySwitchList
+                  inline
+                  className="hidden max-w-40 lg:flex xl:max-w-52"
+                  memberships={memberships}
+                  retryMemberships={
+                    membershipQuery.isError
+                      ? () => void membershipQuery.refetch()
+                      : undefined
+                  }
+                />
+              ) : null}
+            </div>
+          )
         }
         navigation={
-          <nav
-            className="hidden min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] lg:flex xl:gap-1"
-            aria-label={t("hubNavigation")}
-          >
-            {main.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active === item ? "page" : undefined}
-                className={cn(
-                  "focus-visible:ring-ring inline-flex min-h-9 shrink-0 items-center rounded-md px-1.5 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-2 xl:px-3",
-                  active === item
-                    ? shellActiveTab
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          messagesPage ? undefined : (
+            <nav
+              className="hidden min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] lg:flex xl:gap-1"
+              aria-label={t("hubNavigation")}
+            >
+              {main.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active === item ? "page" : undefined}
+                  className={cn(
+                    "focus-visible:ring-ring inline-flex min-h-9 shrink-0 items-center rounded-md px-1.5 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-2 xl:px-3",
+                    active === item
+                      ? shellActiveTab
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          )
         }
         trailing={
           <ShellDrawer
@@ -268,7 +293,11 @@ export function HubShellHeader({
             </Link>
           ) : null,
         )}
-        <MessagesNavLink presentation="bottom" signedIn={!!user} />
+        <MessagesNavLink
+          presentation="bottom"
+          signedIn={!!user}
+          contextCommunity={fromCommunity}
+        />
         <ShellDrawer
           side="right"
           title={t("hubNavigation")}

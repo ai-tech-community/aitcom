@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveMessageBadge, summarizeShellUnread } from "./shell-unread";
+import {
+  conversationUnreadCount,
+  resolveMessageBadge,
+  summarizeShellUnread,
+} from "./shell-unread";
 
 const firstMessage = new Date("2026-11-25T12:00:00Z");
 const room = {
@@ -82,4 +86,13 @@ it("uses a complete first page even when the independent total still has an old 
     count: 1,
     includesRooms: false,
   });
+});
+
+it("uses one read transition to clear both the room badge and the inbox row", () => {
+  const markers = new Map([[room.id, firstMessage.getTime()]]);
+  expect(conversationUnreadCount(room, markers)).toBe(0);
+  expect(summarizeShellUnread([room], markers).rooms.has("workshop")).toBe(
+    false,
+  );
+  expect(conversationUnreadCount(inbox, markers)).toBe(2);
 });

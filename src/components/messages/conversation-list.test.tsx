@@ -5,10 +5,23 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "../../../messages/en.json";
 
 vi.mock("@/i18n/navigation", () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+  Link: ({ children, ...props }: React.ComponentProps<"a">) => (
+    <a {...props}>{children}</a>
+  ),
 }));
 
-const conversations = vi.hoisted(() => ({ list: [] as unknown[] }));
+const conversations = vi.hoisted(() => ({
+  list: [] as unknown[],
+  rows: [] as unknown[],
+  markers: new Map<string, number>(),
+}));
+vi.mock("@/components/shells/shell-unread", async (load) => ({
+  ...(await load<Record<string, unknown>>()),
+  useShellUnread: () => ({
+    conversationRows: conversations.rows,
+    readThrough: conversations.markers,
+  }),
+}));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({}),
@@ -57,10 +70,12 @@ function dmWithBob(lastMessage: {
   };
 }
 
-function renderList() {
+function renderList(
+  overrides?: Partial<React.ComponentProps<typeof ConversationList>>,
+) {
   render(
     <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
-      <ConversationList onNewMessage={vi.fn()} />
+      <ConversationList onNewMessage={vi.fn()} {...overrides} />
     </NextIntlClientProvider>,
   );
 }
@@ -85,4 +100,55 @@ describe("ConversationList", () => {
     expect(screen.getByText("look at this")).toBeInTheDocument();
     expect(screen.queryByText("GIF")).toBeNull();
   });
+});
+
+it("retains the community return path and labels the unread count", () => {
+  conversations.list = [
+    {
+      ...dmWithBob({ content: "Workshop notes", attachmentKind: null }),
+      unreadCount: 3,
+    },
+  ];
+  renderList({
+    redesigned: true,
+    fromCommunity: "workbench-notes",
+    activeConversationId: "c1",
+  });
+  const row = screen.getByRole("link", { name: /Bob/ });
+  expect(row).toHaveAttribute(
+    "href",
+    "/messages/c1?fromCommunity=workbench-notes",
+  );
+  expect(row).toHaveAttribute("aria-current", "page");
+  expect(screen.getByLabelText("3 unread messages")).toBeVisible();
+});
+
+it("opens the unread snapshot and omits a room already read locally", () => {
+  const base = dmWithBob({ content: "Workshop notes", attachmentKind: null });
+  conversations.list = [
+    { ...base, id: "room", isRoom: true, title: "Workshop", unreadCount: 3 },
+  ];
+  conversations.rows = [{ ...base, id: "older-dm", unreadCount: 2 }];
+  conversations.markers.set(
+    "room",
+    new Date(base.lastMessage.createdAt).getTime(),
+  );
+  try {
+    renderList({
+      redesigned: true,
+      fromCommunity: "workbench-notes",
+      unreadOnly: true,
+    });
+    expect(screen.queryByText("Workshop", { exact: true })).toBeNull();
+    const row = screen.getByRole("link", { name: /Bob/ });
+    expect(row).toHaveAttribute(
+      "href",
+      "/messages/older-dm?fromCommunity=workbench-notes&view=unread",
+    );
+    expect(screen.getByText("Bob")).toHaveClass("font-bold");
+    expect(screen.getByLabelText("2 unread messages")).toBeVisible();
+  } finally {
+    conversations.rows = [];
+    conversations.markers.clear();
+  }
 });

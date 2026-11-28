@@ -8,16 +8,28 @@ import { useRouter } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SectionLabel } from "@/components/ui/section-label";
+import { ErrorState } from "@/components/ui/error-state";
+import { messagesHref } from "@/lib/communities/message-return";
+import { cn } from "@/lib/utils";
+import { ChatAvatar } from "./chat-avatar";
 import { getInitials } from "@/lib/avatar";
 
 type NewMessageProps = {
+  redesigned?: boolean;
+  fromCommunity?: string;
   onCancel: () => void;
   /** Called after a conversation is started (e.g. close the overlay). */
   onStarted?: (conversationId: string) => void;
 };
 
-export function NewMessage({ onCancel, onStarted }: NewMessageProps) {
+export function NewMessage({
+  onCancel,
+  onStarted,
+  redesigned = false,
+  fromCommunity,
+}: NewMessageProps) {
   const t = useTranslations("inbox");
+  const chat = useTranslations("redesign.chat");
   const router = useRouter();
   const utils = api.useUtils();
   const [query, setQuery] = useState("");
@@ -31,7 +43,7 @@ export function NewMessage({ onCancel, onStarted }: NewMessageProps) {
     onSuccess: async (data) => {
       await utils.inbox.listConversations.invalidate();
       onStarted?.(data.conversationId);
-      router.push(`/messages/${data.conversationId}`);
+      router.push(messagesHref(data.conversationId, fromCommunity));
     },
   });
 
@@ -44,19 +56,31 @@ export function NewMessage({ onCancel, onStarted }: NewMessageProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring -ml-1 rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          className={cn(
+            "text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring -ml-1 rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none",
+            redesigned && "grid size-11 place-items-center",
+          )}
           aria-label={t("back")}
         >
           <ArrowLeftIcon className="h-4 w-4" />
         </button>
-        <SectionLabel bordered={false} marker={false}>
-          {t("newMessage")}
-        </SectionLabel>
+        {redesigned ? (
+          <h2 className="text-lg font-semibold">{t("newMessage")}</h2>
+        ) : (
+          <SectionLabel bordered={false} marker={false}>
+            {t("newMessage")}
+          </SectionLabel>
+        )}
       </div>
 
       {/* Search */}
       <div className="border-border border-b px-3 py-2.5">
-        <div className="bg-secondary focus-within:ring-ring flex items-center gap-2 rounded-full px-3 py-1.5 transition-shadow focus-within:ring-2">
+        <div
+          className={cn(
+            "bg-secondary focus-within:ring-ring flex items-center gap-2 rounded-full px-3 py-1.5 transition-shadow focus-within:ring-2",
+            redesigned && "bg-background min-h-11 rounded-md border",
+          )}
+        >
           <SearchIcon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
           <input
             type="text"
@@ -70,6 +94,11 @@ export function NewMessage({ onCancel, onStarted }: NewMessageProps) {
         </div>
       </div>
 
+      {redesigned && startConversation.isError ? (
+        <p role="alert" className="text-destructive px-4 py-3 text-sm">
+          {chat("startError")}
+        </p>
+      ) : null}
       {/* Results */}
       <div className="min-h-0 flex-1 overflow-y-auto py-1">
         {query.trim().length === 0 ? (
@@ -78,6 +107,8 @@ export function NewMessage({ onCancel, onStarted }: NewMessageProps) {
               {t("searchMembers")}
             </p>
           </div>
+        ) : redesigned && membersQuery.isError ? (
+          <ErrorState onRetry={() => void membersQuery.refetch()} />
         ) : membersQuery.isLoading ? (
           <ul className="flex flex-col px-1.5">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -103,17 +134,25 @@ export function NewMessage({ onCancel, onStarted }: NewMessageProps) {
                   }
                   className="hover:bg-secondary/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-md px-2.5 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
                 >
-                  <Avatar size="lg">
-                    {member.image && (
-                      <AvatarImage
-                        src={member.image}
-                        alt={member.displayName}
-                      />
-                    )}
-                    <AvatarFallback>
-                      {getInitials(member.displayName)}
-                    </AvatarFallback>
-                  </Avatar>
+                  {redesigned ? (
+                    <ChatAvatar
+                      size="lg"
+                      name={member.displayName}
+                      image={member.avatarUrl ?? member.image}
+                    />
+                  ) : (
+                    <Avatar size="lg">
+                      {member.image && (
+                        <AvatarImage
+                          src={member.image}
+                          alt={member.displayName}
+                        />
+                      )}
+                      <AvatarFallback>
+                        {getInitials(member.displayName)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
                   <span className="text-foreground truncate text-sm font-medium">
                     {member.displayName}
                   </span>

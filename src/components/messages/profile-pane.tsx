@@ -9,11 +9,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SectionLabel } from "@/components/ui/section-label";
+import { ChatAvatar } from "./chat-avatar";
+import { cn } from "@/lib/utils";
 import { getInitials } from "@/lib/avatar";
 
 type ProfilePaneProps = {
   /** A peer userId (DM). Null for agent conversations. */
   peerUserId: string | null;
+  redesigned?: boolean;
   /** Used as the header fallback while the profile loads or stays private. */
   fallbackName: string;
   fallbackImage: string | null;
@@ -48,6 +51,7 @@ export function ProfilePane({
   fallbackImage,
   isAgent,
   agentInfo,
+  redesigned = false,
 }: ProfilePaneProps) {
   const t = useTranslations("inbox");
 
@@ -60,22 +64,36 @@ export function ProfilePane({
   if (isAgent) {
     const name = agentInfo?.name ?? fallbackName;
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div
+        className={cn(
+          "flex h-full min-h-0 flex-col",
+          redesigned && "overflow-y-auto",
+        )}
+      >
         <Header label={t("profileKicker")} />
         <div className="flex flex-col items-center gap-3 px-5 py-6 text-center">
-          <div className="relative">
-            <Avatar className="size-20">
-              {agentInfo?.avatar && (
-                <AvatarImage src={agentInfo.avatar} alt={name} />
-              )}
-              <AvatarFallback className="text-xl">
-                {getInitials(name)}
-              </AvatarFallback>
-            </Avatar>
-            <span className="bg-background absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full">
-              <BotIcon className="text-muted-foreground h-4 w-4" />
-            </span>
-          </div>
+          {redesigned ? (
+            <ChatAvatar
+              kind="agent"
+              name={name}
+              image={agentInfo?.avatar}
+              className="size-14"
+            />
+          ) : (
+            <div className="relative">
+              <Avatar className="size-20">
+                {agentInfo?.avatar && (
+                  <AvatarImage src={agentInfo.avatar} alt={name} />
+                )}
+                <AvatarFallback className="text-xl">
+                  {getInitials(name)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="bg-background absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full">
+                <BotIcon className="text-muted-foreground h-4 w-4" />
+              </span>
+            </div>
+          )}
           <div>
             <p className="text-foreground text-base font-semibold">{name}</p>
             <span className="border-border text-muted-foreground mt-2 inline-block rounded border px-2 py-0.5 font-mono text-xs tracking-wider uppercase">
@@ -100,7 +118,12 @@ export function ProfilePane({
   // ── Loading ────────────────────────────────────────────────────────────────
   if (profileQuery.isLoading) {
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div
+        className={cn(
+          "flex h-full min-h-0 flex-col",
+          redesigned && "overflow-y-auto",
+        )}
+      >
         <Header label={t("profileKicker")} />
         <div className="flex flex-col items-center gap-3 px-5 py-6">
           <Skeleton className="size-20 rounded-full" />
@@ -120,17 +143,30 @@ export function ProfilePane({
   // ── Private / unavailable ──────────────────────────────────────────────────
   if (!data) {
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div
+        className={cn(
+          "flex h-full min-h-0 flex-col",
+          redesigned && "overflow-y-auto",
+        )}
+      >
         <Header label={t("profileKicker")} />
         <div className="flex flex-col items-center gap-3 px-5 py-6 text-center">
-          <Avatar className="size-20">
-            {fallbackImage && (
-              <AvatarImage src={fallbackImage} alt={fallbackName} />
-            )}
-            <AvatarFallback className="text-xl">
-              {getInitials(fallbackName)}
-            </AvatarFallback>
-          </Avatar>
+          {redesigned ? (
+            <ChatAvatar
+              name={fallbackName}
+              image={fallbackImage}
+              className="size-14"
+            />
+          ) : (
+            <Avatar className="size-20">
+              {fallbackImage && (
+                <AvatarImage src={fallbackImage} alt={fallbackName} />
+              )}
+              <AvatarFallback className="text-xl">
+                {getInitials(fallbackName)}
+              </AvatarFallback>
+            </Avatar>
+          )}
           <p className="text-foreground text-base font-semibold">
             {fallbackName}
           </p>
@@ -149,12 +185,20 @@ export function ProfilePane({
 
       {/* Identity */}
       <div className="flex flex-col items-center gap-3 px-5 py-6 text-center">
-        <Avatar className="size-20">
-          {image && <AvatarImage src={image} alt={profile.displayName} />}
-          <AvatarFallback className="text-xl">
-            {getInitials(profile.displayName)}
-          </AvatarFallback>
-        </Avatar>
+        {redesigned ? (
+          <ChatAvatar
+            name={fallbackName}
+            image={fallbackImage}
+            className="size-14"
+          />
+        ) : (
+          <Avatar className="size-20">
+            {image && <AvatarImage src={image} alt={profile.displayName} />}
+            <AvatarFallback className="text-xl">
+              {getInitials(profile.displayName)}
+            </AvatarFallback>
+          </Avatar>
+        )}
         <div>
           <p className="text-foreground text-base font-semibold">
             {profile.displayName}
@@ -193,7 +237,10 @@ export function ProfilePane({
           <SectionLabel as="h3" bordered={false} className="mb-2">
             {t("bioLabel")}
           </SectionLabel>
-          <p className="text-muted-foreground text-sm leading-relaxed">
+          <p
+            dir={redesigned ? "auto" : undefined}
+            className="text-muted-foreground text-sm leading-relaxed"
+          >
             {profile.bio}
           </p>
         </div>
@@ -209,7 +256,10 @@ export function ProfilePane({
             {profile.skills.map((skill) => (
               <span
                 key={skill}
-                className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs tracking-wider"
+                className={cn(
+                  "border-border text-muted-foreground rounded border px-2 py-0.5 text-xs",
+                  !redesigned && "font-mono tracking-wider",
+                )}
               >
                 {skill}
               </span>
@@ -219,10 +269,18 @@ export function ProfilePane({
       )}
 
       {/* View full profile */}
-      <div className="border-border mt-auto border-t px-5 py-4">
+      <div
+        className={cn(
+          "border-border border-t px-5 py-4",
+          !redesigned && "mt-auto",
+        )}
+      >
         <Link
           href={`/members/${profile.userId}`}
-          className="border-border hover:bg-secondary focus-visible:ring-ring flex items-center justify-center rounded-md border px-3 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          className={cn(
+            "border-border hover:bg-secondary focus-visible:ring-ring flex items-center justify-center rounded-md border px-3 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none",
+            redesigned && "min-h-11",
+          )}
         >
           {t("viewFullProfile")}
         </Link>
@@ -239,6 +297,7 @@ type RoomInfoPaneProps = {
   communityLogoUrl: string | null;
   communitySlug: string | null;
   roomSlug: string | null;
+  redesigned?: boolean;
 };
 
 export function RoomInfoPane({
@@ -249,23 +308,36 @@ export function RoomInfoPane({
   communityLogoUrl,
   communitySlug,
   roomSlug,
+  redesigned = false,
 }: RoomInfoPaneProps) {
   const t = useTranslations("communities.rooms");
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto">
-      <Header label={`/ ${t("community").toUpperCase()}`} />
+      <Header
+        label={
+          redesigned ? t("community") : `/ ${t("community").toUpperCase()}`
+        }
+      />
 
       {/* Community identity */}
       <div className="flex flex-col items-center gap-3 px-5 py-6 text-center">
-        <Avatar className="size-20">
-          {communityLogoUrl && communityName && (
-            <AvatarImage src={communityLogoUrl} alt={communityName} />
-          )}
-          <AvatarFallback className="text-xl">
-            {getInitials(communityName ?? "?")}
-          </AvatarFallback>
-        </Avatar>
+        {redesigned ? (
+          <ChatAvatar
+            name={communityName}
+            image={communityLogoUrl}
+            className="size-14"
+          />
+        ) : (
+          <Avatar className="size-20">
+            {communityLogoUrl && communityName && (
+              <AvatarImage src={communityLogoUrl} alt={communityName} />
+            )}
+            <AvatarFallback className="text-xl">
+              {getInitials(communityName ?? "?")}
+            </AvatarFallback>
+          </Avatar>
+        )}
         <div>
           <p className="text-foreground text-base font-semibold">
             {communityName ?? "—"}
@@ -280,11 +352,21 @@ export function RoomInfoPane({
           {roomVisibility === "private" ? (
             <Lock className="text-muted-foreground h-3 w-3 shrink-0" />
           ) : null}
-          <span className="text-muted-foreground font-mono text-xs">
+          <span
+            className={cn(
+              "text-muted-foreground text-xs",
+              !redesigned && "font-mono",
+            )}
+          >
             {roomVisibility === "private" ? t("private") : t("public")}
           </span>
         </div>
-        <p className="text-muted-foreground font-mono text-xs">
+        <p
+          className={cn(
+            "text-muted-foreground text-xs",
+            !redesigned && "font-mono",
+          )}
+        >
           {t("memberCount", { count: memberCount })}
         </p>
       </div>
@@ -294,7 +376,10 @@ export function RoomInfoPane({
         <div className="border-border mt-auto border-t px-5 py-4">
           <Link
             href={`/communities/${communitySlug}/spaces/${roomSlug}`}
-            className="border-border hover:bg-secondary focus-visible:ring-ring flex items-center justify-center rounded-md border px-3 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            className={cn(
+              "border-border hover:bg-secondary focus-visible:ring-ring flex items-center justify-center rounded-md border px-3 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none",
+              redesigned && "min-h-11",
+            )}
           >
             {t("openInCommunity")}
           </Link>
@@ -306,7 +391,10 @@ export function RoomInfoPane({
 
 function Header({ label }: { label: string }) {
   return (
-    <div className="border-border flex items-center border-b px-5 py-3">
+    <div
+      data-profile-header=""
+      className="border-border flex items-center border-b px-5 py-3"
+    >
       <SectionLabel bordered={false}>{label}</SectionLabel>
     </div>
   );

@@ -5,6 +5,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import {
+  messageCommunitySlug,
+  messagesHref,
+} from "@/lib/communities/message-return";
 import { cn } from "@/lib/utils";
 import { LIVE_BADGE_REFETCH_MS } from "./live-refetch";
 import { shellActiveTab } from "@/components/shells/shell-navigation";
@@ -21,9 +25,11 @@ import { ShellUnreadBadge } from "@/components/shells/unread-badge";
 export function MessagesNavLink({
   presentation = "legacy",
   signedIn = false,
+  contextCommunity,
 }: {
   presentation?: "legacy" | "desktop" | "bottom";
   signedIn?: boolean;
+  contextCommunity?: string;
 } = {}) {
   const { data: session } = authClient.useSession();
   const t = useTranslations("nav");
@@ -53,16 +59,25 @@ export function MessagesNavLink({
   const active =
     pathname === "/messages" ||
     (presentation !== "legacy" && pathname.startsWith("/messages/"));
+  const fromCommunity = compact
+    ? (contextCommunity ??
+      messageCommunitySlug(/^\/communities\/([^/]+)/.exec(pathname)?.[1]))
+    : undefined;
+  const destination = messagesHref(
+    undefined,
+    fromCommunity,
+    compact && count > 0,
+  );
   const bottom = presentation === "bottom";
 
   return (
     <Link
       href={
         authenticated
-          ? "/messages"
+          ? destination
           : {
               pathname: "/auth/signin",
-              query: { redirect: `/${locale}/messages` },
+              query: { redirect: `/${locale}${destination}` },
             }
       }
       aria-label={`${label}${count > 0 ? `, ${compact ? unreadLabel : `${count} unread`}` : ""}`}

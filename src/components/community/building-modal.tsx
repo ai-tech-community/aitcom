@@ -6,7 +6,9 @@ import {
   useCallback,
   useRef,
   type PointerEvent as ReactPointerEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import {
   LazyMotion,
@@ -15,8 +17,9 @@ import {
   AnimatePresence,
   useDragControls,
   useMotionValue,
+  useReducedMotion,
 } from "framer-motion";
-import { Terminal, Minus, Maximize2, Minimize2, X } from "lucide-react";
+import { Hash, Terminal, Minus, Maximize2, Minimize2, X } from "lucide-react";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -37,6 +40,8 @@ type BuildingModalProps = {
   onClose: () => void;
   title: string;
   subtitle?: string;
+  /** Parallel chat windows use a flush content area and a localized title bar. */
+  roomWindow?: { community: string };
   /** Offset index so multiple windows don't stack exactly on top of each other */
   windowIndex?: number;
   /** When provided, the minimize button calls this instead of toggling internal minimize state. */
@@ -54,17 +59,27 @@ let topZ = 40;
 const DEFAULT_WIDTH = 640;
 const DEFAULT_HEIGHT = 480;
 const STACK_OFFSET = 30;
+const KEYBOARD_STEP = 24;
+const WINDOW_DIRECTION: Record<string, readonly [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+};
 
 export function BuildingModal({
   isOpen,
   onClose,
   title,
   subtitle,
+  roomWindow,
   windowIndex = 0,
   onMinimize,
   onExitComplete,
   children,
 }: BuildingModalProps) {
+  const tChat = useTranslations("redesign.chat");
+  const reduceMotion = useReducedMotion();
   const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const [windowState, setWindowState] = useState<WindowState>("normal");
@@ -161,24 +176,84 @@ export function BuildingModal({
     }
   }, []);
 
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const returnFocusTo = useRef<HTMLElement | null>(null);
+  const isRoomWindow = Boolean(roomWindow);
+  useEffect(() => {
+    if (!isOpen || !isRoomWindow) return;
+    const previous = document.activeElement;
+    returnFocusTo.current = previous instanceof HTMLElement ? previous : null;
+    closeButton.current?.focus();
+  }, [isOpen, isRoomWindow]);
+
+  function finishExit() {
+    const active = document.activeElement;
+    if (
+      isRoomWindow &&
+      returnFocusTo.current?.isConnected &&
+      (active === document.body || containerRef.current?.contains(active))
+    ) {
+      returnFocusTo.current.focus();
+    }
+    onExitComplete?.();
+  }
+
+  function positionFromKeyboard(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget || windowState !== "normal")
+      return;
+    const direction = WINDOW_DIRECTION[event.key];
+    const frame = containerRef.current?.getBoundingClientRect();
+    if (!direction || !frame) return;
+    event.preventDefault();
+    const [horizontal, vertical] = direction;
+    const dx = horizontal * KEYBOARD_STEP;
+    const dy = vertical * KEYBOARD_STEP;
+    if (event.shiftKey) {
+      setSize((current) => ({
+        w: Math.max(360, Math.min(window.innerWidth, current.w + dx)),
+        h: Math.max(280, Math.min(window.innerHeight - 48, current.h + dy)),
+      }));
+      return;
+    }
+    x.set(
+      x.get() +
+        Math.min(window.innerWidth - frame.right, Math.max(-frame.left, dx)),
+    );
+    y.set(
+      y.get() +
+        Math.min(
+          window.innerHeight - frame.bottom,
+          Math.max(48 - frame.top, dy),
+        ),
+    );
+  }
+
   // Cascade offset for multiple windows
   const offset = windowIndex * STACK_OFFSET;
 
   return (
     <LazyMotion features={domMax}>
-      <AnimatePresence onExitComplete={onExitComplete}>
+      <AnimatePresence
+        onExitComplete={isRoomWindow ? finishExit : onExitComplete}
+      >
         {isOpen && (
           <m.div
             ref={containerRef}
-            className={`border-border bg-card fixed flex flex-col overflow-hidden border shadow-2xl ${
-              isMobile
-                ? "inset-0 z-40 rounded-none"
-                : windowState === "maximized"
-                  ? "inset-x-0 top-12 bottom-0 z-40 rounded-none"
-                  : windowState === "minimized"
-                    ? "bottom-0 z-40 w-72 rounded-t-lg rounded-b-none"
-                    : "z-40 rounded-lg"
-            }`}
+            role={roomWindow ? "region" : undefined}
+            aria-label={roomWindow ? title : undefined}
+            className={cn(
+              `border-border bg-card fixed flex flex-col overflow-hidden border shadow-2xl ${
+                isMobile
+                  ? "inset-0 z-40 rounded-none"
+                  : windowState === "maximized"
+                    ? "inset-x-0 top-12 bottom-0 z-40 rounded-none"
+                    : windowState === "minimized"
+                      ? "bottom-0 z-40 w-72 rounded-t-lg rounded-b-none"
+                      : "z-40 rounded-lg"
+              }`,
+              roomWindow &&
+                "bg-background text-foreground max-h-dvh max-w-[100vw] shadow-lg",
+            )}
             style={{
               // x/y carry the drag offset; zeroed (above) when not normal so
               // maximized/minimized snap to their CSS edges.
@@ -197,52 +272,132 @@ export function BuildingModal({
                     ? { left: 16 + windowIndex * 288 }
                     : {}),
             }}
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={
+              roomWindow && reduceMotion ? false : { opacity: 0, scale: 0.95 }
+            }
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            exit={
+              roomWindow && reduceMotion
+                ? { opacity: 1 }
+                : { opacity: 0, scale: 0.95 }
+            }
+            transition={
+              roomWindow && reduceMotion
+                ? { duration: 0 }
+                : { type: "spring", stiffness: 300, damping: 30 }
+            }
             drag={!isMobile && windowState === "normal"}
             dragControls={dragControls}
             dragMomentum={false}
             dragListener={false}
             onPointerDown={bringToFront}
+            onFocus={roomWindow ? bringToFront : undefined}
+            onKeyDown={
+              roomWindow
+                ? (event) => {
+                    if (event.key === "Escape" && !event.defaultPrevented)
+                      onClose();
+                  }
+                : undefined
+            }
           >
             {/* Title bar - drag handle on desktop, static on mobile */}
             <div
-              className={`border-border bg-card flex h-9 shrink-0 items-center justify-between border-b px-3 select-none ${
-                isMobile ? "" : "cursor-grab touch-none active:cursor-grabbing"
-              }`}
+              tabIndex={
+                isRoomWindow && !isMobile && windowState === "normal"
+                  ? 0
+                  : undefined
+              }
+              role={isRoomWindow && !isMobile ? "group" : undefined}
+              aria-label={
+                isRoomWindow && !isMobile ? tChat("windowPosition") : undefined
+              }
+              title={
+                isRoomWindow && !isMobile ? tChat("windowPosition") : undefined
+              }
+              onKeyDown={
+                isRoomWindow && !isMobile ? positionFromKeyboard : undefined
+              }
+              className={cn(
+                `border-border bg-card flex h-9 shrink-0 items-center justify-between border-b px-3 select-none ${
+                  isMobile
+                    ? ""
+                    : "cursor-grab touch-none active:cursor-grabbing"
+                }`,
+                roomWindow &&
+                  "bg-muted/35 focus-visible:ring-ring h-12 gap-2 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
+              )}
               onPointerDown={(e) => {
-                if (!isMobile && windowState === "normal")
+                if (
+                  !isMobile &&
+                  windowState === "normal" &&
+                  (!roomWindow ||
+                    !(
+                      e.target instanceof Element && e.target.closest("button")
+                    ))
+                )
                   dragControls.start(e);
               }}
               onDoubleClick={isMobile ? undefined : toggleMaximize}
             >
-              <div className="flex items-center gap-2">
-                <Terminal className="text-muted-foreground h-3.5 w-3.5" />
-              </div>
-              <span className="text-muted-foreground pointer-events-none font-mono text-xs font-medium tracking-wider">
-                {title.toUpperCase()}
-              </span>
+              {roomWindow ? (
+                <div className="text-muted-foreground flex min-w-0 flex-1 items-center gap-2">
+                  <Hash aria-hidden className="size-4 shrink-0" />
+                  <span dir="auto" className="truncate text-sm font-medium">
+                    {roomWindow.community}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Terminal className="text-muted-foreground h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-muted-foreground pointer-events-none font-mono text-xs font-medium tracking-wider">
+                    {title.toUpperCase()}
+                  </span>
+                </>
+              )}
               <div className="flex items-center gap-0.5">
                 {!isMobile && (
                   <>
                     <button
                       onClick={handleMinimizeClick}
-                      className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                      aria-label="Minimize"
-                      title="Minimize"
+                      className={cn(
+                        "text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors",
+                        roomWindow &&
+                          "focus-visible:ring-ring grid size-11 place-items-center focus-visible:ring-2 focus-visible:outline-none",
+                      )}
+                      aria-label={
+                        roomWindow ? tChat("minimizeWindow") : "Minimize"
+                      }
+                      title={roomWindow ? tChat("minimizeWindow") : "Minimize"}
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={toggleMaximize}
-                      className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                      className={cn(
+                        "text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors",
+                        roomWindow &&
+                          "focus-visible:ring-ring grid size-11 place-items-center focus-visible:ring-2 focus-visible:outline-none",
+                      )}
                       aria-label={
-                        windowState === "maximized" ? "Restore" : "Maximize"
+                        windowState === "maximized"
+                          ? roomWindow
+                            ? tChat("restoreWindow")
+                            : "Restore"
+                          : roomWindow
+                            ? tChat("maximizeWindow")
+                            : "Maximize"
                       }
                       title={
-                        windowState === "maximized" ? "Restore" : "Maximize"
+                        windowState === "maximized"
+                          ? roomWindow
+                            ? tChat("restoreWindow")
+                            : "Restore"
+                          : roomWindow
+                            ? tChat("maximizeWindow")
+                            : "Maximize"
                       }
                     >
                       {windowState === "maximized" ? (
@@ -254,8 +409,13 @@ export function BuildingModal({
                   </>
                 )}
                 <button
+                  ref={roomWindow ? closeButton : undefined}
                   onClick={onClose}
-                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors"
+                  className={cn(
+                    "text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors",
+                    roomWindow &&
+                      "focus-visible:ring-ring grid size-11 place-items-center focus-visible:ring-2 focus-visible:outline-none",
+                  )}
                   aria-label={tCommon("close")}
                   title={tCommon("close")}
                 >
@@ -265,38 +425,41 @@ export function BuildingModal({
             </div>
 
             {/* Content - hidden when minimized */}
-            {windowState !== "minimized" && (
-              <div className="flex flex-1 flex-col overflow-hidden px-4 py-4 sm:px-8 sm:py-6">
-                {/* Top grid markers */}
-                <div className="-mx-4 -mt-4 flex justify-between px-4 pb-3 sm:-mx-8 sm:-mt-6 sm:pb-4">
-                  <span className="text-border font-mono text-sm">+</span>
-                  <span className="text-border font-mono text-sm">+</span>
-                  <span className="text-border font-mono text-sm">+</span>
-                </div>
-
-                {/* Title block */}
-                {subtitle && (
-                  <div className="mb-3 shrink-0 sm:mb-4">
-                    <h2 className="text-foreground text-lg font-semibold tracking-tight sm:text-2xl">
-                      {title}
-                    </h2>
-                    <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed sm:mt-1 sm:text-base">
-                      {subtitle}
-                    </p>
+            {windowState !== "minimized" &&
+              (roomWindow ? (
+                <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+              ) : (
+                <div className="flex flex-1 flex-col overflow-hidden px-4 py-4 sm:px-8 sm:py-6">
+                  {/* Top grid markers */}
+                  <div className="-mx-4 -mt-4 flex justify-between px-4 pb-3 sm:-mx-8 sm:-mt-6 sm:pb-4">
+                    <span className="text-border font-mono text-sm">+</span>
+                    <span className="text-border font-mono text-sm">+</span>
+                    <span className="text-border font-mono text-sm">+</span>
                   </div>
-                )}
 
-                {/* Scrollable content */}
-                <div className="flex-1 overflow-y-auto">{children}</div>
+                  {/* Title block */}
+                  {subtitle && (
+                    <div className="mb-3 shrink-0 sm:mb-4">
+                      <h2 className="text-foreground text-lg font-semibold tracking-tight sm:text-2xl">
+                        {title}
+                      </h2>
+                      <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed sm:mt-1 sm:text-base">
+                        {subtitle}
+                      </p>
+                    </div>
+                  )}
 
-                {/* Bottom grid markers */}
-                <div className="-mx-4 -mb-4 flex justify-between px-4 pt-3 sm:-mx-8 sm:-mb-6 sm:pt-4">
-                  <span className="text-border font-mono text-sm">+</span>
-                  <span className="text-border font-mono text-sm">+</span>
-                  <span className="text-border font-mono text-sm">+</span>
+                  {/* Scrollable content */}
+                  <div className="flex-1 overflow-y-auto">{children}</div>
+
+                  {/* Bottom grid markers */}
+                  <div className="-mx-4 -mb-4 flex justify-between px-4 pt-3 sm:-mx-8 sm:-mb-6 sm:pt-4">
+                    <span className="text-border font-mono text-sm">+</span>
+                    <span className="text-border font-mono text-sm">+</span>
+                    <span className="text-border font-mono text-sm">+</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              ))}
 
             {/* Resize handle - normal mode only, desktop only */}
             {!isMobile && windowState === "normal" && (
