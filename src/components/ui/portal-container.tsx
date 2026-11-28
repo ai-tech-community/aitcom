@@ -4,7 +4,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -24,9 +26,11 @@ import {
  */
 export type PortalHost = {
   /**
-   * The host element now, if it is attached. A passive effect of the
-   * commit that creates the host already sees it; a layout effect of that
-   * commit does not, and its layer opens on `body`.
+   * The host element now, if it is attached. Called directly inside a
+   * layout effect of the commit that attaches the host, it returns
+   * undefined (the owner's effect runs after its children's); everywhere
+   * else, including a dialog asked for from that layout effect and
+   * rendered later, it sees the host.
    */
   resolve: () => HTMLElement | undefined;
   /**
@@ -43,16 +47,11 @@ const NO_HOST: PortalHost = {
   subscribe: () => () => undefined,
 };
 
-type PortalContainerContextValue = {
-  /** The host element for rendering; null until it has mounted. */
-  container: HTMLElement | null;
-  host: PortalHost;
-};
-
-const PortalContainerContext = createContext<PortalContainerContextValue>({
-  container: null,
-  host: NO_HOST,
-});
+// Two contexts: the element changes once (null, then the attached node) and
+// re-renders the portals that render into it; the scope's host never
+// changes, so code that only opens layers later is not re-rendered by it.
+const ContainerContext = createContext<HTMLElement | null>(null);
+const HostContext = createContext<PortalHost>(NO_HOST);
 
 export function PortalContainerProvider({
   container,
@@ -62,45 +61,51 @@ export function PortalContainerProvider({
   /** The host element; null until it has mounted. */
   container: HTMLElement | null;
   /**
-   * The host for code that opens a layer later. Pass a stable object whose
+   * The host for code that opens a layer later: a stable object whose
    * `resolve` reads the element its owner attaches and whose `subscribe`
-   * reports attach and detach; defaults to `container`, never changing.
+   * reports attach and detach. Defaults to `container`, never reporting.
    */
   host?: PortalHost;
   children: ReactNode;
 }) {
-  const resolveContainer = useCallback(
-    () => container ?? undefined,
+  const containerHost = useMemo<PortalHost>(
+    () => ({
+      resolve: () => container ?? undefined,
+      subscribe: NO_HOST.subscribe,
+    }),
     [container],
   );
-  const value = useMemo(
-    () => ({
-      container,
-      host: host ?? { resolve: resolveContainer, subscribe: NO_HOST.subscribe },
-    }),
-    [container, host, resolveContainer],
-  );
   return (
-    <PortalContainerContext.Provider value={value}>
-      {children}
-    </PortalContainerContext.Provider>
+    <HostContext.Provider value={host ?? containerHost}>
+      <ContainerContext.Provider value={container}>
+        {children}
+      </ContainerContext.Provider>
+    </HostContext.Provider>
   );
 }
 
 /**
  * The host element for a floating layer, or `undefined` for Radix's default
  * (`document.body`). Pass it as the Radix `Portal`'s `container`.
+ *
+ * Undefined on the first render, like Radix's own guard: given a container,
+ * Radix portals at once, so content in a Suspense boundary that hydrates
+ * after the host exists would render markup the server did not. It flips
+ * in the same layout phase as Radix's guard, so nothing shows on `body`
+ * first.
  */
 export function usePortalContainer(): HTMLElement | undefined {
-  return useContext(PortalContainerContext).container ?? undefined;
+  const container = useContext(ContainerContext);
+  const [mounted, setMounted] = useState(false);
+  useLayoutEffect(() => {
+    setMounted(true);
+  }, []);
+  return mounted ? (container ?? undefined) : undefined;
 }
 
-/**
- * The host for opening a layer from an event or effect. Stable when the
- * provider's `host` is.
- */
+/** The host for opening a layer from an event or effect. */
 export function usePortalHost(): PortalHost {
-  return useContext(PortalContainerContext).host;
+  return useContext(HostContext);
 }
 
 const noHost = () => null;

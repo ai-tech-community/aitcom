@@ -2,7 +2,6 @@
 
 import {
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -147,19 +146,18 @@ function useFloatingLayer(theme: CommunityTheme): {
   // development re-runs the effect; a Suspense boundary can hide the frame).
   const layerRef = useRef<HTMLElement | null>(null);
   const listenersRef = useRef(new Set<() => void>());
-  const host = useMemo<PortalHost>(
-    () => ({
-      resolve: () => {
-        const element = layerRef.current;
-        return element?.isConnected ? element : undefined;
-      },
-      subscribe: (listener) => {
-        listenersRef.current.add(listener);
-        return () => listenersRef.current.delete(listener);
-      },
-    }),
-    [],
-  );
+  // `useState`, not `useMemo`: the host must keep its identity, because
+  // `useConfirm` and `useRequireAuth` depend on it.
+  const [host] = useState<PortalHost>(() => ({
+    resolve: () => {
+      const element = layerRef.current;
+      return element?.isConnected ? element : undefined;
+    },
+    subscribe: (listener) => {
+      listenersRef.current.add(listener);
+      return () => listenersRef.current.delete(listener);
+    },
+  }));
 
   useLayoutEffect(() => {
     const element = (layerRef.current ??= document.createElement("div"));
