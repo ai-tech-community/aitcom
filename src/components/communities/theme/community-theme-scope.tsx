@@ -122,20 +122,26 @@ function cssPropertyName(name: string): string {
  * they match it. It sits on `body`, so no frame ancestor can clip or
  * re-stack them, and it is `display: contents`, so it adds no box.
  *
- * The element exists from the first render in the browser (null on the
- * server, where no portal renders), so a layer open on first paint mounts
- * in it at once instead of on `body` first.
+ * The element is created and appended before the first paint in the
+ * browser (layout effect), not during render, so the server's markup and
+ * the first client render agree (no portal renders in either). Radix
+ * portals render nothing on their own first pass either, so a layer open
+ * on first paint mounts here directly, never on `body` first.
  */
 function useFloatingLayer(theme: CommunityTheme): HTMLElement | null {
-  const [layer] = useState<HTMLElement | null>(() =>
-    typeof document === "undefined" ? null : document.createElement("div"),
-  );
+  const [layer, setLayer] = useState<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
-    if (!layer) return;
-    document.body.append(layer);
-    return () => layer.remove();
-  }, [layer]);
+    const element = document.createElement("div");
+    document.body.append(element);
+    // Subscribing to a DOM node React does not render: the state is the
+    // node itself, set once it exists.
+    setLayer(element);
+    return () => {
+      element.remove();
+      setLayer(null);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (!layer) return;

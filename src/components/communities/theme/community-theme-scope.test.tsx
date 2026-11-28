@@ -368,6 +368,34 @@ describe("CommunityThemeScope floating layer", () => {
     expect(layerOf()).toHaveClass("dark");
   });
 
+  it("hydrates a dialog open on first paint without a mismatch, inside the layer", async () => {
+    const { renderToString } = await import("react-dom/server");
+    const { hydrateRoot } = await import("react-dom/client");
+    const page = (
+      <CommunityThemeScope themeId="night">
+        <Popover open>
+          <PopoverTrigger>Open</PopoverTrigger>
+          <PopoverContent>Menu</PopoverContent>
+        </Popover>
+      </CommunityThemeScope>
+    );
+    const host = document.createElement("div");
+    host.innerHTML = renderToString(page);
+    document.body.append(host);
+    const recoverable = vi.fn();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    let root!: ReturnType<typeof hydrateRoot>;
+    await act(async () => {
+      root = hydrateRoot(host, page, { onRecoverableError: recoverable });
+    });
+
+    expect(recoverable).not.toHaveBeenCalled();
+    expect(layerOf().contains(screen.getByText("Menu"))).toBe(true);
+    act(() => root.unmount());
+    host.remove();
+  });
+
   it("removes the layer with the frame", () => {
     const { unmount } = render(
       <CommunityThemeScope themeId="meadow">
