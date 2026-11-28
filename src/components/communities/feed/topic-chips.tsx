@@ -25,6 +25,7 @@ export function TopicChipsView({
   const t = useTranslations("communities.feed");
   return (
     <ChoiceChips
+      className="feed-topic-chips"
       aria-label={t("selectTopic")}
       value={active}
       onValueChange={onSelect}

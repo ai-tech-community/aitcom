@@ -47,7 +47,11 @@ export const ToolbarButton = forwardRef<
 /** A thin divider between groups of toolbar buttons. */
 export function ToolbarSeparator() {
   return (
-    <span aria-hidden="true" className="bg-border mx-1 h-5 w-px self-center" />
+    <span
+      aria-hidden="true"
+      data-composer-toolbar-divider=""
+      className="bg-border mx-1 h-5 w-px self-center"
+    />
   );
 }
 

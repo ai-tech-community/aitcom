@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo } from "react";
+import { useLayoutEffect, useMemo } from "react";
 import {
   ArrowLeftIcon,
   BotIcon,
@@ -10,7 +10,6 @@ import {
 import { useTranslations } from "next-intl";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 import { authClient } from "@/server/better-auth/client";
-import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -97,17 +96,6 @@ function RoomViewportEdge() {
   return null;
 }
 
-/** Refresh the existing counts once the room loads a new latest message.
- * The messages read path advances the room membership's read marker. */
-function RoomReadBadgeSync({ latestMessageId }: { latestMessageId: string }) {
-  const utils = api.useUtils();
-  useEffect(() => {
-    void utils.inbox.totalUnreadCount.invalidate();
-    void utils.inbox.listConversations.invalidate();
-  }, [utils, latestMessageId]);
-  return null;
-}
-
 export function ConversationView({
   conversationId,
   peer,
@@ -129,7 +117,6 @@ export function ConversationView({
     [messagesQuery.data],
   );
 
-  const latestMessageId = roomViewport ? messages.at(-1)?.id : undefined;
   const isAgent = peer?.isAgent ?? false;
   // The GIF button shows only once the conversation is known to be with a
   // person: the peer is null while the conversation list loads, and stays
@@ -138,9 +125,6 @@ export function ConversationView({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {latestMessageId ? (
-        <RoomReadBadgeSync latestMessageId={latestMessageId} />
-      ) : null}
       {/* Header — hidden when the parent supplies its own (e.g. room header). */}
       {!hideHeader && (
         <div className="border-border flex items-center gap-2 border-b px-4 py-3">

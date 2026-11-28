@@ -41,8 +41,7 @@ const m = vi.hoisted(() => ({
   ],
   listSpaces: vi.fn(),
   listRooms: vi.fn(),
-  summaries: vi.fn(),
-  refreshSummaries: vi.fn(),
+  unreadRooms: new Map<string, number>(),
 }));
 
 vi.mock("@/i18n/navigation", () => ({
@@ -101,14 +100,17 @@ vi.mock("@/components/shells/shell-header", () => ({
 vi.mock("@/components/inbox/messages-nav-link", () => ({
   MessagesNavLink: () => <a href="/messages">Messages</a>,
 }));
+vi.mock("./shell-unread", () => ({
+  useShellUnread: () => ({
+    rooms: m.unreadRooms,
+    communities: new Set(["neighbor"]),
+  }),
+}));
 vi.mock("@/trpc/react", () => ({
   api: {
     spaces: {
       list: { useQuery: m.listSpaces },
       listRooms: { useQuery: m.listRooms },
-    },
-    inbox: {
-      listConversations: { useInfiniteQuery: m.summaries },
     },
   },
 }));
@@ -117,36 +119,10 @@ beforeEach(() => {
   m.pathname = "/communities/workbench-notes/spaces/workshop";
   m.listSpaces.mockReset().mockReturnValue({ data: m.spaces });
   m.listRooms.mockReset().mockReturnValue({ data: m.rooms });
-  m.refreshSummaries.mockReset().mockResolvedValue(undefined);
-  m.summaries.mockReset().mockReturnValue({
-    refetch: m.refreshSummaries,
-    data: {
-      pages: [
-        {
-          conversations: [
-            {
-              isRoom: true,
-              communitySlug: "workbench-notes",
-              spaceId: "workshop",
-              unreadCount: 3,
-            },
-            {
-              isRoom: true,
-              communitySlug: "somewhere-else",
-              spaceId: "workshop",
-              unreadCount: 42,
-            },
-            {
-              isRoom: true,
-              communitySlug: "workbench-notes",
-              spaceId: "locked",
-              unreadCount: 7,
-            },
-          ],
-        },
-      ],
-    },
-  });
+  m.unreadRooms = new Map([
+    ["workshop", 3],
+    ["locked", 7],
+  ]);
 });
 
 function renderShell(canRead: boolean, role: "owner" | "member" | null) {
@@ -163,7 +139,30 @@ function renderShell(canRead: boolean, role: "owner" | "member" | null) {
         membershipStatus={role ? "active" : null}
         memberRole={role}
         user={role ? { id: "viewer" } : null}
-        memberships={[]}
+        memberships={
+          role
+            ? [
+                {
+                  slug: "workbench-notes",
+                  name: "Workbench Notes",
+                  status: "active",
+                  role,
+                },
+                {
+                  slug: "neighbor",
+                  name: "Neighbor Community",
+                  status: "active",
+                  role: "member",
+                },
+                {
+                  slug: "locked-site",
+                  name: "Restricted Community",
+                  status: "invited",
+                  role: "member",
+                },
+              ]
+            : []
+        }
         showCover
       >
         <p>Child page</p>
@@ -175,15 +174,32 @@ function renderShell(canRead: boolean, role: "owner" | "member" | null) {
 }
 
 describe("CommunityShell", () => {
-  it("renders one ordered Spaces group, clears unread on the active room and shows owner links", () => {
+  it("groups pages and rooms, suppresses the active-room badge and keeps owner links", () => {
     renderShell(true, "owner");
     const navigation = screen.getByRole("navigation", {
       name: "Community navigation",
     });
-    const [home, events, forum] = within(navigation).getAllByRole("link");
-    expect(home).toHaveTextContent("Home");
-    expect(events).toHaveTextContent("Events");
-    expect(forum).toHaveTextContent("Forum");
+    const forum = within(navigation).getByRole("link", { name: "Forum" });
+    expect(within(navigation).getAllByRole("link").slice(0, 3)).toEqual([
+      within(navigation).getByRole("link", { name: "Home" }),
+      within(navigation).getByRole("link", { name: "Events" }),
+      forum,
+    ]);
+    expect(
+      within(navigation).getByRole("group", { name: "Pages" }),
+    ).toContainElement(forum);
+    expect(
+      within(navigation).getByRole("group", { name: "Spaces" }),
+    ).not.toContainElement(forum);
+    expect(screen.getByRole("banner")).not.toHaveTextContent("Workbench Notes");
+    const shortcut = screen.getByRole("link", {
+      name: "Neighbor Community, unread messages",
+    });
+    expect(shortcut).toHaveAttribute("href", "/communities/neighbor");
+    expect(navigation.parentElement).not.toContainElement(shortcut);
+    expect(
+      screen.queryByRole("link", { name: /Restricted Community/ }),
+    ).toBeNull();
     expect(
       within(navigation).getByRole("link", { name: "Workshop" }),
     ).toHaveAttribute("aria-current", "page");
@@ -214,22 +230,22 @@ describe("CommunityShell", () => {
     expect(theme).toContainElement(screen.getByText("Child page"));
   });
 
-  it("adds readable room counts to the mobile tab and refreshes after leaving a chat", () => {
+  it("reflects the shared room snapshot and keeps the badge clear once marked read", () => {
     m.pathname = "/communities/workbench-notes";
     const { update } = renderShell(true, "member");
     expect(
-      screen.getByRole("button", { name: "Spaces, 3 unread" }),
+      screen.getByRole("button", { name: "Spaces, 3 unread messages" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Workshop, 3 unread" }),
+      screen.getByRole("link", { name: "Workshop, 3 unread messages" }),
     ).toBeInTheDocument();
     m.pathname = "/communities/workbench-notes/spaces/workshop";
     update();
     expect(screen.queryByRole("button", { name: /unread/ })).toBeNull();
-    expect(m.refreshSummaries).not.toHaveBeenCalled();
+    m.unreadRooms = new Map();
     m.pathname = "/communities/workbench-notes/forum";
     update();
-    expect(m.refreshSummaries).toHaveBeenCalledOnce();
+    expect(screen.getByRole("link", { name: "Workshop" })).toBeInTheDocument();
   });
 
   it("omits stale restricted rows from the rail, finder and unread queries for outsiders", () => {
@@ -246,10 +262,6 @@ describe("CommunityShell", () => {
     expect(m.listRooms).toHaveBeenCalledWith(
       { slug: "workbench-notes" },
       { enabled: false },
-    );
-    expect(m.summaries).toHaveBeenCalledWith(
-      { limit: 50 },
-      expect.objectContaining({ enabled: false }),
     );
   });
 

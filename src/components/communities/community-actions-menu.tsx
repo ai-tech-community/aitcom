@@ -71,7 +71,7 @@ export function CommunityActionsMenu({
       <Button
         type="button"
         variant="ghost"
-        className="min-h-11 w-full justify-start"
+        className="text-destructive hover:text-destructive min-h-11 w-full justify-start"
         disabled={busy}
         onClick={() => {
           onRowAction();

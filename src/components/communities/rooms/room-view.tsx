@@ -106,24 +106,45 @@ export function RoomView({
           <div
             className={cn(
               "flex items-center gap-3",
-              inCommunityShell && "shrink-0 max-sm:gap-2",
+              inCommunityShell && "shrink-0 max-sm:gap-2 [&_button]:min-h-11",
             )}
           >
             {/* Avatar stack */}
             {room.memberAvatars && room.memberAvatars.length > 0 ? (
-              <div className="flex items-center">
-                <div className="flex -space-x-2">
+              <div
+                className={cn(
+                  "flex items-center",
+                  inCommunityShell && "hidden sm:flex",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex",
+                    inCommunityShell ? "gap-1" : "-space-x-2",
+                  )}
+                >
                   {room.memberAvatars.slice(0, MAX_SHOWN_AVATARS).map((av) => (
                     <Avatar
                       key={av.userId}
                       size="sm"
-                      className="border-background ring-background border-2"
+                      className={cn(
+                        !inCommunityShell &&
+                          "border-background ring-background border-2",
+                      )}
                     >
-                      <AvatarImage
-                        src={av.avatarUrl ?? undefined}
-                        alt={av.displayName ?? ""}
-                      />
-                      <AvatarFallback>
+                      {inCommunityShell ? null : (
+                        <AvatarImage
+                          src={av.avatarUrl ?? undefined}
+                          alt={av.displayName ?? ""}
+                        />
+                      )}
+                      <AvatarFallback
+                        title={
+                          inCommunityShell
+                            ? (av.displayName ?? undefined)
+                            : undefined
+                        }
+                      >
                         {getInitials(av.displayName ?? "")}
                       </AvatarFallback>
                     </Avatar>

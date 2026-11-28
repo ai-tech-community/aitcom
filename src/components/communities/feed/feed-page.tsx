@@ -24,6 +24,7 @@ interface FeedPageProps {
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
   currentUserId?: string;
   feedPostPolicy: "all_members" | "admins_only";
+  feedFirst?: boolean;
 }
 
 export function FeedPage({
@@ -31,6 +32,7 @@ export function FeedPage({
   memberRole,
   currentUserId,
   feedPostPolicy,
+  feedFirst = false,
 }: FeedPageProps) {
   const t = useTranslations("communities.feed");
   const [activeTopic, setActiveTopic] = useState("all");
@@ -46,17 +48,18 @@ export function FeedPage({
   const isAuthenticated = !!currentUserId;
   const isMember = !!memberRole;
 
+  const about = (
+    <CommunityAbout
+      slug={slug}
+      className="xl:col-start-2 xl:row-start-1 xl:mb-8"
+    />
+  );
+
   return (
-    // Code order is reading order at every size: About, the feed, the rest of
-    // the side panel. From `xl` the grid places About and the panel in the
-    // right column beside the feed, which spans both rows; About scrolls
-    // away and the panel stays in view. No row gap from `xl`, so a missing
-    // About leaves no hole above the panel.
+    // The wide grid always places About beside the feed. At narrower widths,
+    // signed-in members in the new shell reach their feed first in DOM order.
     <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:grid-rows-[auto_1fr] xl:gap-y-0">
-      <CommunityAbout
-        slug={slug}
-        className="xl:col-start-2 xl:row-start-1 xl:mb-8"
-      />
+      {feedFirst ? null : about}
 
       {/* Main column: composer + feed */}
       <div className="min-w-0 space-y-4 xl:col-start-1 xl:row-span-2 xl:row-start-1">
@@ -118,6 +121,8 @@ export function FeedPage({
           />
         )}
       </div>
+
+      {feedFirst ? about : null}
 
       {/* Side panel: beside the feed from `xl`, under About (the community
           rail takes the left), below the feed on narrower screens. */}

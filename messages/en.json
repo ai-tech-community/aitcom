@@ -6806,6 +6806,12 @@
   },
   "redesign": {
     "shell": {
+      "unreadAllConversations": "{count, plural, one {# unread message across all conversations} other {# unread messages across all conversations}}",
+      "pages": "Pages",
+      "communityIdentityMenu": "{name} options",
+      "communityUnread": "{name}, unread messages",
+      "unreadMessages": "{count, plural, one {# unread message} other {# unread messages}}",
+      "unreadNotifications": "{count, plural, one {# unread notification} other {# unread notifications}}",
       "switchNamedCommunity": "{name}, switch community",
       "yourRole": "Your role: {role}",
       "pageResults": "{count, plural, one {# page} other {# pages}}",

@@ -8,6 +8,7 @@ import { authClient } from "@/server/better-auth/client";
 import { cn } from "@/lib/utils";
 import { LIVE_BADGE_REFETCH_MS } from "./live-refetch";
 import { shellActiveTab } from "@/components/shells/shell-navigation";
+import { useShellUnread } from "@/components/shells/shell-unread";
 import { ShellUnreadBadge } from "@/components/shells/unread-badge";
 
 /**
@@ -30,20 +31,28 @@ export function MessagesNavLink({
   const locale = useLocale();
   const pathname = usePathname();
 
+  const { messages: shellCount, messagesIncludeRooms } = useShellUnread();
+  const compact = presentation !== "legacy";
   const { data: unreadData } = api.inbox.totalUnreadCount.useQuery(undefined, {
-    enabled: !!session?.user,
+    enabled: !compact && !!session?.user,
     refetchInterval: LIVE_BADGE_REFETCH_MS,
   });
 
   const authenticated = !!session?.user || signedIn;
   if (!authenticated && presentation !== "bottom") return null;
 
-  const count = authenticated ? (unreadData?.count ?? 0) : 0;
+  const count = authenticated
+    ? compact
+      ? shellCount
+      : (unreadData?.count ?? 0)
+    : 0;
   const label = t("messages");
+  const unreadLabel = messagesIncludeRooms
+    ? shell("unreadAllConversations", { count })
+    : shell("unreadMessages", { count });
   const active =
     pathname === "/messages" ||
     (presentation !== "legacy" && pathname.startsWith("/messages/"));
-  const compact = presentation !== "legacy";
   const bottom = presentation === "bottom";
 
   return (
@@ -56,8 +65,8 @@ export function MessagesNavLink({
               query: { redirect: `/${locale}/messages` },
             }
       }
-      aria-label={`${label}${count > 0 ? `, ${compact ? shell("unread", { count }) : `${count} unread`}` : ""}`}
-      title={compact ? label : undefined}
+      aria-label={`${label}${count > 0 ? `, ${compact ? unreadLabel : `${count} unread`}` : ""}`}
+      title={compact ? (count ? unreadLabel : label) : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
         "hover:bg-muted relative flex items-center justify-center rounded-md p-2 transition-colors",
@@ -67,7 +76,7 @@ export function MessagesNavLink({
         presentation === "desktop" && "hidden lg:flex",
         bottom &&
           "h-auto min-h-14 w-full flex-col gap-1 p-1 text-xs leading-tight font-medium",
-        active && bottom && shellActiveTab,
+        active && compact && shellActiveTab,
       )}
     >
       <span className={compact ? "inline-flex items-center gap-1" : "contents"}>

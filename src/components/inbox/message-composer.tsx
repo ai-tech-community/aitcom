@@ -136,14 +136,18 @@ export function MessageComposer({
           placeholder={placeholder}
           className="min-h-10 text-sm"
         />
-        <PromptInputFooter>
+        <PromptInputFooter data-chat-toolbar="">
           <PromptInputTools>
             <EmojiPickerButton onPick={insertEmoji} />
             {kind === "person" ? (
               <GifPickerButton ref={gifButtonRef} onPick={setGif} />
             ) : null}
           </PromptInputTools>
-          <PromptInputSubmit aria-label={t("send")} disabled={isPending} />
+          <PromptInputSubmit
+            data-chat-send=""
+            aria-label={t("send")}
+            disabled={isPending}
+          />
         </PromptInputFooter>
       </PromptInput>
     </TooltipProvider>

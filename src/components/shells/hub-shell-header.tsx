@@ -20,7 +20,11 @@ import { MessagesNavLink } from "@/components/inbox/messages-nav-link";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BuiltinSurface } from "@/server/communities/space-defaults";
-import { CommunitySwitcher, usableMemberships } from "./community-switcher";
+import {
+  CommunityShortcuts,
+  CommunitySwitcher,
+  usableMemberships,
+} from "./community-switcher";
 import { useHubNavigation } from "./hub-navigation";
 import { activeDestination, type ShellDestination } from "./navigation";
 import { ShellHeader } from "./shell-header";
@@ -176,16 +180,22 @@ export function HubShellHeader({
         destinations={[...destinations, ...membershipHomes]}
         account={account}
         leading={
-          <CommunitySwitcher
-            compact
-            signedIn={!!user}
-            memberships={memberships}
-            retryMemberships={
-              membershipQuery.isError
-                ? () => void membershipQuery.refetch()
-                : undefined
-            }
-          />
+          <div className="flex shrink-0 items-center gap-1">
+            <CommunitySwitcher
+              signedIn={!!user}
+              memberships={memberships}
+              retryMemberships={
+                membershipQuery.isError
+                  ? () => void membershipQuery.refetch()
+                  : undefined
+              }
+            />
+            {user ? (
+              <div className="hidden lg:block">
+                <CommunityShortcuts memberships={memberships} limit={1} />
+              </div>
+            ) : null}
+          </div>
         }
         navigation={
           <nav
@@ -198,9 +208,9 @@ export function HubShellHeader({
                 href={item.href}
                 aria-current={active === item ? "page" : undefined}
                 className={cn(
-                  "focus-visible:ring-ring inline-flex min-h-9 items-center rounded-md px-2 text-sm font-medium outline-none focus-visible:ring-2 xl:px-3",
+                  "focus-visible:ring-ring inline-flex min-h-9 items-center rounded-md px-1.5 text-sm font-medium outline-none focus-visible:ring-2 xl:px-3",
                   active === item
-                    ? "bg-secondary text-foreground decoration-foreground/60 font-semibold underline underline-offset-4"
+                    ? shellActiveTab
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                 )}
               >

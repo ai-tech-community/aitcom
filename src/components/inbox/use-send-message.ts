@@ -8,7 +8,10 @@ import { authClient } from "@/server/better-auth/client";
 import type { MessageAttachmentView } from "@/server/inbox/message-attachments";
 import { api } from "@/trpc/react";
 
-import { messagesQueryInput } from "./conversation-messages";
+import {
+  messagesQueryInput,
+  OPTIMISTIC_MESSAGE_PREFIX,
+} from "./conversation-messages";
 
 /** What the member wrote: words, a GIF, or both. */
 export type MessageDraft = { content: string; gif?: PickedGif | null };
@@ -73,7 +76,7 @@ export function useSendMessage(conversationId: string): {
       utils.inbox.getMessages.setData(key, (old) => {
         if (!old) return old;
         const optimistic: (typeof old.messages)[number] = {
-          id: `optimistic-${Date.now()}`,
+          id: `${OPTIMISTIC_MESSAGE_PREFIX}${Date.now()}`,
           conversationId,
           senderId: currentUserId,
           senderType: "human",

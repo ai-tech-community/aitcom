@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
+import { useEffect, useRef, useState, type Ref } from "react";
 import { useTranslations } from "next-intl";
 import {
   ArrowUpRight,
   Check,
   ChevronDown,
-  Compass,
-  LayoutGrid,
+  ArrowLeftRight,
   X,
 } from "lucide-react";
 import { AitLogo } from "@/components/ait-logo";
@@ -31,7 +30,14 @@ import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { getInitials } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import type { HubMembershipSeed } from "@/server/better-auth/hub-session";
-import { shellIconButton, ShellNavLink } from "./shell-navigation";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useShellUnread } from "./shell-unread";
+import { shellIconButton } from "./shell-navigation";
 
 export function usableMemberships(memberships: readonly HubMembershipSeed[]) {
   // The existing memberships reader demotes lapsed paid memberships.
@@ -46,20 +52,16 @@ export function CommunitySwitcher({
   onNavigate,
   identity,
   triggerRef,
-  context,
-  details,
-  compact = false,
+  iconOnly = false,
 }: {
   memberships: readonly HubMembershipSeed[];
   retryMemberships?: () => void;
   signedIn: boolean;
   activeSlug?: string;
   onNavigate?: () => void;
-  compact?: boolean;
   identity?: { name: string; logoUrl: string | null };
   triggerRef?: Ref<HTMLButtonElement>;
-  details?: (close: () => void) => ReactNode;
-  context?: string;
+  iconOnly?: boolean;
 }) {
   const t = useTranslations("redesign.shell");
   const common = useTranslations("common");
@@ -72,7 +74,6 @@ export function CommunitySwitcher({
     ...communities.filter(({ slug }) => slug !== activeSlug),
     ...communities.filter(({ slug }) => slug === activeSlug),
   ];
-  const close = () => setOpen(false);
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -88,44 +89,31 @@ export function CommunitySwitcher({
               : t("switchCommunity")
           }
           title={t("switchCommunity")}
-          aria-description={context}
           className={cn(
-            "focus-visible:ring-ring hover:bg-secondary inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset",
-            identity
-              ? "w-full min-w-0 justify-start gap-2 px-2 text-left"
-              : "px-2",
+            shellIconButton,
+            iconOnly ? "lg:size-9" : "w-auto gap-2 px-2",
+            identity && "min-w-11 justify-start text-left",
           )}
         >
-          {identity ? (
+          {iconOnly ? (
+            <ArrowLeftRight className="size-4" aria-hidden />
+          ) : identity ? (
             <>
-              {compact ? null : (
-                <Avatar aria-hidden className="size-8 rounded-md">
-                  {identity.logoUrl ? (
-                    <AvatarImage src={identity.logoUrl} alt="" />
-                  ) : null}
-                  <AvatarFallback className="bg-secondary text-foreground rounded-md text-xs">
-                    {getInitials(identity.name)}
-                  </AvatarFallback>
-                </Avatar>
-              )}
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="truncate text-sm leading-tight font-semibold">
-                  {identity.name}
-                </span>
-                {context ? (
-                  <span className="text-muted-foreground truncate text-xs leading-tight">
-                    {context}
-                  </span>
-                ) : null}
-              </span>
+              <CommunityMark name={identity.name} logoUrl={identity.logoUrl} />
+              <ChevronDown
+                className="text-muted-foreground size-3.5 shrink-0"
+                aria-hidden
+              />
             </>
           ) : (
-            <AitLogo className="h-4 w-auto" aria-hidden />
+            <>
+              <AitLogo className="h-4 w-auto" aria-hidden />
+              <ChevronDown
+                className="text-muted-foreground size-3.5 shrink-0"
+                aria-hidden
+              />
+            </>
           )}
-          <ChevronDown
-            className="text-muted-foreground ml-auto size-3.5 shrink-0"
-            aria-hidden
-          />
         </button>
       </DialogTrigger>
       <DialogContent
@@ -183,16 +171,12 @@ export function CommunitySwitcher({
                     onNavigate?.();
                     router.push(`/communities/${item.slug}`);
                   }}
-                  className="min-h-11 cursor-pointer gap-3 px-2 py-2"
+                  className="data-[selected=true]:ring-foreground/70 min-h-11 cursor-pointer gap-3 px-2 py-2 ring-inset data-[selected=true]:ring-1"
                 >
-                  <Avatar aria-hidden className="size-7 rounded-sm">
-                    {item.logoUrl ? (
-                      <AvatarImage src={item.logoUrl} alt="" />
-                    ) : null}
-                    <AvatarFallback className="text-foreground rounded-sm text-xs">
-                      {getInitials(item.name ?? item.slug)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <CommunityMark
+                    name={item.name ?? item.slug}
+                    logoUrl={item.logoUrl}
+                  />
                   <span className="min-w-0 flex-1 wrap-break-word">
                     {item.name ?? item.slug}
                   </span>
@@ -207,12 +191,7 @@ export function CommunitySwitcher({
             </CommandList>
           </Command>
         ) : null}
-        {details ? (
-          <div className="border-border border-t px-2 py-2">
-            {details(close)}
-          </div>
-        ) : null}
-        <div className="border-border border-t px-2 pt-2">
+        <div className="border-border border-t p-2">
           <DialogClose asChild>
             <Link
               href="/"
@@ -231,29 +210,87 @@ export function CommunitySwitcher({
             </Link>
           </DialogClose>
         </div>
-        <div className="p-2">
-          <ShellNavLink
-            item={{ href: "/communities", label: t("discover"), icon: Compass }}
-            onNavigate={() => {
-              setOpen(false);
-              onNavigate?.();
-            }}
-          />
-          {signedIn ? (
-            <ShellNavLink
-              item={{
-                href: "/dashboard/communities",
-                label: t("myCommunities"),
-                icon: LayoutGrid,
-              }}
-              onNavigate={() => {
-                setOpen(false);
-                onNavigate?.();
-              }}
-            />
-          ) : null}
-        </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function CommunityMark({
+  name,
+  logoUrl,
+}: {
+  name: string;
+  logoUrl?: string | null;
+}) {
+  return (
+    <Avatar aria-hidden className="size-7 shrink-0 rounded-md">
+      {logoUrl ? (
+        <AvatarImage src={logoUrl} alt="" className="object-cover" />
+      ) : null}
+      <AvatarFallback className="bg-secondary text-foreground rounded-md text-xs font-medium">
+        {getInitials(name)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
+export function CommunityShortcuts({
+  memberships,
+  activeSlug,
+  onNavigate,
+  limit = 3,
+}: {
+  memberships: readonly HubMembershipSeed[];
+  activeSlug?: string;
+  onNavigate?: () => void;
+  limit?: number;
+}) {
+  const t = useTranslations("redesign.shell");
+  const { communities } = useShellUnread();
+  const shortcuts = usableMemberships(memberships)
+    .filter(({ slug }) => slug !== activeSlug)
+    .slice(0, limit);
+
+  if (!shortcuts.length) return null;
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <nav aria-label={t("myCommunities")} className="flex items-center gap-1">
+        {shortcuts.map(({ slug, name, logoUrl }) => {
+          const label = name ?? slug;
+          const unread = communities.has(slug);
+          const accessibleLabel = unread
+            ? t("communityUnread", { name: label })
+            : label;
+          return (
+            <Tooltip key={slug}>
+              <TooltipTrigger asChild>
+                <Link
+                  href={`/communities/${slug}`}
+                  aria-label={accessibleLabel}
+                  onNavigate={onNavigate}
+                  className={cn(shellIconButton, "relative lg:size-9")}
+                >
+                  <CommunityMark name={label} logoUrl={logoUrl} />
+                  {unread ? (
+                    <span
+                      aria-hidden
+                      className="border-background bg-foreground absolute top-0.5 right-0.5 size-2.5 rounded-full border-2"
+                    />
+                  ) : null}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                sideOffset={5}
+                className="motion-reduce:animate-none"
+              >
+                {accessibleLabel}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </nav>
+    </TooltipProvider>
   );
 }

@@ -321,9 +321,18 @@
   color: var(--foreground);
 }
 
-[data-community-shell] [data-forum-submit],
-[data-community-shell] [data-feed-submit]:not(:disabled) {
-  color: light-dark(var(--foreground), var(--card));
+/* Ink from the current frame keeps small controls readable on Signal Orange. */
+:is([data-community-shell], [data-site-shell="hub"]) {
+  --shell-primary-ink: var(--foreground);
+}
+
+:is([data-community-shell], [data-site-shell="hub"]):where(.dark, .dark *) {
+  --shell-primary-ink: var(--card);
+}
+
+:is([data-community-shell], [data-site-shell="hub"])
+  :is([data-forum-submit], [data-chat-send], [data-feed-submit]:not(:disabled)) {
+  color: var(--shell-primary-ink);
 }
 
 [data-community-shell] [data-feed-submit]:disabled {
@@ -332,7 +341,65 @@
   opacity: 1;
 }
 
+@media (width < 40rem) {
+  [data-community-shell] [data-post-toolbar]:has([data-post-insert-tools]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-inline: 0.5rem;
+  }
+
+  [data-community-shell] [data-post-tools]:has([data-post-insert-tools]) {
+    display: contents;
+  }
+
+  [data-community-shell] :is([data-post-insert-tools], [data-post-format-tools]) {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  [data-community-shell] [data-post-format-tools] [data-composer-toolbar-divider] {
+    display: none;
+  }
+
+  [data-community-shell] [data-post-topic] {
+    display: block;
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  [data-community-shell] [data-post-topic] select {
+    max-width: 100%;
+    margin-inline-start: 0;
+  }
+}
+
+@media (width < 22rem) {
+  [data-community-shell] :is([data-post-topic], [data-post-actions]) {
+    grid-column: 1 / -1;
+  }
+
+  [data-community-shell] [data-post-actions] {
+    flex-wrap: wrap;
+    justify-content: end;
+  }
+}
+
 @media (width < 64rem) {
+  [data-community-shell] .feed-topic-chips [data-slot="choice-chip"] {
+    height: auto;
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  [data-community-shell] [data-post-toolbar] :is(button, select),
+  :is([data-community-shell], [data-site-shell="hub"]) [data-chat-toolbar] button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
   [data-community-shell] [data-forum-filters] {
     flex-wrap: wrap;
     gap: 0.5rem;

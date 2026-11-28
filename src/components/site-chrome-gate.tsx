@@ -5,6 +5,7 @@ import { useSelectedLayoutSegments } from "next/navigation";
 import { Toaster } from "sonner";
 import { usePathname } from "@/i18n/navigation";
 import { isWorkspacePath } from "@/lib/communities/layout-variant";
+import { ShellUnreadProvider } from "@/components/shells/shell-unread";
 import { isMagazineReadingPath } from "@/lib/magazines/typography";
 
 export type SiteShell = "community" | "hub" | "magazine" | "focus";
@@ -39,7 +40,9 @@ export function SiteShellProvider({ children }: { children: ReactNode }) {
 
   return (
     <SiteShellContext.Provider value={shell}>
-      {children}
+      <ShellUnreadProvider active={shell === "community" || shell === "hub"}>
+        {children}
+      </ShellUnreadProvider>
     </SiteShellContext.Provider>
   );
 }

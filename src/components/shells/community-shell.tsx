@@ -1,8 +1,15 @@
 "use client";
 
-import { useId, useRef, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Compass, Ellipsis, House, PanelLeft, UserRound } from "lucide-react";
+import {
+  ChevronDown,
+  Compass,
+  Ellipsis,
+  House,
+  PanelLeft,
+  UserRound,
+} from "lucide-react";
 import { AitLogo } from "@/components/ait-logo";
 import type { CommunityIdentity } from "@/components/communities/community-identity";
 import { CommunityActionsMenu } from "@/components/communities/community-actions-menu";
@@ -16,7 +23,11 @@ import { CommunityThemeCover } from "@/components/communities/theme/community-th
 import { CommunityThemePreviewProvider } from "@/components/communities/theme/community-theme-preview";
 import { CommunityThemeScope } from "@/components/communities/theme/community-theme-scope";
 import { MessagesNavLink } from "@/components/inbox/messages-nav-link";
-import { SectionLabel } from "@/components/ui/section-label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -24,7 +35,12 @@ import type {
   HubAuthUser,
   HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
-import { CommunitySwitcher } from "./community-switcher";
+import {
+  CommunityMark,
+  CommunityShortcuts,
+  CommunitySwitcher,
+  usableMemberships,
+} from "./community-switcher";
 import { useHubNavigation } from "./hub-navigation";
 import { activeDestination, type ShellDestination } from "./navigation";
 import { ShellHeader } from "./shell-header";
@@ -38,7 +54,7 @@ import {
   shellActiveTab,
 } from "./shell-navigation";
 import { ShellUnreadBadge } from "./unread-badge";
-import { useRoomUnread } from "./use-room-unread";
+import { useShellUnread } from "./shell-unread";
 
 type CommunityShellProps = React.ComponentProps<typeof CommunityIdentity> & {
   user: HubAuthUser | null;
@@ -50,7 +66,6 @@ type CommunityShellProps = React.ComponentProps<typeof CommunityIdentity> & {
 
 function SpaceGroup({
   title,
-  headingHidden = false,
   items,
   active,
   pending,
@@ -59,7 +74,6 @@ function SpaceGroup({
   onNavigate,
 }: {
   title: string;
-  headingHidden?: boolean;
   items: readonly ShellDestination[];
   active?: ShellDestination;
   pending?: boolean;
@@ -72,19 +86,13 @@ function SpaceGroup({
   if (!items.length && !pending && !failed) return null;
 
   return (
-    <div
-      role="group"
-      aria-labelledby={id}
-      className="border-border mt-3 space-y-0.5 border-t pt-3"
-    >
-      <SectionLabel
-        as="h2"
+    <div role="group" aria-labelledby={id} className="mt-4 space-y-0.5">
+      <h2
         id={id}
-        bordered={false}
-        className={headingHidden ? "sr-only" : "px-3 pb-1"}
+        className="text-muted-foreground px-3 pb-1 text-xs font-semibold"
       >
         {title}
-      </SectionLabel>
+      </h2>
       {pending ? (
         <div
           role="status"
@@ -136,7 +144,8 @@ export function CommunityShell({
   const nav = useTranslations("nav");
   const pathname = usePathname();
   const { account, groups: hubGroups } = useHubNavigation(!!user);
-  const desktopIdentity = useRef<HTMLButtonElement>(null);
+  const desktopIdentity = useRef<HTMLHeadingElement>(null);
+  const desktopIdentityTrigger = useRef<HTMLButtonElement>(null);
   const mobileIdentity = useRef<HTMLButtonElement>(null);
   const canRead = community.viewerCanReadContent;
   const member = membershipStatus === "active";
@@ -163,20 +172,18 @@ export function CommunityShell({
   const readingRoom = rooms.find(
     (room) => room.href === pathname && room.membership === "active",
   );
-  const unread = useRoomUnread(
-    community.slug,
-    rooms.filter((room) => room.membership === "active").map((room) => room.id),
-    !!user && !!memberRole && canRead,
-    readingRoom?.id,
-  );
-  const total = [...unread.values()].reduce(
-    (count, roomUnread) => count + roomUnread,
-    0,
-  );
+  const { rooms: unread } = useShellUnread();
   const roomLinks = rooms.map((room) => ({
     ...room,
-    unread: unread.get(room.id),
+    unread:
+      room.membership === "active" && room.id !== readingRoom?.id
+        ? unread.get(room.id)
+        : undefined,
   }));
+  const total = roomLinks.reduce(
+    (count, room) => count + (room.unread ?? 0),
+    0,
+  );
   const places = [...spaces, ...roomLinks];
   const destinations = [home, ...places, ...manage];
   const active = activeDestination(pathname, destinations);
@@ -206,57 +213,75 @@ export function CommunityShell({
     memberRole,
   };
 
-  function communitySwitcher(compact = false, onNavigate?: () => void) {
-    return (
-      <CommunitySwitcher
+  function renderRailIdentity(onNavigate?: () => void) {
+    const showSwitcher = !!user && !onNavigate;
+    const identityMenu = (
+      <IdentityMenu
         identity={identity}
-        triggerRef={
-          onNavigate ? undefined : compact ? mobileIdentity : desktopIdentity
+        role={member && memberRole ? roles(memberRole) : undefined}
+        membership={membership}
+        triggerRef={onNavigate ? undefined : desktopIdentityTrigger}
+        returnFocus={() =>
+          onNavigate
+            ? mobileIdentity.current
+            : (desktopIdentityTrigger.current ?? desktopIdentity.current)
         }
-        compact={compact}
-        context={compact ? section : undefined}
-        memberships={memberships}
-        retryMemberships={retryMemberships}
-        signedIn={!!user}
-        activeSlug={community.slug}
         onNavigate={onNavigate}
-        details={
-          member && memberRole
-            ? (close) => (
-                <>
-                  <p className="text-muted-foreground px-3 py-2 text-sm">
-                    {t("yourRole", { role: roles(memberRole) })}
-                  </p>
-                  <CommunityActionsMenu
-                    {...membership}
-                    returnFocusAfterLeave={() =>
-                      (compact || onNavigate ? mobileIdentity : desktopIdentity)
-                        .current
-                    }
-                    onRowAction={() => {
-                      close();
-                      onNavigate?.();
-                    }}
-                  />
-                </>
-              )
-            : undefined
-        }
       />
     );
-  }
-
-  function renderRail(onNavigate?: () => void) {
-    const Heading = onNavigate ? "div" : "h1";
     return (
       <>
-        <div className="border-border space-y-2 border-b px-3 py-2">
-          <Heading>{communitySwitcher(false, onNavigate)}</Heading>
+        <div
+          className={cn(
+            "space-y-2 px-3 pt-2",
+            showSwitcher ? "pb-1" : "border-border border-b pb-2",
+          )}
+        >
+          {onNavigate ? (
+            <div>{identityMenu}</div>
+          ) : (
+            <h1 ref={desktopIdentity} tabIndex={-1}>
+              {identityMenu}
+            </h1>
+          )}
           {!member && !onNavigate ? (
             <JoinButton {...membership} focusAfterChange={desktopIdentity} />
           ) : null}
         </div>
-        <nav aria-label={t("communityNavigation")} className="space-y-1 p-3">
+        {showSwitcher ? (
+          <div className="border-border flex flex-wrap items-center justify-between gap-2 border-b px-3 pb-1.5">
+            <span className="text-muted-foreground pl-2 text-xs font-medium">
+              {t("myCommunities")}
+            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              <CommunityShortcuts
+                memberships={memberships}
+                activeSlug={community.slug}
+              />
+              <CommunitySwitcher
+                iconOnly
+                activeSlug={community.slug}
+                signedIn
+                memberships={memberships}
+                retryMemberships={retryMemberships}
+              />
+            </div>
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
+  function renderRailNavigation(onNavigate?: () => void) {
+    const hasOtherCommunities = usableMemberships(memberships).some(
+      ({ slug }) => slug !== community.slug,
+    );
+    return (
+      <>
+        <nav
+          aria-label={t("communityNavigation")}
+          className="space-y-1 px-3 py-3"
+        >
           {user && !onNavigate ? <OnboardingReminderRow /> : null}
           <ShellNavLink
             item={home}
@@ -265,16 +290,21 @@ export function CommunityShell({
             className="min-h-12 lg:min-h-9"
           />
           <SpaceGroup
-            title={t("spaces")}
-            headingHidden={!!onNavigate}
-            items={places}
+            title={t("pages")}
+            items={spaces}
             active={active}
-            pending={spacesPending || roomsPending}
-            failed={spacesError || roomsError}
-            retry={() => {
-              if (spacesError) void refetchSpaces();
-              if (roomsError) void refetchRooms();
-            }}
+            pending={spacesPending}
+            failed={spacesError}
+            retry={() => void refetchSpaces()}
+            onNavigate={onNavigate}
+          />
+          <SpaceGroup
+            title={t("spaces")}
+            items={roomLinks}
+            active={active}
+            pending={roomsPending}
+            failed={roomsError}
+            retry={() => void refetchRooms()}
             onNavigate={onNavigate}
           />
           <SpaceGroup
@@ -284,6 +314,18 @@ export function CommunityShell({
             onNavigate={onNavigate}
           />
         </nav>
+        {onNavigate && user && hasOtherCommunities ? (
+          <div className="border-border mt-3 border-t px-3 pt-4">
+            <h2 className="text-muted-foreground mb-1 text-xs font-medium">
+              {t("myCommunities")}
+            </h2>
+            <CommunityShortcuts
+              memberships={memberships}
+              activeSlug={community.slug}
+              onNavigate={onNavigate}
+            />
+          </div>
+        ) : null}
       </>
     );
   }
@@ -312,13 +354,29 @@ export function CommunityShell({
             className="pb-(--community-mobile-bar-height) lg:pb-0"
           >
             <ShellHeader
-              location={community.name}
-              section={section}
+              location={section}
               destinations={[...destinations, ...account]}
               account={account}
               user={user}
               community
-              mobileLocation={communitySwitcher(true)}
+              mobileLocation={
+                <div className="flex min-w-0 items-center gap-1">
+                  <CommunitySwitcher
+                    identity={identity}
+                    triggerRef={mobileIdentity}
+                    activeSlug={community.slug}
+                    signedIn={!!user}
+                    memberships={memberships}
+                    retryMemberships={retryMemberships}
+                  />
+                  <span
+                    className="min-w-0 truncate text-sm font-semibold"
+                    title={section}
+                  >
+                    {section}
+                  </span>
+                </div>
+              }
               leading={
                 <Link
                   href="/"
@@ -330,19 +388,25 @@ export function CommunityShell({
                 </Link>
               }
             />
-            <div className="grid min-h-[calc(100svh-3rem-1px)] grid-cols-1 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+            <div className="grid min-h-[calc(100svh-3rem-1px)] grid-cols-1 lg:grid-cols-[16.5rem_minmax(0,1fr)]">
               <aside
                 data-community-rail=""
-                className="border-border bg-muted/25 hidden lg:sticky lg:top-[calc(3rem+1px)] lg:flex lg:h-[calc(100dvh-3rem-1px)] lg:flex-col lg:self-start lg:border-r"
+                className="border-border bg-muted/20 hidden lg:sticky lg:top-[calc(3rem+1px)] lg:flex lg:h-[calc(100dvh-3rem-1px)] lg:flex-col lg:self-start lg:border-r"
               >
+                <div className="shrink-0">{renderRailIdentity()}</div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
-                  {renderRail()}
+                  {renderRailNavigation()}
                 </div>
-                {invite ? (
-                  <div className="border-border shrink-0 border-t p-3">
-                    {inviteAction()}
-                  </div>
-                ) : null}
+                <div className="border-border shrink-0 space-y-1 border-t p-3">
+                  <ShellNavLink
+                    item={{
+                      href: "/communities",
+                      label: t("discover"),
+                      icon: Compass,
+                    }}
+                  />
+                  {inviteAction()}
+                </div>
               </aside>
               <div
                 id="shell-content"
@@ -376,7 +440,7 @@ export function CommunityShell({
                 <ShellMobileLabel icon={House} label={home.label} />
               </Link>
               <ShellDrawer
-                title={t("spaces")}
+                title={t("communityNavigation")}
                 footer={(close) => (
                   <>
                     {inviteAction(close)}
@@ -407,7 +471,7 @@ export function CommunityShell({
                     )}
                     aria-label={
                       total
-                        ? `${spacesLabel}, ${t("unread", { count: total })}`
+                        ? `${spacesLabel}, ${t("unreadMessages", { count: total })}`
                         : spacesLabel
                     }
                   >
@@ -419,7 +483,12 @@ export function CommunityShell({
                   </button>
                 }
               >
-                {renderRail}
+                {(close) => (
+                  <>
+                    {renderRailIdentity(close)}
+                    {renderRailNavigation(close)}
+                  </>
+                )}
               </ShellDrawer>
               <MessagesNavLink presentation="bottom" signedIn={!!user} />
               <ShellDrawer
@@ -442,5 +511,72 @@ export function CommunityShell({
         </OnboardingReminderProvider>
       </CommunityThemeScope>
     </CommunityThemePreviewProvider>
+  );
+}
+
+function IdentityMenu({
+  identity,
+  role,
+  membership,
+  triggerRef,
+  returnFocus,
+  onNavigate,
+}: {
+  identity: { name: string; logoUrl: string | null };
+  role?: string;
+  membership: React.ComponentProps<typeof CommunityActionsMenu>;
+  triggerRef?: React.Ref<HTMLButtonElement>;
+  returnFocus: () => HTMLElement | null;
+  onNavigate?: () => void;
+}) {
+  const t = useTranslations("redesign.shell");
+  const [open, setOpen] = useState(false);
+
+  if (!role) {
+    return (
+      <span className="flex min-h-11 items-center gap-2 px-2 text-sm font-semibold">
+        <CommunityMark {...identity} />
+        {identity.name}
+      </span>
+    );
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          ref={triggerRef}
+          aria-label={t("communityIdentityMenu", { name: identity.name })}
+          className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset"
+        >
+          <CommunityMark {...identity} />
+          <span className="min-w-0 flex-1 wrap-break-word">
+            {identity.name}
+          </span>
+          <ChevronDown
+            className="text-muted-foreground size-3.5 shrink-0"
+            aria-hidden
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        aria-label={t("communityIdentityMenu", { name: identity.name })}
+        className="w-60 p-2 motion-reduce:animate-none"
+      >
+        <p className="text-muted-foreground px-3 py-2 text-sm">
+          {t("yourRole", { role })}
+        </p>
+        <CommunityActionsMenu
+          {...membership}
+          returnFocusAfterLeave={returnFocus}
+          onRowAction={() => {
+            setOpen(false);
+            onNavigate?.();
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

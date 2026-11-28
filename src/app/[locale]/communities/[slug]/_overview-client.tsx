@@ -98,6 +98,7 @@ export function CommunityOverviewPageClient({
         )}
 
       <FeedPage
+        feedFirst={hasShellInvite && isMember}
         slug={slug}
         memberRole={memberRole}
         currentUserId={user?.id}

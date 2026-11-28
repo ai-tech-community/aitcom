@@ -6806,6 +6806,12 @@
   },
   "redesign": {
     "shell": {
+      "unreadAllConversations": "{count, plural, one {# ongelezen bericht in alle gesprekken} other {# ongelezen berichten in alle gesprekken}}",
+      "pages": "Pagina’s",
+      "communityIdentityMenu": "Opties voor {name}",
+      "communityUnread": "{name}, ongelezen berichten",
+      "unreadMessages": "{count, plural, one {# ongelezen bericht} other {# ongelezen berichten}}",
+      "unreadNotifications": "{count, plural, one {# ongelezen melding} other {# ongelezen meldingen}}",
       "switchNamedCommunity": "{name}, wissel van community",
       "yourRole": "Je rol: {role}",
       "pageResults": "{count, plural, one {# pagina} other {# pagina’s}}",

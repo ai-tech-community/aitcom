@@ -40,7 +40,7 @@ vi.mock("@/components/communities/community-about", () => ({
 }));
 vi.mock("./topic-chips", () => ({ TopicChips: () => null }));
 vi.mock("./community-activity-feed", () => ({
-  CommunityActivityFeed: () => null,
+  CommunityActivityFeed: () => <div data-testid="community-activity-feed" />,
   FeedSkeleton: () => null,
 }));
 vi.mock("@/components/communities/onboarding/welcome-checklist", () => ({
@@ -52,7 +52,7 @@ vi.mock("@/components/communities/first-session-path", () => ({
 
 import { FeedPage } from "./feed-page";
 
-function renderPage(member: boolean) {
+function renderPage(member: boolean, feedFirst = false) {
   return render(
     <NextIntlClientProvider locale="en" messages={en}>
       <FeedPage
@@ -60,6 +60,7 @@ function renderPage(member: boolean) {
         memberRole={member ? "member" : null}
         currentUserId={member ? "user-1" : undefined}
         feedPostPolicy="all_members"
+        feedFirst={feedFirst}
       />
     </NextIntlClientProvider>,
   );
@@ -125,4 +126,14 @@ describe("FeedPage side panel", () => {
     expect(about.className).toMatch(/\bxl:col-start-2\b/);
     expect(panel.className).toMatch(/\bxl:col-start-2\b/);
   });
+});
+
+it("puts the joined member’s feed before About in shell reading order", () => {
+  renderPage(true, true);
+  const about = screen.getByTestId("community-about");
+  const feed = screen.getByTestId("community-activity-feed");
+  expect(
+    feed.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(screen.getAllByTestId("community-about")).toHaveLength(1);
 });

@@ -5,6 +5,10 @@ const state = vi.hoisted(() => ({
   segments: [] as string[],
 }));
 vi.mock("@/i18n/navigation", () => ({ usePathname: () => state.path }));
+vi.mock("./shells/shell-unread", () => ({
+  ShellUnreadProvider: ({ children }: { children: React.ReactNode }) =>
+    children,
+}));
 vi.mock("next/navigation", () => ({
   useSelectedLayoutSegments: () => state.segments,
 }));

@@ -27,7 +27,7 @@ export const shellIconButton =
 export const shellMobileButton =
   "focus-visible:ring-ring hover:bg-secondary flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-md p-1 text-center text-xs leading-tight font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset";
 export const shellActiveTab =
-  "bg-secondary font-semibold [&>[data-shell-nav-label]]:underline [&>[data-shell-nav-label]]:decoration-foreground [&>[data-shell-nav-label]]:underline-offset-4";
+  "bg-secondary text-foreground font-semibold ring-1 ring-inset ring-foreground/50";
 
 export function ShellMobileLabel({
   icon: Icon,
@@ -84,7 +84,7 @@ export function ShellNavLink({
   const unread = item.unread ?? 0;
   const status = [
     item.locked ? t("lockedRoom") : null,
-    unread > 0 ? t("unread", { count: unread }) : null,
+    unread > 0 ? t("unreadMessages", { count: unread }) : null,
   ].filter(Boolean);
 
   return (
@@ -98,7 +98,7 @@ export function ShellNavLink({
       className={cn(
         "focus-visible:ring-ring relative flex min-h-11 items-center gap-2.5 rounded-md px-3 py-1.5 text-sm leading-snug outline-none focus-visible:ring-2 focus-visible:ring-inset lg:min-h-9",
         active
-          ? "bg-secondary text-foreground decoration-foreground font-semibold underline underline-offset-4"
+          ? "bg-secondary text-foreground before:bg-foreground font-semibold before:absolute before:inset-y-2 before:left-0.5 before:w-0.5 before:rounded-full"
           : "text-foreground/75 hover:bg-secondary/60 hover:text-foreground font-medium",
         className,
       )}

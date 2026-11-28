@@ -81,7 +81,7 @@ function CompactNotificationBell({ signedIn }: { signedIn: boolean }) {
           title={t("notifications")}
           aria-label={
             count
-              ? `${t("notifications")}, ${t("unread", { count })}`
+              ? `${t("notifications")}, ${t("unreadNotifications", { count })}`
               : t("notifications")
           }
         >
