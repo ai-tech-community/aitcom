@@ -183,24 +183,53 @@ describe("PortalContainerProvider", () => {
   });
 });
 
-describe("floating primitives in ui/", () => {
+/** Every `.tsx` source file under `dir`, tests excluded. */
+function sourcesUnder(dir: string): string[] {
+  return readdirSync(dir, { recursive: true, encoding: "utf8" })
+    .filter((file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx"))
+    .map((file) => join(dir, file));
+}
+
+/**
+ * Hand-made portals that must stay in the house look: the site chrome is
+ * never inside a community look.
+ */
+const HOUSE_PORTALS = ["src/components/navbar.tsx"];
+
+describe("floating layers across the app", () => {
+  const root = process.cwd();
+  const sources = sourcesUnder(join(root, "src"));
+
   it("pass the provided container to every Radix portal", () => {
-    const dir = join(process.cwd(), "src/components/ui");
     const missing: string[] = [];
     let portals = 0;
-    for (const file of readdirSync(dir)) {
-      if (!file.endsWith(".tsx") || file.endsWith(".test.tsx")) continue;
-      const source = readFileSync(join(dir, file), "utf8");
+    for (const file of sources) {
+      const source = readFileSync(file, "utf8");
       for (const match of source.matchAll(
         /<[A-Za-z]+Primitive\.Portal\b[^>]*>/g,
       )) {
         portals += 1;
-        if (!match[0].includes("container="))
-          missing.push(`${file}: ${match[0]}`);
+        if (!match[0].includes("container=")) {
+          missing.push(`${file.slice(root.length + 1)}: ${match[0]}`);
+        }
       }
     }
     // The check found the portals it guards (one per primitive above).
     expect(portals).toBeGreaterThanOrEqual(FLOATING.length);
+    expect(missing).toEqual([]);
+  });
+
+  it("mount hand-made portals in the provided container", () => {
+    const missing = sources
+      .filter((file) => readFileSync(file, "utf8").includes("createPortal("))
+      .map((file) => file.slice(root.length + 1))
+      .filter((file) => !HOUSE_PORTALS.includes(file))
+      .filter(
+        (file) =>
+          !readFileSync(join(root, file), "utf8").includes(
+            "usePortalContainer()",
+          ),
+      );
     expect(missing).toEqual([]);
   });
 });

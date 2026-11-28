@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Button } from "@/components/ui/button";
+import { usePortalContainer } from "@/components/ui/portal-container";
 import {
   Dialog,
   DialogContent,
@@ -96,6 +97,10 @@ export function ReelsViewer({
   const router = useRouter();
   const utils = api.useUtils();
   const { promptAuth } = useRequireAuth();
+  // The viewer opens in the community look's floating layer, like the
+  // sheets and dialogs it opens on top of itself; on `body` it would cover
+  // them.
+  const portalContainer = usePortalContainer();
   const isMember = !!memberRole;
   const communityPath = `/communities/${slug}`;
 
@@ -378,7 +383,7 @@ export function ReelsViewer({
         if (!open) router.push(communityPath);
       }}
     >
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={portalContainer}>
         <DialogPrimitive.Content
           ref={contentRef}
           aria-describedby={undefined}
