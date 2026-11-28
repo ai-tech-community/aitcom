@@ -10,6 +10,14 @@ import {
 import { useTranslations } from "next-intl";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 import { authClient } from "@/server/better-auth/client";
+import {
+  useInitialAuthUser,
+  usePageDocumentAuthUser,
+} from "@/components/auth/session-provider";
+import {
+  documentAuthUser,
+  type HubAuthUser,
+} from "@/server/better-auth/hub-session";
 import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -89,26 +97,38 @@ function RoomMessageGroups({
   messages,
   conversationId,
   authors,
-  currentUserId,
+  viewer,
 }: {
   messages: readonly ChatMessage[];
   conversationId: string;
   authors: RoomAuthors;
-  currentUserId?: string;
+  viewer: HubAuthUser | null;
 }) {
   const t = useTranslations("redesign.shell");
   const inbox = useTranslations("inbox");
   const byUser = new Map(
     authors.previews.map((author) => [author.userId, author]),
   );
-  const needsRoster = messages.some(
-    ({ senderId }) => !byUser.get(senderId)?.displayName,
-  );
-  const { data } = api.communities.getMembers.useQuery(
+  if (viewer) {
+    byUser.set(viewer.id, {
+      userId: viewer.id,
+      displayName: viewer.name?.trim() || t("roomMessageYou"),
+      avatarUrl: viewer.image ?? null,
+    });
+  }
+  const humanSenders = [
+    ...new Set(
+      messages.flatMap(({ senderId, senderType }) =>
+        senderType === "human" ? [senderId] : [],
+      ),
+    ),
+  ];
+  const needsRoster = humanSenders.some((id) => !byUser.get(id)?.displayName);
+  const roster = api.communities.getMembers.useQuery(
     { slug: authors.slug, limit: 50 },
     { enabled: needsRoster },
   );
-  for (const row of data?.items ?? []) {
+  for (const row of roster.data?.items ?? []) {
     if (byUser.get(row.userId)?.displayName) continue;
     byUser.set(row.userId, {
       userId: row.userId,
@@ -116,6 +136,25 @@ function RoomMessageGroups({
       avatarUrl: row.image,
     });
   }
+  // Room previews and the first roster page are quick, scoped sources. Look
+  // up the remaining human IDs through the existing public-profile policy.
+  const missing = roster.isLoading
+    ? []
+    : humanSenders.filter((id) => !byUser.get(id)?.displayName);
+  const profiles = api.useQueries((queries) =>
+    missing.map((userId) =>
+      queries.members.getPublicProfile({ userId }, { retry: false }),
+    ),
+  );
+  profiles.forEach(({ data }, index) => {
+    if (!data?.profile.displayName) return;
+    const userId = missing[index]!;
+    byUser.set(userId, {
+      userId,
+      displayName: data.profile.displayName,
+      avatarUrl: data.user?.avatarUrl ?? null,
+    });
+  });
 
   const dateLabel = (date: Date) => {
     const today = new Date();
@@ -134,8 +173,10 @@ function RoomMessageGroups({
   return groups.map((group, index) => {
     const first = group[0]!;
     const previous = groups[index - 1]?.[0];
-    const author = byUser.get(first.senderId);
-    const name = author?.displayName ?? t("unknownRoomAuthor");
+    // For agent rows, senderId is the owner, not an agent identity.
+    const author =
+      first.senderType === "human" ? byUser.get(first.senderId) : undefined;
+    const name = author?.displayName;
     const startsDay =
       !previous || toDateKey(previous.createdAt) !== toDateKey(first.createdAt);
     return (
@@ -153,37 +194,73 @@ function RoomMessageGroups({
             <div className="bg-border h-px flex-1" />
           </div>
         ) : null}
-        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3">
-          <Avatar size="sm" aria-hidden>
-            {author?.avatarUrl ? (
-              <AvatarImage src={author.avatarUrl} alt="" />
-            ) : null}
-            <AvatarFallback>
-              {author?.displayName ? getInitials(name) : "?"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 space-y-2">
-            <p className="text-sm font-semibold wrap-break-word">{name}</p>
-            {group.map((message) => (
-              <div key={message.id} className="min-w-0">
-                <MessageBody
-                  message={message}
-                  isUser={
-                    message.senderId === currentUserId &&
-                    message.senderType === "human"
-                  }
-                  conversationId={conversationId}
-                />
-                <span className="text-muted-foreground font-mono text-xs">
-                  {formatTime(message.createdAt)}
-                </span>
-              </div>
-            ))}
+        {name ? (
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3">
+            <Avatar size="sm" aria-hidden>
+              {author?.avatarUrl ? (
+                <AvatarImage src={author.avatarUrl} alt="" />
+              ) : null}
+              <AvatarFallback>{getInitials(name)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 space-y-2">
+              <p className="text-sm font-semibold wrap-break-word">{name}</p>
+              {group.map((message) => (
+                <div key={message.id} className="min-w-0">
+                  <MessageBody
+                    message={message}
+                    isUser={
+                      message.senderId === viewer?.id &&
+                      message.senderType === "human"
+                    }
+                    conversationId={conversationId}
+                  />
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {formatTime(message.createdAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          group.map((message) => (
+            <UnattributedMessage
+              key={message.id}
+              message={message}
+              conversationId={conversationId}
+              isUser={false}
+            />
+          ))
+        )}
       </div>
     );
   });
+}
+
+function UnattributedMessage({
+  message,
+  conversationId,
+  isUser,
+}: {
+  message: ChatMessage;
+  conversationId: string;
+  isUser: boolean;
+}) {
+  return (
+    <Message from={isUser ? "user" : "assistant"}>
+      <MessageContent>
+        <MessageBody
+          message={message}
+          isUser={isUser}
+          conversationId={conversationId}
+        />
+      </MessageContent>
+      <span
+        className={`text-muted-foreground font-mono text-xs ${isUser ? "ml-auto" : ""}`}
+      >
+        {formatTime(message.createdAt)}
+      </span>
+    </Message>
+  );
 }
 
 /** At the latest message, keep a partial leading row out of the reading area.
@@ -248,6 +325,9 @@ export function ConversationView({
   const shell = useTranslations("redesign.shell");
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id;
+  const initialUser = useInitialAuthUser();
+  const pageUser = usePageDocumentAuthUser();
+  const viewer = documentAuthUser(initialUser, pageUser, session?.user);
 
   const messagesQuery = useConversationMessages(conversationId);
 
@@ -379,7 +459,7 @@ export function ConversationView({
                 messages={messages}
                 conversationId={conversationId}
                 authors={roomAuthors}
-                currentUserId={currentUserId}
+                viewer={viewer}
               />
             ) : (
               messages.map((msg, idx) => {
@@ -427,20 +507,11 @@ export function ConversationView({
                         <div className="bg-border h-px flex-1" />
                       </div>
                     )}
-                    <Message from={isUser ? "user" : "assistant"}>
-                      <MessageContent>
-                        <MessageBody
-                          message={msg}
-                          isUser={isUser}
-                          conversationId={conversationId}
-                        />
-                      </MessageContent>
-                      <span
-                        className={`text-muted-foreground font-mono text-xs ${isUser ? "ml-auto" : ""}`}
-                      >
-                        {formatTime(msg.createdAt)}
-                      </span>
-                    </Message>
+                    <UnattributedMessage
+                      message={msg}
+                      conversationId={conversationId}
+                      isUser={isUser}
+                    />
                   </div>
                 );
               })

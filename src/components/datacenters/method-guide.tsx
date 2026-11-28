@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import type { ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -48,7 +49,7 @@ export function MethodGuide({
   t: (key: DatacenterMethodKey) => string;
 }) {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       <nav className="text-muted-foreground text-xs">
         <Link
           href={LIVE_INVESTIGATION_PATH}
@@ -138,7 +139,7 @@ export function MethodGuide({
           {t("liveLink")}
         </Link>
       </section>
-    </main>
+    </PageMain>
   );
 }
 

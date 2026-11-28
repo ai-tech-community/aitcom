@@ -97,6 +97,22 @@ describe("community layout", () => {
     expect(state.prefetchRooms).toHaveBeenCalledWith({ slug: "belong" });
   });
 
+  it("starts both navigation reads while the independent community read is pending", async () => {
+    state.redesigned = true;
+    let release = () => {};
+    state.prefetch.mockReturnValue(
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const layout = CommunityLayout({ children: <p>page</p>, params: params() });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(state.prefetchSpaces).toHaveBeenCalledWith({ slug: "belong" });
+    expect(state.prefetchRooms).toHaveBeenCalledWith({ slug: "belong" });
+    release();
+    await layout;
+  });
+
   it("still renders the frame when the community is missing", async () => {
     // tRPC's `prefetch` is TanStack's `prefetchQuery`: a NOT_FOUND lands in
     // the cache, the call itself resolves. Run that real path, so the

@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Image from "next/image";
@@ -41,7 +42,7 @@ export default async function RedeemInvitePage({
   const landing = await loadInviteLanding(db, token, session?.user?.id);
   if (landing.kind !== "valid")
     return (
-      <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-6 px-6 py-16 text-center">
+      <PageMain className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-6 px-6 py-16 text-center">
         <Link2 className="text-muted-foreground size-8" aria-hidden="true" />
         <h1 className="text-3xl font-semibold tracking-tight">
           {t(landing.kind === "expired" ? "expiredTitle" : "invalidTitle")}
@@ -55,7 +56,7 @@ export default async function RedeemInvitePage({
             <ArrowRight className="size-4" />
           </Link>
         </Button>
-      </main>
+      </PageMain>
     );
   const callbackQuery = new URLSearchParams(attribution);
   callbackQuery.set("accept", "1");
@@ -71,7 +72,7 @@ export default async function RedeemInvitePage({
   }
   const name = (landing.inviterName?.trim() ?? "") || t("member");
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-8 sm:py-16">
+    <PageMain className="mx-auto max-w-6xl px-6 py-12 sm:px-8 sm:py-16">
       <div className="grid items-center gap-10 md:grid-cols-2 md:gap-12">
         <section>
           <div className="mb-7 flex items-center gap-3">
@@ -153,6 +154,6 @@ export default async function RedeemInvitePage({
           </p>
         </div>
       </div>
-    </main>
+    </PageMain>
   );
 }

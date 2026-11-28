@@ -6819,7 +6819,7 @@
       "unreadShort": "<number>{count}</number> non lus",
       "unreadPosts": "{count, plural, one {# publication non lue} other {# publications non lues}}",
       "unreadConversations": "{count, plural, one {# conversation non lue} other {# conversations non lues}}",
-      "unknownRoomAuthor": "Membre inconnu",
+      "roomMessageYou": "Vous",
       "unreadNotifications": "{count, plural, one {# notification non lue} other {# notifications non lues}}",
       "switchNamedCommunity": "{name}, changer de communauté",
       "yourRole": "Votre rôle : {role}",

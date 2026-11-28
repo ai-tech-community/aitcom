@@ -1,10 +1,16 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { Component, type ReactNode } from "react";
+import { NextIntlClientProvider } from "next-intl";
+import en from "../../messages/en.json";
 const state = vi.hoisted(() => ({
   path: "/magazines/gazette/issue-1",
   segments: [] as string[],
 }));
-vi.mock("@/i18n/navigation", () => ({ usePathname: () => state.path }));
+vi.mock("@/i18n/navigation", () => ({
+  usePathname: () => state.path,
+  Link: (props: React.ComponentProps<"a">) => <a {...props} />,
+}));
 vi.mock("./shells/shell-unread", () => ({
   ShellUnreadProvider: ({ children }: { children: React.ReactNode }) =>
     children,
@@ -16,9 +22,70 @@ import {
   resolveSiteShell,
   SiteChromeGate,
   SiteContent,
+  SiteHubChrome,
   SiteShellProvider,
   type SiteShell,
 } from "./site-chrome-gate";
+import { PageMain, ShellMain } from "./page-main";
+import NotFound from "@/app/[locale]/not-found";
+import LocaleError from "@/app/[locale]/error";
+
+function go(path: string) {
+  state.path = path;
+  state.segments = path.split("/").filter(Boolean);
+}
+
+function HubChrome() {
+  return (
+    <>
+      <header>
+        <nav aria-label="Hub navigation">Hub nav</nav>
+        <button>Find a page</button>
+        <button>Account</button>
+      </header>
+      <nav aria-label="Hub shortcuts">Mobile nav</nav>
+    </>
+  );
+}
+
+function Frame({ children }: { children: ReactNode }) {
+  return (
+    <NextIntlClientProvider locale="en" messages={en}>
+      <SiteShellProvider hubChrome={<HubChrome />}>
+        <SiteChromeGate>
+          <span>Legacy nav</span>
+        </SiteChromeGate>
+        <SiteHubChrome />
+        <SiteContent>{children}</SiteContent>
+        <SiteChromeGate slot="footer">
+          <span>Footer</span>
+        </SiteChromeGate>
+        <SiteChromeGate slot="session">
+          <span>Session chrome</span>
+        </SiteChromeGate>
+      </SiteShellProvider>
+    </NextIntlClientProvider>
+  );
+}
+
+function assertHubLandmarks() {
+  expect(screen.getAllByRole("main")).toHaveLength(1);
+  const main = screen.getByRole("main");
+  expect(main).toHaveAttribute("data-site-shell", "hub");
+  expect(main).toHaveAttribute("id", "shell-content");
+  const header = screen.getByRole("banner");
+  expect(header.parentElement).toBe(main.parentElement);
+  expect(
+    screen.getByRole("navigation", { name: "Hub shortcuts" }).parentElement,
+  ).toBe(main.parentElement);
+  expect(header).toContainElement(
+    screen.getByRole("button", { name: "Find a page" }),
+  );
+  expect(header).toContainElement(
+    screen.getByRole("button", { name: "Account" }),
+  );
+  expect(screen.queryByText("Legacy nav")).toBeNull();
+}
 
 describe("SiteChromeGate", () => {
   it("restores site navigation when a reader leaves the issue", () => {
@@ -251,53 +318,104 @@ describe("resolveSiteShell", () => {
     ).toBe("focus");
   });
 
-  it("switches chrome on navigation without replacing the content landmark", () => {
-    function Frame() {
-      return (
-        <SiteShellProvider>
-          <SiteChromeGate>
-            <span>Legacy nav</span>
-          </SiteChromeGate>
-          <SiteChromeGate slot="hub">
-            <span>Hub nav</span>
-          </SiteChromeGate>
-          <SiteContent>Page</SiteContent>
-          <SiteChromeGate slot="footer">
-            <span>Footer</span>
-          </SiteChromeGate>
-          <SiteChromeGate slot="session">
-            <span>Session chrome</span>
-          </SiteChromeGate>
-        </SiteShellProvider>
-      );
-    }
-    function go(path: string) {
-      state.path = path;
-      state.segments = path.split("/").filter(Boolean);
-    }
-
+  it("switches chrome on navigation and keeps one content landmark", () => {
     go("/communities/workbench-notes/events");
-    const { rerender } = render(<Frame />);
-    const main = screen.getByRole("main");
+    const { rerender } = render(
+      <Frame>
+        <ShellMain data-site-shell="community">Page</ShellMain>
+      </Frame>,
+    );
+    expect(screen.getAllByRole("main")).toHaveLength(1);
     expect(screen.queryByText("Hub nav")).toBeNull();
     expect(screen.getByText("Session chrome")).toBeInTheDocument();
 
     go("/communities/workbench-notes/events/new");
-    rerender(<Frame />);
+    rerender(
+      <Frame>
+        <ShellMain data-site-shell="focus">Workspace</ShellMain>
+      </Frame>,
+    );
     expect(screen.queryByText("Session chrome")).toBeNull();
     expect(screen.queryByText("Footer")).toBeNull();
-    expect(screen.getByRole("main")).toBe(main);
+    expect(screen.getByRole("main")).toHaveAttribute(
+      "data-site-shell",
+      "focus",
+    );
 
     go("/magazines/gazette/issue");
-    rerender(<Frame />);
+    rerender(
+      <Frame>
+        <PageMain>Magazine page</PageMain>
+      </Frame>,
+    );
     expect(screen.queryByText("Hub nav")).toBeNull();
     expect(screen.queryByText("Footer")).toBeNull();
 
     go("/communities");
-    rerender(<Frame />);
+    rerender(
+      <Frame>
+        <PageMain>Hub page</PageMain>
+      </Frame>,
+    );
     expect(screen.getByText("Hub nav")).toBeInTheDocument();
     expect(screen.getByText("Footer")).toBeInTheDocument();
-    expect(screen.getByRole("main")).toHaveAttribute("id", "shell-content");
-    expect(screen.queryByText("Legacy nav")).toBeNull();
+    assertHubLandmarks();
+    expect(screen.getByRole("main")).toContainElement(
+      screen.getByText("Hub page"),
+    );
+  });
+
+  it("uses the Hub frame for the missing-community not-found boundary", () => {
+    go("/communities/missing");
+    expect(resolveSiteShell(state.path, state.segments)).toBe("community");
+    expect(resolveSiteShell(state.path, state.segments, true)).toBe("hub");
+    render(
+      <Frame>
+        <NotFound />
+      </Frame>,
+    );
+    assertHubLandmarks();
+    expect(screen.getByRole("main")).toContainElement(
+      screen.getByRole("heading", { name: en.notFound.title }),
+    );
+  });
+
+  it("uses the Hub frame when a community child throws into the locale error boundary", () => {
+    const reset = vi.fn();
+    class Boundary extends Component<
+      { children: ReactNode },
+      { error: Error | null }
+    > {
+      state: { error: Error | null } = { error: null };
+      static getDerivedStateFromError(error: Error) {
+        return { error };
+      }
+      render() {
+        const error = this.state.error;
+        return error ? (
+          <LocaleError error={error} reset={reset} />
+        ) : (
+          this.props.children
+        );
+      }
+    }
+    function BrokenPage(): ReactNode {
+      throw new Error("Community child failed");
+    }
+    go("/communities/workbench-notes/events");
+    render(
+      <Frame>
+        <Boundary>
+          <BrokenPage />
+        </Boundary>
+      </Frame>,
+      { onCaughtError: () => undefined },
+    );
+    assertHubLandmarks();
+    expect(screen.getByRole("main")).toContainElement(
+      screen.getByRole("heading", { name: en.common.errorTitle }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: en.common.retry }));
+    expect(reset).toHaveBeenCalledOnce();
   });
 });

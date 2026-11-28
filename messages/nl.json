@@ -6819,7 +6819,7 @@
       "unreadShort": "<number>{count}</number> ongelezen",
       "unreadPosts": "{count, plural, one {# ongelezen bericht} other {# ongelezen berichten}}",
       "unreadConversations": "{count, plural, one {# ongelezen gesprek} other {# ongelezen gesprekken}}",
-      "unknownRoomAuthor": "Onbekend lid",
+      "roomMessageYou": "Jij",
       "unreadNotifications": "{count, plural, one {# ongelezen melding} other {# ongelezen meldingen}}",
       "switchNamedCommunity": "{name}, wissel van community",
       "yourRole": "Je rol: {role}",

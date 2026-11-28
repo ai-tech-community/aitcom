@@ -61,6 +61,7 @@ export function ShellMobileNav({
   return (
     <nav
       aria-label={label}
+      data-shell-mobile-nav=""
       className="border-border bg-background fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-1 border-t px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {children}

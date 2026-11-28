@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
@@ -92,7 +93,7 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
     : null;
 
   return (
-    <main className="container mx-auto flex flex-col gap-8 p-6">
+    <PageMain className="container mx-auto flex flex-col gap-8 p-6">
       <nav className="text-muted-foreground text-xs">
         <Link href="/investigations/datacenters" className="hover:underline">
           ← All datacenters
@@ -483,7 +484,7 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
           </ul>
         )}
       </section>
-    </main>
+    </PageMain>
   );
 }
 

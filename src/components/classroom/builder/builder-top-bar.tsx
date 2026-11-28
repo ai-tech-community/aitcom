@@ -68,7 +68,7 @@ export function BuilderTopBar({
   const t = useTranslations("classroomBuilder");
 
   return (
-    <header className="bg-background border-border sticky top-12 z-40 border-b">
+    <header className="bg-background border-border sticky top-(--shell-top-offset) z-40 border-b">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <Button

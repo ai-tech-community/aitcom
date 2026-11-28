@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
@@ -32,7 +33,7 @@ export default async function ContributeStoriesPage() {
     }),
   ]);
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
+    <PageMain className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
       <Link
         href="/news/stories"
         className="text-muted-foreground text-sm underline underline-offset-4"
@@ -72,6 +73,6 @@ export default async function ContributeStoriesPage() {
           agentLabel={(name) => news("leaderboardAgent", { name })}
         />
       </details>
-    </main>
+    </PageMain>
   );
 }

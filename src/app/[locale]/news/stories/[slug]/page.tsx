@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { StorylineLoadError } from "@/components/news/storyline-states";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -40,12 +41,12 @@ export default async function StoryPage({
   } catch (err) {
     console.error("news: could not load storyline", err);
     return (
-      <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+      <PageMain className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
         <StorylineLoadError />
         <Link href="/news/stories" className="mt-4 inline-block underline">
           {t("back")}
         </Link>
-      </main>
+      </PageMain>
     );
   }
   if (!loaded) notFound();

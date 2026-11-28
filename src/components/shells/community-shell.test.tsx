@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
 import { CommunityShell } from "./community-shell";
+import { PageMain } from "@/components/page-main";
 import { usableMemberships } from "./community-switcher";
 
 const m = vi.hoisted(() => ({
@@ -167,7 +168,7 @@ function renderShell(canRead: boolean, role: "owner" | "member" | null) {
         }
         showCover
       >
-        <p>Child page</p>
+        <PageMain>Child page</PageMain>
       </CommunityShell>
     </NextIntlClientProvider>
   );
@@ -176,6 +177,20 @@ function renderShell(canRead: boolean, role: "owner" | "member" | null) {
 }
 
 describe("CommunityShell", () => {
+  it("puts the header, rail and bottom navigation alongside the page landmark", () => {
+    renderShell(true, "member");
+    const [main] = screen.getAllByRole("main");
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(main).toContainElement(screen.getByText("Child page"));
+    for (const chrome of [
+      screen.getByRole("banner"),
+      screen.getByRole("complementary"),
+      screen.getByRole("navigation", { name: "Community shortcuts" }),
+    ]) {
+      expect(chrome.parentElement).toBe(main!.parentElement);
+      expect(main).not.toContainElement(chrome);
+    }
+  });
   it("groups community pages and rooms, shows active-room unread and keeps owner links", () => {
     renderShell(true, "owner");
     const navigation = screen.getByRole("navigation", {

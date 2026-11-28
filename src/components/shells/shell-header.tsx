@@ -299,6 +299,7 @@ function AccountMenu({
 const shortcuts = keyboardNavItems();
 
 export function ShellHeader({
+  className,
   location,
   section,
   sectionInNavigation,
@@ -311,6 +312,7 @@ export function ShellHeader({
   user,
   community = false,
 }: {
+  className?: string;
   location: string;
   section?: string;
   sectionInNavigation?: boolean;
@@ -375,7 +377,10 @@ export function ShellHeader({
       role="banner"
       onKeyDown={onShortcut}
       data-shell-header=""
-      className="border-border bg-background sticky top-0 z-40 border-b"
+      className={cn(
+        "border-border bg-background sticky top-0 z-40 border-b",
+        className,
+      )}
     >
       <a
         href="#shell-content"

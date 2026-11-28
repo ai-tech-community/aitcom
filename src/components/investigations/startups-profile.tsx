@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { resolveLocale } from "@/i18n/messages";
 import { ArrowLeft } from "lucide-react";
 
@@ -110,7 +111,7 @@ export function StartupsProfilePage({
   );
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       <JsonLd data={startupProfileJsonLd(card)} />
 
       <SectionLabel
@@ -191,6 +192,6 @@ export function StartupsProfilePage({
           </div>
         )}
       </div>
-    </main>
+    </PageMain>
   );
 }

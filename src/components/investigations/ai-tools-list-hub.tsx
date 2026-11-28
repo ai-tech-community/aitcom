@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { resolveLocale } from "@/i18n/messages";
 import { JsonLd } from "@/components/json-ld";
 import { StartupLogo } from "@/components/investigations/startups-logo";
@@ -54,7 +55,7 @@ export function AiToolsListHub({
   });
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       <JsonLd
         data={aiToolsListJsonLd(
           locale,
@@ -115,6 +116,6 @@ export function AiToolsListHub({
           ) : null}
         </nav>
       ) : null}
-    </main>
+    </PageMain>
   );
 }

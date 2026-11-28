@@ -15,7 +15,6 @@ import type {
   MembershipStatus,
 } from "@/server/communities/invite-policy";
 import { useCommunityJoin } from "./use-community-join";
-import { cn } from "@/lib/utils";
 
 interface CommunityActionsMenuProps {
   slug: string;
@@ -25,7 +24,6 @@ interface CommunityActionsMenuProps {
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
   /** After a successful leave, before the page data refreshes. */
   onLeft?: () => void;
-  compact?: boolean;
   /** Render the existing action as a row in the identity menu. */
   onRowAction?: () => void;
   returnFocusAfterLeave?: () => HTMLElement | null;
@@ -44,7 +42,6 @@ export function CommunityActionsMenu({
   membershipStatus,
   memberRole,
   onLeft,
-  compact = false,
   onRowAction,
   returnFocusAfterLeave,
 }: CommunityActionsMenuProps) {
@@ -103,11 +100,7 @@ export function CommunityActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          className={cn(compact && "min-h-11 motion-reduce:transition-none")}
-          disabled={busy}
-          onSelect={() => void leave()}
-        >
+        <DropdownMenuItem disabled={busy} onSelect={() => void leave()}>
           <LogOut aria-hidden="true" />
           {t("leave")}
         </DropdownMenuItem>

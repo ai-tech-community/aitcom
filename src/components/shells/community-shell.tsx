@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AitLogo } from "@/components/ait-logo";
 import type { CommunityIdentity } from "@/components/communities/community-identity";
+import { ShellMain } from "@/components/page-main";
 import { CommunityActionsMenu } from "@/components/communities/community-actions-menu";
 import { JoinButton } from "@/components/communities/join-button";
 import {
@@ -282,9 +283,10 @@ export function CommunityShell({
         <OnboardingReminderProvider enabled={!!user}>
           <div
             data-community-shell=""
-            className="pb-(--community-mobile-bar-height) lg:pb-0"
+            className="grid grid-cols-1 pb-(--shell-bottom-offset) lg:grid-cols-[16.5rem_minmax(0,1fr)]"
           >
             <ShellHeader
+              className="col-span-full"
               location={identity.name}
               section={section}
               destinations={destinations}
@@ -323,64 +325,63 @@ export function CommunityShell({
                 </Link>
               }
             />
-            <div className="grid min-h-[calc(100svh-3rem-1px)] grid-cols-1 lg:grid-cols-[16.5rem_minmax(0,1fr)]">
-              <aside
-                data-community-rail=""
-                className="border-border bg-muted/20 hidden lg:sticky lg:top-[calc(3rem+1px)] lg:flex lg:h-[calc(100dvh-3rem-1px)] lg:flex-col lg:self-start lg:border-r"
-              >
-                {user ? (
-                  <CommunitySwitchList
-                    className="border-border shrink-0 border-b px-4 py-2"
-                    memberships={memberships}
-                    activeSlug={community.slug}
-                    retryMemberships={retryMemberships}
+            <aside
+              data-community-rail=""
+              className="border-border bg-muted/20 hidden lg:sticky lg:top-[calc(var(--shell-top-offset)+var(--shell-header-border))] lg:flex lg:h-[calc(100dvh-var(--shell-top-offset)-var(--shell-header-border))] lg:flex-col lg:self-start lg:border-r"
+            >
+              {user ? (
+                <CommunitySwitchList
+                  className="border-border shrink-0 border-b px-4 py-2"
+                  memberships={memberships}
+                  activeSlug={community.slug}
+                  retryMemberships={retryMemberships}
+                />
+              ) : null}
+              {!member ? (
+                <div className="shrink-0 px-4 pt-3">
+                  <JoinButton
+                    {...membership}
+                    focusAfterChange={identityHeading}
                   />
-                ) : null}
-                {!member ? (
-                  <div className="shrink-0 px-4 pt-3">
-                    <JoinButton
-                      {...membership}
-                      focusAfterChange={identityHeading}
-                    />
-                  </div>
-                ) : null}
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
-                  {renderRailNavigation()}
                 </div>
-                <div className="border-border shrink-0 space-y-1 border-t p-3">
-                  <ShellNavLink
-                    item={{
-                      href: "/communities",
-                      label: t("discover"),
-                      icon: Compass,
-                    }}
-                  />
-                  {inviteAction()}
-                </div>
-              </aside>
-              <div
-                id="shell-content"
-                tabIndex={-1}
-                className="min-w-0 scroll-mt-14 px-4 py-4 focus:outline-none sm:px-6 lg:px-8 lg:py-6"
-              >
-                {!member ? (
-                  <div className="mb-4 lg:hidden [&_button]:min-h-11">
-                    <JoinButton
-                      {...membership}
-                      focusAfterChange={identityHeading}
-                    />
-                  </div>
-                ) : null}
-                {showCover ? (
-                  <CommunityThemeCover
-                    community={community}
-                    showName={false}
-                    className="mb-5 lg:mb-6"
-                  />
-                ) : null}
-                {children}
+              ) : null}
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
+                {renderRailNavigation()}
               </div>
-            </div>
+              <div className="border-border shrink-0 space-y-1 border-t p-3">
+                <ShellNavLink
+                  item={{
+                    href: "/communities",
+                    label: t("discover"),
+                    icon: Compass,
+                  }}
+                />
+                {inviteAction()}
+              </div>
+            </aside>
+            <ShellMain
+              data-site-shell="community"
+              id="shell-content"
+              tabIndex={-1}
+              className="min-h-[calc(100svh-var(--shell-top-offset)-var(--shell-header-border))] min-w-0 scroll-mt-14 px-4 py-4 focus:outline-none sm:px-6 lg:px-8 lg:py-6"
+            >
+              {!member ? (
+                <div className="mb-4 lg:hidden [&_button]:min-h-11">
+                  <JoinButton
+                    {...membership}
+                    focusAfterChange={identityHeading}
+                  />
+                </div>
+              ) : null}
+              {showCover ? (
+                <CommunityThemeCover
+                  community={community}
+                  showName={false}
+                  className="mb-5 lg:mb-6"
+                />
+              ) : null}
+              {children}
+            </ShellMain>
             <ShellMobileNav label={t("mobileNavigation")}>
               <Link
                 href={home.href}

@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { Link } from "@/i18n/navigation";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
@@ -44,7 +45,7 @@ export function StartupsRolePage({
   const jobPosting = startupRoleJsonLd(role);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {jobPosting ? <JsonLd data={jobPosting} /> : null}
       <nav className="text-muted-foreground text-xs">
         <Link
@@ -131,6 +132,6 @@ export function StartupsRolePage({
       <p className="text-muted-foreground mt-12 font-mono text-xs tracking-wider">
         {t("fetchedAt")} {fetched}
       </p>
-    </main>
+    </PageMain>
   );
 }

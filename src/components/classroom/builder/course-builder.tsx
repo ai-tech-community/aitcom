@@ -556,7 +556,7 @@ function CourseWorkspace({
   );
 
   return (
-    <div className="flex flex-col lg:h-[calc(100dvh-3rem-1px)]">
+    <div className="flex flex-col lg:h-[calc(100dvh-var(--shell-top-offset)-var(--shell-header-border))]">
       <BuilderTopBar
         slug={slug}
         courseSlug={courseSlug}
@@ -681,7 +681,7 @@ function BuilderSkeleton() {
   return (
     <div
       aria-busy="true"
-      className="flex flex-col lg:h-[calc(100dvh-3rem-1px)]"
+      className="flex flex-col lg:h-[calc(100dvh-var(--shell-top-offset)-var(--shell-header-border))]"
     >
       <div className="border-border flex items-center gap-3 border-b px-4 py-3 sm:px-6">
         <Skeleton className="h-5 w-24" />

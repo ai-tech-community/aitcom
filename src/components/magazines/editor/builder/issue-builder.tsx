@@ -663,7 +663,7 @@ function IssueWorkspace({
       : autosave.status;
 
   return (
-    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+    <div className="flex min-h-[calc(100dvh-var(--shell-top-offset))] flex-col">
       <BuilderTopBar
         communitySlug={communitySlug}
         magazineName={data.magazine.name}

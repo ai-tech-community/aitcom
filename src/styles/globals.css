@@ -295,28 +295,35 @@
   }
 }
 
-/* Existing workspaces account for a site header in their frame utilities. */
-[data-site-shell="focus"] .sticky.top-12 {
-  top: 0;
+:root {
+  --shell-top-offset: 3rem;
+  --shell-header-border: 1px;
+  --shell-bottom-offset: 0px;
+  --community-mobile-bar-height: calc(57px + env(safe-area-inset-bottom));
 }
 
-[data-site-shell="focus"] [class~="min-h-[calc(100dvh-3rem)]"] {
-  min-height: 100dvh;
+[data-site-frame="focus"] {
+  --shell-top-offset: 0px;
+  --shell-header-border: 0px;
 }
 
-@media (width >= 64rem) {
-  [data-site-shell="focus"] [class~="lg:h-[calc(100dvh-3rem-1px)]"] {
-    height: 100dvh;
+@media (width < 64rem) {
+  :is([data-site-frame="community"], [data-site-frame="hub"]) {
+    --shell-bottom-offset: var(--community-mobile-bar-height);
   }
 }
 
+[data-site-frame] > footer {
+  padding-bottom: var(--shell-bottom-offset);
+}
+
 /* In the redesigned frames, pair machine text and initials with their quiet fills. */
-:where([data-site-shell="community"], [data-site-shell="hub"],
+:where([data-community-shell], [data-site-shell="hub"],
   [data-shell-header]) .font-mono.text-muted-foreground {
   color: color-mix(in oklab, var(--foreground) 60%, var(--muted-foreground));
 }
 
-:where([data-site-shell="community"], [data-site-shell="hub"],
+:where([data-community-shell], [data-site-shell="hub"],
   [data-shell-header]) [data-slot="avatar-fallback"] {
   color: var(--foreground);
 }
@@ -438,21 +445,6 @@ body:has([data-shell-header])
     min-height: 44px;
   }
 
-  :is([data-site-shell="hub"], [data-site-shell="community"]) ~ footer {
-    padding-bottom: var(--community-mobile-bar-height);
-  }
-
-  [data-site-shell="hub"] [data-messages-shell] {
-    height: calc(100dvh - 3rem - var(--community-mobile-bar-height));
-  }
-
-  [data-community-shell] .sticky.bottom-4 {
-    bottom: calc(var(--community-mobile-bar-height) + 1rem);
-  }
-}
-
-:root {
-  --community-mobile-bar-height: calc(57px + env(safe-area-inset-bottom));
 }
 
 /* Magazine reading pages. The type pair is loaded per magazine. */

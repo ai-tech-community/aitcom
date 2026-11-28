@@ -17,6 +17,7 @@ import { SessionChrome } from "@/components/session-chrome";
 import {
   SiteChromeGate,
   SiteContent,
+  SiteHubChrome,
   SiteShellProvider,
   SiteToaster,
 } from "@/components/site-chrome-gate";
@@ -29,7 +30,6 @@ import { siteLayoutMetadata } from "@/lib/site-metadata";
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
-import { Fragment } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +83,32 @@ export default async function LocaleLayout({
   const messages = messagesModule.default;
   const { initialUser, initialMemberships } = await loadHubAuthSeed();
   const redesigned = isOpenCommunitiesEnabled();
-  const ShellProvider = redesigned ? SiteShellProvider : Fragment;
+  const chrome = (
+    <>
+      <SiteChromeGate>
+        <Navbar initialUser={initialUser} />
+      </SiteChromeGate>
+      <InboxProvider>
+        <SpaceWindowProvider>
+          {redesigned ? <SiteHubChrome /> : null}
+          <SiteContent>{children}</SiteContent>
+          <SiteChromeGate slot="footer">
+            {redesigned ? (
+              <Footer />
+            ) : (
+              <FooterGate>
+                <Footer />
+              </FooterGate>
+            )}
+          </SiteChromeGate>
+          <SiteChromeGate slot="session">
+            <SessionChrome initialUser={initialUser} />
+          </SiteChromeGate>
+        </SpaceWindowProvider>
+      </InboxProvider>
+      <SiteToaster />
+    </>
+  );
 
   return (
     <html lang={locale} className={`${geist.variable} ${geistMono.variable}`}>
@@ -104,38 +129,21 @@ export default async function LocaleLayout({
               <AuthRequiredProvider>
                 <ConfirmProvider>
                   <SessionProvider initialUser={initialUser}>
-                    <ShellProvider>
-                      <SiteChromeGate>
-                        <Navbar initialUser={initialUser} />
-                      </SiteChromeGate>
-                      <InboxProvider>
-                        <SpaceWindowProvider>
-                          {redesigned ? (
-                            <SiteChromeGate slot="hub">
-                              <Navbar
-                                presentation="hub"
-                                initialUser={initialUser}
-                                initialMemberships={initialMemberships}
-                              />
-                            </SiteChromeGate>
-                          ) : null}
-                          <SiteContent>{children}</SiteContent>
-                          <SiteChromeGate slot="footer">
-                            {redesigned ? (
-                              <Footer />
-                            ) : (
-                              <FooterGate>
-                                <Footer />
-                              </FooterGate>
-                            )}
-                          </SiteChromeGate>
-                          <SiteChromeGate slot="session">
-                            <SessionChrome initialUser={initialUser} />
-                          </SiteChromeGate>
-                        </SpaceWindowProvider>
-                      </InboxProvider>
-                      <SiteToaster />
-                    </ShellProvider>
+                    {redesigned ? (
+                      <SiteShellProvider
+                        hubChrome={
+                          <Navbar
+                            presentation="hub"
+                            initialUser={initialUser}
+                            initialMemberships={initialMemberships}
+                          />
+                        }
+                      >
+                        {chrome}
+                      </SiteShellProvider>
+                    ) : (
+                      chrome
+                    )}
                   </SessionProvider>
                 </ConfirmProvider>
               </AuthRequiredProvider>

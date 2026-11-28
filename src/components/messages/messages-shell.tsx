@@ -109,7 +109,7 @@ export function MessagesShell({ activeConversationId }: MessagesShellProps) {
   return (
     <div
       data-messages-shell=""
-      className="bg-background border-border mx-auto h-[calc(100dvh-3rem)] max-w-7xl border-x"
+      className="bg-background border-border mx-auto h-[calc(100dvh-var(--shell-top-offset)-var(--shell-bottom-offset))] max-w-7xl border-x"
     >
       <div className="flex h-full min-h-0">
         {/* ── Left: conversation list / new-message ───────────────────── */}

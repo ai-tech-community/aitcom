@@ -18,6 +18,7 @@ import { CommunityIdentity } from "@/components/communities/community-identity";
 import { CommunityMembersOnly } from "@/components/communities/community-members-only";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { useSiteShell } from "@/components/site-chrome-gate";
+import { ShellMain } from "@/components/page-main";
 import { CommunityThemeCover } from "@/components/communities/theme/community-theme-cover";
 import { CommunityThemePreviewProvider } from "@/components/communities/theme/community-theme-preview";
 import { CommunityThemeScope } from "@/components/communities/theme/community-theme-scope";
@@ -77,7 +78,9 @@ export function CommunityLayoutClient({
     return (
       <PageDocumentAuthProvider user={initialUser}>
         {shell ? (
-          <CommunityShellSkeleton />
+          <ShellMain data-site-shell={shell}>
+            <CommunityShellSkeleton />
+          </ShellMain>
         ) : (
           <div className="flex min-h-[50vh] items-center justify-center">
             <Spinner className="size-8" />
@@ -114,7 +117,13 @@ export function CommunityLayoutClient({
   return (
     <PageDocumentAuthProvider user={initialUser}>
       {workspace ? (
-        children
+        shell === "focus" ? (
+          <ShellMain data-site-shell="focus" className="flex-1">
+            {children}
+          </ShellMain>
+        ) : (
+          children
+        )
       ) : shell === "community" ? (
         <CommunityShell
           key={slug}

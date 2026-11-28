@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { resolveLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
@@ -95,7 +96,7 @@ export function AwesomeAiOssPage({
     (isInsights ? buildAwesomeInsights(projects, copyLocale) : undefined);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {isInsights ? null : <JsonLd data={awesomeDirectoryJsonLd(projects)} />}
       <nav className="text-muted-foreground text-xs">
         <Link
@@ -211,6 +212,6 @@ export function AwesomeAiOssPage({
           ) : null}
         </ul>
       </nav>
-    </main>
+    </PageMain>
   );
 }
