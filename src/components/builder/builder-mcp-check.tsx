@@ -45,7 +45,7 @@ export function BuilderMcpCheck({
     const check = await checkMcpConnection(credential, expectedPrefix);
     const prefix =
       credential.length > 15
-        ? credential.match(/^ait_sk_[A-Za-z0-9_-]{8}/)?.[0]
+        ? /^ait_sk_[A-Za-z0-9_-]{8}/.exec(credential)?.[0]
         : undefined;
     setPending(false);
     setResult({ ...check, prefix });

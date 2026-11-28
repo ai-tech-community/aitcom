@@ -25,7 +25,7 @@ describe("builder MCP examples", () => {
     expect(request).toContain(`curl -i '${MCP_ENDPOINT}'`);
     expect(request).toContain('"Authorization: Bearer $AIT_AGENT_KEY"');
     expect(request).toContain("Accept: application/json, text/event-stream");
-    const body = request.match(/--data '(.+)'$/)?.[1];
+    const body = /--data '(.+)'$/.exec(request)?.[1];
     expect(JSON.parse(body ?? "")).toMatchObject({
       jsonrpc: "2.0",
       method: "initialize",

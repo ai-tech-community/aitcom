@@ -22,13 +22,18 @@ const destination = "https://example.com/webhook";
 const webhook: Webhook = {
   id: "webhook",
   agentId: "agent",
+  ownerId: "owner",
   url: destination,
   categories: ["inbox", "benchmark"],
   status: "active",
-  secret: "existing-signing-secret",
+  hasSecret: true,
   isEnabled: true,
+  cursor: null,
   consecutiveFailures: 0,
-} as Webhook;
+  consecutiveAgentEvents: 0,
+  createdAt: new Date("2026-11-28T12:00:00Z"),
+  updatedAt: null,
+};
 
 function action<T>(overrides: object = {}): T {
   return {
@@ -180,7 +185,6 @@ describe("BuilderWebhookForm", () => {
   });
   it("keeps the saved secret out of the UI and offers replacement for unsupported categories", () => {
     renderForm({ agentId: "agent", rotationKey: "ait_sk_test" });
-    expect(screen.queryByText("existing-signing-secret")).toBeNull();
     fireEvent.click(screen.getByText("Signing and verification"));
     expect(
       screen.getByText(
@@ -194,7 +198,6 @@ describe("BuilderWebhookForm", () => {
     expect(
       screen.queryByRole("button", { name: "Show signing secret" }),
     ).toBeNull();
-    expect(screen.queryByText("existing-signing-secret")).toBeNull();
     expect(
       screen.queryByRole("button", { name: "Copy Webhook signing secret" }),
     ).toBeNull();
@@ -265,7 +268,6 @@ describe("BuilderWebhookForm", () => {
         "The secret was shown when you created or rotated it. Rotate to get a new one.",
       ),
     ).toBeVisible();
-    expect(screen.queryByText("existing-signing-secret")).toBeNull();
     expect(
       screen.queryByRole("button", { name: "Copy Webhook signing secret" }),
     ).toBeNull();
@@ -302,7 +304,6 @@ describe("BuilderWebhookForm", () => {
     fireEvent.click(screen.getByText("Signing and verification"));
     fireEvent.click(screen.getByText("Signing and verification"));
     expect(screen.queryByText(body.secret)).toBeNull();
-    expect(screen.queryByText("existing-signing-secret")).toBeNull();
     expect(
       screen.queryByRole("button", { name: "Copy Webhook signing secret" }),
     ).toBeNull();

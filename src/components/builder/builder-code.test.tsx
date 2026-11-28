@@ -40,7 +40,9 @@ it("keeps the current visibility label and clears copy feedback after two second
     const copied = within(copy).getByText("Copied");
     expect(copied).toHaveClass("opacity-100");
 
-    act(() => vi.advanceTimersByTime(2000));
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
     expect(copied).toHaveClass("opacity-0");
     expect(within(copy).getByText("Copy")).toHaveClass("opacity-100");
   } finally {
