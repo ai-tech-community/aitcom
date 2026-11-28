@@ -14,6 +14,33 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/avatar";
 import { generateN8nWorkflow } from "@/lib/n8n-workflow-generator";
+import {
+  ArrowRightIcon,
+  BotIcon,
+  CodeXmlIcon,
+  WorkflowIcon,
+  WebhookIcon,
+  TerminalIcon,
+} from "lucide-react";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import {
+  BuilderFailure,
+  BuilderRetry,
+  BuilderSkeleton,
+  builderControl,
+} from "@/components/builder/builder-ui";
+import { BuilderCode, BuilderNewKey } from "@/components/builder/builder-code";
+import { useRevealedKey } from "@/components/agent/revealed-key-context";
+import { SetupClaude } from "@/components/agent/setup-claude";
+import { SetupN8n } from "@/components/agent/setup-n8n";
+import { SetupOpenClaw } from "@/components/agent/setup-openclaw";
+import { SetupWebhook } from "@/components/agent/setup-webhook";
+import { useBuilderKeyControls } from "@/components/builder/builder-key-controls";
+import { BuilderMcpCheck } from "@/components/builder/builder-mcp-check";
+import {
+  agentMcpConfig,
+  builderMcpEndpoint,
+} from "@/components/builder/mcp-config";
 import { AgentBadge } from "@/components/agent-badge";
 
 type Tool = "n8n" | "claude-cli" | "openclaw" | "webhook" | "custom";
@@ -328,12 +355,44 @@ function ToolPickerGrid({
   selectedTool,
   onSelect,
   disabled,
+  redesigned = false,
 }: {
   selectedTool: Tool | null;
   onSelect: (tool: Tool) => void;
   disabled?: boolean;
+  redesigned?: boolean;
 }) {
   const t = useTranslations("agent");
+  const b = useTranslations("redesign.builder");
+  if (redesigned) {
+    const clients = [
+      { key: "claude-cli", label: t("toolClaude"), icon: TerminalIcon },
+      { key: "openclaw", label: t("toolOpenClaw"), icon: BotIcon },
+      { key: "n8n", label: t("toolN8n"), icon: WorkflowIcon },
+      { key: "webhook", label: t("sectionWebhook"), icon: WebhookIcon },
+      { key: "custom", label: b("dashboard.customClient"), icon: CodeXmlIcon },
+    ] as const;
+
+    return (
+      <div className="border-border divide-border divide-y border-y">
+        {clients.map(({ key, label, icon: Icon }) => (
+          <Button
+            key={key}
+            type="button"
+            variant={selectedTool === key ? "secondary" : "ghost"}
+            className="h-auto min-h-11 w-full justify-start rounded-none px-3 py-2"
+            aria-pressed={selectedTool === key}
+            onClick={() => onSelect(key)}
+            disabled={disabled}
+          >
+            <Icon aria-hidden className="text-muted-foreground" />
+            <span className="flex-1 text-start">{label}</span>
+            <ArrowRightIcon aria-hidden className="text-muted-foreground" />
+          </Button>
+        ))}
+      </div>
+    );
+  }
 
   const tools: { key: Tool; label: string; icon: React.ReactNode }[] = [
     {
@@ -409,6 +468,9 @@ interface AgentQuickStartProps {
 
 export function AgentQuickStart({ onSetupComplete }: AgentQuickStartProps) {
   const t = useTranslations("agent");
+  const b = useTranslations("redesign.builder.dashboard");
+  const redesigned = isOpenCommunitiesEnabled();
+  const { setFullKey } = useRevealedKey();
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [setupResult, setSetupResult] = useState<{
     agent: {
@@ -425,9 +487,14 @@ export function AgentQuickStart({ onSetupComplete }: AgentQuickStartProps) {
   const [error, setError] = useState<string | null>(null);
   const [showCustomize, setShowCustomize] = useState(false);
 
+  const utils = api.useUtils();
   const quickSetup = api.agentManagement.quickSetup.useMutation({
     onSuccess: (data) => {
       setSetupResult(data);
+      if (redesigned) {
+        setFullKey(data.apiKey);
+        void utils.agentManagement.getKeyInfo.invalidate();
+      }
     },
     onError: (err) => {
       setError(err.message);
@@ -447,34 +514,65 @@ export function AgentQuickStart({ onSetupComplete }: AgentQuickStartProps) {
     <div className="space-y-6">
       {/* Tool Picker */}
       <div>
-        <h3 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          {t("quickStartSubtitle")}
+        <h3
+          className={
+            redesigned
+              ? "text-xl font-semibold tracking-tight"
+              : "text-muted-foreground font-mono text-xs font-medium tracking-wider"
+          }
+        >
+          {redesigned ? b("chooseClient") : t("quickStartSubtitle")}
         </h3>
         <div className="mt-3">
           <ToolPickerGrid
             selectedTool={selectedTool}
             onSelect={handleToolClick}
             disabled={quickSetup.isPending}
+            redesigned={redesigned}
           />
         </div>
       </div>
 
       {/* Loading state */}
-      {quickSetup.isPending && (
-        <p className="text-muted-foreground text-center font-mono text-xs tracking-wider">
-          {t("settingUp")}
-        </p>
-      )}
+      {quickSetup.isPending &&
+        (redesigned ? (
+          <BuilderSkeleton label={t("settingUp")} />
+        ) : (
+          <p className="text-muted-foreground text-center font-mono text-xs tracking-wider">
+            {t("settingUp")}
+          </p>
+        ))}
 
       {/* Error */}
-      {error && (
-        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded border px-3 py-2 font-mono text-xs">
-          {error}
-        </div>
-      )}
+      {error &&
+        (redesigned ? (
+          <BuilderFailure
+            reason={b("setupFailedTitle")}
+            action={
+              <BuilderRetry
+                label={b("retrySetup")}
+                onClick={() => selectedTool && handleToolClick(selectedTool)}
+              />
+            }
+          >
+            {b("setupFailed")}
+          </BuilderFailure>
+        ) : (
+          <div className="border-destructive/30 bg-destructive/10 text-destructive rounded border px-3 py-2 font-mono text-xs">
+            {error}
+          </div>
+        ))}
 
       {/* Connection Panel */}
-      {setupResult && selectedTool && (
+      {setupResult && selectedTool && redesigned && (
+        <BuilderFirstConnection
+          tool={selectedTool}
+          result={setupResult}
+          onDone={onSetupComplete}
+        />
+      )}
+
+      {setupResult && selectedTool && !redesigned && (
         <ConnectionPanel
           tool={selectedTool}
           apiKey={setupResult.apiKey}
@@ -499,6 +597,62 @@ export function AgentQuickStart({ onSetupComplete }: AgentQuickStartProps) {
       )}
 
       <UnclaimedAgentsSection />
+    </div>
+  );
+}
+
+function BuilderFirstConnection({
+  tool,
+  result,
+  onDone,
+}: {
+  tool: Tool;
+  result: { apiKey: string; agent: { id: string; name: string } };
+  onDone: () => void;
+}) {
+  const t = useTranslations("redesign.builder");
+  const { agent } = result;
+  const { fullKey } = useBuilderKeyControls();
+  const apiKey = fullKey ?? result.apiKey;
+  return (
+    <div className="space-y-4">
+      <p role="status" className="text-sm font-semibold">
+        {t("key.copyNow")}
+      </p>
+      <BuilderNewKey key={apiKey} value={apiKey} />
+      <p className="text-muted-foreground text-sm">{t("key.copyNowHelp")}</p>
+      {tool === "webhook" && <SetupWebhook sectionId="webhook-setup" />}
+      {tool === "claude-cli" && <SetupClaude apiKey={apiKey} />}
+      {tool === "openclaw" && <SetupOpenClaw apiKey={apiKey} />}
+      {tool === "n8n" && (
+        <SetupN8n apiKey={apiKey} agentName={agent.name} agentId={agent.id} />
+      )}
+      {tool === "custom" && (
+        <>
+          <p className="text-sm">{t("connect.ready")}</p>
+          <BuilderCode
+            label={t("connect.config")}
+            value={agentMcpConfig(builderMcpEndpoint, apiKey)}
+            maskKey={apiKey}
+          />
+        </>
+      )}
+      {tool !== "webhook" && (
+        <BuilderMcpCheck
+          key={apiKey}
+          fullKey={apiKey}
+          agentId={agent.id}
+          credentialsHref="/dashboard/agent?tab=profile#credentials"
+        />
+      )}
+      <Button
+        type="button"
+        variant="ink"
+        className={builderControl}
+        onClick={onDone}
+      >
+        {t("dashboard.finish")} <ArrowRightIcon aria-hidden />
+      </Button>
     </div>
   );
 }

@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 
 /**
  * In-memory store for an API key that was just generated/regenerated in
@@ -15,15 +21,27 @@ import { createContext, useContext, useState, type ReactNode } from "react";
  */
 interface RevealedKeyContextValue {
   fullKey: string | null;
+  revealedAt: number;
   setFullKey: (key: string | null) => void;
 }
 
 const RevealedKeyContext = createContext<RevealedKeyContextValue | null>(null);
 
 export function RevealedKeyProvider({ children }: { children: ReactNode }) {
-  const [fullKey, setFullKey] = useState<string | null>(null);
+  const [reveal, setReveal] = useState<{ key: string; at: number } | null>(
+    null,
+  );
+  const setFullKey = useCallback((key: string | null) => {
+    setReveal(key ? { key, at: Date.now() } : null);
+  }, []);
   return (
-    <RevealedKeyContext.Provider value={{ fullKey, setFullKey }}>
+    <RevealedKeyContext.Provider
+      value={{
+        fullKey: reveal?.key ?? null,
+        revealedAt: reveal?.at ?? 0,
+        setFullKey,
+      }}
+    >
       {children}
     </RevealedKeyContext.Provider>
   );
@@ -32,7 +50,24 @@ export function RevealedKeyProvider({ children }: { children: ReactNode }) {
 export function useRevealedKey(): RevealedKeyContextValue {
   const ctx = useContext(RevealedKeyContext);
   if (!ctx) {
-    return { fullKey: null, setFullKey: () => undefined };
+    return { fullKey: null, revealedAt: 0, setFullKey: () => undefined };
   }
   return ctx;
+}
+
+/** A successful refresh can reveal revocation or rotation in another tab. */
+export function useCurrentRevealedKey(query: {
+  isSuccess: boolean;
+  dataUpdatedAt: number;
+  data?: { prefix: string } | null;
+}) {
+  const { fullKey, revealedAt } = useRevealedKey();
+  if (
+    query.isSuccess &&
+    query.dataUpdatedAt > revealedAt &&
+    (!query.data || !fullKey?.startsWith(query.data.prefix))
+  ) {
+    return null;
+  }
+  return fullKey;
 }

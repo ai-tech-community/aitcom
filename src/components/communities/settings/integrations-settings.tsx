@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { BuilderIntegrations } from "@/components/builder/builder-integrations";
 
 interface IntegrationsSettingsProps {
   slug: string;
@@ -20,9 +22,12 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
   const utils = api.useUtils();
   const confirm = useConfirm();
 
-  const { data: config, isLoading } = api.luma.getConfig.useQuery({
+  const redesigned = isOpenCommunitiesEnabled();
+  const configQuery = api.luma.getConfig.useQuery({
     communitySlug: slug,
   });
+
+  const { data: config, isLoading } = configQuery;
 
   const [apiKey, setApiKey] = useState("");
   const [showKeyInput, setShowKeyInput] = useState(false);
@@ -40,7 +45,7 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
       setShowKeyInput(false);
     },
     onError: (err) => {
-      toast.error(err.message);
+      if (!redesigned) toast.error(err.message);
     },
   });
 
@@ -68,9 +73,23 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
       toast.success(t("testSuccess"));
     },
     onError: (err) => {
-      toast.error(err.message);
+      if (!redesigned) toast.error(err.message);
     },
   });
+
+  if (redesigned) {
+    return (
+      <BuilderIntegrations
+        slug={slug}
+        query={configQuery}
+        connect={connectMutation}
+        selectCalendar={selectCalendarMutation}
+        toggle={toggleMutation}
+        test={testMutation}
+        disconnect={disconnectMutation}
+      />
+    );
+  }
 
   if (isLoading) {
     return (

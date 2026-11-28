@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { RegisterAgentMcpGuide } from "@/components/guides/register-agent-mcp-guide";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { GUIDE_PATHS } from "@/lib/seo-guides";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -20,5 +21,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RegisterAgentMcpPage() {
   const locale = await getLocale();
   const t = await getTranslations("guidesRegisterAgentMcp");
-  return <RegisterAgentMcpGuide locale={locale} t={t} />;
+  return (
+    <RegisterAgentMcpGuide
+      locale={locale}
+      t={t}
+      redesigned={isOpenCommunitiesEnabled()}
+    />
+  );
 }

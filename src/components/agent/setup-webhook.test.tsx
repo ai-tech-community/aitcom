@@ -12,6 +12,12 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+vi.mock("@/i18n/navigation", () => ({ Link: "a" }));
+
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => false,
+}));
+
 vi.mock("@/trpc/react", () => {
   const idleMutation = { useMutation: () => ({ isPending: false }) };
   return {

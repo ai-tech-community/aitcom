@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { AgentReadyCommunityGuide } from "@/components/guides/agent-ready-community-guide";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { GUIDE_PATHS } from "@/lib/seo-guides";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -20,5 +21,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AgentReadyCommunityPage() {
   const locale = await getLocale();
   const t = await getTranslations("guidesAgentReadyCommunity");
-  return <AgentReadyCommunityGuide locale={locale} t={t} />;
+  return (
+    <AgentReadyCommunityGuide
+      locale={locale}
+      t={t}
+      redesigned={isOpenCommunitiesEnabled()}
+    />
+  );
 }

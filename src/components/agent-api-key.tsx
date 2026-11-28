@@ -1,18 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/agent/shared";
+import { KeyRoundIcon, ArrowRightIcon } from "lucide-react";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { Link } from "@/i18n/navigation";
+import { Badge } from "@/components/ui/badge";
+import { BuilderNewKey } from "@/components/builder/builder-code";
+import {
+  BuilderKeyFailure,
+  useBuilderKeyControls,
+} from "@/components/builder/builder-key-controls";
+import { BuilderKeyPermissions } from "@/components/builder/builder-key-permissions";
+import {
+  BuilderLoadFailure,
+  BuilderPanel,
+  BuilderSkeleton,
+  builderControl,
+} from "@/components/builder/builder-ui";
 import { useRevealedKey } from "@/components/agent/revealed-key-context";
 
 export function AgentApiKey() {
+  return isOpenCommunitiesEnabled() ? (
+    <BuilderCredential />
+  ) : (
+    <LegacyAgentApiKey />
+  );
+}
+
+function LegacyAgentApiKey() {
   const t = useTranslations("agent");
   const { fullKey, setFullKey } = useRevealedKey();
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
-
   const keyInfo = api.agentManagement.getKeyInfo.useQuery();
   const utils = api.useUtils();
 
@@ -22,11 +45,8 @@ export function AgentApiKey() {
       setConfirmRegenerate(false);
       void utils.agentManagement.getKeyInfo.invalidate();
     },
-    onError: (err) => {
-      toast.error(err.message);
-    },
+    onError: (err) => toast.error(err.message),
   });
-
   const revokeKey = api.agentManagement.revokeKey.useMutation({
     onSuccess: () => {
       setFullKey(null);
@@ -151,5 +171,129 @@ export function AgentApiKey() {
         </Button>
       )}
     </div>
+  );
+}
+
+function BuilderCredential() {
+  const t = useTranslations("redesign.builder");
+  const format = useFormatter();
+  const { keyInfo, activeKey, fullKey, busy, generate, revoke, changeKey } =
+    useBuilderKeyControls();
+  const active = !!activeKey || !!fullKey;
+
+  const status = (keyInfo.isSuccess || fullKey) && (
+    <Badge variant={active ? "success" : "outline"}>
+      {t(active ? "key.active" : "key.inactive")}
+    </Badge>
+  );
+  const details =
+    keyInfo.isPending && !fullKey ? (
+      <BuilderSkeleton label={t("key.loading")} />
+    ) : keyInfo.isError && !fullKey ? (
+      <BuilderLoadFailure
+        reason={t("key.loadFailed")}
+        status={keyInfo.error?.data?.httpStatus}
+        onRetry={() => void keyInfo.refetch()}
+      />
+    ) : (
+      <div className="@container">
+        <div
+          className={
+            activeKey
+              ? "grid items-start gap-4 @2xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @2xl:gap-6"
+              : undefined
+          }
+        >
+          <div className="min-w-0 space-y-4">
+            {fullKey ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium" role="status">
+                  {t("key.copyNow")}
+                </p>
+                <BuilderNewKey key={fullKey} value={fullKey} />
+                <p className="text-muted-foreground text-sm">
+                  {t("key.copyNowHelp")}
+                </p>
+              </div>
+            ) : !activeKey ? (
+              <p className="text-muted-foreground text-sm">{t("key.empty")}</p>
+            ) : null}
+            {activeKey && (
+              <dl className="border-border grid grid-cols-2 gap-3 border-y py-3 text-sm">
+                {!fullKey && (
+                  <div>
+                    <dt className="text-muted-foreground">{t("key.title")}</dt>
+                    <dd className="mt-1 font-mono text-xs break-all">
+                      {activeKey.prefix}…
+                    </dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-muted-foreground">
+                    {t("key.createdLabel")}
+                  </dt>
+                  <dd className="mt-1 font-mono text-xs">
+                    {format.dateTime(new Date(activeKey.createdAt), {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </dd>
+                </div>
+              </dl>
+            )}
+            <BuilderKeyFailure />
+            <div className="flex flex-wrap gap-2">
+              {fullKey && (
+                <Button asChild variant="ink" className={builderControl}>
+                  <Link href="/dashboard/agent?tab=connect">
+                    {t("key.openConnect")} <ArrowRightIcon aria-hidden />
+                  </Link>
+                </Button>
+              )}
+              <Button
+                className={builderControl}
+                variant={active ? "outline" : "ink"}
+                onClick={() => void changeKey("generate")}
+                disabled={
+                  busy || !keyInfo.isSuccess || (!!fullKey && !activeKey)
+                }
+              >
+                {t(
+                  generate.isPending
+                    ? "key.generating"
+                    : active
+                      ? "key.rotate"
+                      : "key.generate",
+                )}
+              </Button>
+              {active && (
+                <Button
+                  className={`${builderControl} text-destructive`}
+                  variant="ghost"
+                  onClick={() => void changeKey("revoke")}
+                  disabled={
+                    busy || !keyInfo.isSuccess || (!!fullKey && !activeKey)
+                  }
+                >
+                  {t(revoke.isPending ? "key.revoking" : "key.revoke")}
+                </Button>
+              )}
+            </div>
+          </div>
+          {activeKey && <BuilderKeyPermissions scopes={activeKey.scopes} />}
+        </div>
+      </div>
+    );
+
+  return (
+    <BuilderPanel
+      id="credentials"
+      icon={KeyRoundIcon}
+      title={t("key.title")}
+      description={t("key.description")}
+      status={status}
+    >
+      {details}
+    </BuilderPanel>
   );
 }

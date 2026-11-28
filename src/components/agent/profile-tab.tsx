@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { builderControl } from "@/components/builder/builder-ui";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -29,6 +31,13 @@ interface AgentProfile {
 
 export function ProfileTab({ agent }: { agent: AgentProfile }) {
   const t = useTranslations("agent");
+  const redesigned = isOpenCommunitiesEnabled();
+  const sectionClass = redesigned
+    ? "border-border border-t py-5"
+    : "border-border bg-card rounded-xl border p-6";
+  const controlClass = redesigned
+    ? builderControl
+    : "font-mono text-xs tracking-wider";
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(agent.name);
   const [editAvatar, setEditAvatar] = useState(
@@ -69,16 +78,29 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
   };
 
   return (
-    <div className="space-y-8">
+    <div className={redesigned ? "space-y-2" : "space-y-8"}>
+      {redesigned && <AgentApiKey />}
       {/* Agent Info Card */}
-      <div className="border-border bg-card rounded-xl border p-6">
-        <div className="border-border flex items-center justify-between border-b pb-4">
-          <SectionLabel bordered={false}>{t("sectionProfile")}</SectionLabel>
+      <div className={sectionClass}>
+        <div
+          className={
+            redesigned
+              ? "flex flex-wrap items-center justify-between gap-3"
+              : "border-border flex items-center justify-between border-b pb-4"
+          }
+        >
+          {redesigned ? (
+            <h2 className="text-xl font-semibold tracking-tight">
+              {t("sectionProfile")}
+            </h2>
+          ) : (
+            <SectionLabel bordered={false}>{t("sectionProfile")}</SectionLabel>
+          )}
           {!isEditing ? (
             <Button
               variant="outline"
               size="sm"
-              className="font-mono text-xs tracking-wider"
+              className={controlClass}
               onClick={handleStartEdit}
             >
               {t("editAgent")}
@@ -88,7 +110,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
               <Button
                 variant="outline"
                 size="sm"
-                className="font-mono text-xs tracking-wider"
+                className={controlClass}
                 onClick={() => {
                   setIsEditing(false);
                   setEditError(null);
@@ -99,7 +121,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
               </Button>
               <Button
                 size="sm"
-                className="font-mono text-xs tracking-wider"
+                className={controlClass}
                 onClick={() => {
                   setEditError(null);
                   updateAgent.mutate({
@@ -228,9 +250,18 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
                 {getInitials(agent.name)}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-foreground font-medium">
+            <div className={redesigned ? "min-w-0 flex-1" : "flex-1"}>
+              <div
+                className={
+                  redesigned
+                    ? "flex flex-wrap items-center gap-2"
+                    : "flex items-center gap-2"
+                }
+              >
+                <span
+                  dir={redesigned ? "auto" : undefined}
+                  className="text-foreground font-medium"
+                >
                   {agent.name}
                 </span>
                 <Badge
@@ -247,11 +278,20 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
                 </Badge>
               </div>
               {agent.bio && (
-                <p className="text-muted-foreground mt-1 text-sm">
+                <p
+                  dir={redesigned ? "auto" : undefined}
+                  className="text-muted-foreground mt-1 text-sm"
+                >
                   {agent.bio}
                 </p>
               )}
-              <div className="mt-2 flex items-center gap-4">
+              <div
+                className={
+                  redesigned
+                    ? "mt-2 flex flex-wrap items-center gap-x-4 gap-y-1"
+                    : "mt-2 flex items-center gap-4"
+                }
+              >
                 <span className="text-muted-foreground font-mono text-xs tracking-wider">
                   {agent.totalContributions} contribution
                   {agent.totalContributions !== 1 ? "s" : ""}
@@ -270,18 +310,19 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
         )}
       </div>
 
-      {/* API Key */}
-      <div className="border-border bg-card rounded-xl border p-6">
-        <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>{t("apiKey")}</SectionLabel>
+      {!redesigned && (
+        <div className="border-border bg-card rounded-xl border p-6">
+          <div className="border-border border-b pb-4">
+            <SectionLabel bordered={false}>{t("apiKey")}</SectionLabel>
+          </div>
+          <div className="mt-4">
+            <AgentApiKey />
+          </div>
         </div>
-        <div className="mt-4">
-          <AgentApiKey />
-        </div>
-      </div>
+      )}
 
       {/* Verification */}
-      <div className="border-border bg-card rounded-xl border p-6">
+      <div className={sectionClass}>
         <div className="border-border border-b pb-4">
           <SectionLabel bordered={false}>
             {t("sectionVerification")}
@@ -296,7 +337,13 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       </div>
 
       {/* Danger Zone */}
-      <div className="border-destructive/30 bg-card rounded-xl border p-6">
+      <div
+        className={
+          redesigned
+            ? sectionClass
+            : "border-destructive/30 bg-card rounded-xl border p-6"
+        }
+      >
         <div className="border-border border-b pb-4">
           <SectionLabel bordered={false}>{t("sectionDangerZone")}</SectionLabel>
         </div>

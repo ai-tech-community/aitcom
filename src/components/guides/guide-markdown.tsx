@@ -90,10 +90,47 @@ const components: Components = {
   ),
 };
 
-export function GuideMarkdown({ children }: { children: string }) {
+const builderComponents: Components = {
+  ...components,
+  h2: ({ children }) => (
+    <h2 className="border-border mt-8 border-t pt-5 text-xl font-semibold tracking-tight first:mt-0 first:border-t-0 first:pt-0">
+      {children}
+    </h2>
+  ),
+  p: ({ children }) => (
+    <p className="text-muted-foreground leading-relaxed">{children}</p>
+  ),
+  a: ({ href, children }) =>
+    href && appPathFromGuideHref(href) === "/setup" ? (
+      <>{children}</>
+    ) : (
+      <GuideLink href={href}>
+        <span className="text-foreground decoration-border underline underline-offset-4">
+          {children}
+        </span>
+      </GuideLink>
+    ),
+};
+
+export function GuideMarkdown({
+  children,
+  redesigned = false,
+}: {
+  children: string;
+  redesigned?: boolean;
+}) {
   return (
-    <div className="mt-16 max-w-2xl space-y-4">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+    <div
+      className={
+        redesigned
+          ? "max-w-[70ch] space-y-4 break-words"
+          : "mt-16 max-w-2xl space-y-4"
+      }
+    >
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={redesigned ? builderComponents : components}
+      >
         {children}
       </ReactMarkdown>
     </div>
