@@ -1,6 +1,8 @@
 "use client";
 
 import { use } from "react";
+import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { notFound, useSelectedLayoutSegments } from "next/navigation";
 import { api } from "@/trpc/react";
 import { PageDocumentAuthProvider } from "@/components/auth/session-provider";
@@ -15,10 +17,13 @@ import {
 import { CommunityIdentity } from "@/components/communities/community-identity";
 import { CommunityMembersOnly } from "@/components/communities/community-members-only";
 import { CommunityNav } from "@/components/communities/community-nav";
+import { useSiteShell } from "@/components/site-chrome-gate";
+import { ShellMain } from "@/components/page-main";
 import { CommunityThemeCover } from "@/components/communities/theme/community-theme-cover";
 import { CommunityThemePreviewProvider } from "@/components/communities/theme/community-theme-preview";
 import { CommunityThemeScope } from "@/components/communities/theme/community-theme-scope";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   isCommunityOverview,
   isOutsiderRoute,
@@ -26,6 +31,10 @@ import {
 } from "@/lib/communities/layout-variant";
 import { useJoinDeepLink } from "@/components/communities/use-community-join";
 import { useRouter } from "@/i18n/navigation";
+
+const CommunityShell = dynamic(() =>
+  import("@/components/shells/community-shell").then((m) => m.CommunityShell),
+);
 
 export function CommunityLayoutClient({
   children,
@@ -43,18 +52,20 @@ export function CommunityLayoutClient({
   // A guest who pressed Join here comes back from sign-in with ?join=.
   useJoinDeepLink(() => router.refresh());
   const segments = useSelectedLayoutSegments();
-  const variant = resolveCommunityLayoutVariant(segments);
+  const shell = useSiteShell();
+  const workspace = shell
+    ? shell === "focus"
+    : resolveCommunityLayoutVariant(segments) === "workspace";
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(null, initialUser, session?.user);
 
   const communityQuery = api.communities.getBySlug.useQuery({ slug });
 
-  const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
-    undefined,
-    { enabled: !!user },
-  );
+  const membershipQuery = api.communities.getMyCommunities.useQuery(undefined, {
+    enabled: !!user,
+  });
 
-  const memberships = myCommunities ?? initialMemberships;
+  const memberships = membershipQuery.data ?? initialMemberships;
   const membershipStatus = membershipStatusForSlug(memberships, slug);
   const memberRole = memberRoleForSlug(memberships, slug);
 
@@ -66,9 +77,15 @@ export function CommunityLayoutClient({
   if (communityQuery.isPending) {
     return (
       <PageDocumentAuthProvider user={initialUser}>
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <Spinner className="size-8" />
-        </div>
+        {shell ? (
+          <ShellMain data-site-shell={shell}>
+            <CommunityShellSkeleton />
+          </ShellMain>
+        ) : (
+          <div className="flex min-h-[50vh] items-center justify-center">
+            <Spinner className="size-8" />
+          </div>
+        )}
       </PageDocumentAuthProvider>
     );
   }
@@ -99,8 +116,33 @@ export function CommunityLayoutClient({
 
   return (
     <PageDocumentAuthProvider user={initialUser}>
-      {variant === "workspace" ? (
-        children
+      {workspace ? (
+        shell === "focus" ? (
+          <ShellMain data-site-shell="focus" className="flex-1">
+            {children}
+          </ShellMain>
+        ) : (
+          children
+        )
+      ) : shell === "community" ? (
+        <CommunityShell
+          key={slug}
+          community={community}
+          user={user}
+          memberRole={
+            community.viewerMembershipStatus === "active" ? memberRole : null
+          }
+          membershipStatus={membershipStatus}
+          memberships={membershipQuery.isError ? [] : memberships}
+          retryMemberships={
+            membershipQuery.isError
+              ? () => void membershipQuery.refetch()
+              : undefined
+          }
+          showCover={membersOnly || isCommunityOverview(segments)}
+        >
+          {page}
+        </CommunityShell>
       ) : (
         // Full width on the top nav's gutters, with the community rail on the
         // left from `lg` — a named exception to the default page frame
@@ -142,5 +184,28 @@ export function CommunityLayoutClient({
         </CommunityThemePreviewProvider>
       )}
     </PageDocumentAuthProvider>
+  );
+}
+
+function CommunityShellSkeleton() {
+  const t = useTranslations("common");
+  return (
+    <div role="status" aria-label={t("loading")} className="min-h-svh">
+      <div className="border-border flex h-[calc(3rem+1px)] items-center border-b px-4">
+        <Skeleton className="h-5 w-44" />
+      </div>
+      <div className="grid min-h-[calc(100svh-3rem-1px)] lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+        <div className="border-border hidden space-y-3 border-r p-4 lg:block">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-8 w-4/5" />
+        </div>
+        <div className="space-y-5 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+          <Skeleton className="h-32 w-full sm:h-40 lg:h-44" />
+          <Skeleton className="h-40 max-w-2xl" />
+        </div>
+      </div>
+    </div>
   );
 }

@@ -39,6 +39,8 @@ type ConfirmOptions = {
   cancelLabel?: React.ReactNode;
   /** Style the confirm button as destructive (for deletes/removals). */
   destructive?: boolean;
+  /** Restore focus when the calling menu closes before the dialog. */
+  returnFocus?: () => HTMLElement | null;
 };
 
 type ConfirmContext = {
@@ -104,7 +106,15 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             if (!next) settle(false);
           }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent
+            onCloseAutoFocus={(event) => {
+              const target = options.returnFocus?.();
+              if (target?.isConnected) {
+                event.preventDefault();
+                target.focus({ preventScroll: true });
+              }
+            }}
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>
                 {options.title ?? t("confirmTitle")}

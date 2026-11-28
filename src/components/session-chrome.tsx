@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+import { useSiteShell } from "@/components/site-chrome-gate";
 import { useInitialAuthUser } from "@/components/auth/session-provider";
 import { authClient } from "@/server/better-auth/client";
 import {
@@ -45,13 +47,23 @@ export function SessionChrome({
 }) {
   const { data: session } = authClient.useSession();
   const publishedUser = useInitialAuthUser();
+  const shell = useSiteShell();
+  const aboveMobileNav = shell === "community" || shell === "hub";
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
   const user = documentAuthUser(initialUser, publishedUser, session?.user);
-  if (!user) return null;
+  // The overlays read the client session, which can already be cached when
+  // React hydrates a document whose overlay tree was empty on the server.
+  if (!user || (shell && !hydrated)) return null;
 
   return (
     <>
-      <InboxRoot dockLeading={<OnboardingReminder />} />
-      <SpaceWindowRoot />
+      <InboxRoot
+        dockLeading={shell ? undefined : <OnboardingReminder />}
+        showLauncher={!shell}
+        aboveMobileNav={aboveMobileNav}
+      />
+      <SpaceWindowRoot aboveMobileNav={aboveMobileNav} />
       <BadgeCelebrationProbe userId={user.id} />
     </>
   );

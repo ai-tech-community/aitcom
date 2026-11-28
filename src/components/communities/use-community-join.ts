@@ -191,6 +191,7 @@ export function useCommunityJoin({
   membership,
   source,
   onChange,
+  returnFocusAfterLeave,
 }: {
   slug: string;
   /** For messages ("You're in …"); generic wording when absent. */
@@ -200,6 +201,7 @@ export function useCommunityJoin({
   source?: JoinSource;
   /** After a successful join, request or leave (e.g. refresh server data). */
   onChange?: () => void;
+  returnFocusAfterLeave?: () => HTMLElement | null;
 }): CommunityJoin {
   const t = useTranslations("communities.discover");
   const { promptAuth } = useRequireAuth();
@@ -258,6 +260,7 @@ export function useCommunityJoin({
       description: t("leaveConfirmBody"),
       confirmLabel: t("leaveConfirmAction"),
       destructive: true,
+      ...(returnFocusAfterLeave ? { returnFocus: returnFocusAfterLeave } : {}),
     });
     if (sure) await perform("leave");
   };

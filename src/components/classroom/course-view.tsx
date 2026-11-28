@@ -1,5 +1,6 @@
 "use client";
 
+import { PageMain } from "@/components/page-main";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/navigation";
@@ -481,7 +482,7 @@ export function CourseView({
         </aside>
 
         {/* Right pane */}
-        <main className="min-w-0">
+        <PageMain className="min-w-0">
           {!canViewContent ? (
             <div className="border-border bg-secondary/20 flex flex-col items-center justify-center gap-4 rounded-xl border px-6 py-16 text-center">
               <Lock className="text-muted-foreground size-8 opacity-50" />
@@ -615,7 +616,7 @@ export function CourseView({
                 : null}
             </div>
           )}
-        </main>
+        </PageMain>
       </div>
     </div>
   );

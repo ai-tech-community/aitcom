@@ -46,7 +46,13 @@ function toDateKey(date: Date): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
+export function InboxMobileView({
+  chatInfo,
+  restoreListOnClose = true,
+}: {
+  chatInfo: MobileChatInfo;
+  restoreListOnClose?: boolean;
+}) {
   const { setActiveChat, toggleList } = useInbox();
   const { data: session } = authClient.useSession();
   const t = useTranslations("inbox");
@@ -65,8 +71,8 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
 
   const handleClose = useCallback(() => {
     setActiveChat(null);
-    toggleList();
-  }, [setActiveChat, toggleList]);
+    if (restoreListOnClose) toggleList();
+  }, [setActiveChat, toggleList, restoreListOnClose]);
 
   // ── Derived data ──────────────────────────────────────────────────────
 

@@ -42,4 +42,22 @@ describe("TopicSelect", () => {
       "💼 Jobs",
     ]);
   });
+
+  it("uses a shared trigger and displays the current topic in the redesigned composer", () => {
+    m.topics = [
+      { id: 1, slug: "general", label: "General", emoji: null },
+      { id: 2, slug: "jobs", label: "Jobs", emoji: null },
+    ];
+    render(
+      <TopicSelect
+        communitySlug="c"
+        value="jobs"
+        onChange={vi.fn()}
+        redesigned
+      />,
+    );
+    const trigger = screen.getByRole("combobox", { name: "selectTopic" });
+    expect(trigger).toHaveAttribute("data-slot", "select-trigger");
+    expect(trigger).toHaveTextContent("Jobs");
+  });
 });

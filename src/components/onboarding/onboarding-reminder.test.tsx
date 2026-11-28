@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
 import { createMemoryStorage } from "@/test/memory-storage";
+import { Link } from "@/i18n/navigation";
 import type { OnboardingChecklistView } from "./checklist-view";
 import type { OnboardingChecklistController } from "./use-onboarding-checklist";
 
@@ -54,7 +55,11 @@ vi.mock("./use-onboarding-checklist", () => ({
   },
 }));
 
-import { OnboardingReminder } from "./onboarding-reminder";
+import {
+  OnboardingReminder,
+  OnboardingReminderProvider,
+  OnboardingReminderRow,
+} from "./onboarding-reminder";
 import { resetHiddenForVisitForTests } from "./use-hidden-for-visit";
 
 const INCOMPLETE: OnboardingChecklistView = {
@@ -347,5 +352,40 @@ describe("onboarding translations", () => {
         expect(text.trim().length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe("OnboardingReminder in the shell", () => {
+  it("keeps syncing while the menu is closed and focuses the next destination after dismissal", async () => {
+    const tree = (open: boolean) => (
+      <NextIntlClientProvider locale="en" messages={en}>
+        <OnboardingReminderProvider enabled>
+          <nav>
+            {open ? <OnboardingReminderRow /> : null}
+            <Link href="/events">Events</Link>
+          </nav>
+        </OnboardingReminderProvider>
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(tree(false));
+    expect(controller.lastSync).toBe("on-finish");
+    expect(
+      screen.queryByRole("button", { name: /getting started/i }),
+    ).toBeNull();
+    rerender(tree(true));
+    expect(pill()).toHaveTextContent("2/5");
+    const dismiss = screen.getByRole("button", { name: "Don't show again" });
+    dismiss.focus();
+    fireEvent.click(dismiss);
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Events" })).toHaveFocus(),
+    );
+    expect(controller.dismiss).toHaveBeenCalledOnce();
+    controller.view = { kind: "hidden" };
+    rerender(tree(false));
+    rerender(tree(true));
+    expect(
+      screen.queryByRole("button", { name: /getting started/i }),
+    ).toBeNull();
   });
 });

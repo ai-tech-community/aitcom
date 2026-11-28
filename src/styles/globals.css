@@ -295,6 +295,158 @@
   }
 }
 
+:root {
+  --shell-top-offset: 3rem;
+  --shell-header-border: 1px;
+  --shell-bottom-offset: 0px;
+  --community-mobile-bar-height: calc(57px + env(safe-area-inset-bottom));
+}
+
+[data-site-frame="focus"] {
+  --shell-top-offset: 0px;
+  --shell-header-border: 0px;
+}
+
+@media (width < 64rem) {
+  :is([data-site-frame="community"], [data-site-frame="hub"]) {
+    --shell-bottom-offset: var(--community-mobile-bar-height);
+  }
+}
+
+[data-site-frame] > footer {
+  padding-bottom: var(--shell-bottom-offset);
+}
+
+/* In the redesigned frames, pair machine text and initials with their quiet fills. */
+:where([data-community-shell], [data-site-shell="hub"],
+  [data-shell-header]) .font-mono.text-muted-foreground {
+  color: color-mix(in oklab, var(--foreground) 60%, var(--muted-foreground));
+}
+
+:where([data-community-shell], [data-site-shell="hub"],
+  [data-shell-header]) [data-slot="avatar-fallback"] {
+  color: var(--foreground);
+}
+
+/* Use the local theme's ink on solid orange controls in a redesigned frame. */
+body:has([data-shell-header])
+  :is(
+    :is(button, a, [role="button"]).bg-primary:where(:not([data-feed-submit]:disabled)),
+    [data-slot="checkbox"][data-tone="primary"][data-state="checked"],
+    [data-slot="switch"][data-state="checked"]
+  ) {
+  --shell-primary-ink: var(--foreground);
+  color: var(--shell-primary-ink);
+
+  &:where(.dark, .dark *) {
+    --shell-primary-ink: var(--card);
+  }
+
+  & > [data-slot="switch-thumb"] {
+    background-color: var(--shell-primary-ink);
+  }
+}
+
+[data-community-shell] [data-feed-submit] {
+  transition-property: box-shadow;
+
+  &:disabled {
+    background-color: var(--secondary);
+    color: var(--muted-foreground);
+    opacity: 1;
+  }
+}
+
+:is([data-community-shell], [data-site-shell="hub"]) [data-chat-send] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+@media (width < 40rem) {
+  [data-community-shell] [data-post-toolbar]:has([data-post-insert-tools]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-inline: 0.5rem;
+  }
+
+  [data-community-shell] [data-post-tools]:has([data-post-insert-tools]) {
+    display: contents;
+  }
+
+  [data-community-shell] :is([data-post-insert-tools], [data-post-format-tools]) {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  [data-community-shell] [data-post-format-tools] [data-composer-toolbar-divider] {
+    display: none;
+  }
+
+  [data-community-shell] [data-post-topic] {
+    display: block;
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  [data-community-shell] [data-post-topic] [data-slot="select-trigger"] {
+    max-width: 100%;
+    margin-inline-start: 0;
+  }
+}
+
+@media (width < 22rem) {
+  [data-community-shell] :is([data-post-topic], [data-post-actions]) {
+    grid-column: 1 / -1;
+  }
+
+  [data-community-shell] [data-post-actions] {
+    flex-wrap: wrap;
+    justify-content: end;
+  }
+}
+
+@media (width < 64rem) {
+  [data-community-shell] .feed-topic-chips [data-slot="choice-chip"] {
+    height: auto;
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  [data-community-shell] [data-post-toolbar] button,
+  :is([data-community-shell], [data-site-shell="hub"]) [data-chat-toolbar] button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-filters] {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-categories] {
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    overflow: visible;
+    border: 0;
+    padding-bottom: 0;
+  }
+
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-categories] button {
+    min-width: 44px;
+    padding-inline: 0.45rem;
+  }
+
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-categories] button,
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-filters] [data-slot="select-trigger"],
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-submit] {
+    min-height: 44px;
+  }
+
+}
+
 /* Magazine reading pages. The type pair is loaded per magazine. */
 .magazine-theme {
   font-family: var(--magazine-sans);

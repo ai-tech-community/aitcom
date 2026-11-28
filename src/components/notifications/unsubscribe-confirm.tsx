@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import type { AppLocale } from "@/i18n/messages";
 import { buttonVariants } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -42,7 +43,7 @@ export function UnsubscribeConfirm({
         : copy.invalidBody;
 
   return (
-    <main className="mx-auto w-full max-w-lg px-4 py-16">
+    <PageMain className="mx-auto w-full max-w-lg px-4 py-16">
       <SectionLabel as="p">{copy.kicker}</SectionLabel>
       <h1 className="mt-3 text-2xl font-semibold tracking-tight text-balance">
         {title}
@@ -75,6 +76,6 @@ export function UnsubscribeConfirm({
           </p>
         ) : null}
       </div>
-    </main>
+    </PageMain>
   );
 }

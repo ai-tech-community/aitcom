@@ -11,11 +11,16 @@ import { routing } from "@/i18n/routing";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { FooterGate } from "@/components/footer-gate";
-import { Toaster } from "sonner";
 import { InboxProvider } from "@/components/inbox/inbox-provider";
 import { SpaceWindowProvider } from "@/components/communities/explore/space-window-provider";
 import { SessionChrome } from "@/components/session-chrome";
-import { SiteChromeGate } from "@/components/site-chrome-gate";
+import {
+  SiteChromeGate,
+  SiteContent,
+  SiteHubChrome,
+  SiteShellProvider,
+  SiteToaster,
+} from "@/components/site-chrome-gate";
 import { RulesProvider } from "@/components/community/rules-provider";
 import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
 import { SessionProvider } from "@/components/auth/session-provider";
@@ -24,6 +29,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { siteLayoutMetadata } from "@/lib/site-metadata";
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +81,34 @@ export default async function LocaleLayout({
     default: Record<string, unknown>;
   };
   const messages = messagesModule.default;
-  const { initialUser } = await loadHubAuthSeed();
+  const { initialUser, initialMemberships } = await loadHubAuthSeed();
+  const redesigned = isOpenCommunitiesEnabled();
+  const chrome = (
+    <>
+      <SiteChromeGate>
+        <Navbar initialUser={initialUser} />
+      </SiteChromeGate>
+      <InboxProvider>
+        <SpaceWindowProvider>
+          {redesigned ? <SiteHubChrome /> : null}
+          <SiteContent>{children}</SiteContent>
+          <SiteChromeGate slot="footer">
+            {redesigned ? (
+              <Footer />
+            ) : (
+              <FooterGate>
+                <Footer />
+              </FooterGate>
+            )}
+          </SiteChromeGate>
+          <SiteChromeGate slot="session">
+            <SessionChrome initialUser={initialUser} />
+          </SiteChromeGate>
+        </SpaceWindowProvider>
+      </InboxProvider>
+      <SiteToaster />
+    </>
+  );
 
   return (
     <html lang={locale} className={`${geist.variable} ${geistMono.variable}`}>
@@ -96,23 +129,21 @@ export default async function LocaleLayout({
               <AuthRequiredProvider>
                 <ConfirmProvider>
                   <SessionProvider initialUser={initialUser}>
-                    <SiteChromeGate>
-                      <Navbar initialUser={initialUser} />
-                    </SiteChromeGate>
-                    <InboxProvider>
-                      <SpaceWindowProvider>
-                        <main className="flex-1">{children}</main>
-                        <SiteChromeGate>
-                          <FooterGate>
-                            <Footer />
-                          </FooterGate>
-                        </SiteChromeGate>
-                        <SiteChromeGate>
-                          <SessionChrome initialUser={initialUser} />
-                        </SiteChromeGate>
-                      </SpaceWindowProvider>
-                    </InboxProvider>
-                    <Toaster position="bottom-right" offset={60} />
+                    {redesigned ? (
+                      <SiteShellProvider
+                        hubChrome={
+                          <Navbar
+                            presentation="hub"
+                            initialUser={initialUser}
+                            initialMemberships={initialMemberships}
+                          />
+                        }
+                      >
+                        {chrome}
+                      </SiteShellProvider>
+                    ) : (
+                      chrome
+                    )}
                   </SessionProvider>
                 </ConfirmProvider>
               </AuthRequiredProvider>

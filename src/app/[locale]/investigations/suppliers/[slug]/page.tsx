@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
@@ -72,7 +73,7 @@ export default async function SupplierDetailPage({ params }: PageProps) {
   } = data;
 
   return (
-    <main className="container mx-auto flex flex-col gap-6 p-6">
+    <PageMain className="container mx-auto flex flex-col gap-6 p-6">
       <nav className="text-muted-foreground text-xs">
         <Link href="/investigations/datacenters" className="hover:underline">
           ← Datacenter dashboard
@@ -346,7 +347,7 @@ export default async function SupplierDetailPage({ params }: PageProps) {
           )}
         </section>
       )}
-    </main>
+    </PageMain>
   );
 }
 

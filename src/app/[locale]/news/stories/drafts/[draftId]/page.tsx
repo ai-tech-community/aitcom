@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -41,7 +42,7 @@ export default async function StorylineDraftReviewPage({
   if (kindReview) {
     const t = await getTranslations("newsStories");
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
+      <PageMain className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
         <Link
           href={STORYLINE_DRAFT_QUEUE_PATH}
           className="text-muted-foreground text-sm underline underline-offset-4"
@@ -56,7 +57,7 @@ export default async function StorylineDraftReviewPage({
           {t("draftReview.draftId", { id: kindReview.id })}
         </p>
         <AgentDraftReview draft={kindReview} />
-      </main>
+      </PageMain>
     );
   }
   const [draft, staff] = await Promise.all([
@@ -77,7 +78,7 @@ export default async function StorylineDraftReviewPage({
         ? "statusRejected"
         : "statusPending";
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
+    <PageMain className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
       <Link
         href={role === "editor" ? STORYLINE_DRAFT_QUEUE_PATH : "/dashboard"}
         className="text-muted-foreground text-sm underline underline-offset-4"
@@ -118,6 +119,6 @@ export default async function StorylineDraftReviewPage({
           </Link>
         </p>
       ) : null}
-    </main>
+    </PageMain>
   );
 }

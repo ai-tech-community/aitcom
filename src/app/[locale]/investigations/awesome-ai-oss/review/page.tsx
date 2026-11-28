@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -33,7 +34,7 @@ export default async function AwesomeAiOssReviewPage() {
   const t = await getTranslations("investigationsAwesomeAiOss");
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
       <nav className="text-muted-foreground text-xs">
         <Link
           href={AWESOME_AI_OSS_PATH}
@@ -51,6 +52,6 @@ export default async function AwesomeAiOssReviewPage() {
       <div className="mt-10">
         <AwesomeAiOssReviewQueue locale={resolveLocale(locale)} />
       </div>
-    </main>
+    </PageMain>
   );
 }

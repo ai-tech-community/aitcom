@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { and, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -61,7 +62,7 @@ export default async function EventAttendeesPage({
   const t = await getTranslations("events.attendeeList");
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+    <PageMain className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <Link
         href={`/communities/${slug}/events`}
         className="text-muted-foreground text-sm hover:underline"
@@ -74,6 +75,6 @@ export default async function EventAttendeesPage({
       <p className="text-muted-foreground mt-1 text-sm">{t("intro")}</p>
       <SectionLabel className="mt-8 pb-4">{t("section")}</SectionLabel>
       <OrganizerAttendeeList eventId={event.id} />
-    </main>
+    </PageMain>
   );
 }

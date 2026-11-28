@@ -24,6 +24,9 @@ interface CommunityActionsMenuProps {
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
   /** After a successful leave, before the page data refreshes. */
   onLeft?: () => void;
+  /** Render the existing action as a row in the identity menu. */
+  onRowAction?: () => void;
+  returnFocusAfterLeave?: () => HTMLElement | null;
 }
 
 /**
@@ -39,6 +42,8 @@ export function CommunityActionsMenu({
   membershipStatus,
   memberRole,
   onLeft,
+  onRowAction,
+  returnFocusAfterLeave,
 }: CommunityActionsMenuProps) {
   const t = useTranslations("communities.profile");
   const router = useRouter();
@@ -49,6 +54,7 @@ export function CommunityActionsMenu({
     membership: membershipStatus
       ? { status: membershipStatus, role: memberRole ?? "member" }
       : null,
+    returnFocusAfterLeave,
     onChange: () => {
       onLeft?.();
       router.refresh();
@@ -56,6 +62,24 @@ export function CommunityActionsMenu({
   });
 
   if (action.kind !== "member" || !action.canLeave) return null;
+
+  if (onRowAction) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        className="text-destructive hover:text-destructive min-h-11 w-full justify-start"
+        disabled={busy}
+        onClick={() => {
+          onRowAction();
+          void leave();
+        }}
+      >
+        <LogOut aria-hidden />
+        {t("leave")}
+      </Button>
+    );
+  }
 
   return (
     <DropdownMenu>

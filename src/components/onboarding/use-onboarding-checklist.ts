@@ -44,11 +44,15 @@ export interface OnboardingChecklistController {
  */
 export function useOnboardingChecklist({
   sync,
+  enabled = true,
 }: {
   sync: OnboardingSyncPolicy;
+  enabled?: boolean;
 }): OnboardingChecklistController {
   const utils = api.useUtils();
-  const { data, isLoading } = api.onboarding.getStatus.useQuery();
+  const { data, isLoading } = api.onboarding.getStatus.useQuery(undefined, {
+    enabled,
+  });
 
   const refresh = useCallback(
     () => void utils.onboarding.getStatus.invalidate(),
@@ -71,22 +75,23 @@ export function useOnboardingChecklist({
       : sync === "on-finish" && isAwaitingCompletionSync(data);
   const { mutate: runSync } = syncMutation;
   useEffect(() => {
-    if (!shouldSync || synced.current) return;
+    if (!enabled || !shouldSync || synced.current) return;
     synced.current = true;
     runSync();
-  }, [shouldSync, runSync]);
+  }, [enabled, shouldSync, runSync]);
 
   // Drop the old browser-only flag. It is not carried over to the account:
   // it belongs to the browser, not the member, so on a shared computer it
   // would dismiss for the wrong person. Members who dismissed before see the
   // checklist once more and can dismiss it for good.
   useEffect(() => {
+    if (!enabled) return;
     try {
       window.localStorage.removeItem(LEGACY_DISMISS_KEY);
     } catch {
       // Storage blocked (private mode, policy): nothing to clean up.
     }
-  }, []);
+  }, [enabled]);
 
   const { mutate: runComplete } = completeMutation;
   const completeStep = useCallback(

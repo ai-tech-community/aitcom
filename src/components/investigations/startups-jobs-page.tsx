@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { resolveLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
@@ -126,7 +127,7 @@ export function StartupsJobsPage({
   };
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       <SectionLabel as="div">{t("kicker")}</SectionLabel>
 
       <div className="mt-6 flex max-w-2xl flex-col gap-2">
@@ -305,6 +306,6 @@ export function StartupsJobsPage({
         </Link>
         .
       </p>
-    </main>
+    </PageMain>
   );
 }

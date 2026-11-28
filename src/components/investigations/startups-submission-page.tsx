@@ -1,5 +1,6 @@
 "use client";
 
+import { PageMain } from "@/components/page-main";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -48,7 +49,7 @@ export function StartupsSubmissionPage({
   const claiming = mode === "claim";
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       <SectionLabel as="div">{t("kicker")}</SectionLabel>
       <div className="mt-6 flex max-w-2xl flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -129,6 +130,6 @@ export function StartupsSubmissionPage({
           }}
         />
       )}
-    </main>
+    </PageMain>
   );
 }

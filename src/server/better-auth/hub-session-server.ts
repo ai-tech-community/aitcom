@@ -32,6 +32,8 @@ export const loadHubAuthSeed = cache(async (): Promise<HubAuthSeed> => {
     initialUser,
     initialMemberships: rows.map((row) => ({
       slug: row.slug,
+      name: row.name,
+      logoUrl: row.logoUrl,
       status: row.status,
       role: row.role,
     })),

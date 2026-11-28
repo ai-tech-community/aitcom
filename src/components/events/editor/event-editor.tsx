@@ -252,7 +252,7 @@ export function EventEditor({
   }
 
   return (
-    <div className="flex flex-col lg:h-[calc(100dvh-3rem-1px)]">
+    <div className="flex flex-col lg:h-[calc(100dvh-var(--shell-top-offset)-var(--shell-header-border))]">
       <EditorTopBar
         backHref={backHref}
         backLabel={communityName}

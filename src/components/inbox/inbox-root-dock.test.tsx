@@ -81,6 +81,15 @@ describe("InboxRoot dock", () => {
     ).toBeTruthy();
   });
 
+  it("hides the redesigned launcher and still shows an open inbox", () => {
+    const { rerender } = render(<InboxRoot showLauncher={false} />);
+    expect(screen.queryByRole("button", { name: "INBOX" })).toBeNull();
+    inboxState.isListOpen = true;
+    rerender(<InboxRoot showLauncher={false} />);
+    expect(screen.getByText("inbox list")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "INBOX" })).toBeNull();
+  });
+
   it("steps the leading items aside while the inbox list is open", () => {
     inboxState.isListOpen = true;
     render(<InboxRoot dockLeading={<Reminder />} />);

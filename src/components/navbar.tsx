@@ -21,6 +21,7 @@ import { authClient } from "@/server/better-auth/client";
 import {
   documentAuthUser,
   type HubAuthUser,
+  type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
 import { AitLogo } from "@/components/ait-logo";
 import { clearAllPostDrafts } from "@/lib/post-drafts";
@@ -32,6 +33,9 @@ import {
   type NavItem,
 } from "@/components/site-nav";
 
+const HubShellHeader = dynamic(() =>
+  import("@/components/shells/hub-shell-header").then((m) => m.HubShellHeader),
+);
 const NotificationBell = dynamic(() =>
   import("@/components/notifications/notification-bell").then(
     (m) => m.NotificationBell,
@@ -414,9 +418,24 @@ function SiteNavSections({
 
 export function Navbar({
   initialUser = null,
+  presentation = "legacy",
+  initialMemberships = [],
 }: {
   initialUser?: HubAuthUser | null;
+  presentation?: "legacy" | "hub";
+  initialMemberships?: readonly HubMembershipSeed[];
 }) {
+  return presentation === "hub" ? (
+    <HubShellHeader
+      initialUser={initialUser}
+      initialMemberships={initialMemberships}
+    />
+  ) : (
+    <LegacyNavbar initialUser={initialUser} />
+  );
+}
+
+function LegacyNavbar({ initialUser }: { initialUser: HubAuthUser | null }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const router = useRouter();

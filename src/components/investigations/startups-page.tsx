@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { resolveLocale } from "@/i18n/messages";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
@@ -74,7 +75,7 @@ export function StartupsPage({
       );
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {directoryPage &&
       directoryPage.items.length > 0 &&
       !startupDirectoryHasFilters(directoryQuery) ? (
@@ -128,6 +129,6 @@ export function StartupsPage({
       <p className="text-muted-foreground mt-16 text-sm leading-relaxed">
         {t("howWeList")}
       </p>
-    </main>
+    </PageMain>
   );
 }

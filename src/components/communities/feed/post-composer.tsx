@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { useSiteShell } from "@/components/site-chrome-gate";
 import { EmojiPickerButton } from "@/components/composer/emoji-picker-button";
 import {
   SEND_SHORTCUTS,
@@ -52,6 +53,7 @@ export function PostComposer({
   const t = useTranslations("communities.feed");
   const te = useTranslations("communities.feed.editor");
   const tv = useTranslations("communities.video");
+  const inCommunityShell = useSiteShell() === "community";
   const utils = api.useUtils();
   const text = usePostText("");
   const mentions = useMentionPicker({ text, communitySlug: slug });
@@ -262,74 +264,81 @@ export function PostComposer({
         }
         tools={
           <>
-            {videoFile || poll ? null : (
-              <ToolbarButton
-                ref={imageButton}
-                label={
-                  pictures.room <= 0
-                    ? te("tooManyPictures")
-                    : gif
-                      ? t("replaceWithImage")
-                      : t("addImage")
-                }
-                icon={<ImagePlus aria-hidden="true" className="size-4" />}
-                disabled={pictures.room <= 0}
-                onClick={() => fileInputRef.current?.click()}
-              />
-            )}
-            {videoFile || poll ? null : (
-              <GifPickerButton
-                label={
-                  gif
-                    ? t("replaceWithGif")
-                    : pictures.count > 0
-                      ? te("replacePicturesWithGif")
-                      : undefined
-                }
-                onPick={(picked) => {
-                  setGif(picked);
-                  if (pictures.count === 0) return;
-                  // One click must not lose pictures and their descriptions.
-                  const saved = pictures.snapshot();
-                  pictures.clear();
-                  toast(te("picturesReplacedByGif"), {
-                    action: {
-                      label: te("undo"),
-                      onClick: () => {
-                        setGif(null);
-                        pictures.restore(saved);
+            <div className="contents" data-post-insert-tools="">
+              {videoFile || poll ? null : (
+                <ToolbarButton
+                  ref={imageButton}
+                  label={
+                    pictures.room <= 0
+                      ? te("tooManyPictures")
+                      : gif
+                        ? t("replaceWithImage")
+                        : t("addImage")
+                  }
+                  icon={<ImagePlus aria-hidden="true" className="size-4" />}
+                  disabled={pictures.room <= 0}
+                  onClick={() => fileInputRef.current?.click()}
+                />
+              )}
+              {videoFile || poll ? null : (
+                <GifPickerButton
+                  label={
+                    gif
+                      ? t("replaceWithGif")
+                      : pictures.count > 0
+                        ? te("replacePicturesWithGif")
+                        : undefined
+                  }
+                  onPick={(picked) => {
+                    setGif(picked);
+                    if (pictures.count === 0) return;
+                    // One click must not lose pictures and their descriptions.
+                    const saved = pictures.snapshot();
+                    pictures.clear();
+                    toast(te("picturesReplacedByGif"), {
+                      action: {
+                        label: te("undo"),
+                        onClick: () => {
+                          setGif(null);
+                          pictures.restore(saved);
+                        },
                       },
-                    },
-                  });
-                }}
-                disabled={isUploading}
+                    });
+                  }}
+                  disabled={isUploading}
+                />
+              )}
+              {pictures.count > 0 || gif || videoFile || poll ? null : (
+                <ToolbarButton
+                  label={tv("add")}
+                  icon={<Film aria-hidden="true" className="size-4" />}
+                  disabled={isUploading}
+                  onClick={() => videoInputRef.current?.click()}
+                />
+              )}
+              {pictures.count > 0 || gif || videoFile || poll ? null : (
+                <ToolbarButton
+                  ref={pollButton}
+                  label={te("addPoll")}
+                  icon={<ChartBar aria-hidden="true" className="size-4" />}
+                  disabled={isUploading}
+                  onClick={() => setPoll(emptyPoll())}
+                />
+              )}
+              <EmojiPickerButton onPick={text.insert} />
+              <MentionButton text={text} />
+            </div>
+            <div className="contents" data-post-format-tools="">
+              <FormatButtons text={text} />
+            </div>
+            <div className="contents" data-post-topic="">
+              <TopicSelect
+                communitySlug={slug}
+                value={topicSlug}
+                onChange={setTopicSlug}
+                redesigned={inCommunityShell}
               />
-            )}
-            {pictures.count > 0 || gif || videoFile || poll ? null : (
-              <ToolbarButton
-                label={tv("add")}
-                icon={<Film aria-hidden="true" className="size-4" />}
-                disabled={isUploading}
-                onClick={() => videoInputRef.current?.click()}
-              />
-            )}
-            {pictures.count > 0 || gif || videoFile || poll ? null : (
-              <ToolbarButton
-                ref={pollButton}
-                label={te("addPoll")}
-                icon={<ChartBar aria-hidden="true" className="size-4" />}
-                disabled={isUploading}
-                onClick={() => setPoll(emptyPoll())}
-              />
-            )}
-            <EmojiPickerButton onPick={text.insert} />
-            <MentionButton text={text} />
-            <FormatButtons text={text} />
-            <TopicSelect
-              communitySlug={slug}
-              value={topicSlug}
-              onChange={setTopicSlug}
-            />
+            </div>
           </>
         }
         actions={
@@ -337,6 +346,7 @@ export function PostComposer({
             <Button
               type="submit"
               size="sm"
+              data-feed-submit=""
               disabled={!ready}
               aria-busy={busy}
               aria-keyshortcuts={SEND_SHORTCUTS}

@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { newsSourceFromUrl } from "@/lib/news/table";
@@ -187,7 +188,7 @@ export function StorylineReader({
   const timeline = storylineTimeline(story.articles);
   const latestDate = timeline.dated.at(-1)?.article.publishedAt;
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
+    <PageMain className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
       <Link
         href="/news/stories"
         className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex items-center gap-2 rounded-sm text-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
@@ -393,6 +394,6 @@ export function StorylineReader({
           {t("archive")}
         </Link>
       </footer>
-    </main>
+    </PageMain>
   );
 }

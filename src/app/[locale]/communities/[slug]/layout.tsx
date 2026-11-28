@@ -1,5 +1,6 @@
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 import { api, HydrateClient } from "@/trpc/server";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 
 import { CommunityLayoutClient } from "./_community-layout-client";
 
@@ -21,9 +22,17 @@ export default async function CommunityLayout({
   // fetches it and takes the notFound() path itself. A global
   // `queries.retry` in createQueryClient would retry that NOT_FOUND here
   // and hold the 404 back on the server.
+  const redesigned = isOpenCommunitiesEnabled();
+  const authSeed = loadHubAuthSeed();
   const [{ initialUser, initialMemberships }] = await Promise.all([
-    loadHubAuthSeed(),
+    authSeed,
     api.communities.getBySlug.prefetch({ slug }),
+    redesigned ? api.spaces.list.prefetch({ slug }) : undefined,
+    redesigned
+      ? authSeed.then(({ initialUser }) =>
+          initialUser ? api.spaces.listRooms.prefetch({ slug }) : undefined,
+        )
+      : undefined,
   ]);
   return (
     <HydrateClient>

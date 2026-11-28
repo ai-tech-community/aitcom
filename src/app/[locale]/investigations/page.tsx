@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { api } from "@/trpc/server";
@@ -33,7 +34,7 @@ export default async function InvestigationsPage() {
   ]);
 
   return (
-    <main className="container mx-auto flex flex-col gap-8 p-6">
+    <PageMain className="container mx-auto flex flex-col gap-8 p-6">
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">
@@ -140,7 +141,7 @@ export default async function InvestigationsPage() {
           </p>
         </div>
       </section>
-    </main>
+    </PageMain>
   );
 }
 

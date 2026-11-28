@@ -4,10 +4,13 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
 import { api } from "@/trpc/react";
+import { useSiteShell } from "@/components/site-chrome-gate";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ErrorState } from "@/components/ui/error-state";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import { getInitials } from "@/lib/avatar";
 import { ConversationView } from "@/components/messages/conversation-view";
 import { RoomMembersPanel } from "./room-members-panel";
@@ -22,6 +25,9 @@ export function RoomView({
   fillHeight?: boolean;
 }) {
   const t = useTranslations("communities.rooms");
+  const inCommunityShell = useSiteShell() === "community" && !fillHeight;
+  const shellHeight =
+    "h-[calc(100dvh-5rem-var(--community-mobile-bar-height)-1px)] min-h-96 lg:h-[calc(100dvh-6rem-1px)]";
   const utils = api.useUtils();
   const {
     data: room,
@@ -40,6 +46,15 @@ export function RoomView({
     onError: () => toast.error(t("requestAccess.error")),
   });
 
+  if (isLoading && inCommunityShell)
+    return (
+      <div aria-busy className={cn("flex flex-col gap-6 p-4", shellHeight)}>
+        <Skeleton className="h-10 w-1/2" />
+        <Skeleton className="h-12 w-3/5" />
+        <Skeleton className="ml-auto h-12 w-2/5" />
+        <Skeleton className="h-12 w-3/5" />
+      </div>
+    );
   if (isLoading)
     return (
       <div className="flex justify-center py-16">
@@ -50,54 +65,95 @@ export function RoomView({
 
   if (room.membership === "active" && room.conversationId) {
     const MAX_SHOWN_AVATARS = 3;
+    const visibility =
+      room.visibility === "private" ? (
+        <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
+          <Lock className="size-3" aria-hidden />
+          {t("private")}
+        </span>
+      ) : (
+        <span className="text-muted-foreground font-mono text-xs">
+          {t("public")}
+        </span>
+      );
 
     return (
       <div
-        className={
-          fillHeight
-            ? "flex h-full min-h-0 flex-col"
-            : "flex h-[calc(100vh-16rem)] min-h-96 flex-col"
-        }
+        className={cn(
+          "flex flex-col",
+          fillHeight && "h-full min-h-0",
+          !fillHeight && !inCommunityShell && "h-[calc(100vh-16rem)] min-h-96",
+          inCommunityShell && shellHeight,
+        )}
       >
         {/* Room header */}
         <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-base leading-tight font-semibold">
-                {room.name ?? t("untitled")}
-              </h1>
+          <div
+            className={cn(
+              "flex items-center gap-3",
+              inCommunityShell && "min-w-0 flex-wrap gap-x-2 gap-y-1",
+            )}
+          >
+            <div className="min-w-0">
+              <div
+                className={cn(
+                  inCommunityShell &&
+                    "flex flex-wrap items-baseline gap-x-2 gap-y-1",
+                )}
+              >
+                <h1 className="text-base leading-tight font-semibold">
+                  {room.name ?? t("untitled")}
+                </h1>
+                {inCommunityShell ? visibility : null}
+              </div>
               {room.purpose ? (
                 <p className="text-muted-foreground text-xs">{room.purpose}</p>
               ) : null}
             </div>
-            {/* Visibility marker — Mono-Is-Machine */}
-            {room.visibility === "private" ? (
-              <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
-                <Lock className="size-3" aria-hidden />
-                {t("private")}
-              </span>
-            ) : (
-              <span className="text-muted-foreground font-mono text-xs">
-                {t("public")}
-              </span>
-            )}
+            {!inCommunityShell ? visibility : null}
           </div>
-          <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex items-center gap-3",
+              inCommunityShell && "shrink-0 max-sm:gap-2 [&_button]:min-h-11",
+            )}
+          >
             {/* Avatar stack */}
             {room.memberAvatars && room.memberAvatars.length > 0 ? (
-              <div className="flex items-center">
-                <div className="flex -space-x-2">
+              <div
+                className={cn(
+                  "flex items-center",
+                  inCommunityShell && "hidden sm:flex",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex",
+                    inCommunityShell ? "gap-1" : "-space-x-2",
+                  )}
+                >
                   {room.memberAvatars.slice(0, MAX_SHOWN_AVATARS).map((av) => (
                     <Avatar
                       key={av.userId}
                       size="sm"
-                      className="border-background ring-background border-2"
+                      className={cn(
+                        !inCommunityShell &&
+                          "border-background ring-background border-2",
+                      )}
                     >
-                      <AvatarImage
-                        src={av.avatarUrl ?? undefined}
-                        alt={av.displayName ?? ""}
-                      />
-                      <AvatarFallback>
+                      {inCommunityShell ? null : (
+                        <AvatarImage
+                          src={av.avatarUrl ?? undefined}
+                          alt={av.displayName ?? ""}
+                        />
+                      )}
+                      <AvatarFallback
+                        title={
+                          inCommunityShell
+                            ? (av.displayName ?? undefined)
+                            : undefined
+                        }
+                      >
                         {getInitials(av.displayName ?? "")}
                       </AvatarFallback>
                     </Avatar>
@@ -136,6 +192,12 @@ export function RoomView({
               isAgent: false,
             }}
             hideHeader
+            roomViewport={inCommunityShell}
+            roomAuthors={
+              inCommunityShell
+                ? { slug, previews: room.memberAvatars ?? [] }
+                : undefined
+            }
           />
         </div>
       </div>

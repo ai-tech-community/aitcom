@@ -26,6 +26,7 @@ vi.mock("next-intl/server", () => ({
     }),
 }));
 vi.mock("@/i18n/navigation", () => ({
+  usePathname: () => "/missing",
   Link: ({
     href,
     children,

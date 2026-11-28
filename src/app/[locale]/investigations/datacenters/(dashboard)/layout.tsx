@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { ArrowLeft } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 
@@ -65,7 +66,7 @@ export default async function DatacenterInvestigationLayout({
   ];
 
   return (
-    <main className="container mx-auto flex flex-col gap-6 p-6">
+    <PageMain className="container mx-auto flex flex-col gap-6 p-6">
       <nav className="text-xs">
         <Link
           href="/investigations"
@@ -116,6 +117,6 @@ export default async function DatacenterInvestigationLayout({
         />
         <div className="pt-6">{children}</div>
       </div>
-    </main>
+    </PageMain>
   );
 }

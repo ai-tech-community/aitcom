@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { Fragment } from "react";
 
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
@@ -39,7 +40,7 @@ export function PublicEventsPage({
   const eventJsonLd = publicEventsJsonLd(events);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
       {eventJsonLd.map((data, index) => (
         <JsonLd
           key={`event-jsonld-${typeof data.url === "string" ? data.url : index}`}
@@ -150,6 +151,6 @@ export function PublicEventsPage({
           })}
         </ul>
       )}
-    </main>
+    </PageMain>
   );
 }

@@ -18,15 +18,17 @@ type Community = RouterOutputs["communities"]["getBySlug"];
  * The art carries its own palette, so the cover does not depend on the
  * frame around it showing the same look.
  *
- * The art and its name are decorative: the name is the page's h1 right
- * below, so assistive tech skips the cover rather than hear it twice.
+ * The art is decorative. Frames with a visible header identity can omit
+ * the generated name. Uploaded banners keep their original content.
  */
 export function CommunityThemeCover({
   community,
   className,
+  showName = true,
 }: {
   community: Pick<Community, "name" | "bannerUrl" | "bannerAlt" | "themeId">;
   className?: string;
+  showName?: boolean;
 }) {
   const theme = resolveCommunityTheme(
     useShownCommunityThemeId(community.themeId),
@@ -45,16 +47,17 @@ export function CommunityThemeCover({
       )}
     >
       <CommunityCoverArt themeId={theme.id} className="absolute inset-0" />
-      {/* The name sits on its base color, the pair the catalog test measures. */}
-      <span
-        className="font-community-heading absolute start-3 bottom-3 max-w-[calc(100%-1.5rem)] truncate rounded-md px-2.5 py-0.5 text-xl font-semibold tracking-tight sm:start-4 sm:bottom-4 sm:max-w-[calc(100%-2rem)] sm:text-2xl lg:text-3xl"
-        style={{
-          color: theme.cover.nameColor,
-          backgroundColor: theme.cover.nameBase,
-        }}
-      >
-        {community.name}
-      </span>
+      {showName ? (
+        <span
+          className="font-community-heading absolute start-3 bottom-3 max-w-[calc(100%-1.5rem)] truncate rounded-md px-2.5 py-0.5 text-xl font-semibold tracking-tight sm:start-4 sm:bottom-4 sm:max-w-[calc(100%-2rem)] sm:text-2xl lg:text-3xl"
+          style={{
+            color: theme.cover.nameColor,
+            backgroundColor: theme.cover.nameBase,
+          }}
+        >
+          {community.name}
+        </span>
+      ) : null}
     </div>
   );
 }

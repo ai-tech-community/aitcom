@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
+import { useShellUnread } from "@/components/shells/shell-unread";
 import { api } from "@/trpc/react";
 
 import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
 
 /** How many messages a conversation view loads. */
 export const MESSAGES_PAGE_SIZE = 50;
+export const OPTIMISTIC_MESSAGE_PREFIX = "optimistic-";
 
 /**
  * The `inbox.getMessages` input for one conversation: its cache key.
@@ -23,7 +26,19 @@ export function messagesQueryInput(conversationId: string) {
  * as fallback (ADR-0025).
  */
 export function useConversationMessages(conversationId: string) {
-  return api.inbox.getMessages.useQuery(messagesQueryInput(conversationId), {
-    refetchInterval: LIVE_MESSAGES_FALLBACK_MS,
-  });
+  const { markRead } = useShellUnread();
+  const query = api.inbox.getMessages.useQuery(
+    messagesQueryInput(conversationId),
+    {
+      refetchInterval: LIVE_MESSAGES_FALLBACK_MS,
+    },
+  );
+  const latest = query.data?.messages
+    .filter((message) => !message.id.startsWith(OPTIMISTIC_MESSAGE_PREFIX))
+    .at(-1)?.createdAt;
+  const through = latest?.getTime();
+  useEffect(() => {
+    if (through !== undefined) markRead?.(conversationId, through);
+  }, [conversationId, markRead, through]);
+  return query;
 }

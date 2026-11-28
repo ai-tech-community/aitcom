@@ -7,12 +7,24 @@ import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
+  redesigned: false,
+  prefetchSpaces: vi.fn(),
+  prefetchRooms: vi.fn(),
   prefetch: vi.fn<(input: { slug: string }) => Promise<void>>(),
 }));
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => state.redesigned,
+}));
 vi.mock("@/trpc/server", () => ({
-  api: { communities: { getBySlug: { prefetch: state.prefetch } } },
+  api: {
+    communities: { getBySlug: { prefetch: state.prefetch } },
+    spaces: {
+      list: { prefetch: state.prefetchSpaces },
+      listRooms: { prefetch: state.prefetchRooms },
+    },
+  },
   HydrateClient: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="hydrate">{children}</div>
   ),
@@ -48,6 +60,9 @@ import CommunityLayout, { dynamic } from "./layout";
 const params = () => Promise.resolve({ locale: "en", slug: "belong" });
 
 beforeEach(() => {
+  state.redesigned = false;
+  state.prefetchSpaces.mockReset();
+  state.prefetchRooms.mockReset();
   state.prefetch.mockReset();
   state.prefetch.mockResolvedValue(undefined);
 });
@@ -66,11 +81,36 @@ describe("community layout", () => {
 
     expect(state.prefetch).toHaveBeenCalledTimes(1);
     expect(state.prefetch).toHaveBeenCalledWith({ slug: "belong" });
+    expect(state.prefetchSpaces).not.toHaveBeenCalled();
+    expect(state.prefetchRooms).not.toHaveBeenCalled();
     const frame = screen.getByTestId("community-layout");
     expect(frame.parentElement).toBe(screen.getByTestId("hydrate"));
     expect(frame).toHaveAttribute("data-user", "user-1");
     expect(frame).toHaveAttribute("data-memberships", "belong");
     expect(screen.getByText("page").parentElement).toBe(frame);
+  });
+
+  it("prefetches the ordered space and room lists for the redesigned frame", async () => {
+    state.redesigned = true;
+    await CommunityLayout({ children: <p>page</p>, params: params() });
+    expect(state.prefetchSpaces).toHaveBeenCalledWith({ slug: "belong" });
+    expect(state.prefetchRooms).toHaveBeenCalledWith({ slug: "belong" });
+  });
+
+  it("starts both navigation reads while the independent community read is pending", async () => {
+    state.redesigned = true;
+    let release!: () => void;
+    state.prefetch.mockReturnValue(
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const layout = CommunityLayout({ children: <p>page</p>, params: params() });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(state.prefetchSpaces).toHaveBeenCalledWith({ slug: "belong" });
+    expect(state.prefetchRooms).toHaveBeenCalledWith({ slug: "belong" });
+    release();
+    await layout;
   });
 
   it("still renders the frame when the community is missing", async () => {

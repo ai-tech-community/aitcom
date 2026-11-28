@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { useTranslations } from "next-intl";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -30,7 +31,7 @@ export function SubscriptionConfirm({
   const values = { magazine: magazine?.name ?? "" };
 
   return (
-    <main className="mx-auto w-full max-w-lg px-4 py-16">
+    <PageMain className="mx-auto w-full max-w-lg px-4 py-16">
       <SectionLabel as="p">{t("kicker")}</SectionLabel>
       <h1 className="mt-3 text-2xl font-semibold tracking-tight text-balance [overflow-wrap:anywhere]">
         {t(copy.title, values)}
@@ -69,6 +70,6 @@ export function SubscriptionConfirm({
           </Link>
         ) : null}
       </div>
-    </main>
+    </PageMain>
   );
 }

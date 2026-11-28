@@ -125,7 +125,7 @@ export function ThemeSettings({ slug }: { slug: string }) {
       </RadioGroupPrimitive.Root>
 
       {isPreviewing ? (
-        <div className="bg-card border-border sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-md">
+        <div className="bg-card border-border sticky bottom-[calc(1rem+var(--shell-bottom-offset))] z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-md">
           <p className="text-sm font-medium">
             {t("previewing", { name: tLook(`${chosenId}.name`) })}
           </p>

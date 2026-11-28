@@ -3,6 +3,13 @@
 import { useTranslations } from "next-intl";
 
 import { api } from "@/trpc/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /**
  * Which of the community's topics a post goes under, for the composer and
@@ -15,16 +22,49 @@ export function TopicSelect({
   value,
   onChange,
   disabled,
+  redesigned = false,
 }: {
   communitySlug: string;
   value: string;
   onChange: (slug: string) => void;
   disabled?: boolean;
+  redesigned?: boolean;
 }) {
   const t = useTranslations("communities.feed");
   const { data: topics } = api.topics.list.useQuery({ communitySlug });
   if (!topics || topics.length < 2) return null;
-  const known = topics.some((topic) => topic.slug === value);
+  const options = topics.map(({ slug, label, emoji }) => ({
+    value: slug,
+    label: emoji ? `${emoji} ${label}` : label,
+  }));
+  if (!options.some((topic) => topic.value === value)) {
+    options.unshift({ value, label: value });
+  }
+
+  if (redesigned) {
+    return (
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger
+          aria-label={t("selectTopic")}
+          size="sm"
+          className="max-w-44 text-base md:text-sm"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position="popper" className="motion-reduce:animate-none">
+          {options.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="min-h-11 sm:min-h-8"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
 
   return (
     <select
@@ -34,11 +74,9 @@ export function TopicSelect({
       aria-label={t("selectTopic")}
       className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 ml-1 h-8 max-w-44 truncate rounded-md border px-2 text-base outline-none focus-visible:ring-[3px] disabled:opacity-50 md:text-sm"
     >
-      {known ? null : <option value={value}>{value}</option>}
-      {topics.map((topic) => (
-        <option key={topic.id} value={topic.slug}>
-          {topic.emoji ? `${topic.emoji} ` : ""}
-          {topic.label}
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
         </option>
       ))}
     </select>

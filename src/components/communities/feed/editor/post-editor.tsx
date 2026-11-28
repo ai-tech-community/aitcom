@@ -181,11 +181,20 @@ export function PostEditor({
             <div className="space-y-3 px-3 pb-3">{attachments}</div>
           ) : null}
 
-          <div className="border-border flex flex-wrap items-center gap-1 border-t px-1.5 py-1.5">
-            <div className="flex flex-auto flex-wrap items-center gap-0.5">
+          <div
+            data-post-toolbar=""
+            className="border-border flex flex-wrap items-center gap-1 border-t px-1.5 py-1.5"
+          >
+            <div
+              data-post-tools=""
+              className="flex flex-auto flex-wrap items-center gap-0.5"
+            >
               {tools}
             </div>
-            <div className="ml-auto flex items-center gap-1.5">
+            <div
+              data-post-actions=""
+              className="ml-auto flex items-center gap-1.5"
+            >
               {left <= COUNTER_FROM ? (
                 <span
                   id={counterId}

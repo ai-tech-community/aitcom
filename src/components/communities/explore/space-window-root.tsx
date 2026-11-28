@@ -9,6 +9,7 @@ import { RoomView } from "@/components/communities/rooms/room-view";
 import { useInboxStream } from "@/components/inbox/use-inbox-stream";
 import { useSpaceWindows } from "./space-window-provider";
 import { windowKey } from "./space-window-reducer";
+import { cn } from "@/lib/utils";
 
 // Mounted while any space window exists (open OR parked in the taskbar); relies
 // on the module-level singleton in useInboxStream so all windows (and the
@@ -19,7 +20,9 @@ function SpaceWindowStream() {
   return null;
 }
 
-export function SpaceWindowRoot() {
+export function SpaceWindowRoot({
+  aboveMobileNav = false,
+}: { aboveMobileNav?: boolean } = {}) {
   const { open, minimized, closeSpace, minimizeSpace, restoreSpace } =
     useSpaceWindows();
   const { data: session } = authClient.useSession();
@@ -75,7 +78,14 @@ export function SpaceWindowRoot() {
       })}
 
       {minimized.length > 0 && (
-        <div className="fixed bottom-3 left-3 z-40 flex flex-wrap items-end gap-2 sm:bottom-4 sm:left-4">
+        <div
+          className={cn(
+            "fixed left-3 z-40 flex flex-wrap items-end gap-2 sm:left-4",
+            aboveMobileNav
+              ? "bottom-[calc(var(--community-mobile-bar-height)+0.75rem)] lg:bottom-4"
+              : "bottom-3 sm:bottom-4",
+          )}
+        >
           {minimized.map((ref) => {
             const key = windowKey(ref);
             const label = ref.spaceName ?? ref.spaceSlug;

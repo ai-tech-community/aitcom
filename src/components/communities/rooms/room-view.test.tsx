@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+
+const site = vi.hoisted(() => ({ shell: null as null | "community" }));
+
+vi.mock("@/components/site-chrome-gate", () => ({
+  useSiteShell: () => site.shell,
+}));
 
 const ACTIVE_ROOM = {
   id: "s1",
@@ -37,7 +43,9 @@ vi.mock("@/trpc/react", () => ({
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/components/messages/conversation-view", () => ({
-  ConversationView: () => <div data-testid="cv" />,
+  ConversationView: ({ roomViewport }: { roomViewport: boolean }) => (
+    <div data-testid="cv" data-room-presentation={roomViewport} />
+  ),
 }));
 vi.mock("./room-members-panel", () => ({ RoomMembersPanel: () => <div /> }));
 
@@ -59,4 +67,22 @@ describe("RoomView fillHeight", () => {
       "min-h-96",
     );
   });
+});
+
+it("uses the whole-message viewport only on a redesigned room page", () => {
+  site.shell = "community";
+  try {
+    const { rerender } = render(<RoomView slug="acme" spaceSlug="design" />);
+    expect(screen.getByTestId("cv")).toHaveAttribute(
+      "data-room-presentation",
+      "true",
+    );
+    rerender(<RoomView slug="acme" spaceSlug="design" fillHeight />);
+    expect(screen.getByTestId("cv")).toHaveAttribute(
+      "data-room-presentation",
+      "false",
+    );
+  } finally {
+    site.shell = null;
+  }
 });

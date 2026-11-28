@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ export default async function UnsubscribeInvitations({
   }
   const done = query.done === "1";
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center gap-5 px-6 py-16 text-center">
+    <PageMain className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center gap-5 px-6 py-16 text-center">
       <h1 className="text-3xl font-semibold tracking-tight">
         {t(done ? "doneTitle" : valid ? "title" : "invalidTitle")}
       </h1>
@@ -43,6 +44,6 @@ export default async function UnsubscribeInvitations({
           </Button>
         </form>
       )}
-    </main>
+    </PageMain>
   );
 }

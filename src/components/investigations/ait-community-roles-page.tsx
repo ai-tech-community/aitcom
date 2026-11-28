@@ -1,3 +1,4 @@
+import { PageMain } from "@/components/page-main";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +53,7 @@ export function AitCommunityRolesPage({
   const seatCta =
     emptySeatCta ?? (promoteJoin ? t("claimCta") : t("requestCta"));
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-16 sm:px-12">
+    <PageMain className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-16 sm:px-12">
       <SectionLabel as="div">{t("kicker")}</SectionLabel>
 
       <div className="flex max-w-2xl flex-col gap-3">
@@ -136,6 +137,6 @@ export function AitCommunityRolesPage({
         <p>{t("termNote")}</p>
         <p>{t(promoteJoin ? "joinHint" : "memberHint")}</p>
       </div>
-    </main>
+    </PageMain>
   );
 }
