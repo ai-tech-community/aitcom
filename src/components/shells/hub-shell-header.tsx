@@ -1,5 +1,6 @@
 "use client";
 
+import { AitLogo } from "@/components/ait-logo";
 import { ArrowUpRight, Ellipsis } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useInitialAuthUser } from "@/components/auth/session-provider";
@@ -20,11 +21,7 @@ import { MessagesNavLink } from "@/components/inbox/messages-nav-link";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BuiltinSurface } from "@/server/communities/space-defaults";
-import {
-  CommunityShortcuts,
-  CommunitySwitcher,
-  usableMemberships,
-} from "./community-switcher";
+import { CommunitySwitchList, usableMemberships } from "./community-switcher";
 import { useHubNavigation } from "./hub-navigation";
 import { activeDestination, type ShellDestination } from "./navigation";
 import { ShellHeader } from "./shell-header";
@@ -124,8 +121,8 @@ export function HubShellHeader({
     ? []
     : (membershipQuery.data ?? initialMemberships);
   const usable = user ? usableMemberships(memberships) : [];
-  const { main, account, groups } = useHubNavigation(!!user);
-  const destinations = groups.flatMap((group) => group.items);
+  const { main, pages, account, groups } = useHubNavigation(!!user);
+  const destinations = [...pages, ...account];
   const active = activeDestination(pathname, destinations);
   const primaryActive = active && main.includes(active);
   const counterpart =
@@ -163,6 +160,18 @@ export function HubShellHeader({
             onNavigate={close}
           />
         ) : null}
+        {user ? (
+          <CommunitySwitchList
+            className="border-border mb-4 border-b pb-3 lg:hidden"
+            memberships={memberships}
+            retryMemberships={
+              membershipQuery.isError
+                ? () => void membershipQuery.refetch()
+                : undefined
+            }
+            onNavigate={close}
+          />
+        ) : null}
         <ShellNavGroups groups={groups} onNavigate={close}>
           {user ? <OnboardingReminderRow /> : null}
         </ShellNavGroups>
@@ -177,29 +186,34 @@ export function HubShellHeader({
         section={section}
         sectionInNavigation={primaryActive}
         user={user}
-        destinations={[...destinations, ...membershipHomes]}
+        destinations={[...pages, ...membershipHomes]}
         account={account}
         leading={
-          <div className="flex shrink-0 items-center gap-1">
-            <CommunitySwitcher
-              signedIn={!!user}
-              memberships={memberships}
-              retryMemberships={
-                membershipQuery.isError
-                  ? () => void membershipQuery.refetch()
-                  : undefined
-              }
-            />
+          <div className="flex items-center gap-1">
+            <Link
+              href="/"
+              aria-label={t("hub")}
+              className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md px-2 outline-none focus-visible:ring-2 focus-visible:ring-inset"
+            >
+              <AitLogo className="h-4 w-auto" aria-hidden />
+            </Link>
             {user ? (
-              <div className="hidden lg:block">
-                <CommunityShortcuts memberships={memberships} limit={1} />
-              </div>
+              <CommunitySwitchList
+                inline
+                className="hidden max-w-40 lg:flex xl:max-w-52"
+                memberships={memberships}
+                retryMemberships={
+                  membershipQuery.isError
+                    ? () => void membershipQuery.refetch()
+                    : undefined
+                }
+              />
             ) : null}
           </div>
         }
         navigation={
           <nav
-            className="hidden shrink-0 items-center gap-0.5 lg:flex xl:gap-1"
+            className="hidden min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] lg:flex xl:gap-1"
             aria-label={t("hubNavigation")}
           >
             {main.map((item) => (
@@ -208,7 +222,7 @@ export function HubShellHeader({
                 href={item.href}
                 aria-current={active === item ? "page" : undefined}
                 className={cn(
-                  "focus-visible:ring-ring inline-flex min-h-9 items-center rounded-md px-1.5 text-sm font-medium outline-none focus-visible:ring-2 xl:px-3",
+                  "focus-visible:ring-ring inline-flex min-h-9 shrink-0 items-center rounded-md px-1.5 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-2 xl:px-3",
                   active === item
                     ? shellActiveTab
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground",

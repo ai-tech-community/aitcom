@@ -50,17 +50,20 @@ vi.mock("@/components/inbox/messages-nav-link", () => ({
 vi.mock("./shell-header", () => ({
   ShellHeader: ({
     location,
+    leading,
     section,
     navigation,
     trailing,
   }: {
     location: string;
+    leading: React.ReactNode;
     section: string;
     navigation: React.ReactNode;
     trailing: React.ReactNode;
   }) => (
     <header>
       {location}
+      {leading}
       <span data-testid="section">{section}</span>
       {navigation}
       {trailing}
@@ -116,13 +119,13 @@ describe("Hub shell header", () => {
       within(primary!).getByRole("link", { name: "Events" }),
     ).toHaveAttribute("aria-current", "page");
     expect(screen.getByTestId("section")).toHaveTextContent("Events");
-    expect(
-      within(screen.getByRole("banner")).getByRole("link", {
-        name: "Workbench",
-      }),
-    ).toHaveAttribute("href", "/communities/workbench/events");
-    expect(screen.queryByRole("link", { name: "Stale" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Archived" })).toBeNull();
+    const hrefs = within(screen.getByRole("banner"))
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href"));
+    expect(hrefs).toContain("/communities/workbench/events");
+    expect(hrefs).toContain("/communities/workbench");
+    expect(hrefs).not.toContain("/communities/failed/events");
+    expect(hrefs).not.toContain("/communities/archived/events");
     expect(screen.getAllByRole("link", { name: "Messages" })).toHaveLength(1);
     expect(data.getSpaces).not.toHaveBeenCalledWith({ slug: "pending" });
   });

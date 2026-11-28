@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Command,
   CommandEmpty,
+  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -51,7 +52,7 @@ import { cn } from "@/lib/utils";
 import { authClient } from "@/server/better-auth/client";
 import type { HubAuthUser } from "@/server/better-auth/hub-session";
 import { JOIN_HREF, keyboardNavItems } from "@/components/site-nav";
-import type { ShellDestination } from "./navigation";
+import type { ShellDestination, ShellNavGroup } from "./navigation";
 import { shellIconButton, ShellNavLink } from "./shell-navigation";
 
 function PageFinderFooter() {
@@ -84,11 +85,7 @@ function PageFinderFooter() {
   );
 }
 
-function PageFinder({
-  destinations,
-}: {
-  destinations: readonly ShellDestination[];
-}) {
+function PageFinder({ groups }: { groups: readonly ShellNavGroup[] }) {
   const t = useTranslations("redesign.shell");
   const common = useTranslations("common");
   const pathname = usePathname();
@@ -194,20 +191,24 @@ function PageFinder({
           />
           <CommandList className="max-h-[min(50dvh,23rem)] p-2 [scrollbar-width:thin]">
             <CommandEmpty>{t("noPages")}</CommandEmpty>
-            {destinations.map((item) => (
-              <CommandItem
-                key={item.href}
-                value={item.href}
-                keywords={[item.label]}
-                onSelect={() => {
-                  setOpen(false);
-                  router.push(item.href);
-                }}
-                className="min-h-11 cursor-pointer px-2 py-2"
-              >
-                {item.icon ? <item.icon aria-hidden /> : null}
-                {item.label}
-              </CommandItem>
+            {groups.map(({ label, items }) => (
+              <CommandGroup key={label} heading={label}>
+                {items.map((item) => (
+                  <CommandItem
+                    key={item.href}
+                    value={item.href}
+                    keywords={[item.label]}
+                    onSelect={() => {
+                      setOpen(false);
+                      router.push(item.href);
+                    }}
+                    className="min-h-11 cursor-pointer px-2 py-2"
+                  >
+                    {item.icon ? <item.icon aria-hidden /> : null}
+                    {item.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
             ))}
           </CommandList>
           <PageFinderFooter />
@@ -303,7 +304,7 @@ export function ShellHeader({
   sectionInNavigation,
   leading,
   navigation,
-  mobileLocation,
+  locationControl,
   trailing,
   destinations,
   account,
@@ -315,7 +316,7 @@ export function ShellHeader({
   sectionInNavigation?: boolean;
   leading?: ReactNode;
   navigation?: ReactNode;
-  mobileLocation?: ReactNode;
+  locationControl?: ReactNode;
   trailing?: ReactNode;
   destinations: readonly ShellDestination[];
   account: readonly ShellDestination[];
@@ -325,13 +326,19 @@ export function ShellHeader({
   const t = useTranslations("redesign.shell");
   const nav = useTranslations("nav");
   const router = useRouter();
-  const searchable = user
+  const accountItems = user
     ? [
-        ...destinations,
+        ...account,
         { href: "/messages", label: nav("messages"), icon: MessageSquare },
       ]
-    : destinations;
-
+    : [...account];
+  const searchable = [
+    {
+      label: t(community ? "communityPages" : "hubPages"),
+      items: [...destinations],
+    },
+    { label: t("account"), items: accountItems },
+  ];
   function onShortcut(event: KeyboardEvent<HTMLElement>) {
     // Single-letter shortcuts are scoped to focus in the header (WCAG 2.1.4).
     if (
@@ -379,47 +386,61 @@ export function ShellHeader({
       <div className="flex min-h-12 items-center justify-between gap-1 px-2 sm:gap-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
           {leading}
-          {mobileLocation ? (
-            <div className="min-w-0 lg:hidden">{mobileLocation}</div>
-          ) : null}
           <div
             className={cn(
-              "flex min-w-0 items-center gap-x-2 max-lg:flex-col max-lg:items-start max-lg:gap-y-0.5",
-              mobileLocation && "max-lg:hidden",
+              "flex min-w-0 items-center gap-x-2",
+              !locationControl &&
+                "max-lg:flex-col max-lg:items-start max-lg:gap-y-0.5",
             )}
           >
-            <span
-              className="max-w-full truncate text-xs leading-tight font-semibold lg:text-sm"
-              title={location}
-            >
-              {location}
-            </span>
-            {section && section !== location ? (
-              <>
-                <ChevronRight
-                  className={cn(
-                    "text-muted-foreground hidden size-3.5 shrink-0 lg:block",
-                    sectionInNavigation && "lg:hidden",
-                  )}
-                  aria-hidden
-                />
+            {locationControl ?? (
+              <span
+                className="max-w-full truncate text-xs leading-tight font-semibold lg:text-sm"
+                title={location}
+              >
+                {location}
+              </span>
+            )}
+            {section && (locationControl || section !== location) ? (
+              <div
+                className={cn(
+                  "min-w-0 items-center gap-2 lg:flex",
+                  locationControl && "max-lg:hidden",
+                  sectionInNavigation && "lg:hidden",
+                )}
+              >
+                {community ? (
+                  <span
+                    className="text-muted-foreground hidden lg:inline"
+                    aria-hidden
+                  >
+                    /
+                  </span>
+                ) : (
+                  <ChevronRight
+                    className="text-muted-foreground hidden size-3.5 shrink-0 lg:block"
+                    aria-hidden
+                  />
+                )}
                 <span
                   className={cn(
-                    "text-muted-foreground max-w-full truncate text-xs leading-tight font-medium lg:text-sm",
-                    sectionInNavigation && "lg:hidden",
+                    "block max-w-full truncate text-xs leading-tight lg:text-sm",
+                    community
+                      ? "text-foreground font-semibold lg:text-base"
+                      : "text-muted-foreground font-medium",
                   )}
                   aria-live="polite"
                   title={section}
                 >
                   {section}
                 </span>
-              </>
+              </div>
             ) : null}
           </div>
         </div>
         {navigation}
         <div className="flex shrink-0 items-center gap-0.5">
-          <PageFinder destinations={searchable} />
+          <PageFinder groups={searchable} />
           {user ? (
             <>
               <NotificationBell compact signedIn />

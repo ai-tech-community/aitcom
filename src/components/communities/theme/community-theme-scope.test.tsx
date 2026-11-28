@@ -518,6 +518,19 @@ describe("CommunityThemeCover", () => {
     bannerAlt: null as string | null,
   };
 
+  it("shows the generated art without copying the header name", () => {
+    const { container } = render(
+      <CommunityThemeCover
+        community={{ ...base, themeId: "night" }}
+        showName={false}
+      />,
+    );
+    expect(
+      container.querySelector("[data-community-cover-art]"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(base.name)).toBeNull();
+  });
+
   it("shows the banner picture when there is one, never the art", () => {
     const { container } = render(
       <CommunityThemeCover

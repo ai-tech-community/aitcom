@@ -26,7 +26,7 @@ interface CommunityActionsMenuProps {
   /** After a successful leave, before the page data refreshes. */
   onLeft?: () => void;
   compact?: boolean;
-  /** Place the existing action inside the community switcher. */
+  /** Render the existing action as a row in the identity menu. */
   onRowAction?: () => void;
   returnFocusAfterLeave?: () => HTMLElement | null;
 }

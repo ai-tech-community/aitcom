@@ -98,7 +98,7 @@ export function ShellNavLink({
       className={cn(
         "focus-visible:ring-ring relative flex min-h-11 items-center gap-2.5 rounded-md px-3 py-1.5 text-sm leading-snug outline-none focus-visible:ring-2 focus-visible:ring-inset lg:min-h-9",
         active
-          ? "bg-secondary text-foreground before:bg-foreground font-semibold before:absolute before:inset-y-2 before:left-0.5 before:w-0.5 before:rounded-full"
+          ? "bg-foreground/12 text-foreground before:bg-foreground font-bold before:absolute before:inset-y-2 before:left-1 before:w-[3px] before:rounded-full"
           : "text-foreground/75 hover:bg-secondary/60 hover:text-foreground font-medium",
         className,
       )}
@@ -189,7 +189,9 @@ export function ShellDrawer({
         className="h-dvh w-full max-w-88 gap-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] motion-reduce:animate-none motion-reduce:transition-none"
       >
         <div className="border-border flex shrink-0 items-center justify-between gap-2 border-b px-4 py-1">
-          <SheetTitle className="min-w-0 wrap-break-word">{title}</SheetTitle>
+          <SheetTitle className="min-w-0 flex-1 py-2 leading-snug wrap-break-word whitespace-normal">
+            {title}
+          </SheetTitle>
           <SheetClose asChild>
             <Button
               variant="ghost"

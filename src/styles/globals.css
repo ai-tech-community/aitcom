@@ -321,24 +321,33 @@
   color: var(--foreground);
 }
 
-/* Ink from the current frame keeps small controls readable on Signal Orange. */
-:is([data-community-shell], [data-site-shell="hub"]) {
+/* Use the local theme's ink on solid orange controls in a redesigned frame. */
+body:has([data-shell-header])
+  :is(
+    :is(button, a, [role="button"]).bg-primary:where(:not([data-feed-submit]:disabled)),
+    [data-slot="checkbox"][data-tone="primary"][data-state="checked"],
+    [data-slot="switch"][data-state="checked"]
+  ) {
   --shell-primary-ink: var(--foreground);
-}
-
-:is([data-community-shell], [data-site-shell="hub"]):where(.dark, .dark *) {
-  --shell-primary-ink: var(--card);
-}
-
-:is([data-community-shell], [data-site-shell="hub"])
-  :is([data-forum-submit], [data-chat-send], [data-feed-submit]:not(:disabled)) {
   color: var(--shell-primary-ink);
+
+  &:where(.dark, .dark *) {
+    --shell-primary-ink: var(--card);
+  }
+
+  & > [data-slot="switch-thumb"] {
+    background-color: var(--shell-primary-ink);
+  }
 }
 
-[data-community-shell] [data-feed-submit]:disabled {
-  background-color: var(--secondary);
-  color: var(--muted-foreground);
-  opacity: 1;
+[data-community-shell] [data-feed-submit] {
+  transition-property: box-shadow;
+
+  &:disabled {
+    background-color: var(--secondary);
+    color: var(--muted-foreground);
+    opacity: 1;
+  }
 }
 
 @media (width < 40rem) {
@@ -400,12 +409,12 @@
     min-width: 44px;
   }
 
-  [data-community-shell] [data-forum-filters] {
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-filters] {
     flex-wrap: wrap;
     gap: 0.5rem;
   }
 
-  [data-community-shell] [data-forum-categories] {
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-categories] {
     flex: 1 0 100%;
     flex-wrap: wrap;
     overflow: visible;
@@ -413,14 +422,14 @@
     padding-bottom: 0;
   }
 
-  [data-community-shell] [data-forum-categories] button {
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-categories] button {
     min-width: 44px;
     padding-inline: 0.45rem;
   }
 
-  [data-community-shell] [data-forum-categories] button,
-  [data-community-shell] [data-forum-filters] select,
-  [data-community-shell] [data-forum-submit] {
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-categories] button,
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-filters] select,
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-submit] {
     min-height: 44px;
   }
 

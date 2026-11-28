@@ -12,6 +12,9 @@ import {
 import { documentAuthUser } from "@/server/better-auth/hub-session";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Link } from "@/i18n/navigation";
+import { Button } from "@/components/ui/button";
+import { useSiteShell } from "@/components/site-chrome-gate";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { CategoryTabs, type Category } from "./category-tabs";
@@ -29,6 +32,8 @@ interface ForumPageProps {
 
 export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
   const t = useTranslations("forum");
+  const shell = useSiteShell();
+  const redesigned = shell === "community" || shell === "hub";
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(
     useInitialAuthUser(),
@@ -93,6 +98,9 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
   const threads = data?.threads ?? [];
   const hasNextPage = data?.hasNextPage ?? false;
   const noResults = !isLoading && threads.length === 0 && debouncedSearch;
+  const newThreadHref = communitySlug
+    ? (`/forum/new?community=${communitySlug}` as never)
+    : "/forum/new";
   const noThreads = !isLoading && threads.length === 0 && !debouncedSearch;
 
   const isCommunity = !!communitySlug;
@@ -120,27 +128,38 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder={t("search")}
-            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/30 w-full rounded-md border py-2 pr-3 pl-9 font-mono text-xs focus:ring-1 focus:outline-none"
+            aria-label={redesigned ? t("search") : undefined}
+            className={cn(
+              "border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/30 w-full rounded-md border py-2 pr-3 pl-9 focus:ring-1 focus:outline-none",
+              redesigned ? "text-base sm:text-sm" : "font-mono text-xs",
+            )}
           />
         </div>
         {user ? (
-          <Link
-            href={
-              communitySlug
-                ? (`/forum/new?community=${communitySlug}` as never)
-                : "/forum/new"
-            }
-            data-forum-submit=""
-            className="bg-primary text-primary-foreground hover:bg-primary/90 flex shrink-0 items-center gap-1.5 rounded-md px-4 py-2 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
-          >
-            <Plus className="h-3 w-3" />
-            {t("newThread")}
-          </Link>
+          redesigned ? (
+            <Button asChild>
+              <Link href={newThreadHref} data-forum-submit="">
+                <Plus className="size-4" aria-hidden />
+                {t("newThread")}
+              </Link>
+            </Button>
+          ) : (
+            <Link
+              href={newThreadHref}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 flex shrink-0 items-center gap-1.5 rounded-md px-4 py-2 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              {t("newThread")}
+            </Link>
+          )
         ) : (
           <button
             type="button"
             onClick={() => promptAuth("Sign in to post a thread")}
-            className="text-muted-foreground hover:text-foreground shrink-0 font-mono text-xs underline underline-offset-4 transition-colors"
+            className={cn(
+              "text-muted-foreground hover:text-foreground shrink-0 underline underline-offset-4 transition-colors",
+              redesigned ? "text-sm" : "font-mono text-xs",
+            )}
           >
             {t("loginToPost")}
           </button>
@@ -152,7 +171,11 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
         data-forum-filters=""
         className="border-border mb-5 flex items-center justify-between gap-4 border-b pb-3"
       >
-        <CategoryTabs active={category} onChange={handleCategoryChange} />
+        <CategoryTabs
+          active={category}
+          onChange={handleCategoryChange}
+          redesigned={redesigned}
+        />
         <div className="flex shrink-0 items-center gap-2">
           <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
             {t("sort")}:
@@ -160,7 +183,11 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
           <select
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as Sort)}
-            className="border-border bg-background text-foreground focus:border-ring focus:ring-ring/30 w-full rounded border px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none sm:w-auto"
+            aria-label={redesigned ? t("sort") : undefined}
+            className={cn(
+              "border-border bg-background text-foreground focus:border-ring focus:ring-ring/30 w-full rounded border px-2 py-1 focus:ring-1 focus:outline-none sm:w-auto",
+              redesigned ? "text-base sm:text-sm" : "font-mono text-xs",
+            )}
           >
             <option value="newest">{t("sortNewest")}</option>
             <option value="mostReplied">{t("sortMostReplied")}</option>
@@ -187,11 +214,21 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       ) : isError ? (
         <ErrorState onRetry={() => void refetch()} />
       ) : noResults ? (
-        <p className="text-muted-foreground py-12 text-center font-mono text-xs">
+        <p
+          className={cn(
+            "text-muted-foreground py-12 text-center",
+            redesigned ? "text-sm" : "font-mono text-xs",
+          )}
+        >
           {t("noResults")}
         </p>
       ) : noThreads ? (
-        <p className="text-muted-foreground py-12 text-center font-mono text-xs">
+        <p
+          className={cn(
+            "text-muted-foreground py-12 text-center",
+            redesigned ? "text-sm" : "font-mono text-xs",
+          )}
+        >
           {t("noThreads")}
         </p>
       ) : (
@@ -213,7 +250,12 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
         <div className="mt-6 text-center">
           <button
             onClick={() => setPage((p) => p + 1)}
-            className="border-border text-muted-foreground hover:border-ring hover:bg-secondary rounded-md border px-6 py-2 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
+            className={cn(
+              "border-border text-muted-foreground hover:border-ring hover:bg-secondary rounded-md border px-6 py-2 font-semibold transition-colors",
+              redesigned
+                ? "min-h-11 text-sm"
+                : "font-mono text-xs tracking-widest uppercase",
+            )}
           >
             {t("loadMore")}
           </button>

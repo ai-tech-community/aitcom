@@ -6806,10 +6806,16 @@
   },
   "redesign": {
     "shell": {
+      "seeAll": "Alles bekijken",
+      "seeAllCommunities": "Alle community’s bekijken",
+      "communityGroup": "Community",
+      "communityPages": "Communitypagina’s",
+      "hubPages": "Hub-pagina’s",
       "unreadAllConversations": "{count, plural, one {# ongelezen bericht in alle gesprekken} other {# ongelezen berichten in alle gesprekken}}",
       "pages": "Pagina’s",
       "communityIdentityMenu": "Opties voor {name}",
       "communityUnread": "{name}, ongelezen berichten",
+      "unreadCommunity": "Ongelezen berichten",
       "unreadMessages": "{count, plural, one {# ongelezen bericht} other {# ongelezen berichten}}",
       "unreadNotifications": "{count, plural, one {# ongelezen melding} other {# ongelezen meldingen}}",
       "switchNamedCommunity": "{name}, wissel van community",

@@ -9,8 +9,8 @@ import {
   Compass,
   CreditCard,
   House,
-  LayoutDashboard,
-  LayoutGrid,
+  Gauge,
+  UsersRound,
   ListChecks,
   Newspaper,
   Rocket,
@@ -50,11 +50,11 @@ export function useHubNavigation(signedIn: boolean) {
     .map(({ href, key }) => ({ href, label: nav(key) }));
   const account: ShellDestination[] = signedIn
     ? [
-        { href: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
+        { href: "/dashboard", label: t("dashboard"), icon: Gauge },
         {
           href: "/dashboard/communities",
           label: t("myCommunities"),
-          icon: LayoutGrid,
+          icon: UsersRound,
         },
         { href: "/dashboard/events", label: t("myEvents"), icon: CalendarDays },
         {
@@ -80,10 +80,11 @@ export function useHubNavigation(signedIn: boolean) {
         { href: "/auth/signin", label: nav("signIn"), icon: UserRound },
         { href: JOIN_HREF, label: nav("join"), icon: UserRound },
       ];
+  const pages = [hubHome, ...main, ...other];
   const groups: ShellNavGroup[] = [
-    { label: t("hub"), items: [hubHome, ...main, ...other] },
+    { label: t("hub"), items: pages },
     { label: t("account"), items: account },
   ];
 
-  return { main, account, groups };
+  return { main, pages, account, groups };
 }

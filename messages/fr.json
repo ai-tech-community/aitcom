@@ -6806,10 +6806,16 @@
   },
   "redesign": {
     "shell": {
+      "seeAll": "Tout voir",
+      "seeAllCommunities": "Voir toutes les communautés",
+      "communityGroup": "Communauté",
+      "communityPages": "Pages de la communauté",
+      "hubPages": "Pages du hub",
       "unreadAllConversations": "{count, plural, one {# message non lu dans toutes les conversations} other {# messages non lus dans toutes les conversations}}",
       "pages": "Pages",
       "communityIdentityMenu": "Options de {name}",
       "communityUnread": "{name}, messages non lus",
+      "unreadCommunity": "Messages non lus",
       "unreadMessages": "{count, plural, one {# message non lu} other {# messages non lus}}",
       "unreadNotifications": "{count, plural, one {# notification non lue} other {# notifications non lues}}",
       "switchNamedCommunity": "{name}, changer de communauté",

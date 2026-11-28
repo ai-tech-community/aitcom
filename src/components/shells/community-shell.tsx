@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   ChevronDown,
@@ -35,12 +35,7 @@ import type {
   HubAuthUser,
   HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
-import {
-  CommunityMark,
-  CommunityShortcuts,
-  CommunitySwitcher,
-  usableMemberships,
-} from "./community-switcher";
+import { CommunityMark, CommunitySwitchList } from "./community-switcher";
 import { useHubNavigation } from "./hub-navigation";
 import { activeDestination, type ShellDestination } from "./navigation";
 import { ShellHeader } from "./shell-header";
@@ -144,9 +139,8 @@ export function CommunityShell({
   const nav = useTranslations("nav");
   const pathname = usePathname();
   const { account, groups: hubGroups } = useHubNavigation(!!user);
-  const desktopIdentity = useRef<HTMLHeadingElement>(null);
-  const desktopIdentityTrigger = useRef<HTMLButtonElement>(null);
-  const mobileIdentity = useRef<HTMLButtonElement>(null);
+  const identityHeading = useRef<HTMLHeadingElement>(null);
+  const identityTrigger = useRef<HTMLButtonElement>(null);
   const canRead = community.viewerCanReadContent;
   const member = membershipStatus === "active";
   const {
@@ -169,16 +163,10 @@ export function CommunityShell({
     redesign: true,
   });
 
-  const readingRoom = rooms.find(
-    (room) => room.href === pathname && room.membership === "active",
-  );
   const { rooms: unread } = useShellUnread();
   const roomLinks = rooms.map((room) => ({
     ...room,
-    unread:
-      room.membership === "active" && room.id !== readingRoom?.id
-        ? unread.get(room.id)
-        : undefined,
+    unread: room.membership === "active" ? unread.get(room.id) : undefined,
   }));
   const total = roomLinks.reduce(
     (count, room) => count + (room.unread ?? 0),
@@ -212,70 +200,15 @@ export function CommunityShell({
     membershipStatus,
     memberRole,
   };
-
-  function renderRailIdentity(onNavigate?: () => void) {
-    const showSwitcher = !!user && !onNavigate;
-    const identityMenu = (
-      <IdentityMenu
-        identity={identity}
-        role={member && memberRole ? roles(memberRole) : undefined}
-        membership={membership}
-        triggerRef={onNavigate ? undefined : desktopIdentityTrigger}
-        returnFocus={() =>
-          onNavigate
-            ? mobileIdentity.current
-            : (desktopIdentityTrigger.current ?? desktopIdentity.current)
-        }
-        onNavigate={onNavigate}
-      />
-    );
-    return (
-      <>
-        <div
-          className={cn(
-            "space-y-2 px-3 pt-2",
-            showSwitcher ? "pb-1" : "border-border border-b pb-2",
-          )}
-        >
-          {onNavigate ? (
-            <div>{identityMenu}</div>
-          ) : (
-            <h1 ref={desktopIdentity} tabIndex={-1}>
-              {identityMenu}
-            </h1>
-          )}
-          {!member && !onNavigate ? (
-            <JoinButton {...membership} focusAfterChange={desktopIdentity} />
-          ) : null}
-        </div>
-        {showSwitcher ? (
-          <div className="border-border flex flex-wrap items-center justify-between gap-2 border-b px-3 pb-1.5">
-            <span className="text-muted-foreground pl-2 text-xs font-medium">
-              {t("myCommunities")}
-            </span>
-            <div className="flex shrink-0 items-center gap-1">
-              <CommunityShortcuts
-                memberships={memberships}
-                activeSlug={community.slug}
-              />
-              <CommunitySwitcher
-                iconOnly
-                activeSlug={community.slug}
-                signedIn
-                memberships={memberships}
-                retryMemberships={retryMemberships}
-              />
-            </div>
-          </div>
-        ) : null}
-      </>
-    );
-  }
+  const focusIdentityAfterLeave = useRef(false);
+  useEffect(() => {
+    if (!member && focusIdentityAfterLeave.current) {
+      focusIdentityAfterLeave.current = false;
+      identityHeading.current?.focus();
+    }
+  }, [member]);
 
   function renderRailNavigation(onNavigate?: () => void) {
-    const hasOtherCommunities = usableMemberships(memberships).some(
-      ({ slug }) => slug !== community.slug,
-    );
     return (
       <>
         <nav
@@ -290,7 +223,7 @@ export function CommunityShell({
             className="min-h-12 lg:min-h-9"
           />
           <SpaceGroup
-            title={t("pages")}
+            title={t("communityGroup")}
             items={spaces}
             active={active}
             pending={spacesPending}
@@ -314,17 +247,14 @@ export function CommunityShell({
             onNavigate={onNavigate}
           />
         </nav>
-        {onNavigate && user && hasOtherCommunities ? (
-          <div className="border-border mt-3 border-t px-3 pt-4">
-            <h2 className="text-muted-foreground mb-1 text-xs font-medium">
-              {t("myCommunities")}
-            </h2>
-            <CommunityShortcuts
-              memberships={memberships}
-              activeSlug={community.slug}
-              onNavigate={onNavigate}
-            />
-          </div>
+        {onNavigate && user ? (
+          <CommunitySwitchList
+            className="border-border mt-3 border-t px-3 pt-3"
+            memberships={memberships}
+            activeSlug={community.slug}
+            retryMemberships={retryMemberships}
+            onNavigate={onNavigate}
+          />
         ) : null}
       </>
     );
@@ -354,28 +284,32 @@ export function CommunityShell({
             className="pb-(--community-mobile-bar-height) lg:pb-0"
           >
             <ShellHeader
-              location={section}
-              destinations={[...destinations, ...account]}
+              location={identity.name}
+              section={section}
+              destinations={destinations}
               account={account}
               user={user}
               community
-              mobileLocation={
-                <div className="flex min-w-0 items-center gap-1">
-                  <CommunitySwitcher
+              locationControl={
+                <h1
+                  className="min-w-0 outline-none"
+                  ref={identityHeading}
+                  tabIndex={-1}
+                >
+                  <IdentityMenu
                     identity={identity}
-                    triggerRef={mobileIdentity}
-                    activeSlug={community.slug}
-                    signedIn={!!user}
-                    memberships={memberships}
-                    retryMemberships={retryMemberships}
+                    section={section}
+                    role={member && memberRole ? roles(memberRole) : undefined}
+                    membership={membership}
+                    triggerRef={identityTrigger}
+                    onLeft={() => {
+                      focusIdentityAfterLeave.current = true;
+                    }}
+                    returnFocus={() =>
+                      identityTrigger.current ?? identityHeading.current
+                    }
                   />
-                  <span
-                    className="min-w-0 truncate text-sm font-semibold"
-                    title={section}
-                  >
-                    {section}
-                  </span>
-                </div>
+                </h1>
               }
               leading={
                 <Link
@@ -393,7 +327,22 @@ export function CommunityShell({
                 data-community-rail=""
                 className="border-border bg-muted/20 hidden lg:sticky lg:top-[calc(3rem+1px)] lg:flex lg:h-[calc(100dvh-3rem-1px)] lg:flex-col lg:self-start lg:border-r"
               >
-                <div className="shrink-0">{renderRailIdentity()}</div>
+                {user ? (
+                  <CommunitySwitchList
+                    className="border-border shrink-0 border-b px-4 py-2"
+                    memberships={memberships}
+                    activeSlug={community.slug}
+                    retryMemberships={retryMemberships}
+                  />
+                ) : null}
+                {!member ? (
+                  <div className="shrink-0 px-4 pt-3">
+                    <JoinButton
+                      {...membership}
+                      focusAfterChange={identityHeading}
+                    />
+                  </div>
+                ) : null}
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
                   {renderRailNavigation()}
                 </div>
@@ -413,18 +362,18 @@ export function CommunityShell({
                 tabIndex={-1}
                 className="min-w-0 scroll-mt-14 px-4 py-4 focus:outline-none sm:px-6 lg:px-8 lg:py-6"
               >
-                <h1 className="sr-only lg:hidden">{community.name}</h1>
                 {!member ? (
                   <div className="mb-4 lg:hidden [&_button]:min-h-11">
                     <JoinButton
                       {...membership}
-                      focusAfterChange={mobileIdentity}
+                      focusAfterChange={identityHeading}
                     />
                   </div>
                 ) : null}
                 {showCover ? (
                   <CommunityThemeCover
                     community={community}
+                    showName={false}
                     className="mb-5 lg:mb-6"
                   />
                 ) : null}
@@ -483,12 +432,7 @@ export function CommunityShell({
                   </button>
                 }
               >
-                {(close) => (
-                  <>
-                    {renderRailIdentity(close)}
-                    {renderRailNavigation(close)}
-                  </>
-                )}
+                {renderRailNavigation}
               </ShellDrawer>
               <MessagesNavLink presentation="bottom" signedIn={!!user} />
               <ShellDrawer
@@ -516,27 +460,46 @@ export function CommunityShell({
 
 function IdentityMenu({
   identity,
+  section,
   role,
   membership,
   triggerRef,
+  onLeft,
   returnFocus,
-  onNavigate,
 }: {
   identity: { name: string; logoUrl: string | null };
+  section: string;
   role?: string;
   membership: React.ComponentProps<typeof CommunityActionsMenu>;
   triggerRef?: React.Ref<HTMLButtonElement>;
+  onLeft: () => void;
   returnFocus: () => HTMLElement | null;
-  onNavigate?: () => void;
 }) {
   const t = useTranslations("redesign.shell");
   const [open, setOpen] = useState(false);
 
+  const label = (
+    <span className="flex min-w-0 flex-col gap-0.5 text-left">
+      <span
+        className="font-community-heading truncate text-sm leading-tight font-semibold"
+        title={identity.name}
+      >
+        {identity.name}
+      </span>
+      <span
+        className="text-muted-foreground truncate text-xs leading-tight font-medium lg:hidden"
+        title={section}
+      >
+        {section}
+      </span>
+    </span>
+  );
+
   if (!role) {
     return (
-      <span className="flex min-h-11 items-center gap-2 px-2 text-sm font-semibold">
+      <span className="flex min-h-11 min-w-0 items-center gap-2 px-2">
         <CommunityMark {...identity} />
-        {identity.name}
+        {label}
       </span>
     );
   }
@@ -547,13 +510,11 @@ function IdentityMenu({
         <button
           type="button"
           ref={triggerRef}
-          aria-label={t("communityIdentityMenu", { name: identity.name })}
-          className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          title={t("communityIdentityMenu", { name: identity.name })}
+          className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 max-w-full min-w-11 items-center gap-2 rounded-md px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
         >
           <CommunityMark {...identity} />
-          <span className="min-w-0 flex-1 wrap-break-word">
-            {identity.name}
-          </span>
+          {label}
           <ChevronDown
             className="text-muted-foreground size-3.5 shrink-0"
             aria-hidden
@@ -570,11 +531,9 @@ function IdentityMenu({
         </p>
         <CommunityActionsMenu
           {...membership}
+          onLeft={onLeft}
           returnFocusAfterLeave={returnFocus}
-          onRowAction={() => {
-            setOpen(false);
-            onNavigate?.();
-          }}
+          onRowAction={() => setOpen(false)}
         />
       </PopoverContent>
     </Popover>

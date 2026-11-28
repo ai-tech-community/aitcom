@@ -82,15 +82,17 @@ vi.mock("@/components/communities/theme/community-theme-scope", () => ({
 vi.mock("@/components/shells/shell-header", () => ({
   ShellHeader: ({
     location,
+    locationControl,
     section,
     destinations,
   }: {
     location: string;
+    locationControl?: React.ReactNode;
     section: string;
     destinations: { href: string }[];
   }) => (
     <header>
-      {location} / {section}
+      {locationControl ?? location} / {section}
       <span data-testid="search-destinations">
         {destinations.map(({ href }) => href).join(" ")}
       </span>
@@ -174,7 +176,7 @@ function renderShell(canRead: boolean, role: "owner" | "member" | null) {
 }
 
 describe("CommunityShell", () => {
-  it("groups pages and rooms, suppresses the active-room badge and keeps owner links", () => {
+  it("groups community pages and rooms, shows active-room unread and keeps owner links", () => {
     renderShell(true, "owner");
     const navigation = screen.getByRole("navigation", {
       name: "Community navigation",
@@ -186,12 +188,20 @@ describe("CommunityShell", () => {
       forum,
     ]);
     expect(
-      within(navigation).getByRole("group", { name: "Pages" }),
+      within(navigation).getByRole("group", { name: "Community" }),
     ).toContainElement(forum);
     expect(
       within(navigation).getByRole("group", { name: "Spaces" }),
     ).not.toContainElement(forum);
-    expect(screen.getByRole("banner")).not.toHaveTextContent("Workbench Notes");
+    expect(screen.getByRole("banner")).toHaveTextContent("Workbench Notes");
+    expect(screen.getByRole("banner")).toHaveTextContent("Workshop");
+    const rail = navigation.closest("[data-community-rail]")!;
+    expect(rail).not.toHaveTextContent("Workbench Notes");
+    expect(
+      within(rail as HTMLElement).getByRole("button", {
+        name: "See all communities",
+      }),
+    ).toBeVisible();
     const shortcut = screen.getByRole("link", {
       name: "Neighbor Community, unread messages",
     });
@@ -201,7 +211,9 @@ describe("CommunityShell", () => {
       screen.queryByRole("link", { name: /Restricted Community/ }),
     ).toBeNull();
     expect(
-      within(navigation).getByRole("link", { name: "Workshop" }),
+      within(navigation).getByRole("link", {
+        name: "Workshop, 3 unread messages",
+      }),
     ).toHaveAttribute("aria-current", "page");
     expect(
       within(navigation).getByRole("button", { name: "Getting started" }),
@@ -241,8 +253,12 @@ describe("CommunityShell", () => {
     ).toBeInTheDocument();
     m.pathname = "/communities/workbench-notes/spaces/workshop";
     update();
-    expect(screen.queryByRole("button", { name: /unread/ })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Workshop, 3 unread messages" }),
+    ).toHaveAttribute("aria-current", "page");
     m.unreadRooms = new Map();
+    update();
+    expect(screen.queryByRole("button", { name: /unread/ })).toBeNull();
     m.pathname = "/communities/workbench-notes/forum";
     update();
     expect(screen.getByRole("link", { name: "Workshop" })).toBeInTheDocument();
