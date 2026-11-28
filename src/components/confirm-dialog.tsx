@@ -67,13 +67,21 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [options, setOptions] = useState<ConfirmRequest>({});
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
 
-  const confirm = useCallback((opts: ConfirmRequest = {}) => {
-    setOptions(opts);
-    setOpen(true);
-    return new Promise<boolean>((resolve) => {
-      resolverRef.current = resolve;
-    });
-  }, []);
+  const pathname = usePathname();
+  // The page the latest question was asked on.
+  const [openedOn, setOpenedOn] = useState<string | null>(null);
+
+  const confirm = useCallback(
+    (opts: ConfirmRequest = {}) => {
+      setOptions(opts);
+      setOpenedOn(pathname);
+      setOpen(true);
+      return new Promise<boolean>((resolve) => {
+        resolverRef.current = resolve;
+      });
+    },
+    [pathname],
+  );
 
   // Resolve the pending promise exactly once. A confirm/cancel click settles
   // before Radix's own close fires onOpenChange, so the later call no-ops.
@@ -83,13 +91,13 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     setOpen(false);
   }, []);
 
-  // A question belongs to the page it was asked on. Leaving the page
+  // A question belongs to the page it was asked on: leaving that page
   // answers it "no", so the dialog never outlives the floating layer it
-  // opened in (a community look's layer goes away with the community).
-  const pathname = usePathname();
+  // opened in (a community look's layer goes away with the community). A
+  // question the new page asks as it mounts carries the new page.
   useEffect(() => {
-    settle(false);
-  }, [pathname, settle]);
+    if (open && openedOn !== pathname) settle(false);
+  }, [open, openedOn, pathname, settle]);
 
   return (
     <Ctx.Provider value={{ confirm }}>

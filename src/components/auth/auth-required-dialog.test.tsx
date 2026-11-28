@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => route.pathname,
 }));
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
 
@@ -31,11 +31,12 @@ function Capture() {
   return null;
 }
 
-function tree() {
+function tree(page?: React.ReactNode) {
   return (
     <NextIntlClientProvider locale="en" messages={en}>
       <AuthRequiredProvider>
         <Capture />
+        {page}
       </AuthRequiredProvider>
     </NextIntlClientProvider>
   );
@@ -202,5 +203,27 @@ describe("AuthRequiredProvider", () => {
     act(() => link.click());
 
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("keeps a prompt the new page asks for as it mounts", () => {
+    session.value = { data: null, isPending: false, error: null };
+    route.pathname = "/en";
+    const { rerender } = renderProvider();
+
+    // A page that asks on mount, like the `?create=1` deep link.
+    function AsksOnMount() {
+      const { requireAuth } = useRequireAuth();
+      useEffect(() => {
+        requireAuth(() => undefined, "Sign in to host a community");
+      }, [requireAuth]);
+      return null;
+    }
+    route.pathname = "/en/communities";
+    rerender(tree(<AsksOnMount />));
+
+    expect(
+      screen.getByRole("dialog", { name: "Sign in to host a community" }),
+    ).toBeInTheDocument();
+    route.pathname = "/en/communities";
   });
 });

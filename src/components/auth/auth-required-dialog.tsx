@@ -107,23 +107,28 @@ export function AuthRequiredProvider({
   const [container, setContainer] = useState<HTMLElement | undefined>();
   const t = useTranslations("auth");
 
+  // The page the latest prompt was asked on.
+  const [openedOn, setOpenedOn] = useState<string | null>(null);
+
   const prompt = useCallback(
     (intentText?: string, request?: AuthPromptRequest) => {
       setIntent(intentText);
       setReturnTo(request?.returnTo);
       setDescription(request?.description);
       setContainer(request?.container);
+      setOpenedOn(pathname);
       setOpen(true);
     },
-    [],
+    [pathname],
   );
 
-  // A prompt belongs to the page it was asked on. Leaving the page closes
+  // A prompt belongs to the page it was asked on: leaving that page closes
   // it, so it never outlives the floating layer it opened in (a community
-  // look's layer goes away with the community).
+  // look's layer goes away with the community). A prompt the new page asks
+  // for as it mounts carries the new page, so it stays open.
   useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+    if (open && openedOn !== pathname) setOpen(false);
+  }, [open, openedOn, pathname]);
 
   const redirect = encodeURIComponent(returnTo ?? (pathname || "/"));
   const close = () => setOpen(false);

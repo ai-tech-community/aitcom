@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -92,5 +92,22 @@ describe("useConfirm", () => {
     await expect(answer).resolves.toBe(false);
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(document.body.style.pointerEvents).not.toBe("none");
+  });
+
+  it("keeps a question the new page asks as it mounts", () => {
+    route.pathname = "/en/communities/belong";
+    const { rerender } = render(tree(null));
+
+    function AsksOnMount() {
+      const ask = useConfirm();
+      useEffect(() => {
+        void ask({ description: "Leave without saving?" });
+      }, [ask]);
+      return null;
+    }
+    route.pathname = "/en/communities/belong/settings";
+    rerender(tree(<AsksOnMount />));
+
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
 });
