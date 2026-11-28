@@ -124,7 +124,8 @@ whole frame. Rejected.
 - Dialogs, menus and popovers render in a portal outside the frame. Slice 1
   left them in the house light look inside Night; #596 mounts them in a
   layer on `body` that carries the look's tokens (`PortalContainerProvider`,
-  DESIGN.md "Floating layer"). Toasts still use the one site-wide toaster
-  and stay light.
+  DESIGN.md "Floating layer"); dialogs owned by site-root providers read the
+  caller's layer when asked. Toasts still use the one site-wide toaster and
+  stay light (tracked on #596).
 - Agents may later suggest a look through a `community_theme` draft that an
   admin approves, never apply one directly (spec, slice 2).
