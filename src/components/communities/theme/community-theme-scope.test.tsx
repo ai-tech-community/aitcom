@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { StrictMode, useEffect, useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 
@@ -22,6 +22,17 @@ vi.mock("next/font/google", () => {
     Space_Grotesk: face("space-grotesk"),
   };
 });
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import { NextIntlClientProvider } from "next-intl";
+
+import { ConfirmProvider, useConfirm } from "@/components/confirm-dialog";
+import en from "../../../../messages/en.json";
 
 import { CommunityCoverArt } from "./community-cover-art";
 import { COMMUNITY_COVER_ART } from "./cover-art";
@@ -58,6 +69,8 @@ const TOKEN_PROPERTIES = [
   "--secondary-foreground",
   "--accent",
   "--accent-foreground",
+  "--popover",
+  "--popover-foreground",
   "--success",
   "--warning",
   "--info",
@@ -258,6 +271,243 @@ describe("CommunityThemeScope", () => {
     }
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(() => render(<Orphan />)).toThrow(/CommunityThemePreviewProvider/);
+  });
+});
+
+/** The look's floating layer, which the scope mounts on `body`. */
+function layerOf(): HTMLElement {
+  const layer = document.body.querySelector<HTMLElement>(
+    ":scope > [data-community-theme-layer]",
+  );
+  if (!layer) throw new Error("no community theme layer on body");
+  return layer;
+}
+
+describe("CommunityThemeScope floating layer", () => {
+  it("wears the look on body, outside the frame, and paints nothing itself (night)", () => {
+    const night = resolveCommunityTheme("night");
+    const scope = renderScope("night");
+    const layer = layerOf();
+
+    expect(scope.contains(layer)).toBe(false);
+    expect(layer).toHaveAttribute("data-community-theme-layer", "night");
+    expect(layer).toHaveClass(
+      "dark",
+      "space-grotesk-variable",
+      "contents",
+      // Text takes the look's ink, not the color `body` computed.
+      "text-foreground",
+    );
+    // Dialogs and sheets sit on the card's ground, not the canvas.
+    expect(layer.style.getPropertyValue("--background")).toBe(
+      night.tokens.card,
+    );
+    expect(layer.style.getPropertyValue("--foreground")).toBe(
+      night.tokens.cardForeground,
+    );
+    expect(layer.style.getPropertyValue("--popover")).toBe(
+      night.tokens.popover,
+    );
+    expect(layer.style.getPropertyValue("--popover-foreground")).toBe(
+      night.tokens.popoverForeground,
+    );
+    expect(layer.style.getPropertyValue("--card")).toBe(night.tokens.card);
+    expect(layer.style.colorScheme).toBe("dark");
+    // The canvas and cover belong to the page, not to a menu.
+    expect(layer).not.toHaveAttribute("data-community-theme");
+    expect(layer.style.getPropertyValue("--community-canvas-image")).toBe("");
+    const coverVars = Array.from(layer.style).filter((name) =>
+      name.startsWith("--community-cover-"),
+    );
+    expect(coverVars).toEqual([]);
+  });
+
+  it("keeps the house white ground for dialogs on a light look (canal)", () => {
+    const canal = resolveCommunityTheme("canal");
+    renderScope("canal");
+    const layer = layerOf();
+
+    expect(layer).not.toHaveClass("dark");
+    expect(layer).toHaveClass("text-foreground");
+    expect(layer.style.getPropertyValue("--background")).toBe("");
+    expect(layer.style.getPropertyValue("--foreground")).toBe(
+      canal.tokens.foreground,
+    );
+    expect(layer.style.getPropertyValue("--info")).toBe(canal.tokens.info);
+    expect(layer.style.colorScheme).toBe("light");
+  });
+
+  it("opens a popover from the page inside the layer", () => {
+    render(
+      <CommunityThemeScope themeId="night">
+        <Popover open>
+          <PopoverTrigger>Open</PopoverTrigger>
+          <PopoverContent>Menu</PopoverContent>
+        </Popover>
+      </CommunityThemeScope>,
+    );
+
+    const content = screen.getByText("Menu");
+    expect(layerOf().contains(content)).toBe(true);
+    expect(content.closest("[data-community-theme]")).toBeNull();
+  });
+
+  it("follows a previewed look", () => {
+    let setPreview!: (id: CommunityThemeId | null) => void;
+    function Previewer() {
+      setPreview = useCommunityThemePreview().setPreviewId;
+      return null;
+    }
+    render(
+      <CommunityThemePreviewProvider>
+        <CommunityThemeScope themeId="canal">
+          <Previewer />
+        </CommunityThemeScope>
+      </CommunityThemePreviewProvider>,
+    );
+    expect(layerOf()).toHaveAttribute("data-community-theme-layer", "canal");
+    expect(layerOf()).not.toHaveClass("dark");
+
+    act(() => setPreview("night"));
+    expect(layerOf()).toHaveAttribute("data-community-theme-layer", "night");
+    expect(layerOf()).toHaveClass("dark");
+  });
+
+  it("hydrates a dialog open on first paint without a mismatch, inside the layer", async () => {
+    const { renderToString } = await import("react-dom/server");
+    const { hydrateRoot } = await import("react-dom/client");
+    const page = (
+      <CommunityThemeScope themeId="night">
+        <Popover open>
+          <PopoverTrigger>Open</PopoverTrigger>
+          <PopoverContent>Menu</PopoverContent>
+        </Popover>
+      </CommunityThemeScope>
+    );
+    const host = document.createElement("div");
+    host.innerHTML = renderToString(page);
+    document.body.append(host);
+    const recoverable = vi.fn();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    let root!: ReturnType<typeof hydrateRoot>;
+    await act(async () => {
+      root = hydrateRoot(host, page, { onRecoverableError: recoverable });
+    });
+
+    expect(recoverable).not.toHaveBeenCalled();
+    expect(layerOf().contains(screen.getByText("Menu"))).toBe(true);
+    act(() => root.unmount());
+    host.remove();
+  });
+
+  it("opens a confirm asked for as the community first loads inside the layer", () => {
+    // A deep link that asks once, at once, in the commit the layer is made
+    // (like `useGalleryUploadLink`, which marks the link handled).
+    function AsksOnMount() {
+      const confirm = useConfirm();
+      const asked = useRef(false);
+      useEffect(() => {
+        if (asked.current) return;
+        asked.current = true;
+        void confirm({ description: "Delete this photo?" });
+      }, [confirm]);
+      return null;
+    }
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ConfirmProvider>
+          <CommunityThemeScope themeId="night">
+            <AsksOnMount />
+          </CommunityThemeScope>
+        </ConfirmProvider>
+      </NextIntlClientProvider>,
+    );
+
+    expect(layerOf()).toContainElement(screen.getByRole("alertdialog"));
+  });
+
+  it("keeps a confirm asked on first load visible under Strict Mode's double effects", () => {
+    function AsksOnMount() {
+      const confirm = useConfirm();
+      const asked = useRef(false);
+      useEffect(() => {
+        if (asked.current) return;
+        asked.current = true;
+        void confirm({ description: "Delete this photo?" });
+      }, [confirm]);
+      return null;
+    }
+    render(
+      <StrictMode>
+        <NextIntlClientProvider locale="en" messages={en}>
+          <ConfirmProvider>
+            <CommunityThemeScope themeId="night">
+              <AsksOnMount />
+            </CommunityThemeScope>
+          </ConfirmProvider>
+        </NextIntlClientProvider>
+      </StrictMode>,
+    );
+
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.isConnected).toBe(true);
+    expect(layerOf()).toContainElement(dialog);
+  });
+
+  it("moves an open confirm to body when the community goes away, still usable", async () => {
+    let ask!: ReturnType<typeof useConfirm>;
+    function Asker() {
+      ask = useConfirm();
+      return null;
+    }
+    let leave!: () => void;
+    function Page() {
+      const [inCommunity, setInCommunity] = useState(true);
+      leave = () => setInCommunity(false);
+      return inCommunity ? (
+        <CommunityThemeScope themeId="night">
+          <Asker />
+        </CommunityThemeScope>
+      ) : null;
+    }
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ConfirmProvider>
+          <Page />
+        </ConfirmProvider>
+      </NextIntlClientProvider>,
+    );
+    let answer!: Promise<boolean>;
+    act(() => {
+      answer = ask({ description: "Delete this photo?" });
+    });
+    expect(layerOf()).toContainElement(screen.getByRole("alertdialog"));
+
+    // The community unmounts (left, deleted, made private) with the
+    // question still open.
+    act(() => leave());
+
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.isConnected).toBe(true);
+    expect(dialog.closest("[data-community-theme-layer]")).toBeNull();
+    act(() => screen.getByRole("button", { name: "Cancel" }).click());
+    await expect(answer).resolves.toBe(false);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("removes the layer with the frame", () => {
+    const { unmount } = render(
+      <CommunityThemeScope themeId="meadow">
+        <p>page</p>
+      </CommunityThemeScope>,
+    );
+    expect(layerOf()).toBeInTheDocument();
+
+    unmount();
+    expect(
+      document.body.querySelector("[data-community-theme-layer]"),
+    ).toBeNull();
   });
 });
 

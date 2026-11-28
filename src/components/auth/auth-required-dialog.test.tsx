@@ -18,6 +18,10 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/en/communities",
 }));
 
+import { useState } from "react";
+
+import { PortalContainerProvider } from "@/components/ui/portal-container";
+
 import { AuthRequiredProvider, useRequireAuth } from "./auth-required-dialog";
 
 let captured: ReturnType<typeof useRequireAuth> | null = null;
@@ -129,5 +133,69 @@ describe("AuthRequiredProvider", () => {
     act(() => captured!.promptAuth());
     expect(screen.getByText(en.auth.promptBody)).toBeInTheDocument();
     expect(screen.getByText(en.auth.promptTitle)).toBeInTheDocument();
+  });
+
+  it("opens in the floating layer of the part of the page that asked", () => {
+    session.value = { data: null, isPending: false, error: null };
+    let prompt!: ReturnType<typeof useRequireAuth>;
+    function Asker() {
+      prompt = useRequireAuth();
+      return null;
+    }
+    function Layered() {
+      const [host, setHost] = useState<HTMLElement | null>(null);
+      return (
+        <>
+          <div data-testid="layer" ref={setHost} />
+          <PortalContainerProvider container={host}>
+            <Asker />
+          </PortalContainerProvider>
+        </>
+      );
+    }
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <AuthRequiredProvider>
+          <Layered />
+        </AuthRequiredProvider>
+      </NextIntlClientProvider>,
+    );
+
+    act(() => prompt.promptAuth("Sign in to join"));
+    expect(screen.getByTestId("layer")).toContainElement(
+      screen.getByRole("dialog"),
+    );
+  });
+
+  it("opens on body when asked from outside any layer", () => {
+    session.value = { data: null, isPending: false, error: null };
+    const { container } = renderProvider();
+    act(() => captured!.promptAuth("Sign in to test"));
+    const dialog = screen.getByRole("dialog");
+    expect(container.contains(dialog)).toBe(false);
+    expect(dialog.closest("[data-testid=layer]")).toBeNull();
+  });
+
+  it("closes when the visitor follows a link in this tab", () => {
+    session.value = { data: null, isPending: false, error: null };
+    renderProvider();
+    act(() => captured!.promptAuth("Sign in to join"));
+    const link = screen.getByRole("link", { name: /sign in/i });
+    link.addEventListener("click", (event) => event.preventDefault());
+
+    act(() => {
+      link.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          metaKey: true,
+        }),
+      );
+    });
+    // A new tab: the prompt stays here.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    act(() => link.click());
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

@@ -1,6 +1,17 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+
+import {
+  PortalContainerProvider,
+  type PortalHost,
+} from "@/components/ui/portal-container";
 
 import {
   resolveCommunityTheme,
@@ -31,6 +42,8 @@ const TOKEN_PROPERTIES: Record<keyof CommunityThemeTokens, string> = {
   secondaryForeground: "--secondary-foreground",
   accent: "--accent",
   accentForeground: "--accent-foreground",
+  popover: "--popover",
+  popoverForeground: "--popover-foreground",
   success: "--success",
   warning: "--warning",
   info: "--info",
@@ -38,32 +51,142 @@ const TOKEN_PROPERTIES: Record<keyof CommunityThemeTokens, string> = {
 };
 
 /**
- * The look as custom properties on the frame (token scoping): the site's own
- * tokens re-declared, so every component inside follows without knowing
- * themes exist; the canvas pattern, which `[data-community-theme]` in
- * globals.css paints; the heading face's needs; and the cover palette, for
- * art drawn straight in the frame (`CommunityCoverArt` carries its own).
- * `color-scheme` follows the look, so scrollbars and form controls the
- * browser draws match the canvas.
+ * What the look sets wherever its content shows, on the frame and on the
+ * layer floating content opens in: the site's own tokens re-declared, so
+ * every component follows without knowing themes exist (token scoping);
+ * the heading face's needs; and `color-scheme`, so scrollbars and form
+ * controls the browser draws match.
  */
-function themeProperties(theme: CommunityTheme): CSSProperties {
-  const { tokens, canvasPattern, cover } = theme;
+function lookProperties(theme: CommunityTheme): Record<string, string> {
   const properties: Record<string, string> = {
     colorScheme: theme.scheme,
+    ...headingFontProperties(theme.headingFont),
   };
   for (const [token, property] of Object.entries(TOKEN_PROPERTIES)) {
-    const value = tokens[token as keyof CommunityThemeTokens];
+    const value = theme.tokens[token as keyof CommunityThemeTokens];
     if (value) properties[property] = value;
   }
+  return properties;
+}
+
+/**
+ * The frame adds what only the page shows: the canvas pattern, which
+ * `[data-community-theme]` in globals.css paints, and the cover palette, for
+ * art drawn straight in the frame (`CommunityCoverArt` carries its own).
+ */
+function frameProperties(theme: CommunityTheme): CSSProperties {
+  const { canvasPattern, cover } = theme;
+  const properties = lookProperties(theme);
   if (canvasPattern) {
     properties["--community-canvas-image"] = canvasPattern.image;
     properties["--community-canvas-size"] = canvasPattern.size;
   }
   return {
     ...properties,
-    ...headingFontProperties(theme.headingFont),
     ...coverPaletteProperties(cover),
   } as CSSProperties;
+}
+
+/** The look's classes: the `.dark` tokens first for a dark look, and the face. */
+function lookClassName(theme: CommunityTheme): string {
+  return cn(
+    theme.scheme === "dark" && "dark",
+    headingFontClass(theme.headingFont),
+  );
+}
+
+/**
+ * The floating layer's custom properties: the look, on its card's ground.
+ * A layer holds dialogs, sheets and menus, which sit on the look's card
+ * color, never on the canvas: light looks keep the house white (`--background`
+ * is not re-declared), a look with its own card (Night) re-declares the
+ * ground and its ink as the card's.
+ */
+function layerProperties(theme: CommunityTheme): Record<string, string> {
+  const properties = lookProperties(theme);
+  const { card, cardForeground, foreground } = theme.tokens;
+  delete properties["--background"];
+  if (card) {
+    properties["--background"] = card;
+    properties["--foreground"] = cardForeground ?? foreground;
+  }
+  return properties;
+}
+
+/** `lookProperties` keys are React style names; the DOM wants CSS names. */
+function cssPropertyName(name: string): string {
+  return name === "colorScheme" ? "color-scheme" : name;
+}
+
+/**
+ * The look's floating layer: an element on `body` that dialogs, sheets,
+ * menus, popovers, selects and tooltips opened from the frame mount in
+ * (through `PortalContainerProvider`). Their portals put them on `body`,
+ * where the frame's tokens do not reach; the layer wears the same look, so
+ * they match it. It sits on `body`, so no frame ancestor can clip or
+ * re-stack them, and it is `display: contents`, so it adds no box.
+ *
+ * The element is created and appended before the first paint in the
+ * browser (layout effect), not during render, so the server's markup and
+ * the first client render agree (no portal renders in either). Radix
+ * portals render nothing on their own first pass either, so a layer open
+ * on first paint mounts here directly, never on `body` first.
+ */
+function useFloatingLayer(theme: CommunityTheme): {
+  layer: HTMLElement | null;
+  host: PortalHost;
+} {
+  const [layer, setLayer] = useState<HTMLElement | null>(null);
+  // One element for the scope's whole life, created on first attach. The
+  // host reads it here, so a dialog asked for from a passive effect of the
+  // commit that creates it (a deep link on first load) finds it although
+  // `layer` is still the first render's null. Detaching keeps the node, and
+  // the host tells its listeners: a site-root dialog rendered into it moves
+  // to `body` while it is detached and back when it returns (Strict Mode in
+  // development re-runs the effect; a Suspense boundary can hide the frame).
+  const layerRef = useRef<HTMLElement | null>(null);
+  const listenersRef = useRef(new Set<() => void>());
+  // `useState`, not `useMemo`: the host must keep its identity, because
+  // `useConfirm` and `useRequireAuth` depend on it.
+  const [host] = useState<PortalHost>(() => ({
+    resolve: () => {
+      const element = layerRef.current;
+      return element?.isConnected ? element : undefined;
+    },
+    subscribe: (listener) => {
+      listenersRef.current.add(listener);
+      return () => listenersRef.current.delete(listener);
+    },
+  }));
+
+  useLayoutEffect(() => {
+    const element = (layerRef.current ??= document.createElement("div"));
+    const listeners = listenersRef.current;
+    const notify = () => listeners.forEach((listener) => listener());
+    document.body.append(element);
+    notify();
+    // Subscribing to a DOM node React does not render: the state is the
+    // node itself, set once it is attached.
+    setLayer(element);
+    return () => {
+      element.remove();
+      notify();
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!layer) return;
+    layer.setAttribute("data-community-theme-layer", theme.id);
+    // `text-foreground` makes text inside take the look's ink; without it,
+    // text inherits the color `body` computed from the house tokens.
+    layer.className = cn(lookClassName(theme), "contents text-foreground");
+    layer.removeAttribute("style");
+    for (const [name, value] of Object.entries(layerProperties(theme))) {
+      layer.style.setProperty(cssPropertyName(name), value);
+    }
+  }, [layer, theme]);
+
+  return { layer, host };
 }
 
 /**
@@ -82,18 +205,20 @@ export function CommunityThemeScope({
   children: ReactNode;
 }) {
   const theme = resolveCommunityTheme(useShownCommunityThemeId(themeId));
+  const { layer, host } = useFloatingLayer(theme);
   return (
     <div
       data-community-theme={theme.id}
       className={cn(
-        theme.scheme === "dark" && "dark",
+        lookClassName(theme),
         "bg-background text-foreground",
-        headingFontClass(theme.headingFont),
         className,
       )}
-      style={themeProperties(theme)}
+      style={frameProperties(theme)}
     >
-      {children}
+      <PortalContainerProvider container={layer} host={host}>
+        {children}
+      </PortalContainerProvider>
     </div>
   );
 }

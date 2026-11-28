@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -20,6 +21,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  PortalContainerProvider,
+  useAttachedHost,
+  usePortalHost,
+  type PortalHost,
+} from "@/components/ui/portal-container";
 
 type ConfirmOptions = {
   /** Headline. Defaults to a generic "Are you sure?". */
@@ -43,21 +50,24 @@ type ConfirmContext = {
   confirm: (options?: ConfirmOptions) => Promise<boolean>;
 };
 
-const Ctx = createContext<ConfirmContext | null>(null);
+type ConfirmRequest = ConfirmOptions & {
+  /**
+   * The floating layer of the part of the page that asked (a community
+   * look): the dialog opens in it while it is attached, so it matches that
+   * part, and on `body` otherwise. Undefined: `body`.
+   */
+  host?: PortalHost;
+};
+
+const Ctx = createContext<{
+  confirm: (request?: ConfirmRequest) => Promise<boolean>;
+} | null>(null);
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const t = useTranslations("common");
   const [open, setOpen] = useState(false);
-  const [options, setOptions] = useState<ConfirmOptions>({});
+  const [options, setOptions] = useState<ConfirmRequest>({});
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
-
-  const confirm = useCallback((opts: ConfirmOptions = {}) => {
-    setOptions(opts);
-    setOpen(true);
-    return new Promise<boolean>((resolve) => {
-      resolverRef.current = resolve;
-    });
-  }, []);
 
   // Resolve the pending promise exactly once. A confirm/cancel click settles
   // before Radix's own close fires onOpenChange, so the later call no-ops.
@@ -67,43 +77,62 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     setOpen(false);
   }, []);
 
+  const confirm = useCallback((opts: ConfirmRequest = {}) => {
+    // A new question answers a pending one "no", so no promise is left
+    // waiting forever.
+    resolverRef.current?.(false);
+    setOptions(opts);
+    setOpen(true);
+    return new Promise<boolean>((resolve) => {
+      resolverRef.current = resolve;
+    });
+  }, []);
+
+  // In the asker's layer while it is attached; on `body` once it detaches
+  // (the community went away), so the dialog is never left, unseen and
+  // still trapping focus, in a node off the page.
+  const container = useAttachedHost(options.host);
+  const value = useMemo(() => ({ confirm }), [confirm]);
+
   return (
-    <Ctx.Provider value={{ confirm }}>
+    <Ctx.Provider value={value}>
       {children}
-      <AlertDialog
-        open={open}
-        onOpenChange={(next) => {
-          if (!next) settle(false);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {options.title ?? t("confirmTitle")}
-            </AlertDialogTitle>
-            {options.description && (
-              <AlertDialogDescription>
-                {options.description}
-              </AlertDialogDescription>
-            )}
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => settle(false)}>
-              {options.cancelLabel ?? t("cancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className={
-                options.destructive
-                  ? buttonVariants({ variant: "destructive" })
-                  : undefined
-              }
-              onClick={() => settle(true)}
-            >
-              {options.confirmLabel ?? t("confirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PortalContainerProvider container={container}>
+        <AlertDialog
+          open={open}
+          onOpenChange={(next) => {
+            if (!next) settle(false);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {options.title ?? t("confirmTitle")}
+              </AlertDialogTitle>
+              {options.description && (
+                <AlertDialogDescription>
+                  {options.description}
+                </AlertDialogDescription>
+              )}
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => settle(false)}>
+                {options.cancelLabel ?? t("cancel")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className={
+                  options.destructive
+                    ? buttonVariants({ variant: "destructive" })
+                    : undefined
+                }
+                onClick={() => settle(true)}
+              >
+                {options.confirmLabel ?? t("confirm")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </PortalContainerProvider>
     </Ctx.Provider>
   );
 }
@@ -120,8 +149,17 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
  */
 export function useConfirm(): ConfirmContext["confirm"] {
   const ctx = useContext(Ctx);
+  // The caller's floating layer: a confirm asked from inside a community
+  // look opens in that look, though the provider sits at the site root.
+  const host = usePortalHost();
+  const confirm = ctx?.confirm;
+  const confirmHere = useCallback(
+    (options?: ConfirmOptions) =>
+      confirm ? confirm({ ...options, host }) : Promise.resolve(false),
+    [confirm, host],
+  );
   if (!ctx) {
     throw new Error("useConfirm must be used inside <ConfirmProvider>");
   }
-  return ctx.confirm;
+  return confirmHere;
 }

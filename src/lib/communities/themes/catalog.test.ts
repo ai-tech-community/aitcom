@@ -72,6 +72,7 @@ const SURFACE_PAIRS = [
   ["muted", "foreground"],
   ["secondary", "secondaryForeground"],
   ["accent", "accentForeground"],
+  ["popover", "popoverForeground"],
 ] as const satisfies readonly (readonly [
   keyof CommunityThemeTokens,
   keyof CommunityThemeTokens,
@@ -279,9 +280,13 @@ describe.each(COMMUNITY_THEMES)("look $id", (theme) => {
     const surfaces = [
       tokens.background,
       ...(theme.canvasPattern?.colors ?? []),
-      ...[tokens.card, tokens.muted, tokens.secondary, tokens.accent].filter(
-        (color): color is string => color !== undefined,
-      ),
+      ...[
+        tokens.card,
+        tokens.muted,
+        tokens.secondary,
+        tokens.accent,
+        tokens.popover,
+      ].filter((color): color is string => color !== undefined),
     ];
     expect(surfaces.filter(isClearYellow)).toEqual([]);
   });
@@ -303,6 +308,62 @@ describe.each(COMMUNITY_THEMES)("look $id", (theme) => {
     if (theme.scheme !== "dark") return;
     expect(tokens.card).toBeDefined();
     expect(tokens.cardForeground).toBeDefined();
+  });
+
+  it("defines its own dialogs and menus only when it is a dark look", () => {
+    if (theme.scheme === "dark") {
+      expect(tokens.popover).toBeDefined();
+      expect(tokens.popoverForeground).toBeDefined();
+    } else {
+      // Light looks keep white dialogs and menus (House-Controls Rule).
+      expect(tokens.popover).toBeUndefined();
+      expect(tokens.popoverForeground).toBeUndefined();
+    }
+  });
+
+  it("keeps text, lines and status readable in its dialogs and menus", () => {
+    // Dialogs and sheets sit on the card color in the floating layer;
+    // menus, popovers and selects on the popover color.
+    const grounds: [string, string][] = [["card", cardOf(theme)]];
+    if (tokens.popover) grounds.push(["popover", tokens.popover]);
+    const lineFloor = contrastRatio(
+      plain.tokens.border,
+      plain.tokens.background,
+    );
+    const inputFloor = contrastRatio(
+      plain.tokens.input,
+      plain.tokens.background,
+    );
+    const status = statusOf(theme);
+    for (const [where, ground] of grounds) {
+      const ink =
+        where === "popover"
+          ? tokens.popoverForeground
+          : (tokens.cardForeground ?? tokens.foreground);
+      expect(ink, `${theme.id}: ink on ${where}`).toBeDefined();
+      expect(
+        contrastRatio(ink!, ground),
+        `${theme.id}: text on ${where}`,
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(tokens.mutedForeground, ground),
+        `${theme.id}: mutedForeground on ${where}`,
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(tokens.border, ground),
+        `${theme.id}: border on ${where}`,
+      ).toBeGreaterThanOrEqual(lineFloor);
+      expect(
+        contrastRatio(tokens.input, ground),
+        `${theme.id}: input on ${where}`,
+      ).toBeGreaterThanOrEqual(inputFloor);
+      for (const name of STATUS_NAMES) {
+        expect(
+          contrastRatio(status[name], ground),
+          `${theme.id}: ${name} on ${where}`,
+        ).toBeGreaterThanOrEqual(AA_TEXT);
+      }
+    }
   });
 
   it.each([
