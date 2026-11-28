@@ -5,10 +5,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const m = vi.hoisted(() => ({
+  redesign: false,
   session: null as null | { user: { id: string } },
   read: vi.fn(),
 }));
 
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => m.redesign,
+}));
 vi.mock("@/server/db", () => ({ db: { fake: true } }));
 vi.mock("@/server/better-auth/server", () => ({
   getSession: async () => m.session,
@@ -73,6 +77,7 @@ async function lines(res: Response) {
 }
 
 beforeEach(() => {
+  m.redesign = false;
   m.session = { user: { id: "org-1" } };
   m.read.mockReset();
   m.read.mockResolvedValue(DATA);
@@ -162,4 +167,36 @@ it("exports only the chosen source and search, with a translated source column",
   expect(output[0]).toContain("Registration source");
   expect(output[1]).toContain("Ada Lovelace");
   expect(output[1]).toMatch(/,Luma$/);
+});
+
+it("matches the redesigned Active and Registered views in CSV downloads", async () => {
+  m.read.mockResolvedValue({
+    ...DATA,
+    rows: [
+      ...DATA.rows,
+      row({
+        registrationId: "r4",
+        displayName: "Katherine Johnson",
+        status: "attended",
+        checkedInAt: new Date("2026-10-02T09:00:00Z"),
+      }),
+    ],
+  });
+  const [, ...legacyRows] = await lines(await get("?view=registered"));
+  expect(legacyRows.map((value) => value.split(",")[0])).toEqual([
+    "Ada Lovelace",
+  ]);
+
+  m.redesign = true;
+  const [, ...activeRows] = await lines(await get("?view=active"));
+  expect(activeRows.map((value) => value.split(",")[0])).toEqual([
+    "Ada Lovelace",
+    "Grace Hopper",
+    "Katherine Johnson",
+  ]);
+  const [, ...redesignedRows] = await lines(await get("?view=registered"));
+  expect(redesignedRows.map((value) => value.split(",")[0])).toEqual([
+    "Ada Lovelace",
+    "Katherine Johnson",
+  ]);
 });

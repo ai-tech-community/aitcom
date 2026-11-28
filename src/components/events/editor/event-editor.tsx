@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { DEFAULT_EVENT_TIMEZONE } from "@/lib/event-time";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { api } from "@/trpc/react";
 import { useRouter } from "@/i18n/navigation";
 import { ErrorState } from "@/components/ui/error-state";
@@ -69,6 +71,7 @@ export function EventEditor({
   subtitle?: string;
 }) {
   const t = useTranslations("events");
+  const redesign = isOpenCommunitiesEnabled();
   const te = useTranslations("events.editor");
   const router = useRouter();
   const backHref = `/communities/${communitySlug}/events`;
@@ -142,16 +145,20 @@ export function EventEditor({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setTriedSave(true);
+    const behavior =
+      redesign && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth";
     if (mode === "create" && !form?.description.trim()) {
       document
         .getElementById("basics")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        ?.scrollIntoView({ behavior, block: "start" });
       return;
     }
     if (hasQuestionProblems) {
       document
         .getElementById("registration")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        ?.scrollIntoView({ behavior, block: "start" });
       return;
     }
     if (form) save(form);
@@ -198,12 +205,19 @@ export function EventEditor({
             positioned scroll box they escape it and stretch the page. */}
         <div
           ref={scrollRef}
-          className="relative min-w-0 overflow-y-auto scroll-smooth"
+          className={cn(
+            "relative min-w-0 overflow-y-auto scroll-smooth",
+            redesign && "motion-reduce:scroll-auto",
+          )}
         >
           <form
             id={FORM_ID}
             onSubmit={onSubmit}
-            className="mx-auto max-w-3xl px-4 py-8 sm:px-8"
+            className={cn(
+              "mx-auto max-w-3xl px-4 py-8 sm:px-8",
+              redesign &&
+                "max-sm:[&_button]:min-h-11 max-sm:[&_input]:min-h-11",
+            )}
           >
             {triedSave && hasQuestionProblems ? (
               <p

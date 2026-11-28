@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 
 import { Link } from "@/i18n/navigation";
 import { appPathFromGuideHref } from "@/lib/seo-guides";
+import { cn } from "@/lib/utils";
 import { SectionLabel } from "@/components/ui/section-label";
 
 const linkClassName =
@@ -115,17 +116,20 @@ const builderComponents: Components = {
 export function GuideMarkdown({
   children,
   redesigned = false,
+  className,
 }: {
   children: string;
   redesigned?: boolean;
+  className?: string;
 }) {
   return (
     <div
-      className={
+      className={cn(
         redesigned
           ? "max-w-[70ch] space-y-4 break-words"
-          : "mt-16 max-w-2xl space-y-4"
-      }
+          : "max-w-2xl space-y-4",
+        className ?? (redesigned ? undefined : "mt-16"),
+      )}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}

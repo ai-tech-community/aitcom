@@ -8,20 +8,32 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { resolvePublicHackathonPage } from "@/server/hackathon/resolve-public-hackathon";
+import { EventBreadcrumb } from "@/components/events/detail/event-breadcrumb";
+import { loadEventHost } from "@/server/events/event-hosts-queries";
+import {
+  EventCover,
+  EventHeading,
+} from "@/components/events/detail/event-heading";
+import { EventReservationRail } from "@/components/events/detail/event-reservation-rail";
 import { EventHubLinks } from "@/components/events/event-hub-links";
 import { EventRecapNote } from "@/components/events/event-recap-note";
 import { NvidiaGtcEnglishLinks } from "@/components/events/nvidia-gtc-english-links";
 import { EventRegisterButton } from "@/components/event-register-button";
 import { OrganizerAttendeesLink } from "@/components/events/organizer-attendees-link";
 import { EventAttendees } from "@/components/event-attendees";
+import { eventGalleryPath } from "@/components/communities/gallery/gallery-params";
 import { EventGallerySection } from "@/components/events/event-gallery-section";
 import { EventShareRow } from "@/components/event-share-row";
+import { isEmptyParagraph, type LexicalLikeNode } from "@/lib/lexical-blocks";
 import { LexicalRenderer } from "@/lib/lexical";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { EVENT_FOCUS_LABELS, EVENT_LEVEL_LABELS } from "@/lib/event-metadata";
 import type { EventFocus } from "@/lib/event-metadata";
-import type { Audience } from "@/payload-types";
+import type { Audience, Event } from "@/payload-types";
 import {
   eventSchemaDates,
   formatEventDayRange,
@@ -37,6 +49,7 @@ import { getEventRowLabels } from "@/components/events/rows/get-event-row-labels
 import {
   eventDeadlineDay,
   eventDetailDay,
+  eventDetailHasEnded,
   eventSummaryLine,
   type EventDetailDay,
 } from "@/components/events/detail/event-detail-when";
@@ -96,6 +109,31 @@ function getMedia(media: MediaValue) {
     return { url: media.url, alt: media.alt ?? undefined };
   }
   return null;
+}
+
+/** A recommendation should not repeat the listing already on screen. */
+function listingIdentity(
+  event: Pick<Event, "title" | "date" | "startTime" | "location">,
+): string {
+  return JSON.stringify([
+    event.title.trim().toLowerCase(),
+    event.date.slice(0, 10),
+    event.startTime?.trim() ?? "",
+    event.location.trim().toLowerCase(),
+  ]);
+}
+
+function readEventDescription(value: unknown): unknown {
+  if (typeof value !== "string" || !value.trimStart().startsWith("{"))
+    return value;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed && typeof parsed === "object" && "root" in parsed
+      ? parsed
+      : value;
+  } catch {
+    return value;
+  }
 }
 
 function buildAitRationale({
@@ -213,6 +251,8 @@ export default async function EventDetailPage({
   if (!event) notFound();
   if (!(await signedOutOrMemberMaySee(event.communityId))) notFound();
 
+  const redesign = isOpenCommunitiesEnabled();
+  const tr = redesign ? await getTranslations("redesign.events") : null;
   const publicSummary = event.summary ? stripListingPolicy(event.summary) : "";
   const publicDescription = event.description
     ? stripListingPolicyLexical(event.description)
@@ -254,6 +294,7 @@ export default async function EventDetailPage({
     : parseStoredQuestions(event.registrationQuestions);
   const registrationTiming = {
     date: String(event.date),
+    endDate: event.endDate ?? null,
     startTime: event.startTime ?? null,
     timezone: event.timezone ?? null,
   };
@@ -341,8 +382,23 @@ export default async function EventDetailPage({
   }
 
   const now = new Date();
+  const ended =
+    redesign &&
+    eventDetailHasEnded(
+      {
+        ...registrationTiming,
+        endTime: event.endTime,
+      },
+      now,
+    );
+  const showWinners =
+    ended && event.challengeId
+      ? await resolvePublicHackathonPage(slug, locale as AppLocale).then(
+          (result) => result.found && result.phase === "finalized",
+        )
+      : false;
   const session = await getSession();
-  const [editHref, gallerySection] = await Promise.all([
+  const [editHref, gallerySection, host] = await Promise.all([
     resolveEventEditHref(db, session?.user?.id, event),
     // Null when the event has no photos section (spec 2026-11-13, Events),
     // and when loading it failed: the rest of the event page still shows.
@@ -356,12 +412,26 @@ export default async function EventDetailPage({
       });
       return null;
     }),
+    redesign && event.communityId
+      ? loadEventHost(db, event.communityId).catch((error: unknown) => {
+          console.error("[events] loading the event host failed", {
+            eventId,
+            error,
+          });
+          return null;
+        })
+      : null,
   ]);
   const gallery = gallerySection ? (
     <EventGallerySection section={gallerySection} />
   ) : null;
   const editAction = editHref ? (
-    <Button asChild variant="outline" size="sm">
+    <Button
+      asChild
+      variant="outline"
+      size="sm"
+      className={redesign ? "max-sm:min-h-11" : undefined}
+    >
       <Link href={editHref}>
         <Pencil aria-hidden="true" />
         {tEvents("editEvent")}
@@ -394,8 +464,16 @@ export default async function EventDetailPage({
     depth: 1,
     limit: RELATED_EVENT_CANDIDATES,
   });
+  const currentListing = redesign ? listingIdentity(event) : null;
   const relatedEvents = upcomingFromCandidates(
-    relatedCandidates,
+    redesign
+      ? relatedCandidates.filter(
+          (related) =>
+            related.id !== event.id &&
+            related.slug !== slug &&
+            listingIdentity(related) !== currentListing,
+        )
+      : relatedCandidates,
     RELATED_EVENT_CANDIDATES,
     now,
   ).slice(0, RELATED_EVENTS_SHOWN);
@@ -426,16 +504,186 @@ export default async function EventDetailPage({
       })
     : null;
 
+  const aitCallout = showAitCallout && aitRationale && (
+    <div className="border-border bg-secondary/30 mt-4 space-y-2 rounded-lg border p-4">
+      <div className="flex items-center gap-2 font-mono text-xs tracking-wider">
+        <Badge
+          variant={redesign ? "secondary" : "default"}
+          className="rounded-md font-mono text-xs tracking-wider"
+        >
+          AIT PICK
+        </Badge>
+        {aitFitScore !== null && (
+          <span className="text-muted-foreground">FIT {aitFitScore}/10</span>
+        )}
+      </div>
+      <p className="text-foreground/80 text-xs leading-relaxed">
+        {aitRationale}
+      </p>
+    </div>
+  );
+  const description = redesign ? readEventDescription(publicDescription) : null;
+  const plainDescription =
+    typeof description === "string" ? description.trim() : "";
+  const descriptionText =
+    plainDescription || lexicalToPlainText(description).trim();
+  const descriptionNodes = (
+    description as { root?: { children?: LexicalLikeNode[] } } | null
+  )?.root?.children;
+  const hasRichDescription =
+    Array.isArray(descriptionNodes) &&
+    descriptionNodes.some((node) => node && !isEmptyParagraph(node));
+  const information = tr ? (
+    <section aria-labelledby="event-about" className="max-w-prose space-y-4">
+      <SectionLabel id="event-about" bordered={false}>
+        {tEvents("sectionAbout")}
+      </SectionLabel>
+      {publicSummary && publicSummary.trim() !== descriptionText ? (
+        <p className="text-foreground/90 text-lg leading-relaxed">
+          {publicSummary}
+        </p>
+      ) : null}
+      {hasRichDescription ? (
+        <LexicalRenderer content={description} />
+      ) : plainDescription ? (
+        <p className="leading-7 whitespace-pre-line">{plainDescription}</p>
+      ) : !publicSummary ? (
+        <p className="text-muted-foreground text-sm">{tr("detailsPending")}</p>
+      ) : null}
+    </section>
+  ) : null;
+  const reservationRail = tr ? (
+    <EventReservationRail
+      slug={slug}
+      ended={ended}
+      day={eventDay}
+      date={event.date}
+      startTime={event.startTime ?? null}
+      endTime={event.endTime ?? null}
+      timezone={event.timezone ?? null}
+      location={
+        event.format === "online"
+          ? event.location || tEvents("online")
+          : event.location
+      }
+      region={locationShort}
+      mapHref={
+        event.format === "online"
+          ? null
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.location, locationShort].filter(Boolean).join(", "))}`
+      }
+      price={
+        price === 0
+          ? tr("free")
+          : price != null && price > 0
+            ? new Intl.NumberFormat(locale, {
+                style: "currency",
+                currency: "EUR",
+              }).format(price / 100)
+            : null
+      }
+      deadline={ended ? null : registrationCloses}
+      sourceUrl={sourceUrl}
+      registration={
+        <EventRegisterButton
+          eventId={eventId}
+          price={price}
+          isExternal={isExternal}
+          sourceUrl={sourceUrl}
+          questions={registrationQuestions}
+          timing={registrationTiming}
+          cancelled={event.status === "cancelled"}
+          ended={ended}
+        />
+      }
+      followUp={
+        ended ? (
+          <>
+            {event.videoUrl ? (
+              <Button asChild variant="outline" className="min-h-11 w-full">
+                <a href={event.videoUrl} target="_blank" rel="noreferrer">
+                  {tr("watchRecording")}
+                </a>
+              </Button>
+            ) : null}
+            {gallerySection && gallerySection.total > 0 ? (
+              <Button asChild variant="outline" className="min-h-11 w-full">
+                <Link
+                  href={eventGalleryPath(
+                    gallerySection.communitySlug,
+                    gallerySection.eventId,
+                  )}
+                >
+                  {tr("viewEventPhotos")}
+                </Link>
+              </Button>
+            ) : null}
+            {showWinners ? (
+              <Button asChild variant="outline" className="min-h-11 w-full">
+                <Link href={`/events/${slug}/winners`}>
+                  {tr("viewWinners")}
+                </Link>
+              </Button>
+            ) : null}
+            {!event.videoUrl && !gallerySection?.total && !showWinners ? (
+              <Button asChild variant="outline" className="min-h-11 w-full">
+                <Link href="/events">{tr("seeUpcoming")}</Link>
+              </Button>
+            ) : null}
+          </>
+        ) : null
+      }
+      tools={
+        <>
+          {hackathonChallenge ? editAction : null}
+          {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
+        </>
+      }
+      attendees={
+        <EventAttendees
+          eventId={eventId}
+          maxAttendees={maxAttendees}
+          isExternal={isExternal}
+          compact
+        />
+      }
+    />
+  ) : null;
+  const shareActions = (
+    <div
+      className={cn("flex flex-wrap items-center gap-2", !redesign && "mt-6")}
+    >
+      <EventShareRow
+        slug={event.slug}
+        title={pageTitle}
+        actionsOnly={redesign}
+      />
+      {redesign && hackathonChallenge ? null : editAction}
+    </div>
+  );
+  const detailGrid = cn(
+    "grid gap-8",
+    redesign
+      ? "lg:grid-cols-[minmax(0,1fr)_21rem]"
+      : "lg:grid-cols-[1fr_20rem]",
+  );
+  const detailBody = cn(
+    "min-w-0 space-y-8",
+    redesign && "lg:col-start-1 lg:row-start-1",
+  );
+
   // HACKATHON: the hub layout owns the chrome (cover/title/phase/tabs + the
   // max-w container). Render ONLY the overview body — no breadcrumb, no
   // EventHero, no outer container — plus a Prizes block. Team-formation UI
   // (formerly HackathonPanel) lives in the My Team / Participants tabs now.
   if (hackathonChallenge) {
     return (
-      <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
-        <div className="min-w-0 space-y-8">
+      <div className={detailGrid}>
+        {reservationRail}
+        <div className={detailBody}>
+          {information}
           <EventRecapNote slug={slug} locale={locale} />
-          {publicSummary && (
+          {!redesign && publicSummary && (
             <p className="text-foreground/90 text-lg leading-relaxed">
               {publicSummary}
             </p>
@@ -472,8 +720,10 @@ export default async function EventDetailPage({
           {Boolean(
             event.focus ??
             event.level ??
-            event.videoUrl ??
-            (audience.length > 0 || locationParts.length > 0 || null),
+            (!ended && event.videoUrl ? event.videoUrl : null) ??
+            (audience.length > 0 ||
+              (!redesign && locationParts.length > 0) ||
+              null),
           ) && (
             <div className="border-border grid gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
               {event.focus && (
@@ -491,10 +741,10 @@ export default async function EventDetailPage({
               {audience.length > 0 && (
                 <DetailRow label="Audience" value={audience.join(", ")} />
               )}
-              {locationParts.length > 0 && (
+              {!redesign && locationParts.length > 0 && (
                 <DetailRow label="Region" value={locationShort} />
               )}
-              {event.videoUrl && (
+              {!ended && event.videoUrl && (
                 <DetailRow
                   label="Video"
                   value={
@@ -512,7 +762,7 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {publicDescription != null ? (
+          {!redesign && publicDescription != null ? (
             <div className="border-border border-t pt-8">
               <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
               <div className="mt-4">
@@ -569,118 +819,126 @@ export default async function EventDetailPage({
             </div>
           )}
 
+          {redesign ? shareActions : null}
           {gallery}
 
-          <div className="border-border border-t pt-8">
-            <SectionLabel>{tEvents("attendees")}</SectionLabel>
-            <div className="mt-4">
-              <EventAttendees
-                eventId={eventId}
-                maxAttendees={maxAttendees}
-                isExternal={isExternal}
-              />
+          {!redesign ? (
+            <div className="border-border border-t pt-8">
+              <SectionLabel>{tEvents("attendees")}</SectionLabel>
+              <div className="mt-4">
+                <EventAttendees
+                  eventId={eventId}
+                  maxAttendees={maxAttendees}
+                  isExternal={isExternal}
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="border-border bg-card space-y-4 rounded-lg border p-5">
-            <div className="space-y-1">
-              <time
-                dateTime={eventDay.dateTime ?? undefined}
-                className="text-muted-foreground block font-mono text-xs tracking-wider uppercase tabular-nums"
-              >
-                {eventDay.label}
-              </time>
-              <EventTimeDisplay
-                date={event.date}
-                startTime={event.startTime ?? null}
-                endTime={event.endTime ?? null}
-                timezone={event.timezone ?? null}
-              />
-              {registrationCloses ? (
-                <p className="text-muted-foreground font-mono text-xs tracking-wider">
-                  {tEvents("registrationCloses", {
-                    date: registrationCloses,
-                  })}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="border-border border-t pt-4 text-sm">
-              <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
-                Location
+        {!redesign ? (
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <div className="border-border bg-card space-y-4 rounded-lg border p-5">
+              <div className="space-y-1">
+                <time
+                  dateTime={eventDay.dateTime ?? undefined}
+                  className="text-muted-foreground block font-mono text-xs tracking-wider uppercase tabular-nums"
+                >
+                  {eventDay.label}
+                </time>
+                <EventTimeDisplay
+                  date={event.date}
+                  startTime={event.startTime ?? null}
+                  endTime={event.endTime ?? null}
+                  timezone={event.timezone ?? null}
+                />
+                {registrationCloses ? (
+                  <p className="text-muted-foreground font-mono text-xs tracking-wider">
+                    {tEvents("registrationCloses", {
+                      date: registrationCloses,
+                    })}
+                  </p>
+                ) : null}
               </div>
-              <div className="mt-1">{event.location}</div>
-              {locationParts.length > 0 && locationShort !== event.location && (
-                <div className="text-muted-foreground mt-0.5 text-xs">
-                  {locationShort}
+
+              <div className="border-border border-t pt-4 text-sm">
+                <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
+                  Location
+                </div>
+                <div className="mt-1">{event.location}</div>
+                {locationParts.length > 0 &&
+                  locationShort !== event.location && (
+                    <div className="text-muted-foreground mt-0.5 text-xs">
+                      {locationShort}
+                    </div>
+                  )}
+                {event.format !== "online" && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      [event.location, locationShort]
+                        .filter(Boolean)
+                        .join(", "),
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
+                  >
+                    View on map ↗
+                  </a>
+                )}
+              </div>
+
+              {(event.format ?? priceLabel) && (
+                <div className="border-border flex flex-wrap gap-2 border-t pt-4">
+                  {event.format && (
+                    <Badge
+                      variant="outline"
+                      className="rounded-md font-mono text-xs tracking-wider"
+                    >
+                      {formatLabel}
+                    </Badge>
+                  )}
+                  {priceLabel && (
+                    <Badge
+                      variant="outline"
+                      className="rounded-md font-mono text-xs tracking-wider"
+                    >
+                      {priceLabel}
+                    </Badge>
+                  )}
                 </div>
               )}
-              {event.format !== "online" && (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                    [event.location, locationShort].filter(Boolean).join(", "),
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
-                >
-                  View on map ↗
-                </a>
+
+              <div className="border-border border-t pt-4">
+                <EventRegisterButton
+                  eventId={eventId}
+                  price={price}
+                  isExternal={isExternal}
+                  sourceUrl={sourceUrl}
+                  questions={registrationQuestions}
+                  timing={registrationTiming}
+                />
+              </div>
+
+              {editAction}
+              {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
+
+              {isExternal && sourceUrl && (
+                <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">
+                  SOURCE ·{" "}
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    Original event ↗
+                  </a>
+                </div>
               )}
             </div>
-
-            {(event.format ?? priceLabel) && (
-              <div className="border-border flex flex-wrap gap-2 border-t pt-4">
-                {event.format && (
-                  <Badge
-                    variant="outline"
-                    className="rounded-md font-mono text-xs tracking-wider"
-                  >
-                    {formatLabel}
-                  </Badge>
-                )}
-                {priceLabel && (
-                  <Badge
-                    variant="outline"
-                    className="rounded-md font-mono text-xs tracking-wider"
-                  >
-                    {priceLabel}
-                  </Badge>
-                )}
-              </div>
-            )}
-
-            <div className="border-border border-t pt-4">
-              <EventRegisterButton
-                eventId={eventId}
-                price={price}
-                isExternal={isExternal}
-                sourceUrl={sourceUrl}
-                questions={registrationQuestions}
-                timing={registrationTiming}
-              />
-            </div>
-
-            {editAction}
-            {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
-
-            {isExternal && sourceUrl && (
-              <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">
-                SOURCE ·{" "}
-                <a
-                  href={sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-4"
-                >
-                  Original event ↗
-                </a>
-              </div>
-            )}
-          </div>
-        </aside>
+          </aside>
+        ) : null}
         <div className="lg:col-span-2">
           <EventHubLinks />
           {showNvidiaEnglishLinks ? <NvidiaGtcEnglishLinks /> : null}
@@ -690,7 +948,12 @@ export default async function EventDetailPage({
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
+    <div
+      className={cn(
+        "mx-auto max-w-6xl",
+        redesign ? "px-4 py-5 sm:px-8 sm:py-9" : "px-6 py-10 sm:px-12 sm:py-16",
+      )}
+    >
       <JsonLd
         data={{
           "@type": "Event",
@@ -737,48 +1000,77 @@ export default async function EventDetailPage({
         }}
       />
 
-      <nav className="mb-6 flex items-center gap-2 font-mono text-xs tracking-wider">
-        <Link
-          href="/events"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          / EVENTS
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-foreground/80 truncate">{pageTitle}</span>
-      </nav>
+      {tr ? (
+        <EventBreadcrumb community={host} title={pageTitle} />
+      ) : (
+        <nav className="mb-6 flex items-center gap-2 font-mono text-xs tracking-wider">
+          <Link
+            href="/events"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            / EVENTS
+          </Link>
+          <span className="text-muted-foreground">/</span>
+          <span className="text-foreground/80 truncate">{pageTitle}</span>
+        </nav>
+      )}
 
-      <EventHero
-        title={pageTitle}
-        heroImageUrl={heroImage?.url ?? null}
-        heroImageAlt={heroImage?.alt ?? pageTitle}
-        typeLabel={typeLabel}
-        formatLabel={formatLabel}
-        day={eventDay}
-        timeLabel={formatEventTimeRange({
-          date: event.date,
-          startTime: event.startTime,
-          endTime: event.endTime,
-          timezone: event.timezone,
-        })}
-        location={event.location}
-        aitFitScore={
-          typeof event.aitFitScore === "number" ? event.aitFitScore : null
-        }
-        cancelledLabel={
-          event.status === "cancelled" ? tEvents("cancelledLabel") : null
-        }
-      />
+      {tr ? (
+        <EventHeading
+          title={pageTitle}
+          labels={
+            <>
+              {event.status === "cancelled" ? (
+                <CancelledEventBadge label={tEvents("cancelledLabel")} />
+              ) : null}
+              <Badge variant="secondary">{typeLabel}</Badge>
+              {formatLabel ? (
+                <Badge variant="outline">{formatLabel}</Badge>
+              ) : null}
+              {typeof event.aitFitScore === "number" ? (
+                <Badge variant="outline">AIT {event.aitFitScore}/10</Badge>
+              ) : null}
+            </>
+          }
+          facts={
+            host ? <span>{tr("hostedBy", { host: host.name })}</span> : null
+          }
+        />
+      ) : (
+        <EventHero
+          title={pageTitle}
+          heroImageUrl={heroImage?.url ?? null}
+          heroImageAlt={heroImage?.alt ?? pageTitle}
+          typeLabel={typeLabel}
+          formatLabel={formatLabel}
+          day={eventDay}
+          timeLabel={formatEventTimeRange({
+            date: event.date,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            timezone: event.timezone,
+          })}
+          location={event.location}
+          aitFitScore={
+            typeof event.aitFitScore === "number" ? event.aitFitScore : null
+          }
+          cancelledLabel={
+            event.status === "cancelled" ? tEvents("cancelledLabel") : null
+          }
+        />
+      )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <EventShareRow slug={event.slug} title={pageTitle} />
-        {editAction}
-      </div>
+      {!redesign ? shareActions : null}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
-        <div className="min-w-0 space-y-8">
+      <div className={cn(detailGrid, redesign ? "mt-5 sm:mt-6" : "mt-8")}>
+        {reservationRail}
+        <div className={detailBody}>
+          {redesign && heroImage ? (
+            <EventCover url={heroImage.url} alt={heroImage.alt ?? pageTitle} />
+          ) : null}
+          {information}
           <EventRecapNote slug={slug} locale={locale} />
-          {publicSummary && (
+          {!redesign && publicSummary && (
             <p className="text-foreground/90 text-lg leading-relaxed">
               {publicSummary}
             </p>
@@ -797,8 +1089,10 @@ export default async function EventDetailPage({
           {Boolean(
             event.focus ??
             event.level ??
-            event.videoUrl ??
-            (audience.length > 0 || locationParts.length > 0 || null),
+            (!ended && event.videoUrl ? event.videoUrl : null) ??
+            (audience.length > 0 ||
+              (!redesign && locationParts.length > 0) ||
+              null),
           ) && (
             <div className="border-border grid gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
               {event.focus && (
@@ -816,10 +1110,10 @@ export default async function EventDetailPage({
               {audience.length > 0 && (
                 <DetailRow label="Audience" value={audience.join(", ")} />
               )}
-              {locationParts.length > 0 && (
+              {!redesign && locationParts.length > 0 && (
                 <DetailRow label="Region" value={locationShort} />
               )}
-              {event.videoUrl && (
+              {!ended && event.videoUrl && (
                 <DetailRow
                   label="Video"
                   value={
@@ -837,7 +1131,7 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {publicDescription != null ? (
+          {!redesign && publicDescription != null ? (
             <div className="border-border border-t pt-8">
               <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
               <div className="mt-4">
@@ -894,18 +1188,23 @@ export default async function EventDetailPage({
             </div>
           )}
 
+          {redesign ? shareActions : null}
           {gallery}
 
-          <div className="border-border border-t pt-8">
-            <SectionLabel>{tEvents("attendees")}</SectionLabel>
-            <div className="mt-4">
-              <EventAttendees
-                eventId={eventId}
-                maxAttendees={maxAttendees}
-                isExternal={isExternal}
-              />
+          {!redesign ? (
+            <div className="border-border border-t pt-8">
+              <SectionLabel>{tEvents("attendees")}</SectionLabel>
+              <div className="mt-4">
+                <EventAttendees
+                  eventId={eventId}
+                  maxAttendees={maxAttendees}
+                  isExternal={isExternal}
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
+
+          {redesign ? aitCallout : null}
 
           {relatedEvents.length > 0 && (
             <div className="border-border border-t pt-8">
@@ -960,121 +1259,110 @@ export default async function EventDetailPage({
           )}
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="border-border bg-card space-y-4 rounded-lg border p-5">
-            <div className="space-y-1">
-              <time
-                dateTime={eventDay.dateTime ?? undefined}
-                className="text-muted-foreground block font-mono text-xs tracking-wider uppercase tabular-nums"
-              >
-                {eventDay.label}
-              </time>
-              <EventTimeDisplay
-                date={event.date}
-                startTime={event.startTime ?? null}
-                endTime={event.endTime ?? null}
-                timezone={event.timezone ?? null}
-              />
-              {registrationCloses ? (
-                <p className="text-muted-foreground font-mono text-xs tracking-wider">
-                  {tEvents("registrationCloses", {
-                    date: registrationCloses,
-                  })}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="border-border border-t pt-4 text-sm">
-              <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
-                Location
+        {!redesign ? (
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <div className="border-border bg-card space-y-4 rounded-lg border p-5">
+              <div className="space-y-1">
+                <time
+                  dateTime={eventDay.dateTime ?? undefined}
+                  className="text-muted-foreground block font-mono text-xs tracking-wider uppercase tabular-nums"
+                >
+                  {eventDay.label}
+                </time>
+                <EventTimeDisplay
+                  date={event.date}
+                  startTime={event.startTime ?? null}
+                  endTime={event.endTime ?? null}
+                  timezone={event.timezone ?? null}
+                />
+                {registrationCloses ? (
+                  <p className="text-muted-foreground font-mono text-xs tracking-wider">
+                    {tEvents("registrationCloses", {
+                      date: registrationCloses,
+                    })}
+                  </p>
+                ) : null}
               </div>
-              <div className="mt-1">{event.location}</div>
-              {locationParts.length > 0 && locationShort !== event.location && (
-                <div className="text-muted-foreground mt-0.5 text-xs">
-                  {locationShort}
+
+              <div className="border-border border-t pt-4 text-sm">
+                <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
+                  Location
+                </div>
+                <div className="mt-1">{event.location}</div>
+                {locationParts.length > 0 &&
+                  locationShort !== event.location && (
+                    <div className="text-muted-foreground mt-0.5 text-xs">
+                      {locationShort}
+                    </div>
+                  )}
+                {event.format !== "online" && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      [event.location, locationShort]
+                        .filter(Boolean)
+                        .join(", "),
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
+                  >
+                    View on map ↗
+                  </a>
+                )}
+              </div>
+
+              {(event.format ?? priceLabel) && (
+                <div className="border-border flex flex-wrap gap-2 border-t pt-4">
+                  {event.format && (
+                    <Badge
+                      variant="outline"
+                      className="rounded-md font-mono text-xs tracking-wider"
+                    >
+                      {formatLabel}
+                    </Badge>
+                  )}
+                  {priceLabel && (
+                    <Badge
+                      variant="outline"
+                      className="rounded-md font-mono text-xs tracking-wider"
+                    >
+                      {priceLabel}
+                    </Badge>
+                  )}
                 </div>
               )}
-              {event.format !== "online" && (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                    [event.location, locationShort].filter(Boolean).join(", "),
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
-                >
-                  View on map ↗
-                </a>
+
+              <div className="border-border border-t pt-4">
+                <EventRegisterButton
+                  eventId={eventId}
+                  price={price}
+                  isExternal={isExternal}
+                  sourceUrl={sourceUrl}
+                  questions={registrationQuestions}
+                  timing={registrationTiming}
+                />
+              </div>
+
+              {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
+
+              {isExternal && sourceUrl && (
+                <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">
+                  SOURCE ·{" "}
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    Original event ↗
+                  </a>
+                </div>
               )}
             </div>
 
-            {(event.format ?? priceLabel) && (
-              <div className="border-border flex flex-wrap gap-2 border-t pt-4">
-                {event.format && (
-                  <Badge
-                    variant="outline"
-                    className="rounded-md font-mono text-xs tracking-wider"
-                  >
-                    {formatLabel}
-                  </Badge>
-                )}
-                {priceLabel && (
-                  <Badge
-                    variant="outline"
-                    className="rounded-md font-mono text-xs tracking-wider"
-                  >
-                    {priceLabel}
-                  </Badge>
-                )}
-              </div>
-            )}
-
-            <div className="border-border border-t pt-4">
-              <EventRegisterButton
-                eventId={eventId}
-                price={price}
-                isExternal={isExternal}
-                sourceUrl={sourceUrl}
-                questions={registrationQuestions}
-                timing={registrationTiming}
-              />
-            </div>
-
-            {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
-
-            {isExternal && sourceUrl && (
-              <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">
-                SOURCE ·{" "}
-                <a
-                  href={sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-4"
-                >
-                  Original event ↗
-                </a>
-              </div>
-            )}
-          </div>
-
-          {showAitCallout && aitRationale && (
-            <div className="border-border bg-secondary/30 mt-4 space-y-2 rounded-lg border p-4">
-              <div className="flex items-center gap-2 font-mono text-xs tracking-wider">
-                <Badge className="rounded-md font-mono text-xs tracking-wider">
-                  AIT PICK
-                </Badge>
-                {aitFitScore !== null && (
-                  <span className="text-muted-foreground">
-                    FIT {aitFitScore}/10
-                  </span>
-                )}
-              </div>
-              <p className="text-foreground/80 text-xs leading-relaxed">
-                {aitRationale}
-              </p>
-            </div>
-          )}
-        </aside>
+            {aitCallout}
+          </aside>
+        ) : null}
       </div>
       <EventHubLinks />
       {showNvidiaEnglishLinks ? <NvidiaGtcEnglishLinks /> : null}

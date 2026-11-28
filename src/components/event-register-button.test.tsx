@@ -5,6 +5,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { renderToString } from "react-dom/server";
+import { toast } from "sonner";
 import en from "../../messages/en.json";
 import nl from "../../messages/nl.json";
 
@@ -20,6 +22,8 @@ const m = vi.hoisted(() => ({
     firstName?: string | null;
     lastName?: string | null;
   },
+  redesign: false,
+  sessionPending: false,
   register: vi.fn(),
   updateAnswers: vi.fn(),
   status: null as null | { status: string; answers?: Record<string, unknown> },
@@ -28,10 +32,14 @@ const m = vi.hoisted(() => ({
   options: {} as Record<string, MutationOptions>,
 }));
 
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => m.redesign,
+}));
 vi.mock("@/server/better-auth/client", () => ({
   authClient: {
     useSession: () => ({
       data: m.user ? { user: m.user } : null,
+      isPending: m.sessionPending,
       refetch: m.refetchSession,
     }),
   },
@@ -71,6 +79,8 @@ vi.mock("@/trpc/react", () => ({
       events: {
         registrationStatus: { invalidate: vi.fn() },
         myRegistrations: { invalidate: vi.fn() },
+        registrationCount: { invalidate: vi.fn() },
+        getAttendees: { invalidate: vi.fn() },
       },
     }),
   },
@@ -90,11 +100,14 @@ function renderButton(locale: "en" | "nl" = "en") {
 }
 
 beforeEach(() => {
+  m.redesign = false;
+  m.sessionPending = false;
   m.register.mockReset();
   m.updateAnswers.mockReset();
   m.refresh.mockReset();
   m.status = null;
   m.refetchSession.mockReset();
+  vi.mocked(toast.success).mockClear();
   m.options = {};
   m.user = { id: "u1", name: "Jan van der Berg" };
 });
@@ -316,5 +329,176 @@ describe("EventRegisterButton — the organizer's questions", () => {
     expect(
       screen.queryByRole("button", { name: "Edit my answers" }),
     ).toBeNull();
+  });
+});
+
+describe("redesigned RSVP", () => {
+  beforeEach(() => {
+    m.redesign = true;
+  });
+
+  it("hydrates even when the session resolves before the RSVP hydrates", () => {
+    m.user = null;
+    m.sessionPending = true;
+    const component = (
+      <NextIntlClientProvider locale="en" messages={en}>
+        <EventRegisterButton eventId={7} timing={FUTURE} />
+      </NextIntlClientProvider>
+    );
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(component);
+    expect(within(container).getByLabelText("Loading your RSVP")).toBeTruthy();
+
+    m.sessionPending = false;
+    const onRecoverableError = vi.fn();
+    render(component, { container, hydrate: true, onRecoverableError });
+
+    expect(onRecoverableError).not.toHaveBeenCalled();
+    expect(
+      within(container).getByRole("button", { name: "Sign in to RSVP" }),
+    ).toBeEnabled();
+  });
+
+  it("confirms a cancellation inline and leaves RSVP available", () => {
+    m.status = { status: "registered" };
+    const component = () => (
+      <NextIntlClientProvider locale="en" messages={en}>
+        <EventRegisterButton eventId={7} timing={FUTURE} />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(component());
+    fireEvent.click(screen.getByText("Manage RSVP"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancel registration" }),
+    );
+    act(() => m.options.cancel?.onSuccess?.(undefined));
+    m.status = null;
+    rerender(component());
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Registration cancelled",
+    );
+    expect(screen.getByRole("button", { name: "RSVP" })).toBeEnabled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("uses the existing required answers and shows a confirmed RSVP after registration", () => {
+    m.user = {
+      id: "u1",
+      name: "Ada Lovelace",
+      firstName: "Ada",
+      lastName: "Lovelace",
+    };
+    const component = () => (
+      <NextIntlClientProvider locale="en" messages={en}>
+        <EventRegisterButton
+          eventId={7}
+          questions={QUESTIONS}
+          timing={FUTURE}
+        />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(component());
+    fireEvent.click(screen.getByRole("button", { name: "RSVP" }));
+    const dialog = screen.getByRole("dialog", { name: "RSVP for this event" });
+    const confirm = within(dialog).getByRole("button", {
+      name: "Confirm RSVP",
+    });
+    fireEvent.click(confirm);
+    expect(m.register).not.toHaveBeenCalled();
+    fireEvent.change(
+      within(dialog).getByLabelText(/What do you hope to learn/),
+      { target: { value: "Time zones" } },
+    );
+    fireEvent.click(confirm);
+    expect(m.register).toHaveBeenCalledWith({
+      eventId: 7,
+      answers: { hope: "Time zones" },
+    });
+
+    m.status = { status: "registered" };
+    act(() => m.options.register?.onSuccess?.({ registration: m.status }));
+    rerender(component());
+    expect(screen.getByRole("status")).toHaveTextContent("You’re going");
+    expect(screen.getByRole("status")).toHaveTextContent("02 Nov 2099");
+    fireEvent.click(screen.getByText("Manage RSVP"));
+    expect(
+      screen.getByRole("button", { name: "Edit my answers" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Cancel registration" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows the ended state without offering a new RSVP or changes to a past registration", () => {
+    m.status = { status: "registered" };
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <EventRegisterButton
+          eventId={7}
+          ended
+          questions={QUESTIONS}
+          timing={PAST}
+        />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("This event has ended")).toBeVisible();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByText("Manage RSVP")).not.toBeInTheDocument();
+  });
+
+  it("shows a cancelled event without a registration prompt", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <EventRegisterButton eventId={7} cancelled />
+      </NextIntlClientProvider>,
+    );
+    expect(
+      screen.getByText("This event has been cancelled."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("allows withdrawal of an external intent after the event is cancelled", () => {
+    m.status = { status: "intent" };
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <EventRegisterButton
+          eventId={7}
+          isExternal
+          cancelled
+          sourceUrl="https://example.org/event"
+        />
+      </NextIntlClientProvider>,
+    );
+    expect(
+      screen.getByText("This event has been cancelled."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove from My Events" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Register on event site" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("preserves the external registration link for guests", () => {
+    m.user = null;
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <EventRegisterButton
+          eventId={7}
+          isExternal
+          sourceUrl="https://example.org/event"
+        />
+      </NextIntlClientProvider>,
+    );
+    expect(
+      screen.getByRole("link", { name: "Register on event site" }),
+    ).toHaveAttribute("href", "https://example.org/event");
+    expect(
+      screen.getByRole("button", { name: "Sign in to mark as going" }),
+    ).toBeInTheDocument();
   });
 });

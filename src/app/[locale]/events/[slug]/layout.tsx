@@ -1,4 +1,8 @@
 import type { AppLocale } from "@/i18n/messages";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { db } from "@/server/db";
+import { loadEventHost } from "@/server/events/event-hosts-queries";
 import { getTranslations } from "next-intl/server";
 
 import { resolvePublicHackathonPage } from "@/server/hackathon/resolve-public-hackathon";
@@ -43,12 +47,31 @@ export default async function EventLayout({
     winners: t("tabWinners"),
   };
 
+  const redesign = isOpenCommunitiesEnabled();
+  const community =
+    redesign && resolved.event.communityId
+      ? await loadEventHost(db, resolved.event.communityId).catch(
+          (error: unknown) => {
+            console.error("[events] loading the hackathon host failed", {
+              slug,
+              error,
+            });
+            return null;
+          },
+        )
+      : null;
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
+    <div
+      className={cn(
+        "mx-auto px-4 py-6",
+        redesign ? "max-w-6xl sm:px-8 sm:py-9" : "max-w-5xl",
+      )}
+    >
       <HackathonBreadcrumb
         slug={slug}
         title={resolved.event.title}
         labels={labels}
+        community={redesign ? community : undefined}
       />
       <HackathonHeader event={resolved.event} phase={resolved.phase} />
       <div className="mt-6">

@@ -11,6 +11,7 @@ export type EventRowDoc = Pick<
   | "format"
   | "date"
   | "startTime"
+  | "endTime"
   | "timezone"
   | "city"
   | "country"
@@ -35,6 +36,7 @@ export function toEventRowInput(
     format: doc.format ?? null,
     date: doc.date,
     startTime: doc.startTime ?? null,
+    endTime: doc.endTime ?? null,
     timezone: doc.timezone ?? null,
     city: doc.city ?? null,
     country: doc.country ?? null,

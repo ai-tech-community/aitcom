@@ -9,6 +9,8 @@ import {
   type RegistrationAnswers,
   type RegistrationQuestion,
 } from "@/lib/events/registration-questions";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +33,7 @@ export function RegistrationAnswerFields({
   problems: Record<string, AnswerProblem>;
 }) {
   const t = useTranslations("events.registration");
+  const redesign = isOpenCommunitiesEnabled();
   const set = (id: string, value: string | string[]) =>
     onChange({ ...answers, [id]: value });
 
@@ -116,7 +119,13 @@ export function RegistrationAnswerFields({
                       }
                     />
                   )}
-                  <Label htmlFor={optionId} className="font-normal">
+                  <Label
+                    htmlFor={optionId}
+                    className={cn(
+                      "font-normal",
+                      redesign && "max-sm:min-h-11 max-sm:flex-1",
+                    )}
+                  >
                     {option.label}
                   </Label>
                 </div>

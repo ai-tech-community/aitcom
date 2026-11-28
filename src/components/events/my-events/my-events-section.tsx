@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { useRouter } from "@/i18n/navigation";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -74,6 +75,7 @@ export function MyEventsSection({
         <SegmentedControl<MyEventsView>
           aria-label={t("filterLabel")}
           size="sm"
+          className={isOpenCommunitiesEnabled() ? "max-sm:h-12" : undefined}
           value={shown}
           onValueChange={select}
           options={[option("upcoming"), option("past")]}

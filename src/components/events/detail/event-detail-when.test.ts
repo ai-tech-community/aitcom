@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   eventDeadlineDay,
   eventDetailDay,
+  eventDetailHasEnded,
   eventSummaryLine,
 } from "./event-detail-when";
 
@@ -125,5 +126,40 @@ describe("eventSummaryLine", () => {
         TYPES,
       ),
     ).toBe("Meetup · 07–08 Oct 2026 · Taets Art & Event Park");
+  });
+});
+
+describe("eventDetailHasEnded", () => {
+  const event = {
+    date: "2026-12-12",
+    startTime: "14:00",
+    endTime: "16:00",
+    timezone: "Europe/Amsterdam",
+  };
+
+  it("ends at the stated time in the event's own time zone", () => {
+    expect(eventDetailHasEnded(event, new Date("2026-12-12T14:59:59Z"))).toBe(
+      false,
+    );
+    expect(eventDetailHasEnded(event, new Date("2026-12-12T15:00:00Z"))).toBe(
+      true,
+    );
+  });
+
+  it("honors an explicit final day or a date-only end", () => {
+    const multiDay = { ...event, endDate: "2026-12-14" };
+    expect(
+      eventDetailHasEnded(multiDay, new Date("2026-12-13T17:00:00Z")),
+    ).toBe(false);
+    expect(
+      eventDetailHasEnded(multiDay, new Date("2026-12-14T15:00:00Z")),
+    ).toBe(true);
+    const dateOnly = { ...multiDay, startTime: null, endTime: null };
+    expect(
+      eventDetailHasEnded(dateOnly, new Date("2026-12-14T22:59:59Z")),
+    ).toBe(false);
+    expect(
+      eventDetailHasEnded(dateOnly, new Date("2026-12-14T23:00:00Z")),
+    ).toBe(true);
   });
 });

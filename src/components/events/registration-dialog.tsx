@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarCheck } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
@@ -9,6 +10,8 @@ import {
   type RegistrationAnswers,
   type RegistrationQuestion,
 } from "@/lib/events/registration-questions";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { personNameSchema, suggestNameParts } from "@/lib/person-name";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,6 +65,8 @@ export function RegistrationDialog({
   onConfirm: (submission: RegistrationSubmission) => void;
   onClose: () => void;
 }) {
+  const redesign = isOpenCommunitiesEnabled();
+  const tr = useTranslations("redesign.events");
   const t = useTranslations("events.registration");
   const suggested = suggestNameParts(currentName);
   const [firstName, setFirstName] = useState(suggested.firstName);
@@ -94,11 +99,13 @@ export function RegistrationDialog({
   }
 
   const title =
-    mode === "answers"
-      ? t("answersTitle")
-      : questions.length > 0
-        ? t("questionsTitle")
-        : t("namesTitle");
+    redesign && mode === "register"
+      ? tr("rsvpTitle")
+      : mode === "answers"
+        ? t("answersTitle")
+        : questions.length > 0
+          ? t("questionsTitle")
+          : t("namesTitle");
   const description =
     mode === "answers"
       ? t("answersDescription")
@@ -108,10 +115,27 @@ export function RegistrationDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? null : onClose())}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className={cn(
+          "max-h-[90vh] overflow-y-auto",
+          redesign &&
+            "max-h-[90dvh] shadow-none max-sm:[&_[data-slot=button]]:min-h-11 max-sm:[&_[data-slot=input]]:min-h-11 max-sm:[&_textarea]:min-h-22 max-sm:[&>button]:grid max-sm:[&>button]:size-11 max-sm:[&>button]:place-items-center",
+        )}
+      >
         <form onSubmit={submit} className="space-y-5" noValidate>
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
+            {redesign ? (
+              <span className="border-border bg-secondary/45 mb-2 grid size-11 place-items-center rounded-md border">
+                <CalendarCheck aria-hidden="true" className="size-5" />
+              </span>
+            ) : null}
+            <DialogTitle
+              className={
+                redesign ? "text-xl font-semibold tracking-tight" : undefined
+              }
+            >
+              {title}
+            </DialogTitle>
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
@@ -158,7 +182,11 @@ export function RegistrationDialog({
               {t("namesCancel")}
             </Button>
             <Button type="submit" disabled={pending}>
-              {mode === "answers" ? t("answersSave") : t("namesConfirm")}
+              {mode === "answers"
+                ? t("answersSave")
+                : redesign
+                  ? tr("confirmRsvp")
+                  : t("namesConfirm")}
             </Button>
           </DialogFooter>
         </form>

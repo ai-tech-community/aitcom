@@ -66,43 +66,45 @@ export type PublicHackathonResolution =
  * not a hackathon — or a dangling challenge reference); pages translate it
  * to notFound().
  */
-export async function resolvePublicHackathonPage(
-  slug: string,
-  locale: AppLocale,
-): Promise<PublicHackathonResolution> {
-  const event = await findPublicEvent(slug, locale);
-  // Not a hackathon (no bound challenge) → the sub-page does not exist.
-  if (!event?.challengeId) return { found: false };
+export const resolvePublicHackathonPage = cache(
+  async (
+    slug: string,
+    locale: AppLocale,
+  ): Promise<PublicHackathonResolution> => {
+    const event = await findPublicEvent(slug, locale);
+    // Not a hackathon (no bound challenge) → the sub-page does not exist.
+    if (!event?.challengeId) return { found: false };
 
-  const payload = await getPayloadClient();
-  let challenge: Challenge;
-  try {
-    challenge = await payload.findByID({
-      collection: "challenges",
-      id: Number(event.challengeId),
-      depth: 0,
+    const payload = await getPayloadClient();
+    let challenge: Challenge;
+    try {
+      challenge = await payload.findByID({
+        collection: "challenges",
+        id: Number(event.challengeId),
+        depth: 0,
+      });
+    } catch {
+      return { found: false };
+    }
+    const challengeId = Number(challenge.id);
+
+    // Lifecycle phase from server truth (the finalize markers stamped on
+    // teams). Cancelled events collapse to "draft" inside hackathonPhase.
+    const phaseMarkers = await db
+      .select({
+        status: teams.status,
+        finalRank: teams.finalRank,
+        prizeAwardedAt: teams.prizeAwardedAt,
+      })
+      .from(teams)
+      .where(eq(teams.challengeId, challengeId));
+    const phase = hackathonPhase({
+      eventStatus: event.status,
+      challengeStatus: challenge.status ?? "",
+      judgingOpenedAt: challenge.judgingOpenedAt ?? null,
+      teams: phaseMarkers,
     });
-  } catch {
-    return { found: false };
-  }
-  const challengeId = Number(challenge.id);
 
-  // Lifecycle phase from server truth (the finalize markers stamped on
-  // teams). Cancelled events collapse to "draft" inside hackathonPhase.
-  const phaseMarkers = await db
-    .select({
-      status: teams.status,
-      finalRank: teams.finalRank,
-      prizeAwardedAt: teams.prizeAwardedAt,
-    })
-    .from(teams)
-    .where(eq(teams.challengeId, challengeId));
-  const phase = hackathonPhase({
-    eventStatus: event.status,
-    challengeStatus: challenge.status ?? "",
-    judgingOpenedAt: challenge.judgingOpenedAt ?? null,
-    teams: phaseMarkers,
-  });
-
-  return { found: true, event, challenge, challengeId, phase };
-}
+    return { found: true, event, challenge, challengeId, phase };
+  },
+);

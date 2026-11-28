@@ -9,9 +9,13 @@ import type { EventGallerySection as Section } from "@/server/gallery/event-sect
  * uses the real `viewerMaySeeEvent` gate against this fixture.
  */
 const state = vi.hoisted(() => ({
+  redesign: false,
   userId: null as string | null,
   member: false,
   role: "member",
+  date: "2026-10-18T09:00:00.000Z",
+  related: [] as Record<string, unknown>[],
+  description: null as null | { root: { children: unknown[] } },
   coverImage: null as { id: number; url: string } | null,
   /** Set to render the hackathon overview instead of the standard layout. */
   challengeId: null as number | null,
@@ -29,6 +33,18 @@ const state = vi.hoisted(() => ({
   } | null,
 }));
 
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => state.redesign,
+}));
+vi.mock("@/server/events/event-hosts-queries", () => ({
+  loadEventHost: async () => ({
+    name: "Sunday Runners",
+    slug: "sunday-runners-demo",
+  }),
+}));
+vi.mock("@/server/hackathon/resolve-public-hackathon", () => ({
+  resolvePublicHackathonPage: async () => ({ found: false }),
+}));
 vi.mock("server-only", () => ({}));
 
 vi.mock("react", async () => {
@@ -73,7 +89,7 @@ vi.mock("@/server/gallery/event-section", () => ({
 vi.mock("@/server/payload", () => ({
   getPayloadClient: async () => ({
     findByID: async () => ({ id: state.challengeId, rewards: {} }),
-    find: async () => ({
+    find: async ({ limit }: { limit: number }) => ({
       docs: [
         {
           id: 85,
@@ -81,14 +97,15 @@ vi.mock("@/server/payload", () => ({
           title: "Sunday 10K Social Run (demo)",
           status: "published",
           communityId: "runners",
-          date: "2026-10-18T09:00:00.000Z",
+          date: state.date,
           location: "Amsterdam",
           type: "meetup",
-          description: null,
+          description: state.description,
           summary: null,
           coverImage: state.coverImage,
           challengeId: state.challengeId,
         },
+        ...(limit > 1 ? state.related : []),
       ],
     }),
   }),
@@ -119,6 +136,10 @@ vi.mock("@/server/events/public-event-access", async (importOriginal) => ({
   loadHiddenEventCommunityIds: async () => [],
 }));
 
+import { LexicalRenderer } from "@/lib/lexical";
+import { EventShareRow } from "@/components/event-share-row";
+import { EventBreadcrumb } from "@/components/events/detail/event-breadcrumb";
+import { EventReservationRail } from "@/components/events/detail/event-reservation-rail";
 import { EventGallerySection } from "@/components/events/event-gallery-section";
 import EventDetailPage, { generateMetadata } from "./page";
 
@@ -126,9 +147,13 @@ const params = () =>
   Promise.resolve({ slug: "sunday-10k-social-run-demo-1792244773622" });
 
 beforeEach(() => {
+  state.redesign = false;
   state.userId = null;
   state.member = false;
   state.role = "member";
+  state.date = "2026-10-18T09:00:00.000Z";
+  state.related = [];
+  state.description = null;
   state.coverImage = null;
   state.challengeId = null;
   state.gallerySection = null;
@@ -286,5 +311,110 @@ describe("the event's photos and videos", () => {
     state.challengeId = id;
     const tree = elements(await EventDetailPage({ params: params() }));
     expect(sectionIndex(tree)).toBe(-1);
+  });
+});
+
+describe("redesigned event detail", () => {
+  beforeEach(() => {
+    state.redesign = true;
+  });
+
+  it("provides the same reservation rail for regular events and hackathons", async () => {
+    state.userId = "member-1";
+    state.member = true;
+    for (const challengeId of [null, 31]) {
+      state.challengeId = challengeId;
+      const tree = elements(await EventDetailPage({ params: params() }));
+      const rails = tree.filter((node) => node.type === EventReservationRail);
+      expect(rails).toHaveLength(1);
+      expect(rails[0]?.props).toMatchObject({
+        slug: (await params()).slug,
+        location: "Amsterdam",
+      });
+    }
+  });
+
+  it("puts the published description before sharing controls", async () => {
+    state.userId = "member-1";
+    state.member = true;
+    state.description = {
+      root: {
+        children: [
+          {
+            type: "paragraph",
+            children: [{ type: "text", text: "Bring a small repair." }],
+          },
+        ],
+      },
+    };
+    const tree = elements(await EventDetailPage({ params: params() }));
+    const descriptionAt = tree.findIndex(
+      (node) => node.type === LexicalRenderer,
+    );
+    expect(descriptionAt).toBeGreaterThanOrEqual(0);
+    expect(descriptionAt).toBeLessThan(
+      tree.findIndex((node) => node.type === EventShareRow),
+    );
+  });
+
+  it("uses the host community for the breadcrumb and removes the current listing from recommendations", async () => {
+    state.userId = "member-1";
+    state.member = true;
+    state.date = "2099-12-12";
+    state.related = [
+      {
+        id: 86,
+        slug: "a-duplicate",
+        title: "Sunday 10K Social Run (demo)",
+        date: state.date,
+        location: "Amsterdam",
+        type: "meetup",
+      },
+      {
+        id: 87,
+        slug: "another-run",
+        title: "Another run",
+        date: state.date,
+        location: "Amsterdam",
+        type: "meetup",
+      },
+    ];
+
+    const tree = elements(await EventDetailPage({ params: params() }));
+    expect(
+      tree.find((node) => node.type === EventBreadcrumb)?.props.community,
+    ).toEqual({ name: "Sunday Runners", slug: "sunday-runners-demo" });
+    const links = tree.map((node) => node.props.href);
+    expect(links).toContain("/events/another-run");
+    expect(links).not.toContain("/events/a-duplicate");
+    expect(links).not.toContain(`/events/${(await params()).slug}`);
+  });
+
+  it("offers upcoming events in place of the calendar link when a past event has no recap", async () => {
+    state.userId = "member-1";
+    state.member = true;
+    state.date = "2020-10-18";
+    const tree = elements(await EventDetailPage({ params: params() }));
+    const rail = tree.find((node) => node.type === EventReservationRail);
+    expect(rail?.props).toMatchObject({ ended: true });
+    const rendered = elements(
+      await EventReservationRail(
+        rail?.props as Parameters<typeof EventReservationRail>[0],
+      ),
+    );
+    expect(rendered.some((node) => node.props.href === "/events")).toBe(true);
+    expect(
+      rendered.some(
+        (node) =>
+          typeof node.props.href === "string" &&
+          node.props.href.endsWith("/ics"),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps private event details hidden from guests", async () => {
+    await expect(EventDetailPage({ params: params() })).rejects.toThrow(
+      "NEXT_NOT_FOUND",
+    );
   });
 });

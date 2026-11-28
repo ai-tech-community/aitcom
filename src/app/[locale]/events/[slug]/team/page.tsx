@@ -7,6 +7,8 @@ import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
 import { hubTabStates } from "@/server/hackathon/hub-tabs";
 import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
 import { MyTeamPanel } from "@/components/hackathon/hub/my-team-panel";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { eventDetailHasEnded } from "@/components/events/detail/event-detail-when";
 import { EventRegisterButton } from "@/components/event-register-button";
 import { parseStoredQuestions } from "@/lib/events/registration-questions";
 
@@ -31,13 +33,26 @@ export default async function MyTeamTabPage({
   if (!tab.available) {
     const eventId = Number(event.id);
     const price = (event.price as number | undefined) ?? null;
+    const redesign = isOpenCommunitiesEnabled();
+    const timing = {
+      date: event.date,
+      startTime: event.startTime,
+      endDate: event.endDate,
+      timezone: event.timezone,
+    };
     return (
       <div className="space-y-4">
         <LockedTabPanel message={t(tab.lockedReasonKey!)} />
         <div className="mx-auto max-w-xs">
           <EventRegisterButton
             eventId={eventId}
+            cancelled={event.status === "cancelled"}
             price={price}
+            ended={
+              redesign &&
+              eventDetailHasEnded({ ...timing, endTime: event.endTime })
+            }
+            timing={redesign ? timing : undefined}
             questions={parseStoredQuestions(event.registrationQuestions)}
           />
         </div>

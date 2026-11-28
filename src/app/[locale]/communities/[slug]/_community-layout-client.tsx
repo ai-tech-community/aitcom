@@ -134,7 +134,11 @@ export function CommunityLayoutClient({
           memberRole={
             community.viewerMembershipStatus === "active" ? memberRole : null
           }
-          membershipStatus={membershipStatus}
+          membershipStatus={
+            community.viewerMembershipStatus === "active"
+              ? "active"
+              : membershipStatus
+          }
           memberships={membershipQuery.isError ? [] : memberships}
           retryMemberships={
             membershipQuery.isError

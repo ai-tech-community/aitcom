@@ -113,6 +113,7 @@ export function toCommunityEventRowInput(
     placeToBeAnnounced: event.source === "luma" && format === null,
     date: event.date,
     startTime: event.startTime ?? null,
+    endTime: event.endTime ?? null,
     timezone: event.timezone ?? null,
     city: event.city ?? null,
     country: event.country ?? null,

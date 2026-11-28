@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Plus } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
@@ -15,6 +15,9 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateHackathonDialog } from "@/components/hackathon/create-hackathon-dialog";
 import { PendingEventConflictBadge } from "@/components/events/pending-event-conflict-badge";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { EventAgendaRow } from "@/components/events/rows/event-agenda-row";
 import { TimetableRow } from "@/components/events/rows/timetable-row";
 import { CompactEventRow } from "@/components/events/rows/compact-event-row";
 import { useEventRowLabels } from "@/components/events/rows/use-event-row-labels";
@@ -67,6 +70,9 @@ export function CommunityEvents({
   now?: Date;
 }) {
   const t = useTranslations("events");
+  const redesign = isOpenCommunitiesEnabled();
+  const tr = useTranslations("redesign.events");
+  const ScheduleRow = redesign ? EventAgendaRow : TimetableRow;
   const confirm = useConfirm();
   const locale = useLocale();
   const labels = useEventRowLabels();
@@ -248,8 +254,29 @@ export function CommunityEvents({
 
   return (
     <div>
+      {redesign ? (
+        <header className="mb-6 flex items-start gap-3 sm:mb-8 sm:gap-4">
+          <span className="border-border bg-secondary/45 grid size-11 shrink-0 place-items-center rounded-md border sm:size-13">
+            <CalendarDays aria-hidden="true" className="size-5 sm:size-6" />
+          </span>
+          <div>
+            <h1 className="font-community-heading text-3xl leading-none font-semibold tracking-tight sm:text-4xl">
+              {tr("title")}
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm">
+              {tr("communityLead")}
+            </p>
+          </div>
+        </header>
+      ) : null}
       {views.length > 1 || isActiveMember ? (
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <div
+          className={cn(
+            "mb-8 flex flex-wrap items-center justify-between gap-3",
+            redesign &&
+              "border-b pb-4 max-sm:[&_a]:min-h-11 max-sm:[&_button]:min-h-11",
+          )}
+        >
           {views.length > 1 ? (
             // Long Dutch labels scroll on a phone instead of pushing the
             // page sideways. The padding (with a matching negative margin)
@@ -257,6 +284,7 @@ export function CommunityEvents({
             <div className="max-w-full max-sm:-m-1 max-sm:overflow-x-auto max-sm:p-1">
               <SegmentedControl
                 aria-label={t("listsLabel")}
+                className={redesign ? "max-sm:h-12" : undefined}
                 options={views}
                 value={view}
                 onValueChange={setView}
@@ -290,22 +318,34 @@ export function CommunityEvents({
           render={(events) => {
             const { upcoming, past } = splitCommunityEvents(events, now);
             if (upcoming.length === 0 && past.length === 0) {
-              return <EmptyNote>{t("noEvents")}</EmptyNote>;
+              return (
+                <EmptyNote>
+                  {t("noEvents")}
+                  {redesign ? (
+                    <BrowseEventsLink label={tr("browseUpcoming")} />
+                  ) : null}
+                </EmptyNote>
+              );
             }
             return (
               <>
                 <section aria-labelledby="community-upcoming-events">
                   <SectionLabel id="community-upcoming-events" className="pb-4">
-                    {t("title")}
+                    {redesign ? tr("upcoming") : t("title")}
                   </SectionLabel>
                   {upcoming.length === 0 ? (
-                    <EmptyNote>{t("noEvents")}</EmptyNote>
+                    <EmptyNote>
+                      {t("noEvents")}
+                      {redesign ? (
+                        <BrowseEventsLink label={tr("browseUpcoming")} />
+                      ) : null}
+                    </EmptyNote>
                   ) : (
                     <ol className="divide-border border-border divide-y border-b">
                       {rowsFor(upcoming, "published").map(
                         ({ event, row }, index) => (
                           <li key={row.key}>
-                            <TimetableRow
+                            <ScheduleRow
                               row={row}
                               isNext={index === 0}
                               nextLabel={t("nextUp")}
@@ -330,19 +370,31 @@ export function CommunityEvents({
                     <SectionLabel id="community-past-events" className="pb-4">
                       {t("pastSection")}
                     </SectionLabel>
-                    <ol className="grid gap-x-8 @xl:grid-cols-2 @4xl:grid-cols-3">
+                    <ol
+                      className={cn(
+                        "grid gap-x-8",
+                        !redesign && "@xl:grid-cols-2 @4xl:grid-cols-3",
+                      )}
+                    >
                       {rowsFor(past, "published").map(({ event, row }) => (
                         <li
                           key={row.key}
                           className="border-border min-w-0 border-b"
                         >
-                          <CompactEventRow
-                            row={row}
-                            where={[...row.placeParts, row.kind.label].join(
-                              " · ",
-                            )}
-                            actions={publishedActions(event, { past: true })}
-                          />
+                          {redesign ? (
+                            <EventAgendaRow
+                              row={row}
+                              actions={publishedActions(event, { past: true })}
+                            />
+                          ) : (
+                            <CompactEventRow
+                              row={row}
+                              where={[...row.placeParts, row.kind.label].join(
+                                " · ",
+                              )}
+                              actions={publishedActions(event, { past: true })}
+                            />
+                          )}
                         </li>
                       ))}
                     </ol>
@@ -370,7 +422,7 @@ export function CommunityEvents({
                 {rowsFor(events, "pending").map(({ event, row }) => {
                   return (
                     <li key={row.key}>
-                      <TimetableRow
+                      <ScheduleRow
                         row={row}
                         actions={
                           <>
@@ -434,7 +486,7 @@ export function CommunityEvents({
               <ol className="divide-border border-border divide-y border-y">
                 {rowsFor(events, "mine").map(({ event, row }) => (
                   <li key={row.key}>
-                    <TimetableRow
+                    <ScheduleRow
                       row={row}
                       status={
                         hasStatusNote(event.status) ? (
@@ -495,5 +547,17 @@ function EmptyNote({ children }: { children: ReactNode }) {
     <p className="text-muted-foreground mt-6 text-base leading-relaxed">
       {children}
     </p>
+  );
+}
+
+function BrowseEventsLink({ label }: { label: string }) {
+  return (
+    <Button
+      asChild
+      variant="outline"
+      className="mt-3 flex w-fit max-sm:min-h-11"
+    >
+      <Link href="/events">{label}</Link>
+    </Button>
   );
 }
