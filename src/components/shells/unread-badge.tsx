@@ -1,12 +1,29 @@
-export function ShellUnreadBadge({ count }: { count: number }) {
+import { useTranslations } from "next-intl";
+
+export function ShellUnreadBadge({
+  count,
+  label,
+}: {
+  count: number;
+  label: string;
+}) {
+  const t = useTranslations("redesign.shell");
   if (count <= 0) return null;
   return (
     <span
       aria-hidden
       data-shell-unread=""
-      className="bg-secondary text-foreground inline-flex min-h-4 min-w-4 shrink-0 items-center justify-center rounded-sm px-1 font-mono text-xs leading-none font-medium tabular-nums"
+      title={label}
+      className="bg-secondary text-foreground inline-flex min-h-4 shrink-0 items-center justify-center rounded-sm px-1 text-xs leading-none font-medium whitespace-nowrap"
     >
-      {count > 99 ? "99+" : count}
+      <span>
+        {t.rich("unreadShort", {
+          count: count > 99 ? "99+" : count,
+          number: (value) => (
+            <span className="font-mono tabular-nums">{value}</span>
+          ),
+        })}
+      </span>
     </span>
   );
 }

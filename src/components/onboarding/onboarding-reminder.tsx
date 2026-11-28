@@ -202,9 +202,9 @@ function ReminderControl({
       {row ? (
         <button
           type="button"
-          onClick={hideAnd(hideForVisit)}
-          aria-label={t("hideForNow")}
-          title={t("hideForNow")}
+          onClick={hideAnd(dismiss)}
+          aria-label={t("dontShowAgain")}
+          title={t("dontShowAgain")}
           className="hover:bg-secondary focus-visible:ring-ring flex size-11 shrink-0 items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset"
         >
           <X className="size-4" aria-hidden />

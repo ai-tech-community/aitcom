@@ -196,7 +196,11 @@ describe("CommunityShell", () => {
     expect(screen.getByRole("banner")).toHaveTextContent("Workbench Notes");
     expect(screen.getByRole("banner")).toHaveTextContent("Workshop");
     const rail = navigation.closest("[data-community-rail]")!;
-    expect(rail).not.toHaveTextContent("Workbench Notes");
+    expect(
+      within(rail as HTMLElement).getByRole("link", {
+        name: "Workbench Notes",
+      }),
+    ).toHaveAttribute("aria-current", "location");
     expect(
       within(rail as HTMLElement).getByRole("button", {
         name: "See all communities",
@@ -212,7 +216,7 @@ describe("CommunityShell", () => {
     ).toBeNull();
     expect(
       within(navigation).getByRole("link", {
-        name: "Workshop, 3 unread messages",
+        name: "Workshop, 3 unread posts",
       }),
     ).toHaveAttribute("aria-current", "page");
     expect(
@@ -246,15 +250,15 @@ describe("CommunityShell", () => {
     m.pathname = "/communities/workbench-notes";
     const { update } = renderShell(true, "member");
     expect(
-      screen.getByRole("button", { name: "Spaces, 3 unread messages" }),
+      screen.getByRole("button", { name: "Spaces, 3 unread posts" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Workshop, 3 unread messages" }),
+      screen.getByRole("link", { name: "Workshop, 3 unread posts" }),
     ).toBeInTheDocument();
     m.pathname = "/communities/workbench-notes/spaces/workshop";
     update();
     expect(
-      screen.getByRole("link", { name: "Workshop, 3 unread messages" }),
+      screen.getByRole("link", { name: "Workshop, 3 unread posts" }),
     ).toHaveAttribute("aria-current", "page");
     m.unreadRooms = new Map();
     update();

@@ -27,8 +27,13 @@ const inbox = {
 
 describe("shell unread counts", () => {
   it("counts the direct inbox once, separately from rooms and their community flags", () => {
-    const unread = summarizeShellUnread([inbox, room, room], new Map());
+    const agent = { ...inbox, id: "agent", unreadCount: 3 };
+    const unread = summarizeShellUnread(
+      [inbox, agent, agent, room, room],
+      new Map(),
+    );
     expect(unread.messages).toBe(2);
+    expect(unread.accountedUnread).toBe(19);
     expect(unread.rooms.get("workshop")).toBe(14);
     expect([...unread.communities]).toEqual(["workbench"]);
   });
@@ -36,7 +41,7 @@ describe("shell unread counts", () => {
   it("keeps stale reads clear while showing later messages", () => {
     const markers = new Map([["room", firstMessage.getTime()]]);
     const unread = summarizeShellUnread([inbox, room], markers);
-    expect(unread.messages).toBe(2);
+    expect(unread.messages).toBe(1);
     expect(unread.rooms.size).toBe(0);
     expect(unread.communities.size).toBe(0);
 
@@ -49,7 +54,7 @@ describe("shell unread counts", () => {
       },
     };
     const updated = summarizeShellUnread([inbox, newRoomMessage], markers);
-    expect(updated.messages).toBe(2);
+    expect(updated.messages).toBe(1);
     expect(updated.rooms.get("workshop")).toBe(1);
     expect(updated.communities.has("workbench")).toBe(true);
   });
@@ -58,7 +63,7 @@ describe("shell unread counts", () => {
 it("preserves the aggregate badge if existing conversation pages omit unread rows", () => {
   const partial = summarizeShellUnread([inbox, room], new Map());
   expect(resolveMessageBadge(partial, 16, true)).toEqual({
-    count: 2,
+    count: 1,
     includesRooms: false,
   });
   expect(resolveMessageBadge(partial, 20, true).count).toBe(0);
@@ -74,7 +79,7 @@ it("uses a complete first page even when the independent total still has an old 
     new Map(),
   );
   expect(resolveMessageBadge(counts, 16, false, true)).toEqual({
-    count: 2,
+    count: 1,
     includesRooms: false,
   });
 });

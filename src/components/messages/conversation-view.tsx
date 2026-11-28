@@ -24,6 +24,16 @@ import { Message, MessageContent } from "@/components/ai-elements/message";
 import { useConversationMessages } from "@/components/inbox/conversation-messages";
 import { MessageComposer } from "@/components/inbox/message-composer";
 import { MessageBody } from "@/components/inbox/message-body";
+import { api, type RouterOutputs } from "@/trpc/react";
+
+type RoomAuthor = {
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
+type RoomAuthors = { slug: string; previews: readonly RoomAuthor[] };
+type ChatMessage = RouterOutputs["inbox"]["getMessages"]["messages"][number];
 
 type ConversationViewProps = {
   conversationId: string;
@@ -38,6 +48,7 @@ type ConversationViewProps = {
    *  Use this when the parent supplies its own room header. */
   hideHeader?: boolean;
   roomViewport?: boolean;
+  roomAuthors?: RoomAuthors;
 };
 
 function formatTime(date: Date): string {
@@ -46,6 +57,133 @@ function formatTime(date: Date): string {
 
 function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+const ROOM_GROUP_GAP = 5 * 60 * 1000;
+
+export function groupRoomMessages<
+  T extends Pick<ChatMessage, "senderId" | "senderType" | "createdAt">,
+>(messages: readonly T[]) {
+  const groups: T[][] = [];
+  for (const message of messages) {
+    const group = groups.at(-1);
+    const preceding = group?.at(-1);
+    if (
+      group &&
+      preceding &&
+      preceding.senderId === message.senderId &&
+      preceding.senderType === message.senderType &&
+      toDateKey(preceding.createdAt) === toDateKey(message.createdAt) &&
+      message.createdAt.getTime() - preceding.createdAt.getTime() <
+        ROOM_GROUP_GAP
+    ) {
+      group.push(message);
+    } else {
+      groups.push([message]);
+    }
+  }
+  return groups;
+}
+
+function RoomMessageGroups({
+  messages,
+  conversationId,
+  authors,
+  currentUserId,
+}: {
+  messages: readonly ChatMessage[];
+  conversationId: string;
+  authors: RoomAuthors;
+  currentUserId?: string;
+}) {
+  const t = useTranslations("redesign.shell");
+  const inbox = useTranslations("inbox");
+  const byUser = new Map(
+    authors.previews.map((author) => [author.userId, author]),
+  );
+  const needsRoster = messages.some(
+    ({ senderId }) => !byUser.get(senderId)?.displayName,
+  );
+  const { data } = api.communities.getMembers.useQuery(
+    { slug: authors.slug, limit: 50 },
+    { enabled: needsRoster },
+  );
+  for (const row of data?.items ?? []) {
+    if (byUser.get(row.userId)?.displayName) continue;
+    byUser.set(row.userId, {
+      userId: row.userId,
+      displayName: row.displayName,
+      avatarUrl: row.image,
+    });
+  }
+
+  const dateLabel = (date: Date) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    if (toDateKey(date) === toDateKey(today)) return inbox("today");
+    if (toDateKey(date) === toDateKey(yesterday)) return inbox("yesterday");
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
+    });
+  };
+
+  const groups = groupRoomMessages(messages);
+  return groups.map((group, index) => {
+    const first = group[0]!;
+    const previous = groups[index - 1]?.[0];
+    const author = byUser.get(first.senderId);
+    const name = author?.displayName ?? t("unknownRoomAuthor");
+    const startsDay =
+      !previous || toDateKey(previous.createdAt) !== toDateKey(first.createdAt);
+    return (
+      <div
+        key={first.id}
+        data-room-message=""
+        className="flex flex-col gap-3 data-[clipped-room-message]:invisible"
+      >
+        {startsDay ? (
+          <div className="flex items-center gap-3">
+            <div className="bg-border h-px flex-1" />
+            <span className="text-muted-foreground font-mono text-xs">
+              {dateLabel(first.createdAt)}
+            </span>
+            <div className="bg-border h-px flex-1" />
+          </div>
+        ) : null}
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3">
+          <Avatar size="sm" aria-hidden>
+            {author?.avatarUrl ? (
+              <AvatarImage src={author.avatarUrl} alt="" />
+            ) : null}
+            <AvatarFallback>
+              {author?.displayName ? getInitials(name) : "?"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 space-y-2">
+            <p className="text-sm font-semibold wrap-break-word">{name}</p>
+            {group.map((message) => (
+              <div key={message.id} className="min-w-0">
+                <MessageBody
+                  message={message}
+                  isUser={
+                    message.senderId === currentUserId &&
+                    message.senderType === "human"
+                  }
+                  conversationId={conversationId}
+                />
+                <span className="text-muted-foreground font-mono text-xs">
+                  {formatTime(message.createdAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  });
 }
 
 /** At the latest message, keep a partial leading row out of the reading area.
@@ -104,6 +242,7 @@ export function ConversationView({
   onBack,
   hideHeader = false,
   roomViewport = false,
+  roomAuthors,
 }: ConversationViewProps) {
   const t = useTranslations("inbox");
   const shell = useTranslations("redesign.shell");
@@ -235,68 +374,77 @@ export function ConversationView({
                 </p>
               </div>
             )}
-            {messages.map((msg, idx) => {
-              const isUser =
-                msg.senderId === currentUserId && msg.senderType === "human";
-              const prevMsg = messages[idx - 1];
-              const showDateSeparator =
-                !prevMsg ||
-                toDateKey(msg.createdAt) !== toDateKey(prevMsg.createdAt);
+            {roomAuthors && messages.length > 0 ? (
+              <RoomMessageGroups
+                messages={messages}
+                conversationId={conversationId}
+                authors={roomAuthors}
+                currentUserId={currentUserId}
+              />
+            ) : (
+              messages.map((msg, idx) => {
+                const isUser =
+                  msg.senderId === currentUserId && msg.senderType === "human";
+                const prevMsg = messages[idx - 1];
+                const showDateSeparator =
+                  !prevMsg ||
+                  toDateKey(msg.createdAt) !== toDateKey(prevMsg.createdAt);
 
-              let dateLabel: string | undefined;
-              if (showDateSeparator) {
-                const today = new Date();
-                const yesterday = new Date(today);
-                yesterday.setDate(yesterday.getDate() - 1);
-                const key = toDateKey(msg.createdAt);
-                if (key === toDateKey(today)) {
-                  dateLabel = t("today");
-                } else if (key === toDateKey(yesterday)) {
-                  dateLabel = t("yesterday");
-                } else {
-                  dateLabel = msg.createdAt.toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year:
-                      msg.createdAt.getFullYear() !== today.getFullYear()
-                        ? "numeric"
-                        : undefined,
-                  });
+                let dateLabel: string | undefined;
+                if (showDateSeparator) {
+                  const today = new Date();
+                  const yesterday = new Date(today);
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  const key = toDateKey(msg.createdAt);
+                  if (key === toDateKey(today)) {
+                    dateLabel = t("today");
+                  } else if (key === toDateKey(yesterday)) {
+                    dateLabel = t("yesterday");
+                  } else {
+                    dateLabel = msg.createdAt.toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year:
+                        msg.createdAt.getFullYear() !== today.getFullYear()
+                          ? "numeric"
+                          : undefined,
+                    });
+                  }
                 }
-              }
 
-              return (
-                <div
-                  key={msg.id}
-                  data-room-message={roomViewport ? "" : undefined}
-                  className="flex flex-col gap-4 data-[clipped-room-message]:invisible"
-                >
-                  {dateLabel && (
-                    <div className="flex items-center gap-3">
-                      <div className="bg-border h-px flex-1" />
-                      <span className="text-muted-foreground shrink-0 font-mono text-xs font-medium tracking-wider uppercase">
-                        {dateLabel}
+                return (
+                  <div
+                    key={msg.id}
+                    data-room-message={roomViewport ? "" : undefined}
+                    className="flex flex-col gap-4 data-[clipped-room-message]:invisible"
+                  >
+                    {dateLabel && (
+                      <div className="flex items-center gap-3">
+                        <div className="bg-border h-px flex-1" />
+                        <span className="text-muted-foreground shrink-0 font-mono text-xs font-medium tracking-wider uppercase">
+                          {dateLabel}
+                        </span>
+                        <div className="bg-border h-px flex-1" />
+                      </div>
+                    )}
+                    <Message from={isUser ? "user" : "assistant"}>
+                      <MessageContent>
+                        <MessageBody
+                          message={msg}
+                          isUser={isUser}
+                          conversationId={conversationId}
+                        />
+                      </MessageContent>
+                      <span
+                        className={`text-muted-foreground font-mono text-xs ${isUser ? "ml-auto" : ""}`}
+                      >
+                        {formatTime(msg.createdAt)}
                       </span>
-                      <div className="bg-border h-px flex-1" />
-                    </div>
-                  )}
-                  <Message from={isUser ? "user" : "assistant"}>
-                    <MessageContent>
-                      <MessageBody
-                        message={msg}
-                        isUser={isUser}
-                        conversationId={conversationId}
-                      />
-                    </MessageContent>
-                    <span
-                      className={`text-muted-foreground font-mono text-xs ${isUser ? "ml-auto" : ""}`}
-                    >
-                      {formatTime(msg.createdAt)}
-                    </span>
-                  </Message>
-                </div>
-              );
-            })}
+                    </Message>
+                  </div>
+                );
+              })
+            )}
           </ConversationContent>
           {roomViewport ? <RoomViewportEdge /> : null}
           <ConversationScrollButton

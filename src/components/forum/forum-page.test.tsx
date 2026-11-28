@@ -80,6 +80,10 @@ describe("ForumPage", () => {
     expect(tab).toHaveAttribute("aria-pressed", "true");
     expect(tab).not.toHaveClass("uppercase", "font-mono");
     expect(tab.parentElement).not.toHaveClass("border-b");
+    expect(screen.getByRole("combobox", { name: "sort" })).toHaveAttribute(
+      "data-slot",
+      "select-trigger",
+    );
     expect(screen.getByRole("link", { name: "newThread" })).toHaveAttribute(
       "data-variant",
       "default",
@@ -88,6 +92,7 @@ describe("ForumPage", () => {
     rerender(<ForumPage communitySlug="workbench" />);
     expect(tab).toHaveClass("uppercase", "font-mono");
     expect(tab.parentElement).toHaveClass("border-b");
+    expect(screen.getByRole("combobox").tagName).toBe("SELECT");
     expect(screen.getByRole("link", { name: "newThread" })).not.toHaveAttribute(
       "data-variant",
     );

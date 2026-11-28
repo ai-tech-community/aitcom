@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { useSiteShell } from "@/components/site-chrome-gate";
 import { EmojiPickerButton } from "@/components/composer/emoji-picker-button";
 import {
   SEND_SHORTCUTS,
@@ -52,6 +53,7 @@ export function PostComposer({
   const t = useTranslations("communities.feed");
   const te = useTranslations("communities.feed.editor");
   const tv = useTranslations("communities.video");
+  const inCommunityShell = useSiteShell() === "community";
   const utils = api.useUtils();
   const text = usePostText("");
   const mentions = useMentionPicker({ text, communitySlug: slug });
@@ -334,6 +336,7 @@ export function PostComposer({
                 communitySlug={slug}
                 value={topicSlug}
                 onChange={setTopicSlug}
+                redesigned={inCommunityShell}
               />
             </div>
           </>

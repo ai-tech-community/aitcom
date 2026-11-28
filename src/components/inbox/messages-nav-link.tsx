@@ -49,7 +49,7 @@ export function MessagesNavLink({
   const label = t("messages");
   const unreadLabel = messagesIncludeRooms
     ? shell("unreadAllConversations", { count })
-    : shell("unreadMessages", { count });
+    : shell("unreadConversations", { count });
   const active =
     pathname === "/messages" ||
     (presentation !== "legacy" && pathname.startsWith("/messages/"));
@@ -87,7 +87,9 @@ export function MessagesNavLink({
             active ? "text-foreground" : "text-muted-foreground",
           )}
         />
-        {compact ? <ShellUnreadBadge count={count} /> : null}
+        {compact ? (
+          <ShellUnreadBadge count={count} label={unreadLabel} />
+        ) : null}
       </span>
       {bottom ? (
         <span data-shell-nav-label="" className="max-w-full wrap-break-word">

@@ -40,19 +40,19 @@ function useNotificationCount() {
 
 function NotificationIcon({
   count,
-  compact = false,
+  unreadLabel,
 }: {
   count: number;
-  compact?: boolean;
+  unreadLabel?: string;
 }) {
   return (
     <>
       <BellIcon
         className="text-muted-foreground h-5 w-5"
-        aria-hidden={compact || undefined}
+        aria-hidden={!!unreadLabel || undefined}
       />
-      {compact ? (
-        <ShellUnreadBadge count={count} />
+      {unreadLabel ? (
+        <ShellUnreadBadge count={count} label={unreadLabel} />
       ) : count > 0 ? (
         <span className="bg-primary text-primary-foreground absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold">
           {count > 99 ? "99+" : count}
@@ -71,6 +71,7 @@ function CompactNotificationBell({ signedIn }: { signedIn: boolean }) {
 
   if (unread === null && !signedIn) return null;
   const count = unread ?? 0;
+  const unreadLabel = t("unreadNotifications", { count });
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -78,14 +79,12 @@ function CompactNotificationBell({ signedIn }: { signedIn: boolean }) {
         <button
           type="button"
           className="hover:bg-muted focus-visible:ring-ring relative flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-md px-1 outline-none focus-visible:ring-2 focus-visible:ring-inset"
-          title={t("notifications")}
+          title={count ? unreadLabel : t("notifications")}
           aria-label={
-            count
-              ? `${t("notifications")}, ${t("unreadNotifications", { count })}`
-              : t("notifications")
+            count ? `${t("notifications")}, ${unreadLabel}` : t("notifications")
           }
         >
-          <NotificationIcon count={count} compact />
+          <NotificationIcon count={count} unreadLabel={unreadLabel} />
         </button>
       </PopoverTrigger>
       <PopoverContent

@@ -141,7 +141,8 @@ function CommunitySwitcher({
                     {item.name ?? item.slug}
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
-                    {unreadCommunities.has(item.slug) ? (
+                    {item.slug !== activeSlug &&
+                    unreadCommunities.has(item.slug) ? (
                       <>
                         <CommunityUnreadDot />
                         <span className="sr-only">{t("unreadCommunity")}</span>
@@ -228,9 +229,13 @@ export function CommunitySwitchList({
 }) {
   const t = useTranslations("redesign.shell");
   const { communities } = useShellUnread();
-  const shortcuts = usableMemberships(memberships)
-    .filter(({ slug }) => slug !== activeSlug)
-    .slice(0, inline ? 1 : 3);
+  const usable = usableMemberships(memberships);
+  const current = usable.find(({ slug }) => slug === activeSlug);
+  const others = usable.filter(({ slug }) => slug !== activeSlug);
+  const shortcuts = (current ? [current, ...others] : others).slice(
+    0,
+    inline ? 1 : 4,
+  );
 
   const seeAll = (
     <CommunitySwitcher
@@ -260,7 +265,8 @@ export function CommunitySwitchList({
       )}
       {shortcuts.map(({ slug, name }) => {
         const label = name ?? slug;
-        const unread = communities.has(slug);
+        const selected = slug === activeSlug;
+        const unread = !selected && communities.has(slug);
         const shortcut = (
           <Link
             key={slug}
@@ -268,14 +274,21 @@ export function CommunitySwitchList({
             aria-label={
               unread ? t("communityUnread", { name: label }) : undefined
             }
+            aria-current={selected ? "location" : undefined}
             onNavigate={onNavigate}
             className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 min-w-0 items-center gap-2 rounded-md px-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset lg:min-h-9"
           >
             <span
-              className={cn("min-w-0", inline ? "truncate" : "wrap-break-word")}
+              className={cn(
+                "min-w-0 flex-1",
+                inline ? "truncate" : "wrap-break-word",
+              )}
             >
               {label}
             </span>
+            {selected ? (
+              <Check className="size-4 shrink-0" aria-hidden />
+            ) : null}
             {unread ? <CommunityUnreadDot /> : null}
           </Link>
         );

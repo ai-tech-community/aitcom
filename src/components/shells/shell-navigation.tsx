@@ -82,10 +82,10 @@ export function ShellNavLink({
   const t = useTranslations("redesign.shell");
   const Icon = item.icon;
   const unread = item.unread ?? 0;
-  const status = [
-    item.locked ? t("lockedRoom") : null,
-    unread > 0 ? t("unreadMessages", { count: unread }) : null,
-  ].filter(Boolean);
+  const unreadLabel = unread > 0 ? t("unreadPosts", { count: unread }) : null;
+  const status = [item.locked ? t("lockedRoom") : null, unreadLabel].filter(
+    Boolean,
+  );
 
   return (
     <Link
@@ -106,7 +106,9 @@ export function ShellNavLink({
       {Icon ? <Icon className="size-4 shrink-0" aria-hidden /> : null}
       <span className="min-w-0 flex-1 wrap-break-word">{item.label}</span>
       {item.locked ? <Lock className="size-3.5 shrink-0" aria-hidden /> : null}
-      <ShellUnreadBadge count={unread} />
+      {unreadLabel ? (
+        <ShellUnreadBadge count={unread} label={unreadLabel} />
+      ) : null}
     </Link>
   );
 }

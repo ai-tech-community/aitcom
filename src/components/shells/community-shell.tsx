@@ -172,6 +172,7 @@ export function CommunityShell({
     (count, room) => count + (room.unread ?? 0),
     0,
   );
+  const roomUnreadLabel = t("unreadPosts", { count: total });
   const places = [...spaces, ...roomLinks];
   const destinations = [home, ...places, ...manage];
   const active = activeDestination(pathname, destinations);
@@ -419,15 +420,18 @@ export function CommunityShell({
                       !homeActive && shellActiveTab,
                     )}
                     aria-label={
-                      total
-                        ? `${spacesLabel}, ${t("unreadMessages", { count: total })}`
-                        : spacesLabel
+                      total ? `${spacesLabel}, ${roomUnreadLabel}` : spacesLabel
                     }
                   >
                     <ShellMobileLabel
                       icon={PanelLeft}
                       label={t("spaces")}
-                      badge={<ShellUnreadBadge count={total} />}
+                      badge={
+                        <ShellUnreadBadge
+                          count={total}
+                          label={roomUnreadLabel}
+                        />
+                      }
                     />
                   </button>
                 }
@@ -487,7 +491,7 @@ function IdentityMenu({
         {identity.name}
       </span>
       <span
-        className="text-muted-foreground truncate text-xs leading-tight font-medium lg:hidden"
+        className="text-muted-foreground text-xs leading-tight font-medium wrap-break-word lg:hidden"
         title={section}
       >
         {section}
@@ -511,7 +515,7 @@ function IdentityMenu({
           type="button"
           ref={triggerRef}
           title={t("communityIdentityMenu", { name: identity.name })}
-          className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 max-w-full min-w-11 items-center gap-2 rounded-md px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 max-w-full min-w-11 items-center gap-2 rounded-md px-2 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
         >
           <CommunityMark {...identity} />
           {label}

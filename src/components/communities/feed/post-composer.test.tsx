@@ -13,6 +13,8 @@ import en from "../../../../messages/en.json";
 import { PostComposer } from "./post-composer";
 import type { VideoPostState } from "./use-video-post";
 
+vi.mock("@/components/site-chrome-gate", () => ({ useSiteShell: () => null }));
+
 const m = vi.hoisted(() => ({
   mentionCandidates: vi.fn((_input: unknown, _opts: unknown) => ({
     data: [] as { userId: string; name: string; image: string | null }[],

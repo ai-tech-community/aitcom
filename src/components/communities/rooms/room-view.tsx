@@ -65,6 +65,17 @@ export function RoomView({
 
   if (room.membership === "active" && room.conversationId) {
     const MAX_SHOWN_AVATARS = 3;
+    const visibility =
+      room.visibility === "private" ? (
+        <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
+          <Lock className="size-3" aria-hidden />
+          {t("private")}
+        </span>
+      ) : (
+        <span className="text-muted-foreground font-mono text-xs">
+          {t("public")}
+        </span>
+      );
 
     return (
       <div
@@ -83,25 +94,23 @@ export function RoomView({
               inCommunityShell && "min-w-0 flex-wrap gap-x-2 gap-y-1",
             )}
           >
-            <div>
-              <h1 className="text-base leading-tight font-semibold">
-                {room.name ?? t("untitled")}
-              </h1>
+            <div className="min-w-0">
+              <div
+                className={cn(
+                  inCommunityShell &&
+                    "flex flex-wrap items-baseline gap-x-2 gap-y-1",
+                )}
+              >
+                <h1 className="text-base leading-tight font-semibold">
+                  {room.name ?? t("untitled")}
+                </h1>
+                {inCommunityShell ? visibility : null}
+              </div>
               {room.purpose ? (
                 <p className="text-muted-foreground text-xs">{room.purpose}</p>
               ) : null}
             </div>
-            {/* Visibility marker — Mono-Is-Machine */}
-            {room.visibility === "private" ? (
-              <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
-                <Lock className="size-3" aria-hidden />
-                {t("private")}
-              </span>
-            ) : (
-              <span className="text-muted-foreground font-mono text-xs">
-                {t("public")}
-              </span>
-            )}
+            {!inCommunityShell ? visibility : null}
           </div>
           <div
             className={cn(
@@ -184,6 +193,11 @@ export function RoomView({
             }}
             hideHeader
             roomViewport={inCommunityShell}
+            roomAuthors={
+              inCommunityShell
+                ? { slug, previews: room.memberAvatars ?? [] }
+                : undefined
+            }
           />
         </div>
       </div>

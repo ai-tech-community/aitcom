@@ -350,6 +350,11 @@ body:has([data-shell-header])
   }
 }
 
+:is([data-community-shell], [data-site-shell="hub"]) [data-chat-send] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 @media (width < 40rem) {
   [data-community-shell] [data-post-toolbar]:has([data-post-insert-tools]) {
     display: grid;
@@ -378,7 +383,7 @@ body:has([data-shell-header])
     min-width: 0;
   }
 
-  [data-community-shell] [data-post-topic] select {
+  [data-community-shell] [data-post-topic] [data-slot="select-trigger"] {
     max-width: 100%;
     margin-inline-start: 0;
   }
@@ -403,7 +408,7 @@ body:has([data-shell-header])
     justify-content: center;
   }
 
-  [data-community-shell] [data-post-toolbar] :is(button, select),
+  [data-community-shell] [data-post-toolbar] button,
   :is([data-community-shell], [data-site-shell="hub"]) [data-chat-toolbar] button {
     min-height: 44px;
     min-width: 44px;
@@ -428,7 +433,7 @@ body:has([data-shell-header])
   }
 
   :is([data-community-shell], [data-site-shell="hub"]) [data-forum-categories] button,
-  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-filters] select,
+  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-filters] [data-slot="select-trigger"],
   :is([data-community-shell], [data-site-shell="hub"]) [data-forum-submit] {
     min-height: 44px;
   }

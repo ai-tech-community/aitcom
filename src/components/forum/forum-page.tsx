@@ -13,6 +13,13 @@ import { documentAuthUser } from "@/server/better-auth/hub-session";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSiteShell } from "@/components/site-chrome-gate";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,6 +111,12 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
   const noThreads = !isLoading && threads.length === 0 && !debouncedSearch;
 
   const isCommunity = !!communitySlug;
+  const sortOptions = [
+    { value: "newest", label: t("sortNewest") },
+    { value: "mostReplied", label: t("sortMostReplied") },
+    { value: "trending", label: t("sortTrending") },
+    { value: "lastActive", label: t("sortLastActive") },
+  ] as const;
 
   return (
     <div className={isCommunity ? "" : "mx-auto max-w-6xl px-6 py-12 sm:px-12"}>
@@ -180,20 +193,46 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
           <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
             {t("sort")}:
           </span>
-          <select
-            value={sort}
-            onChange={(e) => handleSortChange(e.target.value as Sort)}
-            aria-label={redesigned ? t("sort") : undefined}
-            className={cn(
-              "border-border bg-background text-foreground focus:border-ring focus:ring-ring/30 w-full rounded border px-2 py-1 focus:ring-1 focus:outline-none sm:w-auto",
-              redesigned ? "text-base sm:text-sm" : "font-mono text-xs",
-            )}
-          >
-            <option value="newest">{t("sortNewest")}</option>
-            <option value="mostReplied">{t("sortMostReplied")}</option>
-            <option value="trending">{t("sortTrending")}</option>
-            <option value="lastActive">{t("sortLastActive")}</option>
-          </select>
+          {redesigned ? (
+            <Select
+              value={sort}
+              onValueChange={(value) => handleSortChange(value as Sort)}
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label={t("sort")}
+                className="text-base sm:text-sm"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                className="motion-reduce:animate-none"
+              >
+                {sortOptions.map((item) => (
+                  <SelectItem
+                    key={item.value}
+                    value={item.value}
+                    className="min-h-11 sm:min-h-8"
+                  >
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <select
+              value={sort}
+              onChange={(e) => handleSortChange(e.target.value as Sort)}
+              className="border-border bg-background text-foreground focus:border-ring focus:ring-ring/30 w-full rounded border px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none sm:w-auto"
+            >
+              {sortOptions.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 

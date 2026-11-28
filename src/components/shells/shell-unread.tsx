@@ -45,7 +45,7 @@ export function summarizeShellUnread(
       if (row.spaceId) rooms.set(row.spaceId, row.unreadCount);
       if (row.communitySlug) communities.add(row.communitySlug);
     } else {
-      messages += row.unreadCount;
+      messages++;
     }
   }
 

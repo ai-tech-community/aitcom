@@ -373,12 +373,16 @@ describe("OnboardingReminder in the shell", () => {
     ).toBeNull();
     rerender(tree(true));
     expect(pill()).toHaveTextContent("2/5");
-    const dismiss = screen.getByRole("button", { name: "Hide until next visit" });
+    const dismiss = screen.getByRole("button", { name: "Don't show again" });
     dismiss.focus();
     fireEvent.click(dismiss);
     await waitFor(() =>
       expect(screen.getByRole("link", { name: "Events" })).toHaveFocus(),
     );
+    expect(controller.dismiss).toHaveBeenCalledOnce();
+    controller.view = { kind: "hidden" };
+    rerender(tree(false));
+    rerender(tree(true));
     expect(
       screen.queryByRole("button", { name: /getting started/i }),
     ).toBeNull();
