@@ -36,6 +36,7 @@ export function ExamRunner({
   preview = false,
   answerKey,
   redesigned = false,
+  accent = true,
   onPassed,
 }: {
   exam: LessonExam;
@@ -46,6 +47,7 @@ export function ExamRunner({
   /** Author-only { questionId → correctIndex }; marks the right option in preview. */
   answerKey?: Record<string, number>;
   redesigned?: boolean;
+  accent?: boolean;
   onPassed?: () => void;
 }) {
   const t = useTranslations("classroom");
@@ -77,6 +79,12 @@ export function ExamRunner({
   const attemptsUsed = mine.length;
   const outOfAttempts =
     !passed && exam.maxAttempts > 0 && attemptsUsed >= exam.maxAttempts;
+  const submitVariant =
+    redesigned && !exam.mandatory
+      ? "outline"
+      : redesigned && !accent
+        ? "ink"
+        : "default";
 
   const submit = api.classrooms.submitExamAttempt.useMutation({
     onSuccess: async (r) => {
@@ -187,7 +195,7 @@ export function ExamRunner({
           ) : (
             <Button
               type="button"
-              variant={redesigned && !exam.mandatory ? "outline" : "default"}
+              variant={submitVariant}
               size="sm"
               disabled={submit.isPending || Object.keys(picks).length === 0}
               onClick={() => {

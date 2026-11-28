@@ -285,44 +285,53 @@ export const classroomsRouter = createTRPCRouter({
       );
 
       const courseIds = docs.map((d) => d.id);
-      if (courseIds.length === 0) {
-        return docs.map((c) => ({ ...c, progressPercent: 0 }));
+      if (courseIds.length === 0 || !userId) {
+        return docs.map((c) => ({ ...c, enrolled: false, progressPercent: 0 }));
       }
 
-      if (!userId) {
-        return docs.map((c) => ({ ...c, progressPercent: 0 }));
-      }
-
-      // Per-course progress for the logged-in user, in 2 queries total
-      // (lesson totals + the caller's completions), not N per course.
-      const { docs: allLessons } = await payload.find({
-        collection: "lessons",
-        where: { course: { in: courseIds } },
-        limit: 1000,
-        depth: 0,
-      });
+      // Fetch lesson totals, completions and enrollments for the whole catalog.
+      const [{ docs: allLessons }, completionRows, enrollmentRows] =
+        await Promise.all([
+          payload.find({
+            collection: "lessons",
+            where: { course: { in: courseIds } },
+            limit: 1000,
+            depth: 0,
+          }),
+          ctx.db
+            .select({ courseId: lessonCompletions.courseId })
+            .from(lessonCompletions)
+            .where(
+              and(
+                inArray(lessonCompletions.courseId, courseIds),
+                eq(lessonCompletions.userId, userId),
+              ),
+            ),
+          ctx.db
+            .select({ courseId: courseEnrollments.courseId })
+            .from(courseEnrollments)
+            .where(
+              and(
+                inArray(courseEnrollments.courseId, courseIds),
+                eq(courseEnrollments.userId, userId),
+              ),
+            ),
+        ]);
       const totals = new Map<number, number>();
       for (const l of allLessons) {
         const cid = l.course;
         totals.set(cid, (totals.get(cid) ?? 0) + 1);
       }
 
-      const completionRows = await ctx.db
-        .select({ courseId: lessonCompletions.courseId })
-        .from(lessonCompletions)
-        .where(
-          and(
-            inArray(lessonCompletions.courseId, courseIds),
-            eq(lessonCompletions.userId, userId),
-          ),
-        );
       const completed = new Map<number, number>();
       for (const r of completionRows) {
         completed.set(r.courseId, (completed.get(r.courseId) ?? 0) + 1);
       }
+      const enrolled = new Set(enrollmentRows.map(({ courseId }) => courseId));
 
       return docs.map((c) => ({
         ...c,
+        enrolled: enrolled.has(c.id),
         progressPercent: courseProgressPercent(
           completed.get(c.id) ?? 0,
           totals.get(c.id) ?? 0,

@@ -116,6 +116,9 @@ export function CourseLearningView({
   const tracking = enrolled && !previewing;
   const completedCount = lessons.filter(({ id }) => completed.has(id)).length;
   const allDone = lessons.length > 0 && completedCount === lessons.length;
+  const otherUnfinished = lessons.find(
+    ({ id }) => id !== active?.id && !completed.has(id),
+  );
 
   const showFinish =
     !embedded && tracking && allDone && searchParams.get("complete") === "1";
@@ -148,14 +151,11 @@ export function CourseLearningView({
 
   function advanceAfterCompletion(announce = true) {
     if (!active || done || !tracking || embedded) return;
-    const unfinished = lessons.find(
-      (lesson) => lesson.id !== active.id && !completed.has(lesson.id),
-    );
-    if (!unfinished) {
+    if (!otherUnfinished) {
       router.push(`${courseHref}?complete=1` as never, { scroll: false });
       return;
     }
-    const destination = next ?? unfinished;
+    const destination = next ?? otherUnfinished;
     if (announce) toast.success(t("lessonSaved", { title: active.title }));
     router.push(`${courseHref}?lesson=${destination.id}` as never, {
       scroll: false,
@@ -448,6 +448,7 @@ export function CourseLearningView({
           accent={accent}
           done={done}
           allDone={allDone}
+          completesCourse={!otherUnfinished}
           mandatoryExam={mandatoryExams.has(active.id)}
           certificate={certificateStatus}
           completion={completion}

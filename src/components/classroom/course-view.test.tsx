@@ -18,10 +18,12 @@ const fixture = vi.hoisted(() => ({
   completed: [] as number[],
   lessonCount: 3,
   mandatory: false,
+  hasExam: false,
   moduleTitle: null as string | null,
   certificate: null as Date | null,
   errorCode: null as "NOT_FOUND" | "PRECONDITION_FAILED" | null,
   viewer: "user-author" as string | null,
+  communityMember: true,
   markComplete: vi.fn(),
   confirm: vi.fn(),
   leave: vi.fn(),
@@ -96,8 +98,23 @@ vi.mock("@/trpc/react", () => {
                 : [],
               enrolled: fixture.enrolled,
               completedLessonIds: fixture.completed,
-              lessonExams: fixture.mandatory
-                ? [{ lessonId: 2, mandatory: true, questions: [{ id: "q1" }] }]
+              lessonExams: fixture.hasExam
+                ? [
+                    {
+                      lessonId: 2,
+                      mandatory: fixture.mandatory,
+                      passThreshold: 70,
+                      maxAttempts: 0,
+                      questions: [
+                        {
+                          id: "q1",
+                          prompt: "Is the plan ready?",
+                          type: "boolean",
+                          options: ["Yes", "No"],
+                        },
+                      ],
+                    },
+                  ]
                 : [],
               attempts: [],
               certificateIssuedAt: fixture.certificate,
@@ -118,20 +135,22 @@ vi.mock("@/trpc/react", () => {
         },
         setPublic: { useMutation: mutation },
         moderateArchive: { useMutation: mutation },
+        submitExamAttempt: { useMutation: mutation },
       },
       communities: {
         // The viewer is both the author and a community owner (staff).
         getMyCommunities: {
           useQuery: () => ({
-            data: fixture.viewer
-              ? [
-                  {
-                    slug: "hub",
-                    status: "active",
-                    role: fixture.viewer === AUTHOR ? "owner" : "member",
-                  },
-                ]
-              : [],
+            data:
+              fixture.viewer && fixture.communityMember
+                ? [
+                    {
+                      slug: "hub",
+                      status: "active",
+                      role: fixture.viewer === AUTHOR ? "owner" : "member",
+                    },
+                  ]
+                : [],
           }),
         },
       },
@@ -167,7 +186,6 @@ vi.mock("@/components/auth/auth-required-dialog", () => ({
   useRequireAuth: () => ({ requireAuth: vi.fn() }),
 }));
 vi.mock("@/lib/lexical", () => ({ LexicalRenderer: () => null }));
-vi.mock("./exam-runner", () => ({ ExamRunner: () => <p>Exam runner</p> }));
 
 import { CourseView } from "./course-view";
 
@@ -221,9 +239,11 @@ describe("redesigned Classroom", () => {
       redesigned: true,
       enrolled: true,
       viewer: "user-learner",
+      communityMember: true,
       completed: [1],
       lessonCount: 3,
       mandatory: false,
+      hasExam: false,
       moduleTitle: null,
       requestedLesson: "",
       certificate: null,
@@ -340,12 +360,33 @@ describe("redesigned Classroom", () => {
     expect(fixture.push).not.toHaveBeenCalled();
   });
 
-  it("opens the finish screen only after all lessons are saved as complete", async () => {
-    setUp({ requestedLesson: "lesson=3", completed: [1, 2] });
-    fireEvent.click(screen.getByRole("button", { name: "Complete course" }));
+  it.each([
+    { lesson: 3, completed: [1, 2] },
+    { lesson: 1, completed: [2, 3] },
+  ])(
+    "opens the finish screen after saving the only unfinished lesson ($lesson)",
+    async ({ lesson, completed }) => {
+      setUp({ requestedLesson: `lesson=${lesson}`, completed });
+      fireEvent.click(screen.getByRole("button", { name: "Complete course" }));
+      await waitFor(() =>
+        expect(fixture.push).toHaveBeenCalledWith(
+          "/communities/hub/classroom/intro-1?complete=1",
+          { scroll: false },
+        ),
+      );
+    },
+  );
+
+  it("completes only the final lesson and returns to the first unfinished lesson", async () => {
+    setUp({ requestedLesson: "lesson=3", completed: [] });
+    fireEvent.click(screen.getByRole("button", { name: "Complete lesson" }));
+    expect(fixture.markComplete).toHaveBeenCalledWith({
+      lessonId: 3,
+      completed: true,
+    });
     await waitFor(() =>
       expect(fixture.push).toHaveBeenCalledWith(
-        "/communities/hub/classroom/intro-1?complete=1",
+        "/communities/hub/classroom/intro-1?lesson=1",
         { scroll: false },
       ),
     );
@@ -397,13 +438,30 @@ describe("redesigned Classroom", () => {
     );
   });
 
-  it("keeps mandatory exam completion in the exam runner", () => {
-    setUp({ requestedLesson: "lesson=2", mandatory: true });
-    expect(screen.getByText("Exam runner")).toBeVisible();
-    expect(
-      screen.queryByRole("button", { name: "Complete and continue" }),
-    ).toBeNull();
-  });
+  it.each([
+    { mandatory: true, communityMember: true, variant: "default" },
+    { mandatory: true, communityMember: false, variant: "ink" },
+    { mandatory: false, communityMember: true, variant: "outline" },
+  ])(
+    "uses $variant for exam submission (mandatory: $mandatory, member: $communityMember)",
+    ({ mandatory, communityMember, variant }) => {
+      setUp({
+        requestedLesson: "lesson=2",
+        hasExam: true,
+        mandatory,
+        communityMember,
+      });
+      fireEvent.click(screen.getByRole("radio", { name: "Yes" }));
+      const submit = screen.getByRole("button", { name: "Submit exam" });
+      expect(submit).toBeEnabled();
+      expect(submit).toHaveAttribute("data-variant", variant);
+      expect(
+        Boolean(
+          screen.queryByRole("button", { name: "Complete and continue" }),
+        ),
+      ).toBe(!mandatory);
+    },
+  );
 
   it("supports undoing completion without losing the next lesson", () => {
     setUp({ requestedLesson: "lesson=2", completed: [1, 2] });

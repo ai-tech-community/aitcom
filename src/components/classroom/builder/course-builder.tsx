@@ -661,6 +661,7 @@ function CourseWorkspace({
   return (
     <div
       data-classroom-redesign={redesigned ? "" : undefined}
+      data-classroom-builder={redesigned ? "" : undefined}
       className={cn(
         "flex flex-col lg:h-[calc(100dvh-var(--shell-top-offset)-var(--shell-header-border))]",
         redesigned && [styles.controls, styles.builder],
@@ -812,6 +813,7 @@ function CourseWorkspace({
           <SheetContent
             side="left"
             data-classroom-redesign={redesigned ? "" : undefined}
+            data-classroom-builder={redesigned ? "" : undefined}
             showCloseButton={!redesigned}
             {...(redesigned ? { "aria-describedby": undefined } : {})}
             onCloseAutoFocus={

@@ -32,6 +32,7 @@ export function LessonPlayer({
   accent,
   done,
   allDone,
+  completesCourse,
   mandatoryExam,
   certificate,
   completion,
@@ -56,6 +57,7 @@ export function LessonPlayer({
   accent: boolean;
   done: boolean;
   allDone: boolean;
+  completesCourse: boolean;
   mandatoryExam: boolean;
   certificate: ReactNode;
   completion?: LessonCompletion;
@@ -207,7 +209,13 @@ export function LessonPlayer({
               >
                 {done
                   ? existing("markIncomplete")
-                  : t(next ? "completeAndContinue" : "completeCourse")}
+                  : t(
+                      completesCourse
+                        ? "completeCourse"
+                        : next
+                          ? "completeAndContinue"
+                          : "completeLesson",
+                    )}
               </Button>
             ) : null}
           </div>

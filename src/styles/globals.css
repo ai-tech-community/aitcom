@@ -328,7 +328,8 @@
   color: var(--foreground);
 }
 
-/* Use the local theme's ink on solid orange controls in a redesigned frame. */
+/* Use the local theme's ink on solid orange controls in the redesigned frames and builder. */
+[data-classroom-builder] [data-slot="button"][data-variant="default"],
 body:has([data-shell-header])
   :is(
     :is(button, a, [role="button"]).bg-primary:where(

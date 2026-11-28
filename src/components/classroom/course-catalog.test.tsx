@@ -30,11 +30,17 @@ vi.mock("@/trpc/react", () => ({
 
 type Course = React.ComponentProps<typeof CourseCatalog>["courses"][number];
 
-function course(id: number, title: string, progressPercent: number): Course {
+function course(
+  id: number,
+  title: string,
+  progressPercent: number,
+  enrolled = false,
+): Course {
   return {
     id,
     title,
     progressPercent,
+    enrolled,
     slug: `course-${id}`,
     authorId: "user-author",
     authorName: "Ada",
@@ -66,8 +72,8 @@ function renderCatalog(courses: Course[], mayCreate = false) {
 describe("CourseCatalog", () => {
   it("shows in-progress courses first and lists every course once", () => {
     renderCatalog([
-      course(1, "A new course", 0),
-      course(2, "An active course", 25),
+      course(1, "A new course", 0, true),
+      course(2, "An active course", 25, true),
     ]);
 
     const resume = screen.getByRole("heading", { name: "Continue learning" });
@@ -90,6 +96,50 @@ describe("CourseCatalog", () => {
       "/communities/hub/classroom/course-1",
     ]);
   });
+
+  it("lists courses the learner left and completed courses in the catalog", () => {
+    renderCatalog([
+      course(1, "A course the learner left", 25),
+      course(2, "A completed course", 100, true),
+    ]);
+
+    expect(
+      screen.queryByRole("heading", { name: "Continue learning" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Resume:/ })).toBeNull();
+    for (const [title, percent] of [
+      ["A course the learner left", "25"],
+      ["A completed course", "100"],
+    ] as const) {
+      const row = screen.getByRole("link", { name: new RegExp(title) });
+      expect(
+        within(row).getByRole("progressbar", { name: "Course progress" }),
+      ).toHaveAttribute("aria-valuenow", percent);
+    }
+  });
+
+  it.each([0, 3])(
+    "uses one Continue learning heading with two active courses and %i new courses",
+    (newCourseCount) => {
+      renderCatalog([
+        course(1, "First active course", 25, true),
+        course(2, "Second active course", 60, true),
+        ...Array.from({ length: newCourseCount }, (_, index) =>
+          course(index + 3, `New course ${index + 1}`, 0),
+        ),
+      ]);
+
+      expect(
+        screen.getAllByRole("heading", { name: "Continue learning" }),
+      ).toHaveLength(1);
+      expect(
+        screen.getByRole("link", { name: /First active course/ }),
+      ).toBeVisible();
+      expect(
+        screen.getByRole("link", { name: /Second active course/ }),
+      ).toBeVisible();
+    },
+  );
 
   it("gives an empty catalog a next step based on course creation access", () => {
     renderCatalog([], true);

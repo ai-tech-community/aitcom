@@ -46,7 +46,7 @@
     background-color: var(--foreground);
   }
 
-  [class~="editor-anchor"] > [class~="text-muted-foreground/40"] {
+  [data-slot="rich-text-placeholder"] {
     color: var(--muted-foreground);
   }
 
@@ -58,14 +58,6 @@
 
     button[aria-pressed][title] {
       min-width: 44px;
-    }
-  }
-
-  [data-slot="button"][class~="bg-primary"] {
-    color: var(--foreground);
-
-    &:where(.dark, .dark *) {
-      color: var(--background);
     }
   }
 }

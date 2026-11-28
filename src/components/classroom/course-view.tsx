@@ -133,6 +133,8 @@ export function CourseView({
   const isStaff = role === "owner" || role === "admin" || role === "moderator";
   const isAuthor = !!session?.user && data?.course.authorId === session.user.id;
   const canPreview = !embedded && (isAuthor || isStaff);
+  // The Community shell gives Join the accent for outsiders.
+  const accent = role !== null && !embedded;
 
   // Real enrollment OR an author/staff member previewing unlocks lesson content.
   const canViewContent = enrolled || previewing;
@@ -363,6 +365,7 @@ export function CourseView({
                 preview={previewing}
                 answerKey={answerKey}
                 redesigned={redesigned}
+                accent={accent}
                 onPassed={onExamPassed}
               />
             );
@@ -394,8 +397,7 @@ export function CourseView({
         percent={percent}
         certificate={certificateIssuedAt}
         embedded={embedded}
-        // The Community shell gives Join the accent for outsiders.
-        accent={role !== null && !embedded}
+        accent={accent}
         previewing={previewing}
         enrolled={enrolled}
         member={role !== null}

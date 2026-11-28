@@ -104,6 +104,7 @@ export function PublishDialog({
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent
+        data-classroom-builder={redesigned ? "" : undefined}
         showCloseButton={phase !== "publishing"}
         className={
           redesigned
