@@ -73,6 +73,9 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
     NEXT_PUBLIC_FEATURE_CHAT: z.enum(["true", "false"]).default("false"),
     NEXT_PUBLIC_FEATURE_CHAT_UI: z.enum(["true", "false"]).default("false"),
+    NEXT_PUBLIC_FEATURE_OPEN_COMMUNITIES: z
+      .enum(["true", "false"])
+      .default("false"),
     NEXT_PUBLIC_CHAT_SANDBOX_URL: z.string().url().optional(),
   },
 
@@ -137,6 +140,8 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     NEXT_PUBLIC_FEATURE_CHAT: process.env.NEXT_PUBLIC_FEATURE_CHAT,
     NEXT_PUBLIC_FEATURE_CHAT_UI: process.env.NEXT_PUBLIC_FEATURE_CHAT_UI,
+    NEXT_PUBLIC_FEATURE_OPEN_COMMUNITIES:
+      process.env.NEXT_PUBLIC_FEATURE_OPEN_COMMUNITIES,
     NEXT_PUBLIC_CHAT_SANDBOX_URL: process.env.NEXT_PUBLIC_CHAT_SANDBOX_URL,
   },
   /**
