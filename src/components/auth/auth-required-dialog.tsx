@@ -5,6 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -117,7 +118,15 @@ export function AuthRequiredProvider({
     [],
   );
 
+  // A prompt belongs to the page it was asked on. Leaving the page closes
+  // it, so it never outlives the floating layer it opened in (a community
+  // look's layer goes away with the community).
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   const redirect = encodeURIComponent(returnTo ?? (pathname || "/"));
+  const close = () => setOpen(false);
 
   return (
     <Ctx.Provider value={{ prompt, isAuthenticated, authStatus }}>
@@ -133,12 +142,18 @@ export function AuthRequiredProvider({
             </DialogHeader>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button asChild className="flex-1">
-                <Link href={`/auth/signin?redirect=${redirect}`}>
+                <Link
+                  href={`/auth/signin?redirect=${redirect}`}
+                  onClick={close}
+                >
                   <LogIn className="h-4 w-4" /> {t("promptSignIn")}
                 </Link>
               </Button>
               <Button asChild variant="outline" className="flex-1">
-                <Link href={`/auth/signup?redirect=${redirect}`}>
+                <Link
+                  href={`/auth/signup?redirect=${redirect}`}
+                  onClick={close}
+                >
                   <UserPlus className="h-4 w-4" /> {t("promptCreateAccount")}
                 </Link>
               </Button>

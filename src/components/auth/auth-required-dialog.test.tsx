@@ -14,8 +14,9 @@ const session = vi.hoisted(() => ({
 vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => session.value },
 }));
+const route = vi.hoisted(() => ({ pathname: "/en/communities" }));
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/en/communities",
+  usePathname: () => route.pathname,
 }));
 
 import { useState } from "react";
@@ -174,5 +175,32 @@ describe("AuthRequiredProvider", () => {
     const dialog = screen.getByRole("dialog");
     expect(container.contains(dialog)).toBe(false);
     expect(dialog.closest("[data-testid=layer]")).toBeNull();
+  });
+
+  it("closes when the page changes, so it never outlives its layer", () => {
+    session.value = { data: null, isPending: false, error: null };
+    route.pathname = "/en/communities";
+    const { rerender } = renderProvider();
+    act(() => captured!.promptAuth("Sign in to join"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    route.pathname = "/en/auth/signin";
+    rerender(tree());
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.body.style.pointerEvents).not.toBe("none");
+    route.pathname = "/en/communities";
+  });
+
+  it("closes when the visitor follows sign in", () => {
+    session.value = { data: null, isPending: false, error: null };
+    renderProvider();
+    act(() => captured!.promptAuth("Sign in to join"));
+
+    const link = screen.getByRole("link", { name: /sign in/i });
+    link.addEventListener("click", (event) => event.preventDefault());
+    act(() => link.click());
+
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

@@ -4,9 +4,11 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import {
@@ -80,6 +82,14 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     resolverRef.current = null;
     setOpen(false);
   }, []);
+
+  // A question belongs to the page it was asked on. Leaving the page
+  // answers it "no", so the dialog never outlives the floating layer it
+  // opened in (a community look's layer goes away with the community).
+  const pathname = usePathname();
+  useEffect(() => {
+    settle(false);
+  }, [pathname, settle]);
 
   return (
     <Ctx.Provider value={{ confirm }}>

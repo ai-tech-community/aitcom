@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+
+const route = vi.hoisted(() => ({ pathname: "/en/communities/belong" }));
+vi.mock("next/navigation", () => ({ usePathname: () => route.pathname }));
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
 import en from "../../messages/en.json";
@@ -27,12 +30,17 @@ function Layered() {
   );
 }
 
-function renderWith(children: React.ReactNode) {
-  return render(
+function tree(children: React.ReactNode) {
+  return (
     <NextIntlClientProvider locale="en" messages={en}>
       <ConfirmProvider>{children}</ConfirmProvider>
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+}
+
+function renderWith(children: React.ReactNode) {
+  route.pathname = "/en/communities/belong";
+  return render(tree(children));
 }
 
 describe("useConfirm", () => {
@@ -67,5 +75,22 @@ describe("useConfirm", () => {
     });
     act(() => screen.getByRole("button", { name: "Confirm" }).click());
     await expect(answer).resolves.toBe(true);
+  });
+
+  it("answers no and closes when the page changes, so it never outlives its layer", async () => {
+    const { rerender } = renderWith(<Layered />);
+    let answer!: Promise<boolean>;
+    act(() => {
+      answer = confirm({ description: "Delete this photo?" });
+    });
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+    // Leaving the community: the page changes and its layer goes away.
+    route.pathname = "/en/auth/signin";
+    rerender(tree(null));
+
+    await expect(answer).resolves.toBe(false);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(document.body.style.pointerEvents).not.toBe("none");
   });
 });
