@@ -310,10 +310,15 @@ describe.each(COMMUNITY_THEMES)("look $id", (theme) => {
     expect(tokens.cardForeground).toBeDefined();
   });
 
-  it("defines its own dialogs and menus when it is a dark look", () => {
-    if (theme.scheme !== "dark") return;
-    expect(tokens.popover).toBeDefined();
-    expect(tokens.popoverForeground).toBeDefined();
+  it("defines its own dialogs and menus only when it is a dark look", () => {
+    if (theme.scheme === "dark") {
+      expect(tokens.popover).toBeDefined();
+      expect(tokens.popoverForeground).toBeDefined();
+    } else {
+      // Light looks keep white dialogs and menus (House-Controls Rule).
+      expect(tokens.popover).toBeUndefined();
+      expect(tokens.popoverForeground).toBeUndefined();
+    }
   });
 
   it("keeps text, lines and status readable in its dialogs and menus", () => {
