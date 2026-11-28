@@ -15,6 +15,9 @@ import { Activity, UserPlus } from "lucide-react";
 import { useSiteShell } from "@/components/site-chrome-gate";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
+import { COMMUNITY_FIRST_POST_ID } from "@/components/communities/create-community-link";
+import { CommunityCreatedWelcome } from "@/components/communities/community-created-welcome";
+import { showCommunityFirstWeek } from "@/components/communities/community-first-week";
 
 export function CommunityOverviewPageClient({
   params,
@@ -42,11 +45,12 @@ export function CommunityOverviewPageClient({
     slug,
   );
   const isMember = !!memberRole;
-  const hasShellInvite = useSiteShell() === "community";
+  const inCommunityShell = useSiteShell() === "community";
+  const firstWeek = showCommunityFirstWeek(memberRole, community?.createdAt);
 
   return (
     <>
-      {isMember && !hasShellInvite && (
+      {isMember && !inCommunityShell && !firstWeek && (
         <div className="mb-4 flex justify-end">
           <Button asChild variant="outline">
             <Link href={`/communities/${slug}/referrals`}>
@@ -98,11 +102,23 @@ export function CommunityOverviewPageClient({
         )}
 
       <FeedPage
-        feedFirst={hasShellInvite && isMember}
+        feedFirst={inCommunityShell && isMember}
         slug={slug}
         memberRole={memberRole}
         currentUserId={user?.id}
         feedPostPolicy={community?.feedPostPolicy ?? "all_members"}
+        composerTextareaId={firstWeek ? COMMUNITY_FIRST_POST_ID : undefined}
+        renderFirstWeek={
+          firstWeek && community
+            ? (composer) => (
+                <CommunityCreatedWelcome
+                  community={community}
+                  composer={composer}
+                  showCover={!inCommunityShell}
+                />
+              )
+            : undefined
+        }
       />
     </>
   );

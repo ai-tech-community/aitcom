@@ -18,7 +18,13 @@ function formatDay(iso: string, locale: string): string {
  * Feed-sourced stories for the community's news sector. A sector with no
  * real feed shows that, and never a made-up headline.
  */
-export function CommunitySectorNews({ slug }: { slug: string }) {
+export function CommunitySectorNews({
+  slug,
+  hideEmpty = false,
+}: {
+  slug: string;
+  hideEmpty?: boolean;
+}) {
   const t = useTranslations("communities.profile");
   const sectors = useTranslations("newsSectors");
   const locale = useLocale();
@@ -32,7 +38,7 @@ export function CommunitySectorNews({ slug }: { slug: string }) {
       </div>
     );
   }
-  if (!data) return null;
+  if (!data || (hideEmpty && data.stories.length === 0)) return null;
 
   const sectorName = sectors(data.sector);
   return (

@@ -116,10 +116,10 @@
       },
       {
         "rule": "border-accent-on-rounded",
-        "value": "*",
+        "value": "border-b-2",
         "files": ["src/components/communities/community-nav.tsx"],
-        "createdAt": "2026-11-28T12:10:57.592Z",
-        "reason": "Agent review: the legacy mobile tab has square corners and a 2px bottom border. At lg the desktop row applies a radius and sets the bottom border width to zero."
+        "createdAt": "2026-11-28T12:44:58.926Z",
+        "reason": "Implementer review found two distinct breakpoint styles. The 2px underline appears below lg, where tabs are square. At lg the border is reset to 0 and the rail uses a rounded background."
       },
       {
         "rule": "design-system-font-size",

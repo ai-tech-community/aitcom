@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { canBroadcast } from "@/lib/community-broadcast";
+import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Clapperboard, Loader2, LogIn } from "lucide-react";
@@ -25,6 +26,8 @@ interface FeedPageProps {
   currentUserId?: string;
   feedPostPolicy: "all_members" | "admins_only";
   feedFirst?: boolean;
+  composerTextareaId?: string;
+  renderFirstWeek?: (composer: ReactNode) => ReactNode;
 }
 
 export function FeedPage({
@@ -33,6 +36,8 @@ export function FeedPage({
   currentUserId,
   feedPostPolicy,
   feedFirst = false,
+  composerTextareaId,
+  renderFirstWeek,
 }: FeedPageProps) {
   const t = useTranslations("communities.feed");
   const [activeTopic, setActiveTopic] = useState("all");
@@ -47,22 +52,46 @@ export function FeedPage({
   const { promptAuth } = useRequireAuth();
   const isAuthenticated = !!currentUserId;
   const isMember = !!memberRole;
+  const firstWeek = !!renderFirstWeek;
+  const composer = currentUserId ? (
+    <PostComposer
+      slug={slug}
+      userId={currentUserId}
+      canPost={canPost}
+      canAnnounce={canBroadcast(memberRole)}
+      textareaId={composerTextareaId}
+      neutralSubmit={firstWeek}
+    />
+  ) : null;
 
   const about = (
     <CommunityAbout
       slug={slug}
-      className="xl:col-start-2 xl:row-start-1 xl:mb-8"
+      className={
+        firstWeek ? undefined : "xl:col-start-2 xl:row-start-1 xl:mb-8"
+      }
     />
   );
 
-  return (
-    // The wide grid always places About beside the feed. At narrower widths,
-    // signed-in members in the new shell reach their feed first in DOM order.
-    <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_20rem] xl:grid-rows-[auto_1fr] xl:gap-y-0">
+  // The first-week stream uses the whole content column. The usual wide
+  // layout places About and the sticky side panel beside the stream.
+  const feed = (
+    <div
+      className={cn(
+        "grid grid-cols-1 gap-8",
+        !firstWeek &&
+          "xl:grid-cols-[minmax(0,1fr)_20rem] xl:grid-rows-[auto_1fr] xl:gap-y-0",
+      )}
+    >
       {feedFirst ? null : about}
 
       {/* Main column: composer + feed */}
-      <div className="min-w-0 space-y-4 xl:col-start-1 xl:row-span-2 xl:row-start-1">
+      <div
+        className={cn(
+          "min-w-0 space-y-4",
+          !firstWeek && "xl:col-start-1 xl:row-span-2 xl:row-start-1",
+        )}
+      >
         {isAuthenticated && isMember && (
           <HubFirstSessionPath slug={slug} isMember={isMember} />
         )}
@@ -70,14 +99,7 @@ export function FeedPage({
 
         <ReelsEntry slug={slug} />
 
-        {currentUserId ? (
-          <PostComposer
-            slug={slug}
-            userId={currentUserId}
-            canPost={canPost}
-            canAnnounce={canBroadcast(memberRole)}
-          />
-        ) : null}
+        {!firstWeek && composer}
 
         {isAuthenticated && isMember ? (
           <TopicChips
@@ -111,6 +133,7 @@ export function FeedPage({
             slug={slug}
             currentUserId={currentUserId}
             memberRole={memberRole}
+            firstWeek={firstWeek}
           />
         ) : (
           <TopicPostsFeed
@@ -125,14 +148,24 @@ export function FeedPage({
       {feedFirst ? about : null}
 
       {/* Side panel: beside the feed from `xl`, under About (the community
-          rail takes the left), below the feed on narrower screens. */}
+        rail takes the left), below the feed on narrower screens. */}
       <div
         data-feed-side-panel=""
-        className="xl:sticky xl:top-24 xl:col-start-2 xl:row-start-2 xl:max-h-[calc(100dvh-7rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-width:thin]"
+        className={cn(
+          !firstWeek &&
+            "xl:sticky xl:top-24 xl:col-start-2 xl:row-start-2 xl:max-h-[calc(100dvh-7rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-width:thin]",
+        )}
       >
-        <CommunitySidebar slug={slug} />
+        <CommunitySidebar slug={slug} hideEmptyNews={firstWeek} />
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {renderFirstWeek?.(composer)}
+      {feed}
+    </>
   );
 }
 

@@ -21,6 +21,7 @@ interface CommunitySidebarProps {
   slug: string;
   /** "Now" for picking upcoming events; tests pin it. */
   now?: Date;
+  hideEmptyNews?: boolean;
 }
 
 /**
@@ -29,7 +30,11 @@ interface CommunitySidebarProps {
  * above it in `CommunityAbout`. Discussions live in the feed itself.
  * Sections with nothing to show are left out rather than saying "none".
  */
-export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
+export function CommunitySidebar({
+  slug,
+  now,
+  hideEmptyNews = false,
+}: CommunitySidebarProps) {
   const t = useTranslations("communities.profile");
   const tCommon = useTranslations("common");
   const locale = useLocale();
@@ -62,7 +67,7 @@ export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
 
   return (
     <div className="flex flex-col gap-8">
-      <CommunitySectorNews slug={slug} />
+      <CommunitySectorNews slug={slug} hideEmpty={hideEmptyNews} />
 
       {links && links.length > 0 ? (
         <section data-sidebar-section="links">

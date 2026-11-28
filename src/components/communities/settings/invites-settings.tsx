@@ -18,6 +18,11 @@ import {
 import { Copy, Loader2, Plus, Trash2 } from "lucide-react";
 import { ErrorState } from "@/components/ui/error-state";
 import { toast } from "sonner";
+import {
+  communityInvitePath,
+  isExpiredInvite,
+  isMaxedOutInvite,
+} from "./invite-links";
 
 interface InvitesSettingsProps {
   slug: string;
@@ -76,19 +81,9 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
   };
 
   const copyLink = (code: string) => {
-    const link = `${window.location.origin}/invite/${code}`;
+    const link = `${window.location.origin}${communityInvitePath(code)}`;
     void navigator.clipboard.writeText(link);
     toast.success(t("linkCopied"));
-  };
-
-  const isExpired = (expiresAt: string | Date | null | undefined) => {
-    if (!expiresAt) return false;
-    return new Date(expiresAt) < new Date();
-  };
-
-  const isMaxedOut = (useCount: number, maxUses: number | null) => {
-    if (maxUses === null) return false;
-    return useCount >= maxUses;
   };
 
   return (
@@ -114,7 +109,7 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
           <div className="flex items-center gap-2">
             <Input
               readOnly
-              value={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${slug}`}
+              value={`${typeof window !== "undefined" ? window.location.origin : ""}${communityInvitePath(slug)}`}
               className="flex-1 text-sm"
             />
             <Button
@@ -122,7 +117,7 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
               variant="outline"
               onClick={() => {
                 void navigator.clipboard.writeText(
-                  `${window.location.origin}/invite/${slug}`,
+                  `${window.location.origin}${communityInvitePath(slug)}`,
                 );
                 toast.success(t("linkCopied"));
               }}
@@ -139,7 +134,7 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
         <div className="border-success/30 bg-success/15 flex items-center gap-2 rounded-lg border p-3">
           <Input
             readOnly
-            value={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${lastCreatedCode}`}
+            value={`${typeof window !== "undefined" ? window.location.origin : ""}${communityInvitePath(lastCreatedCode)}`}
             className="flex-1 text-sm"
           />
           <Button
@@ -216,8 +211,8 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
       ) : (
         <div className="divide-y rounded-lg border">
           {invites.map((invite) => {
-            const expired = isExpired(invite.expiresAt);
-            const maxedOut = isMaxedOut(invite.useCount, invite.maxUses);
+            const expired = isExpiredInvite(invite.expiresAt);
+            const maxedOut = isMaxedOutInvite(invite.useCount, invite.maxUses);
             const inactive = expired || maxedOut;
 
             return (

@@ -1,5 +1,6 @@
 "use client";
 
+import { ChromeUnreadCount } from "@/components/ui/chrome-unread-count";
 import { MessageSquareIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
@@ -35,12 +36,10 @@ export function InboxPill() {
         {t("title")}
       </span>
       {unreadCount > 0 && (
-        <span
-          className="bg-primary text-primary-foreground flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold"
+        <ChromeUnreadCount
+          count={unreadCount}
           aria-label={`${unreadCount} ${t("unreadBadge")}`}
-        >
-          {unreadCount > 99 ? "99+" : unreadCount}
-        </span>
+        />
       )}
     </button>
   );

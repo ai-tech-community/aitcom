@@ -2,7 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
-import { CREATE_COMMUNITY_PARAM } from "./create-community-link";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import {
+  CREATE_COMMUNITY_ANCHOR_PARAM,
+  CREATE_COMMUNITY_PARAM,
+  createCommunityReturnTo,
+} from "./create-community-link";
 
 /**
  * Opens the create-community dialog when the page was reached through
@@ -18,6 +23,7 @@ import { CREATE_COMMUNITY_PARAM } from "./create-community-link";
 export function useCreateCommunityDeepLink(
   open: () => void,
   intent: string,
+  description?: string,
 ): void {
   const { requireAuth, authStatus } = useRequireAuth();
   const handled = useRef(false);
@@ -39,14 +45,28 @@ export function useCreateCommunityDeepLink(
     if (url.searchParams.get(CREATE_COMMUNITY_PARAM) !== "1") return;
     handled.current = true;
 
-    const returnTo = `${url.pathname}${url.search}`;
+    const redesigned = isOpenCommunitiesEnabled();
+    const returnTo = redesigned
+      ? createCommunityReturnTo(url)
+      : `${url.pathname}${url.search}`;
     url.searchParams.delete(CREATE_COMMUNITY_PARAM);
+    const anchor = redesigned
+      ? url.searchParams.get(CREATE_COMMUNITY_ANCHOR_PARAM)
+      : null;
+    if (redesigned) url.searchParams.delete(CREATE_COMMUNITY_ANCHOR_PARAM);
+    if (anchor && !url.hash) {
+      url.hash = anchor;
+      document.getElementById(anchor)?.scrollIntoView();
+    }
     window.history.replaceState(
       window.history.state,
       "",
       `${url.pathname}${url.search}${url.hash}`,
     );
 
-    requireAuth(() => openRef.current(), intent, { returnTo });
-  }, [authStatus, intent, requireAuth]);
+    requireAuth(() => openRef.current(), intent, {
+      returnTo,
+      ...(redesigned && { description }),
+    });
+  }, [authStatus, intent, description, requireAuth]);
 }

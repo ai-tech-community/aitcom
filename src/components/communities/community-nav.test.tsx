@@ -334,3 +334,25 @@ describe("CommunityNav", () => {
     expect(screen.queryByRole("group", { name: /manage/i })).toBeNull();
   });
 });
+
+it("keeps owner destinations directly available in the legacy navigation", () => {
+  m.pathname = "/communities/mlops/classroom";
+  renderNav("owner");
+  const nav = within(screen.getByRole("navigation"));
+  expect(nav.getByRole("link", { name: "Classrooms" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  for (const [label, route] of [
+    ["Classrooms", "classroom"],
+    ["Ideas", "ideas"],
+    ["Rituals", "rituals"],
+    ["Insights", "insights"],
+    ["Invite friends", "referrals"],
+  ]) {
+    expect(nav.getByRole("link", { name: label })).toHaveAttribute(
+      "href",
+      `/communities/mlops/${route}`,
+    );
+  }
+});

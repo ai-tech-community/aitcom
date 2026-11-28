@@ -37,7 +37,15 @@ import {
   user,
 } from "@/server/db/schema";
 import { seedDefaultSpaces } from "@/server/communities/seed-default-spaces";
-import { generateSlug } from "@/server/communities/slug-utils";
+import {
+  communityCreateConflict,
+  communityInsertConflictField,
+} from "@/server/communities/create-conflict";
+import {
+  generateSlug,
+  isReservedCommunitySlug,
+  isValidCommunitySlug,
+} from "@/server/communities/slug-utils";
 import {
   canManageRole,
   isCommunityManagerRole,
@@ -83,6 +91,7 @@ import { communityDescriptionSchema } from "@/lib/communities/description";
 function roundToKm(degrees: number): number {
   return Math.round(degrees * 100) / 100;
 }
+
 import {
   loadStackFaces,
   loadStackFacesForCommunities,
@@ -121,6 +130,27 @@ import {
   recordInviteDeclined,
 } from "@/server/communities/invite-limits";
 import type { db as Database } from "@/server/db";
+
+type CommunitySlugAvailability =
+  | { available: true }
+  | { available: false; reason: "invalid" | "reserved" | "taken" };
+
+/** The creation rule follows UNIQUE(slug), which includes soft-deleted rows. */
+async function checkCommunitySlugAvailability(
+  db: typeof Database,
+  slug: string,
+): Promise<CommunitySlugAvailability> {
+  if (!isValidCommunitySlug(slug))
+    return { available: false, reason: "invalid" };
+  if (isReservedCommunitySlug(slug))
+    return { available: false, reason: "reserved" };
+
+  const existing = await db.query.communities.findFirst({
+    where: eq(communities.slug, slug),
+    columns: { id: true },
+  });
+  return existing ? { available: false, reason: "taken" } : { available: true };
+}
 
 /** Source lookup is supplementary, including when Payload cannot start. */
 async function verifiedJoinMetadata(
@@ -492,11 +522,19 @@ export const communitiesRouter = createTRPCRouter({
       return { faces, total: memberCountResult?.count ?? 0 };
     }),
 
+  /** Check a proposed address against the same rule used for creation. */
+  isSlugAvailable: protectedProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(({ ctx, input }) =>
+      checkCommunitySlugAvailability(ctx.db, input.slug),
+    ),
+
   /** Create a new community */
   create: protectedProcedure
     .input(
       z.object({
         name: z.string().min(2).max(100),
+        slug: z.string().optional(),
         description: communityDescriptionSchema.optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
@@ -505,18 +543,23 @@ export const communitiesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const slug = generateSlug(input.name);
-
-      // Check slug uniqueness
-      const existing = await ctx.db.query.communities.findFirst({
-        where: eq(communities.slug, slug),
-      });
-      if (existing) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "A community with a similar name already exists",
-        });
+      const slug = input.slug ?? generateSlug(input.name);
+      const availability = await checkCommunitySlugAvailability(ctx.db, slug);
+      if (!availability.available) {
+        if (availability.reason === "invalid") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid community address",
+          });
+        }
+        throw communityCreateConflict("slug");
       }
+
+      // Match the database's plain UNIQUE(name), including case and deleted rows.
+      const existingName = await ctx.db.query.communities.findFirst({
+        where: eq(communities.name, input.name),
+      });
+      if (existingName) throw communityCreateConflict("name");
 
       const community = await ctx.db.transaction(async (tx) => {
         const [c] = await tx
@@ -529,26 +572,37 @@ export const communitiesRouter = createTRPCRouter({
             isListedInDirectory: input.isListedInDirectory,
             createdBy: ctx.session.user.id,
           })
-          .returning();
+          .onConflictDoNothing({ target: communities.slug })
+          .returning()
+          .catch((error: unknown) => {
+            const field = communityInsertConflictField(error);
+            if (field) throw communityCreateConflict(field);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Could not create the community",
+              cause: error,
+            });
+          });
+        if (!c) throw communityCreateConflict("slug");
 
         // Creator becomes owner
         await tx.insert(communityMemberships).values({
-          communityId: c!.id,
+          communityId: c.id,
           userId: ctx.session.user.id,
           role: "owner",
           status: "active",
         });
 
         // Seed the default builtin spaces so the new community's nav is populated.
-        await seedDefaultSpaces(tx, c!.id);
+        await seedDefaultSpaces(tx, c.id);
 
         try {
-          await writeCommunityNewsSector(tx, c!.id, "ai");
+          await writeCommunityNewsSector(tx, c.id, "ai");
         } catch (error) {
           if (!isMissingNewsSectorSchema(error)) throw error;
         }
 
-        return c!;
+        return c;
       });
 
       await logActivity(ctx.db, {

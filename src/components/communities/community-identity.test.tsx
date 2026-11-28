@@ -40,13 +40,18 @@ const community = {
 type Status = "active" | "invited" | null;
 type Role = "owner" | "admin" | "moderator" | "member" | null;
 
-function view(membershipStatus: Status = null, memberRole: Role = null) {
+function view(
+  membershipStatus: Status = null,
+  memberRole: Role = null,
+  showSetupArtwork = false,
+) {
   return (
     <NextIntlClientProvider locale="en" messages={en}>
       <CommunityIdentity
         community={community}
         membershipStatus={membershipStatus}
         memberRole={memberRole}
+        showSetupArtwork={showSetupArtwork}
       />
     </NextIntlClientProvider>
   );
@@ -62,6 +67,17 @@ function renderIdentity(
 }
 
 describe("CommunityIdentity", () => {
+  it("uses the setup monogram and the catalog colors in the first-week rail", () => {
+    const firstWeek = render(view("active", "owner", true));
+    const badge = firstWeek.container.querySelector(
+      "[data-community-setup-badge]",
+    );
+    expect(badge).toHaveTextContent(/^M$/);
+    expect(badge).toHaveStyle({ backgroundColor: "#0A0A0A", color: "#FFFFFF" });
+    firstWeek.unmount();
+    renderIdentity("active", "owner");
+    expect(screen.getByText("MA")).toBeInTheDocument();
+  });
   it("renders the page's one h1", () => {
     renderIdentity();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
