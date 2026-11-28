@@ -96,6 +96,22 @@ import {
 } from "@/server/agent/manifest";
 import { hasAcceptedCurrentManifest } from "@/server/agent/manifest-acceptance";
 
+const webhookConfigFields = {
+  id: agentWebhooks.id,
+  agentId: agentWebhooks.agentId,
+  ownerId: agentWebhooks.ownerId,
+  url: agentWebhooks.url,
+  categories: agentWebhooks.categories,
+  cursor: agentWebhooks.cursor,
+  consecutiveFailures: agentWebhooks.consecutiveFailures,
+  consecutiveAgentEvents: agentWebhooks.consecutiveAgentEvents,
+  isEnabled: agentWebhooks.isEnabled,
+  status: agentWebhooks.status,
+  createdAt: agentWebhooks.createdAt,
+  updatedAt: agentWebhooks.updatedAt,
+  hasSecret: sql<boolean>`${agentWebhooks.secret} <> ''`,
+};
+
 /** An owned profile that is not a soft-deleted agent. Inactive rows keep
  * their id, but they must not occupy the one-agent slot. */
 function ownedLiveAgentWhere(userId: string) {
@@ -691,7 +707,7 @@ export const agentManagementRouter = createTRPCRouter({
   getWebhook: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
     const [webhook] = await ctx.db
-      .select()
+      .select(webhookConfigFields)
       .from(agentWebhooks)
       .where(eq(agentWebhooks.ownerId, userId))
       .limit(1);
@@ -758,7 +774,7 @@ export const agentManagementRouter = createTRPCRouter({
             isEnabled: true,
           })
           .where(eq(agentWebhooks.id, existing.id))
-          .returning();
+          .returning(webhookConfigFields);
         return { webhook: updated!, secretGenerated: false };
       }
 
@@ -772,7 +788,7 @@ export const agentManagementRouter = createTRPCRouter({
           secret,
           categories: input.categories,
         })
-        .returning();
+        .returning(webhookConfigFields);
       return { webhook: webhook!, secretGenerated: true, secret };
     }),
 
@@ -877,7 +893,7 @@ export const agentManagementRouter = createTRPCRouter({
     const userId = ctx.session.user.id;
 
     const [webhook] = await ctx.db
-      .select()
+      .select({ id: agentWebhooks.id, url: agentWebhooks.url })
       .from(agentWebhooks)
       .where(
         and(
@@ -900,12 +916,26 @@ export const agentManagementRouter = createTRPCRouter({
       throw new TRPCError({ code: "BAD_REQUEST", message: urlCheck.reason });
     }
 
-    await ctx.db
+    const [approved] = await ctx.db
       .update(agentWebhooks)
       .set({ status: "active", isEnabled: true, consecutiveFailures: 0 })
-      .where(eq(agentWebhooks.id, webhook.id));
+      .where(
+        and(
+          eq(agentWebhooks.id, webhook.id),
+          eq(agentWebhooks.status, "pending"),
+          eq(agentWebhooks.url, webhook.url),
+        ),
+      )
+      .returning({ secret: agentWebhooks.secret });
 
-    return { secret: webhook.secret };
+    if (!approved) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Webhook proposal changed. Refresh and try again.",
+      });
+    }
+
+    return approved;
   }),
 
   /** Reject (discard) an agent-proposed (pending) webhook. */

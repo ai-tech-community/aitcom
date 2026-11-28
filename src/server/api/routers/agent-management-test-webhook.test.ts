@@ -1,31 +1,65 @@
 import { createHmac } from "crypto";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as PinnedTransport from "@/server/net/pinned-transport";
 
+type Row = Record<string, unknown>;
+
 const dbHooks = vi.hoisted(() => ({
-  selectResults: [] as unknown[][],
-  updates: [] as Array<Record<string, unknown>>,
+  selectResults: [] as Row[][],
+  updateResults: [] as Row[][],
+  updates: [] as Array<{ values: Row; where: SQL }>,
+  inserts: [] as Row[],
 }));
 
 vi.mock("@/server/db", () => {
-  function selectChain() {
+  function project(rows: Row[], fields?: Row) {
+    return rows.map((row) =>
+      fields
+        ? Object.fromEntries(
+            Object.keys(fields).map((key) => [
+              key,
+              key === "hasSecret" ? Boolean(row.secret) : row[key],
+            ]),
+          )
+        : row,
+    );
+  }
+
+  function selectChain(fields?: Row) {
     const chain: Record<string, unknown> = {};
     for (const m of ["from", "where", "limit"]) {
       chain[m] = () => chain;
     }
-    chain.then = (resolve: (rows: unknown[]) => unknown) =>
-      Promise.resolve(dbHooks.selectResults.shift() ?? []).then(resolve);
+    chain.then = (resolve: (rows: Row[]) => unknown) =>
+      Promise.resolve(
+        project(dbHooks.selectResults.shift() ?? [], fields),
+      ).then(resolve);
     return chain;
   }
   return {
     db: {
-      select: () => selectChain(),
+      select: selectChain,
       update: () => ({
-        set: (values: Record<string, unknown>) => ({
-          where: async () => {
-            dbHooks.updates.push(values);
+        set: (values: Row) => ({
+          where: (where: SQL) => {
+            dbHooks.updates.push({ values, where });
+            return {
+              returning: async (fields?: Row) =>
+                project(dbHooks.updateResults.shift() ?? [], fields),
+            };
           },
         }),
+      }),
+      insert: () => ({
+        values: (values: Row) => {
+          dbHooks.inserts.push(values);
+          return {
+            returning: async (fields?: Row) =>
+              project([{ id: "wh1", status: "active", ...values }], fields),
+          };
+        },
       }),
     },
   };
@@ -76,6 +110,8 @@ const storedWebhook = {
   status: "active",
 };
 
+const input = { url: storedWebhook.url, categories: ["inbox" as const] };
+
 function caller() {
   return createCaller({
     db: mockedDb,
@@ -86,10 +122,100 @@ function caller() {
 
 beforeEach(() => {
   dbHooks.selectResults = [[storedWebhook]];
+  dbHooks.updateResults = [];
   dbHooks.updates = [];
+  dbHooks.inserts = [];
   fetchMock.mockReset();
   validateMock.mockReset();
   validateMock.mockResolvedValue({ ok: true });
+});
+
+describe("agentManagement.getWebhook", () => {
+  it.each(["pending", "active"])(
+    "returns %s webhook metadata without the signing secret",
+    async (status) => {
+      dbHooks.selectResults = [[{ ...storedWebhook, status }]];
+
+      const webhook = await caller().agentManagement.getWebhook();
+
+      expect(webhook).toMatchObject({
+        url: storedWebhook.url,
+        categories: storedWebhook.categories,
+        status,
+        hasSecret: true,
+      });
+      expect(webhook).not.toHaveProperty("secret");
+    },
+  );
+
+  it("returns null when there is no webhook", async () => {
+    dbHooks.selectResults = [[]];
+
+    await expect(caller().agentManagement.getWebhook()).resolves.toBeNull();
+  });
+});
+
+describe("agentManagement.upsertWebhook", () => {
+  it("returns the newly stored secret only at the top level of creation", async () => {
+    dbHooks.selectResults = [[{ id: "agent1" }], []];
+
+    const result = await caller().agentManagement.upsertWebhook(input);
+
+    expect(result).toMatchObject({
+      webhook: { url: input.url, status: "active", hasSecret: true },
+      secretGenerated: true,
+      secret: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(result.webhook).not.toHaveProperty("secret");
+    expect(dbHooks.inserts).toEqual([
+      expect.objectContaining({ secret: result.secret }),
+    ]);
+  });
+
+  it("returns metadata and preserves the existing secret on a settings update", async () => {
+    dbHooks.selectResults = [[{ id: "agent1" }], [storedWebhook]];
+    dbHooks.updateResults = [[storedWebhook]];
+
+    const result = await caller().agentManagement.upsertWebhook(input);
+
+    expect(result).toMatchObject({
+      webhook: { url: input.url, hasSecret: true },
+      secretGenerated: false,
+    });
+    expect(result).not.toHaveProperty("secret");
+    expect(result.webhook).not.toHaveProperty("secret");
+    expect(dbHooks.updates[0]?.values).not.toHaveProperty("secret");
+  });
+});
+
+describe("agentManagement.approveWebhook", () => {
+  it("returns the secret only to the request that activates the pending webhook", async () => {
+    const pending = { ...storedWebhook, status: "pending" };
+    dbHooks.selectResults = [[pending], [pending]];
+    dbHooks.updateResults = [[storedWebhook], []];
+    const { approveWebhook } = caller().agentManagement;
+
+    const results = await Promise.allSettled([
+      approveWebhook(),
+      approveWebhook(),
+    ]);
+
+    expect(results).toContainEqual({
+      status: "fulfilled",
+      value: { secret: storedWebhook.secret },
+    });
+    expect(results).toContainEqual({
+      status: "rejected",
+      reason: expect.objectContaining({ code: "CONFLICT" }),
+    });
+    expect(dbHooks.updates).toHaveLength(2);
+    for (const { values, where } of dbHooks.updates) {
+      expect(values).toMatchObject({ status: "active", isEnabled: true });
+      const query = new PgDialect().sqlToQuery(where);
+      expect(query.sql).toMatch(/"status" = \$\d+/);
+      expect(query.params).toContain("pending");
+    }
+  });
 });
 
 describe("agentManagement.testWebhook", () => {
@@ -115,7 +241,7 @@ describe("agentManagement.testWebhook", () => {
       .digest("hex");
     expect(headers["X-AIT-Signature"]).toBe(`sha256=${expectedSig}`);
     expect(headers["X-AIT-Event"]).toBe("test");
-    expect(dbHooks.updates).toEqual([
+    expect(dbHooks.updates.map(({ values }) => values)).toEqual([
       { consecutiveFailures: 0, isEnabled: true },
     ]);
   });

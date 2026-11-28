@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { validateApiKey } from "@/server/agent/api-key";
@@ -50,6 +50,7 @@ export async function GET(req: Request) {
       categories: agentWebhooks.categories,
       isEnabled: agentWebhooks.isEnabled,
       consecutiveFailures: agentWebhooks.consecutiveFailures,
+      hasSecret: sql<boolean>`${agentWebhooks.secret} <> ''`,
     })
     .from(agentWebhooks)
     .where(eq(agentWebhooks.agentId, auth.agentId))
@@ -107,24 +108,24 @@ export async function PUT(req: Request) {
     .limit(1);
 
   if (existing) {
-    const updates: Record<string, unknown> = {
-      url: body.url,
-      categories,
-      consecutiveFailures: 0,
-      isEnabled: true,
-    };
+    const replacement = body.secret ? { secret: body.secret } : {};
+    const [updated] = await db
+      .update(agentWebhooks)
+      .set({
+        url: body.url,
+        categories,
+        consecutiveFailures: 0,
+        isEnabled: true,
+        ...replacement,
+      })
+      .where(eq(agentWebhooks.id, existing.id))
+      .returning({ id: agentWebhooks.id });
 
-    // Allow updating the secret if provided
-    if (body.secret) {
-      updates.secret = body.secret;
+    if (!updated) {
+      return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
     }
 
-    await db
-      .update(agentWebhooks)
-      .set(updates)
-      .where(eq(agentWebhooks.id, existing.id));
-
-    return NextResponse.json({ registered: true });
+    return NextResponse.json({ registered: true, ...replacement });
   }
 
   // New webhook — use provided secret or generate one
