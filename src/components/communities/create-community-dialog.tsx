@@ -28,6 +28,10 @@ import { BuildingModal } from "@/components/community/building-modal";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Loader2, Plus } from "lucide-react";
 import { COMMUNITY_DESCRIPTION_MAX } from "@/lib/communities/description";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { generateSlug } from "@/server/communities/slug-utils";
+import { createCommunityReturnTo } from "./create-community-link";
+import { CommunityCreationForm } from "./community-creation-form";
 import { useCreateCommunityDeepLink } from "./use-create-community-deep-link";
 
 type CreateCommunityContextValue = {
@@ -46,7 +50,10 @@ const CreateCommunityContext =
  */
 export function CreateCommunityProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("communities.create");
-  const signInIntent = t("signInToCreate");
+  const tr = useTranslations("redesign.creation");
+  const redesigned = isOpenCommunitiesEnabled();
+  const signInIntent = redesigned ? tr("signInTitle") : t("signInToCreate");
+  const signInDescription = redesigned ? tr("signInDescription") : undefined;
   const router = useRouter();
   const utils = api.useUtils();
   const { requireAuth } = useRequireAuth();
@@ -60,7 +67,11 @@ export function CreateCommunityProvider({ children }: { children: ReactNode }) {
   const [isListed, setIsListed] = useState(true);
 
   // `/communities?create=1` opens this dialog (sign-in first for guests).
-  useCreateCommunityDeepLink(() => setOpen(true), signInIntent);
+  useCreateCommunityDeepLink(
+    () => setOpen(true),
+    signInIntent,
+    signInDescription,
+  );
 
   const mutation = api.communities.create.useMutation({
     onSuccess: (community) => {
@@ -88,11 +99,52 @@ export function CreateCommunityProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  const start = useCallback(
-    () => requireAuth(() => setOpen(true), signInIntent),
-    [requireAuth, signInIntent],
-  );
+  const start = useCallback(() => {
+    const options = redesigned
+      ? {
+          returnTo: createCommunityReturnTo(new URL(window.location.href)),
+          description: signInDescription,
+        }
+      : undefined;
+    requireAuth(() => setOpen(true), signInIntent, options);
+  }, [redesigned, requireAuth, signInDescription, signInIntent]);
   const value = useMemo(() => ({ start }), [start]);
+
+  if (redesigned) {
+    const problem = !mutation.isError
+      ? null
+      : mutation.error.data?.code === "CONFLICT"
+        ? mutation.error.data.communityCreateConflictField === "name"
+          ? "name"
+          : "conflict"
+        : "create";
+    return (
+      <CreateCommunityContext.Provider value={value}>
+        {children}
+        {open && (
+          <CommunityCreationForm
+            pending={mutation.isPending}
+            problem={problem}
+            onClose={() => {
+              mutation.reset();
+              setOpen(false);
+            }}
+            onIdentityChange={(name, address) => {
+              const attempted = mutation.variables;
+              if (!problem || !attempted) return;
+              const fieldChanged =
+                problem === "name"
+                  ? name !== attempted.name
+                  : address !==
+                    (attempted.slug ?? generateSlug(attempted.name));
+              if (fieldChanged) mutation.reset();
+            }}
+            onCreate={mutation.mutate}
+          />
+        )}
+      </CreateCommunityContext.Provider>
+    );
+  }
 
   return (
     <CreateCommunityContext.Provider value={value}>
@@ -194,12 +246,19 @@ export function useStartCreateCommunity(): () => void {
 /** Opens the page's create-community dialog. Needs a `CreateCommunityProvider`. */
 export function CreateCommunityButton({
   children,
+  className,
   ...props
 }: Omit<ComponentProps<typeof Button>, "onClick">) {
   const t = useTranslations("communities.create");
   const start = useStartCreateCommunity();
   return (
-    <Button {...props} onClick={start}>
+    <Button
+      {...props}
+      className={
+        isOpenCommunitiesEnabled() ? `min-h-11 ${className ?? ""}` : className
+      }
+      onClick={start}
+    >
       <Plus aria-hidden="true" />
       {children ?? t("title")}
     </Button>

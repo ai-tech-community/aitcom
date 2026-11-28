@@ -9,6 +9,7 @@ import nl from "../../../../messages/nl.json";
 const m = vi.hoisted(() => ({
   events: [] as unknown[],
   eventsLoading: false,
+  stories: [] as unknown[],
 }));
 
 vi.mock("@/trpc/react", () => ({
@@ -34,7 +35,7 @@ vi.mock("@/trpc/react", () => ({
     news: {
       communityStories: {
         useQuery: () => ({
-          data: { sector: "ai", hasRealFeeds: true, stories: [] },
+          data: { sector: "ai", hasRealFeeds: true, stories: m.stories },
           isLoading: false,
         }),
       },
@@ -81,13 +82,17 @@ function ev(id: number | string, overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderSidebar(locale: "en" | "nl" = "en") {
+function renderSidebar(locale: "en" | "nl" = "en", hideEmptyNews = false) {
   return render(
     <NextIntlClientProvider
       locale={locale}
       messages={locale === "en" ? en : nl}
     >
-      <CommunitySidebar slug="ai-amsterdam" now={NOW} />
+      <CommunitySidebar
+        slug="ai-amsterdam"
+        now={NOW}
+        hideEmptyNews={hideEmptyNews}
+      />
     </NextIntlClientProvider>,
   );
 }
@@ -99,6 +104,7 @@ function eventsSection() {
 }
 
 beforeEach(() => {
+  m.stories = [];
   m.eventsLoading = false;
   m.events = [
     ev(1, {
@@ -133,6 +139,19 @@ beforeEach(() => {
     }),
     ev(5, { title: "Much later", date: "2026-12-01T00:00:00.000Z" }),
   ];
+});
+
+it("omits empty news during owner setup without hiding real stories", () => {
+  const empty = renderSidebar("en", true);
+  expect(
+    empty.container.querySelector('[data-sidebar-section="news"]'),
+  ).toBeNull();
+  empty.unmount();
+  m.stories = [
+    { id: "story", url: "https://example.com/news", title: "Actual news" },
+  ];
+  renderSidebar("en", true);
+  expect(screen.getByRole("link", { name: "Actual news" })).toBeVisible();
 });
 
 describe("CommunitySidebar — upcoming events", () => {

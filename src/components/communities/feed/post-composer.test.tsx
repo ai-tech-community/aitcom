@@ -108,7 +108,7 @@ vi.mock("@/trpc/react", () => ({
 
 const clip = new File(["clip"], "holiday.mov", { type: "video/quicktime" });
 
-function renderComposer({ canAnnounce = false } = {}) {
+function renderComposer({ canAnnounce = false, neutralSubmit = false } = {}) {
   const view = render(
     <NextIntlClientProvider locale="en" messages={en}>
       <PostComposer
@@ -116,6 +116,7 @@ function renderComposer({ canAnnounce = false } = {}) {
         userId="u1"
         canPost
         canAnnounce={canAnnounce}
+        neutralSubmit={neutralSubmit}
       />
     </NextIntlClientProvider>,
   );
@@ -134,6 +135,13 @@ function pickVideo(input: HTMLInputElement) {
 }
 
 const postButton = () => screen.getByRole("button", { name: "Post" });
+
+it("keeps the first-week submit neutral, including when disabled", () => {
+  renderComposer({ neutralSubmit: true });
+  expect(postButton()).toBeDisabled();
+  expect(postButton()).toHaveAttribute("data-variant", "ink");
+  expect(postButton()).toHaveClass("disabled:bg-secondary");
+});
 
 beforeEach(() => {
   // jsdom has no object URLs.

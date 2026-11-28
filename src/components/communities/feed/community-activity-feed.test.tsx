@@ -67,7 +67,11 @@ function post(id: number, content: string) {
   };
 }
 
-function renderFeed(pages: unknown[], extra: Record<string, unknown> = {}) {
+function renderFeed(
+  pages: unknown[],
+  extra: Record<string, unknown> = {},
+  firstWeek = false,
+) {
   query.current = {
     data: { pages },
     isLoading: false,
@@ -89,12 +93,86 @@ function renderFeed(pages: unknown[], extra: Record<string, unknown> = {}) {
         slug="mlops"
         currentUserId="u1"
         memberRole="member"
+        firstWeek={firstWeek}
       />
     </NextIntlClientProvider>,
   );
 }
 
 describe("CommunityActivityFeed", () => {
+  it("leaves the empty state to the owner setup without hiding real activity", () => {
+    const empty = renderFeed(
+      [
+        {
+          pinned: [],
+          items: [
+            {
+              kind: "joins",
+              key: "join:owner",
+              at: AT,
+              members: [
+                {
+                  id: "u1",
+                  name: "Owner",
+                  image: null,
+                  card: openMemberCard(),
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      {},
+      true,
+    );
+    expect(screen.queryByText("Nothing here yet")).not.toBeInTheDocument();
+    expect(
+      empty.container.querySelector('[data-activity-row="joins"]'),
+    ).toBeNull();
+    expect(
+      empty.container.querySelector("[data-community-activity]"),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Ask a question" }),
+    ).not.toBeInTheDocument();
+    empty.unmount();
+    renderFeed(
+      [{ pinned: [post(9, "Welcome to the club")], items: [] }],
+      {},
+      true,
+    );
+    expect(screen.getByText("Welcome to the club")).toBeInTheDocument();
+  });
+
+  it("keeps other members in a join group when the owner is filtered out", () => {
+    const { container } = renderFeed(
+      [
+        {
+          pinned: [],
+          items: [
+            {
+              kind: "joins",
+              key: "join:group",
+              at: AT,
+              members: [
+                {
+                  id: "u1",
+                  name: "Owner",
+                  image: null,
+                  card: openMemberCard(),
+                },
+                { id: "u2", name: "Rosa", image: null, card: openMemberCard() },
+              ],
+            },
+          ],
+        },
+      ],
+      {},
+      true,
+    );
+    expect(sentenceOf(container, "joins")).toBe("Rosa joined");
+  });
+
   it("shows pinned posts first, then every kind of activity in order", () => {
     const { container } = renderFeed([
       {

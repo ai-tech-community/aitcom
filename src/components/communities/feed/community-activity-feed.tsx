@@ -24,10 +24,12 @@ export function CommunityActivityFeed({
   slug,
   currentUserId,
   memberRole,
+  firstWeek = false,
 }: {
   slug: string;
   currentUserId?: string;
   memberRole?: FeedMemberRole;
+  firstWeek?: boolean;
 }) {
   const t = useTranslations("communities.feed");
   const utils = api.useUtils();
@@ -48,8 +50,12 @@ export function CommunityActivityFeed({
     { getNextPageParam: (last) => last.nextCursor ?? undefined },
   );
 
-  const refresh = () =>
-    utils.feed.getActivity.invalidate({ communitySlug: slug });
+  const refresh = () => {
+    // The first-week checklist reads a one-post sample of this same feed.
+    if (firstWeek)
+      void utils.feed.getFeed.invalidate({ communitySlug: slug, limit: 1 });
+    return utils.feed.getActivity.invalidate({ communitySlug: slug });
+  };
   const toggleComments = (postId: number) => {
     setOpenComments((current) => {
       const next = new Set(current);
@@ -65,9 +71,21 @@ export function CommunityActivityFeed({
   }
 
   const pinned = data?.pages[0]?.pinned ?? [];
-  const items = data?.pages.flatMap((page) => page.items) ?? [];
+  const items =
+    data?.pages
+      .flatMap((page) => page.items)
+      .flatMap((item) => {
+        if (!firstWeek || item.kind !== "joins") return [item];
+        const members = item.members.filter(
+          (member) => member.id !== currentUserId,
+        );
+        return members.length > 0 ? [{ ...item, members }] : [];
+      }) ?? [];
+  const empty = pinned.length === 0 && items.length === 0;
 
-  if (pinned.length === 0 && items.length === 0) {
+  if (empty && firstWeek && !hasNextPage) return null;
+
+  if (empty && !firstWeek) {
     return (
       <EmptyState
         title={t("emptyTitle")}

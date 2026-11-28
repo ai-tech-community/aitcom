@@ -4,6 +4,11 @@ import { render } from "@testing-library/react";
 const auth = vi.hoisted(() => ({
   status: "authenticated" as "pending" | "authenticated" | "guest" | "unknown",
   requireAuth: vi.fn(),
+  redesigned: false,
+}));
+
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => auth.redesigned,
 }));
 
 vi.mock("@/components/auth/auth-required-dialog", () => ({
@@ -39,6 +44,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  auth.redesigned = false;
   window.history.replaceState(null, "", "/");
 });
 
@@ -70,6 +76,20 @@ describe("useCreateCommunityDeepLink", () => {
       { returnTo: "/nl/communities?create=1" },
     );
     expect(currentUrl()).toBe("/nl/communities");
+  });
+
+  it("restores the auth-safe anchor on the filtered directory and opens the dialog", () => {
+    auth.redesigned = true;
+    window.history.replaceState(
+      null,
+      "",
+      "/fr/communities?q=ai&create=1&createAnchor=all-communities-title",
+    );
+    const open = vi.fn();
+    render(<Harness open={open} />);
+    expect(open).toHaveBeenCalledOnce();
+    expect(currentUrl()).toBe("/fr/communities?q=ai");
+    expect(window.location.hash).toBe("#all-communities-title");
   });
 
   it("waits for the session before deciding", () => {

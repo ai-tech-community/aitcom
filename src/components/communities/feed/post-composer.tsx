@@ -40,6 +40,8 @@ interface PostComposerProps {
   /** The signed-in member; their unsent draft is kept per community. */
   userId: string;
   canPost: boolean;
+  textareaId?: string;
+  neutralSubmit?: boolean;
   /** May announce with "@everyone" (`canBroadcast`): warned before posting. */
   canAnnounce?: boolean;
 }
@@ -48,6 +50,8 @@ export function PostComposer({
   slug,
   userId,
   canPost,
+  textareaId,
+  neutralSubmit = false,
   canAnnounce = false,
 }: PostComposerProps) {
   const t = useTranslations("communities.feed");
@@ -207,6 +211,7 @@ export function PostComposer({
       <PostEditor
         text={text}
         mentions={mentions}
+        textareaId={textareaId}
         label={poll ? te("pollQuestion") : t("composePlaceholder")}
         placeholder={poll ? te("pollQuestion") : t("composePlaceholder")}
         onImageFiles={
@@ -347,6 +352,12 @@ export function PostComposer({
               type="submit"
               size="sm"
               data-feed-submit=""
+              variant={neutralSubmit ? "ink" : undefined}
+              className={
+                neutralSubmit
+                  ? "disabled:bg-secondary disabled:text-muted-foreground min-h-11 disabled:opacity-100 sm:min-h-8"
+                  : undefined
+              }
               disabled={!ready}
               aria-busy={busy}
               aria-keyshortcuts={SEND_SHORTCUTS}

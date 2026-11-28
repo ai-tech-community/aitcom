@@ -51,6 +51,7 @@ function lengthMilestone(left: number): "over" | 0 | 20 | 100 | null {
 export function PostEditor({
   text,
   mentions,
+  textareaId,
   label,
   placeholder,
   autoFocus,
@@ -65,6 +66,7 @@ export function PostEditor({
   text: ReturnType<typeof usePostText>;
   /** Offers members to mention after "@" (`useMentionPicker`). */
   mentions?: MentionPicker;
+  textareaId?: string;
   label: string;
   placeholder?: string;
   autoFocus?: boolean;
@@ -131,6 +133,7 @@ export function PostEditor({
           }}
         >
           <textarea
+            id={textareaId}
             ref={text.textareaRef}
             value={text.value}
             onChange={(e) => {
@@ -173,7 +176,10 @@ export function PostEditor({
             aria-describedby={left <= COUNTER_FROM ? counterId : undefined}
             autoFocus={autoFocus}
             rows={3}
-            className="placeholder:text-muted-foreground block field-sizing-content max-h-80 min-h-20 w-full resize-none bg-transparent px-3 pt-3 pb-2 text-base outline-none md:text-sm"
+            className={cn(
+              "placeholder:text-muted-foreground block field-sizing-content max-h-80 min-h-20 w-full resize-none bg-transparent px-3 pt-3 pb-2 text-base outline-none md:text-sm",
+              textareaId && "scroll-mt-32",
+            )}
           />
           {mentions?.list}
 

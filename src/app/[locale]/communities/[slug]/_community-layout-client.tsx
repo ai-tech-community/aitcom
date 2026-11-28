@@ -15,6 +15,7 @@ import {
   type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
 import { CommunityIdentity } from "@/components/communities/community-identity";
+import { showCommunityFirstWeek } from "@/components/communities/community-first-week";
 import { CommunityMembersOnly } from "@/components/communities/community-members-only";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { useSiteShell } from "@/components/site-chrome-gate";
@@ -94,6 +95,7 @@ export function CommunityLayoutClient({
     notFound();
   }
   const community = communityQuery.data;
+  const firstWeek = showCommunityFirstWeek(memberRole, community.createdAt);
   // Someone who may not read the community's content (an outsider of a
   // private or unlisted community, ADR-0050) gets who it is and how to get
   // in, never its tabs or pages — except the routes that are part of
@@ -160,7 +162,7 @@ export function CommunityLayoutClient({
             themeId={community.themeId}
             className="min-h-[calc(100svh-3rem-1px)] px-4 py-8 sm:px-8"
           >
-            {membersOnly || isCommunityOverview(segments) ? (
+            {membersOnly || (isCommunityOverview(segments) && !firstWeek) ? (
               <CommunityThemeCover community={community} className="mb-8" />
             ) : null}
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
@@ -172,6 +174,7 @@ export function CommunityLayoutClient({
                   community={community}
                   membershipStatus={membershipStatus}
                   memberRole={memberRole}
+                  showSetupArtwork={firstWeek}
                 />
                 {membersOnly ? null : (
                   <CommunityNav slug={slug} memberRole={memberRole} />

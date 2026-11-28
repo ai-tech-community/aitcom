@@ -6,7 +6,9 @@ import { useTranslations } from "next-intl";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { getInitials } from "@/lib/avatar";
+import { resolveCommunityTheme } from "@/lib/communities/themes";
 import { CommunityActionsMenu } from "./community-actions-menu";
+import { CommunitySetupBadge } from "./community-setup-badge";
 import { JoinButton } from "./join-button";
 import type { RouterOutputs } from "@/trpc/react";
 
@@ -18,6 +20,7 @@ interface CommunityIdentityProps {
   community: Community;
   membershipStatus: MembershipStatus;
   memberRole?: MemberRole | null;
+  showSetupArtwork?: boolean;
 }
 
 /**
@@ -31,6 +34,7 @@ export function CommunityIdentity({
   community,
   membershipStatus,
   memberRole,
+  showSetupArtwork = false,
 }: CommunityIdentityProps) {
   const tRoles = useTranslations("communities.roles");
   const isMember = membershipStatus === "active";
@@ -58,7 +62,14 @@ export function CommunityIdentity({
             <AvatarImage src={community.logoUrl} alt={community.name} />
           ) : null}
           <AvatarFallback className="rounded-lg">
-            {getInitials(community.name)}
+            {showSetupArtwork ? (
+              <CommunitySetupBadge
+                name={community.name}
+                theme={resolveCommunityTheme(community.themeId)}
+              />
+            ) : (
+              getInitials(community.name)
+            )}
           </AvatarFallback>
         </Avatar>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">

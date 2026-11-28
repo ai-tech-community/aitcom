@@ -21,6 +21,7 @@ import {
 } from "@/server/db/schema";
 import type { CommunityRole } from "@/server/communities/role-utils";
 import { checkRateLimit } from "@/server/agent/rate-limit";
+import { CommunityCreateConflict } from "@/server/communities/create-conflict";
 import { HUB_SLUG } from "@/server/communities/hub";
 import { magazineErrorItemIndex } from "@/server/magazines/errors";
 import { membershipPaymentAllowed } from "@/server/payments/access";
@@ -70,6 +71,10 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
         magazineItemIndex: magazineErrorItemIndex(error),
+        communityCreateConflictField:
+          error.cause instanceof CommunityCreateConflict
+            ? error.cause.field
+            : null,
       },
     };
   },
