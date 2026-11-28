@@ -5403,6 +5403,7 @@
       "showAll": "Afficher tous les magazines"
     },
     "shelf": {
+      "readLatest": "Lire le dernier numéro",
       "teaser": "Lecture intégrale pour les membres",
       "byCommunity": "Un magazine de <link>{community}</link>",
       "topics": "Sujets",

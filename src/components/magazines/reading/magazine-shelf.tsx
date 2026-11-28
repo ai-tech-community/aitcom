@@ -7,12 +7,12 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
 import {
   communityMagazinePath,
+  issuePath,
   magazinesTopicPath,
 } from "@/lib/magazines/paths";
 import { cn } from "@/lib/utils";
 import type { MagazineShelfData } from "@/server/magazines/reading";
 
-import { EditorialImage } from "./editorial-image";
 import { IssueCoverCard } from "./issue-cover-card";
 import { READING_FRAME } from "./frame";
 import { IssueVisibilityBadge } from "./issue-visibility-badge";
@@ -38,7 +38,7 @@ function MagazineLogo({
       src={url}
       alt={alt ?? ""}
       data-magazine-logo=""
-      className="bg-secondary size-16 shrink-0 rounded-lg border object-cover"
+      className="bg-card size-12 shrink-0 rounded-lg border object-contain sm:size-16"
     />
   );
 }
@@ -46,64 +46,33 @@ function MagazineLogo({
 function MagazineIdentity({ data }: { data: MagazineShelfData }) {
   const t = useTranslations("magazines.shelf");
   const { magazine, community, viewerIsEditor, issues } = data;
-  const issueCover =
-    issues.find((issue) => issue.coverImageUrl)?.coverImageUrl ?? null;
+  const latest = issues[0];
   return (
-    <header className="flex flex-col gap-8">
+    <header className="flex flex-col gap-5">
       <div
         className={cn(
-          "relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2",
-          issueCover && "min-h-[24rem] sm:min-h-[32rem]",
+          "grid items-center gap-5 sm:gap-8",
+          magazine.coverImageUrl &&
+            "md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]",
         )}
       >
-        {issueCover ? (
-          <>
-            <EditorialImage
-              src={issueCover}
-              alt=""
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover"
-            />
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20"
-            />
-          </>
-        ) : null}
-        <div
-          className={cn(
-            "relative z-10 flex flex-col gap-4",
-            issueCover
-              ? "min-h-[24rem] justify-end px-4 py-10 text-white sm:min-h-[32rem] sm:px-8 sm:py-14"
-              : "text-foreground",
-          )}
-        >
-          <div className="flex items-end gap-4">
+        <div className="flex min-w-0 flex-col items-start gap-4">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <MagazineLogo
               url={magazine.logoUrl}
               alt={magazine.logoAlt ?? null}
             />
-            <div className="flex min-w-0 flex-col gap-3">
-              <h1 className="magazine-display text-5xl leading-[0.9] font-medium tracking-tight text-balance break-words sm:text-7xl lg:text-8xl">
+            <div className="min-w-0 space-y-2">
+              <h1 className="magazine-display text-4xl leading-none font-medium tracking-tight text-balance break-words sm:text-6xl lg:text-7xl">
                 {magazine.name}
               </h1>
-              <p
-                className={cn(
-                  "text-sm",
-                  issueCover ? "text-white/85" : "text-muted-foreground",
-                )}
-              >
+              <p className="text-muted-foreground text-sm break-words">
                 {t.rich("byCommunity", {
                   community: community.name,
                   link: (chunks) => (
                     <Link
                       href={communityPath(community.slug)}
-                      className={cn(
-                        "font-medium underline-offset-4 hover:underline",
-                        issueCover ? "text-white" : "text-foreground",
-                      )}
+                      className="text-foreground decoration-border font-medium underline underline-offset-4 hover:decoration-current"
                     >
                       {chunks}
                     </Link>
@@ -112,24 +81,29 @@ function MagazineIdentity({ data }: { data: MagazineShelfData }) {
               </p>
             </div>
           </div>
+          {magazine.description && (
+            <p className="max-w-[65ch] text-base leading-relaxed break-words">
+              {magazine.description}
+            </p>
+          )}
+          {latest && (
+            <Button asChild>
+              <Link href={issuePath(magazine, latest)}>{t("readLatest")}</Link>
+            </Button>
+          )}
         </div>
+        {magazine.coverImageUrl && (
+          // Editors may host publication covers on any image host.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={magazine.coverImageUrl}
+            alt={magazine.coverAlt ?? ""}
+            data-magazine-cover=""
+            className="bg-secondary aspect-[3/1] w-full rounded-xl border object-cover md:aspect-[2/1]"
+          />
+        )}
       </div>
-      {magazine.coverImageUrl ? (
-        // Any host an editor links to: next/image only serves listed hosts.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={magazine.coverImageUrl}
-          alt={magazine.coverAlt ?? ""}
-          data-magazine-cover=""
-          className="border-border aspect-[3/1] w-full rounded-lg border object-cover"
-        />
-      ) : null}
-      {magazine.description && (
-        <p className="max-w-[72ch] text-base leading-relaxed">
-          {magazine.description}
-        </p>
-      )}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-start gap-3 border-t pt-4">
         {magazine.topics.length > 0 && (
           <ul aria-label={t("topics")} className="flex flex-wrap gap-2">
             {magazine.topics.map((topic) => (
