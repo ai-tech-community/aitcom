@@ -229,7 +229,9 @@ function AccountMenu({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
-  const name = user?.name?.trim() || user?.email || t("account");
+  const name =
+    [user?.name?.trim(), user?.email].find((value) => value?.length) ??
+    t("account");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

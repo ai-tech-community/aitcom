@@ -99,7 +99,7 @@ describe("community layout", () => {
 
   it("starts both navigation reads while the independent community read is pending", async () => {
     state.redesigned = true;
-    let release = () => {};
+    let release!: () => void;
     state.prefetch.mockReturnValue(
       new Promise<void>((resolve) => {
         release = resolve;

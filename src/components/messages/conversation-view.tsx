@@ -110,9 +110,10 @@ function RoomMessageGroups({
     authors.previews.map((author) => [author.userId, author]),
   );
   if (viewer) {
+    const name = viewer.name?.trim();
     byUser.set(viewer.id, {
       userId: viewer.id,
-      displayName: viewer.name?.trim() || t("roomMessageYou"),
+      displayName: name?.length ? name : t("roomMessageYou"),
       avatarUrl: viewer.image ?? null,
     });
   }

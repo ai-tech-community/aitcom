@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
 import { CommunityShell } from "./community-shell";
 import { PageMain } from "@/components/page-main";
+import { Link } from "@/i18n/navigation";
 import { usableMemberships } from "./community-switcher";
 
 const m = vi.hoisted(() => ({
@@ -101,7 +102,7 @@ vi.mock("@/components/shells/shell-header", () => ({
   ),
 }));
 vi.mock("@/components/inbox/messages-nav-link", () => ({
-  MessagesNavLink: () => <a href="/messages">Messages</a>,
+  MessagesNavLink: () => <Link href="/messages">Messages</Link>,
 }));
 vi.mock("./shell-unread", () => ({
   useShellUnread: () => ({

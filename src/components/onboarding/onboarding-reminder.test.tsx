@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
 import { createMemoryStorage } from "@/test/memory-storage";
+import { Link } from "@/i18n/navigation";
 import type { OnboardingChecklistView } from "./checklist-view";
 import type { OnboardingChecklistController } from "./use-onboarding-checklist";
 
@@ -361,7 +362,7 @@ describe("OnboardingReminder in the shell", () => {
         <OnboardingReminderProvider enabled>
           <nav>
             {open ? <OnboardingReminderRow /> : null}
-            <a href="/events">Events</a>
+            <Link href="/events">Events</Link>
           </nav>
         </OnboardingReminderProvider>
       </NextIntlClientProvider>

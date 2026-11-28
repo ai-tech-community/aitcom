@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
+import { Link } from "@/i18n/navigation";
 import { HubShellHeader } from "./hub-shell-header";
 
 const data = vi.hoisted(() => ({
@@ -45,7 +46,7 @@ vi.mock("@/components/onboarding/onboarding-reminder", () => ({
   OnboardingReminderRow: () => <button type="button">Getting started</button>,
 }));
 vi.mock("@/components/inbox/messages-nav-link", () => ({
-  MessagesNavLink: () => <a href="/messages">Messages</a>,
+  MessagesNavLink: () => <Link href="/messages">Messages</Link>,
 }));
 vi.mock("./shell-header", () => ({
   ShellHeader: ({
