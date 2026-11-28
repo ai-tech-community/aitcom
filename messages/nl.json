@@ -5403,6 +5403,7 @@
       "showAll": "Alle magazines tonen"
     },
     "shelf": {
+      "readLatest": "Lees de nieuwste editie",
       "teaser": "Leden lezen alles",
       "byCommunity": "Een magazine van <link>{community}</link>",
       "topics": "Onderwerpen",

@@ -56,6 +56,12 @@ describe("MagazineShelf", () => {
         })}
       />,
     );
+    expect(document.querySelectorAll("header img")).toHaveLength(2);
+    expect(
+      document.querySelectorAll(
+        'img[src="https://cdn.example.test/issue.png"]',
+      ),
+    ).toHaveLength(1);
     expect(document.querySelector("[data-magazine-logo]")).toHaveAttribute(
       "alt",
       "Town press",
@@ -67,6 +73,27 @@ describe("MagazineShelf", () => {
     expect(
       screen.getByRole("img", { name: "Issue breakfast" }),
     ).toHaveAttribute("src", "https://cdn.example.test/issue.png");
+  });
+
+  it("uses a text masthead when only an issue has artwork", () => {
+    renderWithIntl(
+      <MagazineShelf
+        data={shelfData({
+          magazine: {
+            ...shelfData().magazine,
+            coverImageUrl: null,
+            logoUrl: null,
+          },
+          issues: [
+            issueCard({ coverImageUrl: "https://cdn.example.test/issue.png" }),
+          ],
+        })}
+      />,
+    );
+    expect(document.querySelector("header img")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Read the latest issue" }),
+    ).toHaveAttribute("href", "/magazines/agents-weekly/issue-4");
   });
 
   it("labels a preview issue 'Members read in full'", () => {
@@ -164,6 +191,9 @@ describe("MagazineShelf", () => {
     const { unmount } = renderWithIntl(
       <MagazineShelf data={shelfData({ issues: [] })} />,
     );
+    expect(
+      screen.queryByRole("link", { name: "Read the latest issue" }),
+    ).toBeNull();
     expect(screen.getByText("No issues yet")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Visit Amsterdam AI Builders" }),
