@@ -30,8 +30,6 @@ import {
   loadAgentProfilePage,
 } from "@/server/members/agent-profile";
 import { api } from "@/trpc/server";
-import { loadProfilePosts } from "@/server/members/profile-posts";
-import { getPayloadClient } from "@/server/payload";
 
 /**
  * Loaders for the member profile frame (`/members/[id]` and its tabs). Each
@@ -135,17 +133,6 @@ export const getMemberWork = cache((userId: string, locale: string) =>
 export const getMemberRecentWork = cache((userId: string, locale: string) =>
   api.members.getPublicRecentWork({ userId, locale: toLocale(locale) }),
 );
-
-export const getMemberRecentPosts = cache(async (userId: string) => {
-  if (!(await getMemberProfile(userId))) return [];
-  const session = await getSession();
-  return loadProfilePosts(
-    db,
-    await getPayloadClient(),
-    userId,
-    session?.user.id ?? null,
-  );
-});
 
 export const getMemberAwards = cache((userId: string) =>
   api.members.getPublicAwards({ userId }),

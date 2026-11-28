@@ -10,11 +10,11 @@ import { memberHeadline } from "@/lib/member-directory";
 import { profileTabHref } from "@/lib/member-profile-routes";
 import {
   getBadgeRarityReport,
-  getMemberRecentPosts,
   getMemberRecentWork,
   profileTabMetadata,
   requireMemberFrame,
 } from "@/server/members/profile-page";
+import { getMemberRecentPosts } from "@/server/members/profile-posts";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { BadgeShowcase } from "@/components/members/profile/badge-showcase";
 import { ProfileEmpty } from "@/components/members/profile/profile-empty";

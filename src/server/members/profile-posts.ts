@@ -1,5 +1,6 @@
 import { and, inArray, isNull } from "drizzle-orm";
 import type { Payload, Where } from "payload";
+import { cache } from "react";
 
 import {
   activeMemberCommunityIds,
@@ -114,3 +115,22 @@ export async function loadProfilePosts(
   }
   return posts;
 }
+
+export const getMemberRecentPosts = cache(async (userId: string) => {
+  // Keep the query helpers importable without the profile page's runtime dependencies.
+  const { getMemberProfile } = await import("@/server/members/profile-page");
+  if (!(await getMemberProfile(userId))) return [];
+
+  const [{ db }, { getSession }, { getPayloadClient }] = await Promise.all([
+    import("@/server/db"),
+    import("@/server/better-auth/server"),
+    import("@/server/payload"),
+  ]);
+  const session = await getSession();
+  return loadProfilePosts(
+    db,
+    await getPayloadClient(),
+    userId,
+    session?.user.id ?? null,
+  );
+});
