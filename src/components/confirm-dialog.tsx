@@ -24,8 +24,9 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import {
   PortalContainerProvider,
-  usePortalContainer,
+  usePortalContainerResolver,
 } from "@/components/ui/portal-container";
+import { usePathnameRef } from "@/hooks/use-pathname-ref";
 
 type ConfirmOptions = {
   /** Headline. Defaults to a generic "Are you sure?". */
@@ -68,19 +69,20 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
 
   const pathname = usePathname();
+  const pathnameRef = usePathnameRef();
   // The page the latest question was asked on.
   const [openedOn, setOpenedOn] = useState<string | null>(null);
 
   const confirm = useCallback(
     (opts: ConfirmRequest = {}) => {
       setOptions(opts);
-      setOpenedOn(pathname);
+      setOpenedOn(pathnameRef.current);
       setOpen(true);
       return new Promise<boolean>((resolve) => {
         resolverRef.current = resolve;
       });
     },
-    [pathname],
+    [pathnameRef],
   );
 
   // Resolve the pending promise exactly once. A confirm/cancel click settles
@@ -156,12 +158,14 @@ export function useConfirm(): ConfirmContext["confirm"] {
   const ctx = useContext(Ctx);
   // The caller's floating layer: a confirm asked from inside a community
   // look opens in that look, though the provider sits at the site root.
-  const container = usePortalContainer();
+  const resolveContainer = usePortalContainerResolver();
   const confirm = ctx?.confirm;
   const confirmHere = useCallback(
     (options?: ConfirmOptions) =>
-      confirm ? confirm({ ...options, container }) : Promise.resolve(false),
-    [confirm, container],
+      confirm
+        ? confirm({ ...options, container: resolveContainer() })
+        : Promise.resolve(false),
+    [confirm, resolveContainer],
   );
   if (!ctx) {
     throw new Error("useConfirm must be used inside <ConfirmProvider>");

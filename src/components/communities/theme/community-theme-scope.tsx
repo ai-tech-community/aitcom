@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  useCallback,
   useLayoutEffect,
+  useRef,
   useState,
   type CSSProperties,
   type ReactNode,
@@ -128,17 +130,27 @@ function cssPropertyName(name: string): string {
  * portals render nothing on their own first pass either, so a layer open
  * on first paint mounts here directly, never on `body` first.
  */
-function useFloatingLayer(theme: CommunityTheme): HTMLElement | null {
+function useFloatingLayer(theme: CommunityTheme): {
+  layer: HTMLElement | null;
+  resolveLayer: () => HTMLElement | undefined;
+} {
   const [layer, setLayer] = useState<HTMLElement | null>(null);
+  // Set with the element, before any passive effect of the same commit, so
+  // a dialog asked for from such an effect (a deep link on first load)
+  // finds the layer although `layer` is still the first render's null.
+  const layerRef = useRef<HTMLElement | null>(null);
+  const resolveLayer = useCallback(() => layerRef.current ?? undefined, []);
 
   useLayoutEffect(() => {
     const element = document.createElement("div");
     document.body.append(element);
+    layerRef.current = element;
     // Subscribing to a DOM node React does not render: the state is the
     // node itself, set once it exists.
     setLayer(element);
     return () => {
       element.remove();
+      layerRef.current = null;
       setLayer(null);
     };
   }, []);
@@ -155,7 +167,7 @@ function useFloatingLayer(theme: CommunityTheme): HTMLElement | null {
     }
   }, [layer, theme]);
 
-  return layer;
+  return { layer, resolveLayer };
 }
 
 /**
@@ -174,7 +186,7 @@ export function CommunityThemeScope({
   children: ReactNode;
 }) {
   const theme = resolveCommunityTheme(useShownCommunityThemeId(themeId));
-  const layer = useFloatingLayer(theme);
+  const { layer, resolveLayer } = useFloatingLayer(theme);
   return (
     <div
       data-community-theme={theme.id}
@@ -185,7 +197,7 @@ export function CommunityThemeScope({
       )}
       style={frameProperties(theme)}
     >
-      <PortalContainerProvider container={layer}>
+      <PortalContainerProvider container={layer} resolve={resolveLayer}>
         {children}
       </PortalContainerProvider>
     </div>

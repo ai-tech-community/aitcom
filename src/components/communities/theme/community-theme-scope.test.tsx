@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 
@@ -28,6 +28,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+import { NextIntlClientProvider } from "next-intl";
+
+import { ConfirmProvider, useConfirm } from "@/components/confirm-dialog";
+import en from "../../../../messages/en.json";
 
 import { CommunityCoverArt } from "./community-cover-art";
 import { COMMUNITY_COVER_ART } from "./cover-art";
@@ -394,6 +399,32 @@ describe("CommunityThemeScope floating layer", () => {
     expect(layerOf().contains(screen.getByText("Menu"))).toBe(true);
     act(() => root.unmount());
     host.remove();
+  });
+
+  it("opens a confirm asked for as the community first loads inside the layer", () => {
+    // A deep link that asks once, at once, in the commit the layer is made
+    // (like `useGalleryUploadLink`, which marks the link handled).
+    function AsksOnMount() {
+      const confirm = useConfirm();
+      const asked = useRef(false);
+      useEffect(() => {
+        if (asked.current) return;
+        asked.current = true;
+        void confirm({ description: "Delete this photo?" });
+      }, [confirm]);
+      return null;
+    }
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ConfirmProvider>
+          <CommunityThemeScope themeId="night">
+            <AsksOnMount />
+          </CommunityThemeScope>
+        </ConfirmProvider>
+      </NextIntlClientProvider>,
+    );
+
+    expect(layerOf()).toContainElement(screen.getByRole("alertdialog"));
   });
 
   it("removes the layer with the frame", () => {

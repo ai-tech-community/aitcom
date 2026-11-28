@@ -23,8 +23,9 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   PortalContainerProvider,
-  usePortalContainer,
+  usePortalContainerResolver,
 } from "@/components/ui/portal-container";
+import { usePathnameRef } from "@/hooks/use-pathname-ref";
 import { authClient } from "@/server/better-auth/client";
 
 /**
@@ -107,6 +108,7 @@ export function AuthRequiredProvider({
   const [container, setContainer] = useState<HTMLElement | undefined>();
   const t = useTranslations("auth");
 
+  const pathnameRef = usePathnameRef();
   // The page the latest prompt was asked on.
   const [openedOn, setOpenedOn] = useState<string | null>(null);
 
@@ -116,10 +118,10 @@ export function AuthRequiredProvider({
       setReturnTo(request?.returnTo);
       setDescription(request?.description);
       setContainer(request?.container);
-      setOpenedOn(pathname);
+      setOpenedOn(pathnameRef.current);
       setOpen(true);
     },
-    [pathname],
+    [pathnameRef],
   );
 
   // A prompt belongs to the page it was asked on: leaving that page closes
@@ -131,7 +133,6 @@ export function AuthRequiredProvider({
   }, [open, openedOn, pathname]);
 
   const redirect = encodeURIComponent(returnTo ?? (pathname || "/"));
-  const close = () => setOpen(false);
 
   return (
     <Ctx.Provider value={{ prompt, isAuthenticated, authStatus }}>
@@ -147,18 +148,12 @@ export function AuthRequiredProvider({
             </DialogHeader>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button asChild className="flex-1">
-                <Link
-                  href={`/auth/signin?redirect=${redirect}`}
-                  onClick={close}
-                >
+                <Link href={`/auth/signin?redirect=${redirect}`}>
                   <LogIn className="h-4 w-4" /> {t("promptSignIn")}
                 </Link>
               </Button>
               <Button asChild variant="outline" className="flex-1">
-                <Link
-                  href={`/auth/signup?redirect=${redirect}`}
-                  onClick={close}
-                >
+                <Link href={`/auth/signup?redirect=${redirect}`}>
                   <UserPlus className="h-4 w-4" /> {t("promptCreateAccount")}
                 </Link>
               </Button>
@@ -185,14 +180,14 @@ export function useRequireAuth(): AuthRequiredContext {
   const ctx = useContext(Ctx);
   // The caller's floating layer: a prompt asked from inside a community
   // look opens in that look, though the provider sits at the site root.
-  const container = usePortalContainer();
+  const resolveContainer = usePortalContainerResolver();
   const prompt = ctx?.prompt;
   const isAuthenticated = ctx?.isAuthenticated ?? false;
 
   const promptAuth = useCallback(
     (intentText?: string, options?: AuthPromptOptions) =>
-      prompt?.(intentText, { ...options, container }),
-    [prompt, container],
+      prompt?.(intentText, { ...options, container: resolveContainer() }),
+    [prompt, resolveContainer],
   );
   const requireAuth = useCallback(
     (action: () => void, intentText?: string, options?: AuthPromptOptions) => {

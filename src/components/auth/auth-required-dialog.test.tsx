@@ -193,18 +193,6 @@ describe("AuthRequiredProvider", () => {
     route.pathname = "/en/communities";
   });
 
-  it("closes when the visitor follows sign in", () => {
-    session.value = { data: null, isPending: false, error: null };
-    renderProvider();
-    act(() => captured!.promptAuth("Sign in to join"));
-
-    const link = screen.getByRole("link", { name: /sign in/i });
-    link.addEventListener("click", (event) => event.preventDefault());
-    act(() => link.click());
-
-    expect(screen.queryByRole("dialog")).toBeNull();
-  });
-
   it("keeps a prompt the new page asks for as it mounts", () => {
     session.value = { data: null, isPending: false, error: null };
     route.pathname = "/en";
