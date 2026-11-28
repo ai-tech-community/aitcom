@@ -5,9 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import Link from "next/link";
@@ -24,9 +22,10 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   PortalContainerProvider,
-  usePortalContainerResolver,
+  useAttachedHost,
+  usePortalHost,
+  type PortalHost,
 } from "@/components/ui/portal-container";
-import { usePathnameRef } from "@/hooks/use-pathname-ref";
 import { authClient } from "@/server/better-auth/client";
 
 /**
@@ -77,7 +76,7 @@ type AuthRequiredContext = {
  * dialog mounts — the caller's floating layer (a community look), so the
  * dialog matches it. `useRequireAuth` adds it; callers never pass it.
  */
-type AuthPromptRequest = AuthPromptOptions & { container?: HTMLElement };
+type AuthPromptRequest = AuthPromptOptions & { host?: PortalHost };
 
 type ProviderContext = {
   prompt: (intent?: string, request?: AuthPromptRequest) => void;
@@ -106,56 +105,36 @@ export function AuthRequiredProvider({
   const [intent, setIntent] = useState<string | undefined>();
   const [returnTo, setReturnTo] = useState<string | undefined>();
   const [description, setDescription] = useState<string | undefined>();
-  const [container, setContainer] = useState<HTMLElement | undefined>();
+  const [host, setHost] = useState<PortalHost | undefined>();
   const t = useTranslations("auth");
-
-  const pathnameRef = usePathnameRef();
-  // The page the open prompt was asked on; null while closed.
-  const askedOnRef = useRef<string | null>(null);
-
-  const close = useCallback(() => {
-    askedOnRef.current = null;
-    setOpen(false);
-  }, []);
 
   const prompt = useCallback(
     (intentText?: string, request?: AuthPromptRequest) => {
-      askedOnRef.current = pathnameRef.current;
       setIntent(intentText);
       setReturnTo(request?.returnTo);
       setDescription(request?.description);
-      setContainer(request?.container);
+      setHost(request?.host);
       setOpen(true);
     },
-    [pathnameRef],
+    [],
   );
 
-  // A prompt belongs to the page it was asked on: leaving that page closes
-  // it, so it never outlives the floating layer it opened in (a community
-  // look's layer goes away with the community). This runs as a layout
-  // effect, before the new page's passive effects, so it closes only the
-  // old page's prompt, never one the new page asks for as it mounts (which
-  // carries the new page).
-  useLayoutEffect(() => {
-    if (askedOnRef.current !== null && askedOnRef.current !== pathname) {
-      close();
-    }
-  }, [pathname, close]);
-
-  // A layer detached since the prompt was asked (its community went away)
-  // is never rendered into; `body` keeps the dialog visible.
-  const shownIn = container?.isConnected ? container : null;
+  // In the asker's layer while it is attached; on `body` once it detaches
+  // (the community went away), so the prompt is never left, unseen and
+  // still trapping focus, in a node off the page.
+  const container = useAttachedHost(host);
+  const value = useMemo(
+    () => ({ prompt, isAuthenticated, authStatus }),
+    [prompt, isAuthenticated, authStatus],
+  );
 
   const redirect = encodeURIComponent(returnTo ?? (pathname || "/"));
 
   return (
-    <Ctx.Provider value={{ prompt, isAuthenticated, authStatus }}>
+    <Ctx.Provider value={value}>
       {children}
-      <PortalContainerProvider container={shownIn}>
-        <Dialog
-          open={open}
-          onOpenChange={(next) => (next ? setOpen(true) : close())}
-        >
+      <PortalContainerProvider container={container}>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{intent ?? t("promptTitle")}</DialogTitle>
@@ -197,14 +176,14 @@ export function useRequireAuth(): AuthRequiredContext {
   const ctx = useContext(Ctx);
   // The caller's floating layer: a prompt asked from inside a community
   // look opens in that look, though the provider sits at the site root.
-  const resolveContainer = usePortalContainerResolver();
+  const host = usePortalHost();
   const prompt = ctx?.prompt;
   const isAuthenticated = ctx?.isAuthenticated ?? false;
 
   const promptAuth = useCallback(
     (intentText?: string, options?: AuthPromptOptions) =>
-      prompt?.(intentText, { ...options, container: resolveContainer() }),
-    [prompt, resolveContainer],
+      prompt?.(intentText, { ...options, host }),
+    [prompt, host],
   );
   const requireAuth = useCallback(
     (action: () => void, intentText?: string, options?: AuthPromptOptions) => {

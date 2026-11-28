@@ -113,8 +113,6 @@ vi.mock("next/navigation", async () => {
       );
       return React.useMemo(() => new URLSearchParams(search), [search]);
     },
-    // The site's confirm dialog closes when the page changes.
-    usePathname: () => window.location.pathname,
   };
 });
 const nativeReplaceState = window.history.replaceState.bind(window.history);

@@ -4,11 +4,10 @@ import {
   createContext,
   useCallback,
   useContext,
-  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
-import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import {
@@ -24,9 +23,10 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import {
   PortalContainerProvider,
-  usePortalContainerResolver,
+  useAttachedHost,
+  usePortalHost,
+  type PortalHost,
 } from "@/components/ui/portal-container";
-import { usePathnameRef } from "@/hooks/use-pathname-ref";
 
 type ConfirmOptions = {
   /** Headline. Defaults to a generic "Are you sure?". */
@@ -52,10 +52,11 @@ type ConfirmContext = {
 
 type ConfirmRequest = ConfirmOptions & {
   /**
-   * Where the dialog mounts: the floating layer of the part of the page that
-   * asked (a community look), so the dialog matches it. Undefined: `body`.
+   * The floating layer of the part of the page that asked (a community
+   * look): the dialog opens in it while it is attached, so it matches that
+   * part, and on `body` otherwise. Undefined: `body`.
    */
-  container?: HTMLElement;
+  host?: PortalHost;
 };
 
 const Ctx = createContext<{
@@ -68,53 +69,33 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [options, setOptions] = useState<ConfirmRequest>({});
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
 
-  const pathname = usePathname();
-  const pathnameRef = usePathnameRef();
-  // The page the pending question was asked on; null when none is pending.
-  const askedOnRef = useRef<string | null>(null);
-
   // Resolve the pending promise exactly once. A confirm/cancel click settles
   // before Radix's own close fires onOpenChange, so the later call no-ops.
   const settle = useCallback((value: boolean) => {
     resolverRef.current?.(value);
     resolverRef.current = null;
-    askedOnRef.current = null;
     setOpen(false);
   }, []);
 
-  const confirm = useCallback(
-    (opts: ConfirmRequest = {}) => {
-      // A new question answers a pending one "no", so no promise is left
-      // waiting forever.
-      resolverRef.current?.(false);
-      askedOnRef.current = pathnameRef.current;
-      setOptions(opts);
-      setOpen(true);
-      return new Promise<boolean>((resolve) => {
-        resolverRef.current = resolve;
-      });
-    },
-    [pathnameRef],
-  );
+  const confirm = useCallback((opts: ConfirmRequest = {}) => {
+    // A new question answers a pending one "no", so no promise is left
+    // waiting forever.
+    resolverRef.current?.(false);
+    setOptions(opts);
+    setOpen(true);
+    return new Promise<boolean>((resolve) => {
+      resolverRef.current = resolve;
+    });
+  }, []);
 
-  // A question belongs to the page it was asked on: leaving that page
-  // answers it "no", so the dialog never outlives the floating layer it
-  // opened in (a community look's layer goes away with the community). This
-  // runs as a layout effect, before the new page's passive effects, so it
-  // closes only the old page's question, never one the new page asks as it
-  // mounts (which carries the new page).
-  useLayoutEffect(() => {
-    if (askedOnRef.current !== null && askedOnRef.current !== pathname) {
-      settle(false);
-    }
-  }, [pathname, settle]);
-
-  // A layer detached since the question was asked (its community went away)
-  // is never rendered into; `body` keeps the dialog visible.
-  const container = options.container?.isConnected ? options.container : null;
+  // In the asker's layer while it is attached; on `body` once it detaches
+  // (the community went away), so the dialog is never left, unseen and
+  // still trapping focus, in a node off the page.
+  const container = useAttachedHost(options.host);
+  const value = useMemo(() => ({ confirm }), [confirm]);
 
   return (
-    <Ctx.Provider value={{ confirm }}>
+    <Ctx.Provider value={value}>
       {children}
       <PortalContainerProvider container={container}>
         <AlertDialog
@@ -170,14 +151,12 @@ export function useConfirm(): ConfirmContext["confirm"] {
   const ctx = useContext(Ctx);
   // The caller's floating layer: a confirm asked from inside a community
   // look opens in that look, though the provider sits at the site root.
-  const resolveContainer = usePortalContainerResolver();
+  const host = usePortalHost();
   const confirm = ctx?.confirm;
   const confirmHere = useCallback(
     (options?: ConfirmOptions) =>
-      confirm
-        ? confirm({ ...options, container: resolveContainer() })
-        : Promise.resolve(false),
-    [confirm, resolveContainer],
+      confirm ? confirm({ ...options, host }) : Promise.resolve(false),
+    [confirm, host],
   );
   if (!ctx) {
     throw new Error("useConfirm must be used inside <ConfirmProvider>");

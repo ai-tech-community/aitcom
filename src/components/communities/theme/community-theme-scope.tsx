@@ -1,15 +1,18 @@
 "use client";
 
 import {
-  useCallback,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
 
-import { PortalContainerProvider } from "@/components/ui/portal-container";
+import {
+  PortalContainerProvider,
+  type PortalHost,
+} from "@/components/ui/portal-container";
 
 import {
   resolveCommunityTheme,
@@ -132,29 +135,45 @@ function cssPropertyName(name: string): string {
  */
 function useFloatingLayer(theme: CommunityTheme): {
   layer: HTMLElement | null;
-  resolveLayer: () => HTMLElement | undefined;
+  host: PortalHost;
 } {
   const [layer, setLayer] = useState<HTMLElement | null>(null);
-  // One element for the scope's whole life, created on first attach. A
-  // dialog asked for from an effect of the commit that creates it (a deep
-  // link on first load) reads it here although `layer` is still the first
-  // render's null. Detaching keeps the node: when the effect runs again
-  // (Strict Mode in development, a Suspense boundary showing the frame
-  // again) the same node goes back on `body`, so a dialog that captured it
-  // stays visible.
+  // One element for the scope's whole life, created on first attach. The
+  // host reads it here, so a dialog asked for from a passive effect of the
+  // commit that creates it (a deep link on first load) finds it although
+  // `layer` is still the first render's null. Detaching keeps the node, and
+  // the host tells its listeners: a site-root dialog rendered into it moves
+  // to `body` while it is detached and back when it returns (Strict Mode in
+  // development re-runs the effect; a Suspense boundary can hide the frame).
   const layerRef = useRef<HTMLElement | null>(null);
-  const resolveLayer = useCallback(() => {
-    const element = layerRef.current;
-    return element?.isConnected ? element : undefined;
-  }, []);
+  const listenersRef = useRef(new Set<() => void>());
+  const host = useMemo<PortalHost>(
+    () => ({
+      resolve: () => {
+        const element = layerRef.current;
+        return element?.isConnected ? element : undefined;
+      },
+      subscribe: (listener) => {
+        listenersRef.current.add(listener);
+        return () => listenersRef.current.delete(listener);
+      },
+    }),
+    [],
+  );
 
   useLayoutEffect(() => {
     const element = (layerRef.current ??= document.createElement("div"));
+    const listeners = listenersRef.current;
+    const notify = () => listeners.forEach((listener) => listener());
     document.body.append(element);
+    notify();
     // Subscribing to a DOM node React does not render: the state is the
     // node itself, set once it is attached.
     setLayer(element);
-    return () => element.remove();
+    return () => {
+      element.remove();
+      notify();
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -169,7 +188,7 @@ function useFloatingLayer(theme: CommunityTheme): {
     }
   }, [layer, theme]);
 
-  return { layer, resolveLayer };
+  return { layer, host };
 }
 
 /**
@@ -188,7 +207,7 @@ export function CommunityThemeScope({
   children: ReactNode;
 }) {
   const theme = resolveCommunityTheme(useShownCommunityThemeId(themeId));
-  const { layer, resolveLayer } = useFloatingLayer(theme);
+  const { layer, host } = useFloatingLayer(theme);
   return (
     <div
       data-community-theme={theme.id}
@@ -199,7 +218,7 @@ export function CommunityThemeScope({
       )}
       style={frameProperties(theme)}
     >
-      <PortalContainerProvider container={layer} resolve={resolveLayer}>
+      <PortalContainerProvider container={layer} host={host}>
         {children}
       </PortalContainerProvider>
     </div>

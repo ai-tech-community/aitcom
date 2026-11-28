@@ -14,12 +14,11 @@ const session = vi.hoisted(() => ({
 vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => session.value },
 }));
-const route = vi.hoisted(() => ({ pathname: "/en/communities" }));
 vi.mock("next/navigation", () => ({
-  usePathname: () => route.pathname,
+  usePathname: () => "/en/communities",
 }));
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
 
@@ -31,12 +30,11 @@ function Capture() {
   return null;
 }
 
-function tree(page?: React.ReactNode) {
+function tree() {
   return (
     <NextIntlClientProvider locale="en" messages={en}>
       <AuthRequiredProvider>
         <Capture />
-        {page}
       </AuthRequiredProvider>
     </NextIntlClientProvider>
   );
@@ -176,42 +174,5 @@ describe("AuthRequiredProvider", () => {
     const dialog = screen.getByRole("dialog");
     expect(container.contains(dialog)).toBe(false);
     expect(dialog.closest("[data-testid=layer]")).toBeNull();
-  });
-
-  it("closes when the page changes, so it never outlives its layer", () => {
-    session.value = { data: null, isPending: false, error: null };
-    route.pathname = "/en/communities";
-    const { rerender } = renderProvider();
-    act(() => captured!.promptAuth("Sign in to join"));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-
-    route.pathname = "/en/auth/signin";
-    rerender(tree());
-
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.body.style.pointerEvents).not.toBe("none");
-    route.pathname = "/en/communities";
-  });
-
-  it("keeps a prompt the new page asks for as it mounts", () => {
-    session.value = { data: null, isPending: false, error: null };
-    route.pathname = "/en";
-    const { rerender } = renderProvider();
-
-    // A page that asks on mount, like the `?create=1` deep link.
-    function AsksOnMount() {
-      const { requireAuth } = useRequireAuth();
-      useEffect(() => {
-        requireAuth(() => undefined, "Sign in to host a community");
-      }, [requireAuth]);
-      return null;
-    }
-    route.pathname = "/en/communities";
-    rerender(tree(<AsksOnMount />));
-
-    expect(
-      screen.getByRole("dialog", { name: "Sign in to host a community" }),
-    ).toBeInTheDocument();
-    route.pathname = "/en/communities";
   });
 });

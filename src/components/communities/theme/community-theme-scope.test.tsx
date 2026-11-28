@@ -455,6 +455,47 @@ describe("CommunityThemeScope floating layer", () => {
     expect(layerOf()).toContainElement(dialog);
   });
 
+  it("moves an open confirm to body when the community goes away, still usable", async () => {
+    let ask!: ReturnType<typeof useConfirm>;
+    function Asker() {
+      ask = useConfirm();
+      return null;
+    }
+    let leave!: () => void;
+    function Page() {
+      const [inCommunity, setInCommunity] = useState(true);
+      leave = () => setInCommunity(false);
+      return inCommunity ? (
+        <CommunityThemeScope themeId="night">
+          <Asker />
+        </CommunityThemeScope>
+      ) : null;
+    }
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ConfirmProvider>
+          <Page />
+        </ConfirmProvider>
+      </NextIntlClientProvider>,
+    );
+    let answer!: Promise<boolean>;
+    act(() => {
+      answer = ask({ description: "Delete this photo?" });
+    });
+    expect(layerOf()).toContainElement(screen.getByRole("alertdialog"));
+
+    // The community unmounts (left, deleted, made private) with the
+    // question still open.
+    act(() => leave());
+
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.isConnected).toBe(true);
+    expect(dialog.closest("[data-community-theme-layer]")).toBeNull();
+    act(() => screen.getByRole("button", { name: "Cancel" }).click());
+    await expect(answer).resolves.toBe(false);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
   it("removes the layer with the frame", () => {
     const { unmount } = render(
       <CommunityThemeScope themeId="meadow">

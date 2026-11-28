@@ -73,8 +73,6 @@ vi.mock("next/navigation", () => ({
         () => m.search,
       ),
     ),
-  // The site's confirm dialog closes when the page changes.
-  usePathname: () => "/en/communities/belong/gallery",
 }));
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof ReactQuery>()),
