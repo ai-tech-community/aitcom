@@ -183,11 +183,29 @@ describe("PortalContainerProvider", () => {
   });
 });
 
-/** Every `.tsx` source file under `dir`, tests excluded. */
+/** Every `.ts` and `.tsx` source file under `dir`, tests excluded. */
 function sourcesUnder(dir: string): string[] {
   return readdirSync(dir, { recursive: true, encoding: "utf8" })
-    .filter((file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx"))
+    .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
     .map((file) => join(dir, file));
+}
+
+/** The argument text of every `createPortal(...)` call in `source`. */
+function createPortalCalls(source: string): string[] {
+  const calls: string[] = [];
+  let from = 0;
+  for (;;) {
+    const start = source.indexOf("createPortal(", from);
+    if (start === -1) return calls;
+    let depth = 0;
+    let end = start + "createPortal".length;
+    for (; end < source.length; end += 1) {
+      if (source[end] === "(") depth += 1;
+      if (source[end] === ")" && --depth === 0) break;
+    }
+    calls.push(source.slice(start + "createPortal(".length, end));
+    from = end;
+  }
 }
 
 /**
@@ -198,19 +216,22 @@ const HOUSE_PORTALS = ["src/components/navbar.tsx"];
 
 describe("floating layers across the app", () => {
   const root = process.cwd();
-  const sources = sourcesUnder(join(root, "src"));
+  const sources = sourcesUnder(join(root, "src")).map((file) => ({
+    path: file.slice(root.length + 1),
+    source: readFileSync(file, "utf8"),
+  }));
 
   it("pass the provided container to every Radix portal", () => {
     const missing: string[] = [];
     let portals = 0;
-    for (const file of sources) {
-      const source = readFileSync(file, "utf8");
+    for (const { path, source } of sources) {
+      // An opening tag, allowing `=>` inside attribute expressions.
       for (const match of source.matchAll(
-        /<[A-Za-z]+Primitive\.Portal\b[^>]*>/g,
+        /<[A-Za-z]+Primitive\.Portal\b(?:[^>]|=>)*>/g,
       )) {
         portals += 1;
         if (!match[0].includes("container=")) {
-          missing.push(`${file.slice(root.length + 1)}: ${match[0]}`);
+          missing.push(`${path}: ${match[0]}`);
         }
       }
     }
@@ -219,17 +240,20 @@ describe("floating layers across the app", () => {
     expect(missing).toEqual([]);
   });
 
-  it("mount hand-made portals in the provided container", () => {
-    const missing = sources
-      .filter((file) => readFileSync(file, "utf8").includes("createPortal("))
-      .map((file) => file.slice(root.length + 1))
-      .filter((file) => !HOUSE_PORTALS.includes(file))
-      .filter(
-        (file) =>
-          !readFileSync(join(root, file), "utf8").includes(
-            "usePortalContainer()",
-          ),
-      );
+  it("mount every hand-made portal in the provided container", () => {
+    const missing: string[] = [];
+    for (const { path, source } of sources) {
+      if (HOUSE_PORTALS.includes(path)) continue;
+      for (const call of createPortalCalls(source)) {
+        // The target is the last argument: it must fall back to `body`
+        // only after the provided container.
+        const args = call.trim().replace(/,$/, "");
+        const target = args.slice(args.lastIndexOf(",") + 1).trim();
+        if (!/\?\?\s*document\.body$/.test(target)) {
+          missing.push(`${path}: createPortal(…, ${target})`);
+        }
+      }
+    }
     expect(missing).toEqual([]);
   });
 });
