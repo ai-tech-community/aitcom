@@ -286,7 +286,20 @@ describe("CommunityThemeScope floating layer", () => {
 
     expect(scope.contains(layer)).toBe(false);
     expect(layer).toHaveAttribute("data-community-theme-layer", "night");
-    expect(layer).toHaveClass("dark", "space-grotesk-variable", "contents");
+    expect(layer).toHaveClass(
+      "dark",
+      "space-grotesk-variable",
+      "contents",
+      // Text takes the look's ink, not the color `body` computed.
+      "text-foreground",
+    );
+    // Dialogs and sheets sit on the card's ground, not the canvas.
+    expect(layer.style.getPropertyValue("--background")).toBe(
+      night.tokens.card,
+    );
+    expect(layer.style.getPropertyValue("--foreground")).toBe(
+      night.tokens.cardForeground,
+    );
     expect(layer.style.getPropertyValue("--popover")).toBe(
       night.tokens.popover,
     );
@@ -302,6 +315,21 @@ describe("CommunityThemeScope floating layer", () => {
       name.startsWith("--community-cover-"),
     );
     expect(coverVars).toEqual([]);
+  });
+
+  it("keeps the house white ground for dialogs on a light look (canal)", () => {
+    const canal = resolveCommunityTheme("canal");
+    renderScope("canal");
+    const layer = layerOf();
+
+    expect(layer).not.toHaveClass("dark");
+    expect(layer).toHaveClass("text-foreground");
+    expect(layer.style.getPropertyValue("--background")).toBe("");
+    expect(layer.style.getPropertyValue("--foreground")).toBe(
+      canal.tokens.foreground,
+    );
+    expect(layer.style.getPropertyValue("--info")).toBe(canal.tokens.info);
+    expect(layer.style.colorScheme).toBe("light");
   });
 
   it("opens a popover from the page inside the layer", () => {

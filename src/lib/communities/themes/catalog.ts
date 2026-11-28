@@ -159,6 +159,9 @@ const SUNSET: CommunityTheme = {
 const NIGHT_STAR = "#33364D"; // oklch(0.34 0.04 278)
 const NIGHT_STAR_FAINT = "#2B2E44"; // oklch(0.31 0.04 278): a fainter second layer
 
+/** Night's cards, and its dialogs and menus. */
+const NIGHT_CARD = "#131521"; // oklch(0.2 0.025 275)
+
 /** Night's quiet fill: between the canvas and the borders. */
 const NIGHT_FILL = "#292E4A"; // oklch(0.31 0.05 275)
 
@@ -177,8 +180,8 @@ const NIGHT: CommunityTheme = {
   // with dark indigo cards. Borders are opaque here: `.dark` uses white at
   // 10–15% alpha, which a test cannot measure. Quiet fills (muted,
   // secondary, accent) are indigo too, so no gray `.dark` patch shows.
-  // Dialogs and menus (popover) take the card's dark indigo, so one opened
-  // from the page matches its cards.
+  // Dialogs and sheets sit on the card color in the floating layer; menus
+  // and popovers (popover) take it too, so all of them match the cards.
   // `.dark`'s destructive red is 4.1:1 on a star; this one is lighter.
   tokens: {
     background: "#181D37", // oklch(0.24 0.05 275): deep indigo
@@ -186,14 +189,14 @@ const NIGHT: CommunityTheme = {
     mutedForeground: "#A1A1A1", // oklch(0.708 0 0)
     border: "#3A405D", // oklch(0.38 0.05 275)
     input: "#454B69", // oklch(0.42 0.05 275)
-    card: "#131521", // oklch(0.2 0.025 275)
+    card: NIGHT_CARD,
     cardForeground: "#FAFAFA",
     muted: NIGHT_FILL,
     secondary: NIGHT_FILL,
     secondaryForeground: "#FAFAFA",
     accent: NIGHT_FILL,
     accentForeground: "#FAFAFA",
-    popover: "#131521", // the card's indigo
+    popover: NIGHT_CARD,
     popoverForeground: "#FAFAFA",
     destructive: "#FF7D7C", // oklch(0.74 0.16 22)
   },

@@ -1,12 +1,11 @@
 "use client";
 
 import {
+  useLayoutEffect,
   useState,
-  useSyncExternalStore,
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
 
@@ -92,21 +91,65 @@ function lookClassName(theme: CommunityTheme): string {
   );
 }
 
-/** Nothing to subscribe to: whether the page runs in a browser never changes. */
-function subscribeToNothing(): () => void {
-  return () => undefined;
+/**
+ * The floating layer's custom properties: the look, on its card's ground.
+ * A layer holds dialogs, sheets and menus, which sit on the look's card
+ * color, never on the canvas: light looks keep the house white (`--background`
+ * is not re-declared), a look with its own card (Night) re-declares the
+ * ground and its ink as the card's.
+ */
+function layerProperties(theme: CommunityTheme): Record<string, string> {
+  const properties = lookProperties(theme);
+  const { card, cardForeground, foreground } = theme.tokens;
+  delete properties["--background"];
+  if (card) {
+    properties["--background"] = card;
+    properties["--foreground"] = cardForeground ?? foreground;
+  }
+  return properties;
+}
+
+/** `lookProperties` keys are React style names; the DOM wants CSS names. */
+function cssPropertyName(name: string): string {
+  return name === "colorScheme" ? "color-scheme" : name;
 }
 
 /**
- * True once the page runs in the browser, false while it renders on the
- * server and during hydration, so the server and client markup agree.
+ * The look's floating layer: an element on `body` that dialogs, sheets,
+ * menus, popovers, selects and tooltips opened from the frame mount in
+ * (through `PortalContainerProvider`). Their portals put them on `body`,
+ * where the frame's tokens do not reach; the layer wears the same look, so
+ * they match it. It sits on `body`, so no frame ancestor can clip or
+ * re-stack them, and it is `display: contents`, so it adds no box.
+ *
+ * The element exists from the first render in the browser (null on the
+ * server, where no portal renders), so a layer open on first paint mounts
+ * in it at once instead of on `body` first.
  */
-function useIsClient(): boolean {
-  return useSyncExternalStore(
-    subscribeToNothing,
-    () => true,
-    () => false,
+function useFloatingLayer(theme: CommunityTheme): HTMLElement | null {
+  const [layer] = useState<HTMLElement | null>(() =>
+    typeof document === "undefined" ? null : document.createElement("div"),
   );
+
+  useLayoutEffect(() => {
+    if (!layer) return;
+    document.body.append(layer);
+    return () => layer.remove();
+  }, [layer]);
+
+  useLayoutEffect(() => {
+    if (!layer) return;
+    layer.setAttribute("data-community-theme-layer", theme.id);
+    // `text-foreground` makes text inside take the look's ink; without it,
+    // text inherits the color `body` computed from the house tokens.
+    layer.className = cn(lookClassName(theme), "contents text-foreground");
+    layer.removeAttribute("style");
+    for (const [name, value] of Object.entries(layerProperties(theme))) {
+      layer.style.setProperty(cssPropertyName(name), value);
+    }
+  }, [layer, theme]);
+
+  return layer;
 }
 
 /**
@@ -125,12 +168,7 @@ export function CommunityThemeScope({
   children: ReactNode;
 }) {
   const theme = resolveCommunityTheme(useShownCommunityThemeId(themeId));
-  const isClient = useIsClient();
-  // Dialogs, menus and popovers mount outside the frame (on `body`), where
-  // its tokens do not reach. They mount in this layer instead, which wears
-  // the same look but paints nothing itself, and which sits on `body` so no
-  // frame ancestor can clip or re-stack them.
-  const [layer, setLayer] = useState<HTMLElement | null>(null);
+  const layer = useFloatingLayer(theme);
   return (
     <div
       data-community-theme={theme.id}
@@ -144,17 +182,6 @@ export function CommunityThemeScope({
       <PortalContainerProvider container={layer}>
         {children}
       </PortalContainerProvider>
-      {isClient
-        ? createPortal(
-            <div
-              ref={setLayer}
-              data-community-theme-layer={theme.id}
-              className={cn(lookClassName(theme), "contents")}
-              style={lookProperties(theme) as CSSProperties}
-            />,
-            document.body,
-          )
-        : null}
     </div>
   );
 }

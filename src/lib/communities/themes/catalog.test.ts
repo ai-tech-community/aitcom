@@ -316,25 +316,48 @@ describe.each(COMMUNITY_THEMES)("look $id", (theme) => {
     expect(tokens.popoverForeground).toBeDefined();
   });
 
-  it("keeps labels, lines and status text readable in its dialogs and menus", () => {
-    if (!tokens.popover) return;
-    const popover = tokens.popover;
-    expect(
-      contrastRatio(tokens.mutedForeground, popover),
-      `${theme.id}: mutedForeground on popover`,
-    ).toBeGreaterThanOrEqual(AA_TEXT);
-    expect(
-      contrastRatio(tokens.border, popover),
-      `${theme.id}: border on popover`,
-    ).toBeGreaterThanOrEqual(
-      contrastRatio(plain.tokens.border, plain.tokens.background),
+  it("keeps text, lines and status readable in its dialogs and menus", () => {
+    // Dialogs and sheets sit on the card color in the floating layer;
+    // menus, popovers and selects on the popover color.
+    const grounds: [string, string][] = [["card", cardOf(theme)]];
+    if (tokens.popover) grounds.push(["popover", tokens.popover]);
+    const lineFloor = contrastRatio(
+      plain.tokens.border,
+      plain.tokens.background,
+    );
+    const inputFloor = contrastRatio(
+      plain.tokens.input,
+      plain.tokens.background,
     );
     const status = statusOf(theme);
-    for (const name of STATUS_NAMES) {
+    for (const [where, ground] of grounds) {
+      const ink =
+        where === "popover"
+          ? tokens.popoverForeground
+          : (tokens.cardForeground ?? tokens.foreground);
+      expect(ink, `${theme.id}: ink on ${where}`).toBeDefined();
       expect(
-        contrastRatio(status[name], popover),
-        `${theme.id}: ${name} on popover`,
+        contrastRatio(ink!, ground),
+        `${theme.id}: text on ${where}`,
       ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(tokens.mutedForeground, ground),
+        `${theme.id}: mutedForeground on ${where}`,
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(
+        contrastRatio(tokens.border, ground),
+        `${theme.id}: border on ${where}`,
+      ).toBeGreaterThanOrEqual(lineFloor);
+      expect(
+        contrastRatio(tokens.input, ground),
+        `${theme.id}: input on ${where}`,
+      ).toBeGreaterThanOrEqual(inputFloor);
+      for (const name of STATUS_NAMES) {
+        expect(
+          contrastRatio(status[name], ground),
+          `${theme.id}: ${name} on ${where}`,
+        ).toBeGreaterThanOrEqual(AA_TEXT);
+      }
     }
   });
 
