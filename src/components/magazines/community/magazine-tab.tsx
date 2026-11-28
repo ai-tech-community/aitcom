@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUpRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 
@@ -26,28 +27,6 @@ function deskFor(role: MagazineRole | null): "edit" | "write" | null {
   if (roleCan(role, "edit")) return "edit";
   if (roleCan(role, "write")) return "write";
   return null;
-}
-
-function MagazineDesk({
-  slug,
-  role,
-}: {
-  slug: string;
-  role: MagazineRole | null;
-}) {
-  const desk = deskFor(role);
-  switch (desk) {
-    case "edit":
-      return <EditorDesk slug={slug} canManage={roleCan(role, "manage")} />;
-    case "write":
-      return <ContributorDesk slug={slug} />;
-    case null:
-      return null;
-    default: {
-      const unreachable: never = desk;
-      return unreachable;
-    }
-  }
 }
 
 /** A community without a magazine, as its editors see it (preflight F8). */
@@ -156,6 +135,8 @@ export function MagazineTab({
 }) {
   const t = useTranslations("magazineEditor.tab");
   const latestId = useId();
+  const deskId = useId();
+  const tEditor = useTranslations("magazineEditor");
   const { magazine, latest, issues, viewerIsEditor, viewerRole, draftIssues } =
     data;
 
@@ -165,32 +146,22 @@ export function MagazineTab({
     ) : null;
   }
 
+  const desk = deskFor(viewerRole);
   const past = latest
     ? issues.filter((issue) => issue.id !== latest.id)
     : issues;
 
   return (
-    <div className="@container flex flex-col gap-10">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-2">
-          <h2 className="font-community-heading text-2xl font-semibold tracking-tight text-balance break-words">
-            {magazine.name}
-          </h2>
-          {magazine.description && (
-            <p className="text-muted-foreground max-w-[72ch] text-sm leading-relaxed">
-              {magazine.description}
-            </p>
-          )}
-        </div>
-        <div className="flex min-w-0 flex-wrap items-start gap-3">
-          <SubscribeButton
-            magazineSlug={magazine.slug}
-            magazineName={magazine.name}
-          />
-          <Button variant="outline" size="sm" asChild>
-            <Link href={magazinePath(magazine)}>{t("magazinePage")}</Link>
-          </Button>
-        </div>
+    <div className="@container flex min-w-0 flex-col gap-7 @3xl:gap-9">
+      <header className="flex min-w-0 flex-col gap-2">
+        <h2 className="font-community-heading text-3xl leading-tight font-semibold tracking-tight text-balance break-words @2xl:text-4xl">
+          {magazine.name}
+        </h2>
+        {magazine.description && (
+          <p className="text-muted-foreground max-w-[65ch] text-sm leading-relaxed break-words @2xl:text-base">
+            {magazine.description}
+          </p>
+        )}
       </header>
 
       {latest ? (
@@ -199,8 +170,7 @@ export function MagazineTab({
             issue={latest}
             labelId={latestId}
             label={t("latest")}
-            showCommunity={false}
-            emphasis="ink"
+            variant="community"
           />
         </section>
       ) : viewerIsEditor && draftIssues.length > 0 ? null : (
@@ -215,13 +185,48 @@ export function MagazineTab({
         />
       )}
 
+      <div className="flex min-w-0 flex-wrap items-start gap-x-4 gap-y-3 border-b pb-5">
+        <Button variant="outline" size="sm" asChild>
+          <Link href={magazinePath(magazine)}>
+            {t("magazinePage")}
+            <ArrowUpRight aria-hidden="true" />
+          </Link>
+        </Button>
+        <SubscribeButton
+          magazineSlug={magazine.slug}
+          magazineName={magazine.name}
+        />
+        {desk && (
+          <a
+            href={`#${deskId}`}
+            className="text-muted-foreground hover:text-foreground inline-flex min-h-8 items-center gap-1.5 text-sm underline underline-offset-4"
+          >
+            {desk === "edit"
+              ? tEditor("desk.label")
+              : tEditor("contributorDesk.label")}
+            <ArrowDown aria-hidden="true" className="size-3.5" />
+          </a>
+        )}
+      </div>
+
+      {past.length > 0 && <PastIssues issues={past} />}
+
       {viewerIsEditor && draftIssues.length > 0 && (
         <DraftIssues issues={draftIssues} />
       )}
 
-      <MagazineDesk slug={communitySlug} role={viewerRole} />
-
-      {past.length > 0 && <PastIssues issues={past} />}
+      {desk && (
+        <div id={deskId} tabIndex={-1} className="scroll-mt-24">
+          {desk === "edit" ? (
+            <EditorDesk
+              slug={communitySlug}
+              canManage={roleCan(viewerRole, "manage")}
+            />
+          ) : (
+            <ContributorDesk slug={communitySlug} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

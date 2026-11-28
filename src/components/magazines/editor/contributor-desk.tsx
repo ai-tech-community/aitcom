@@ -37,17 +37,19 @@ export function ContributorDesk({ slug }: { slug: string }) {
   return (
     <section
       aria-labelledby={labelId}
-      className="flex min-w-0 flex-col gap-6 rounded-xl border p-4 @xl:p-6"
+      className="bg-card text-card-foreground flex min-w-0 flex-col gap-6 rounded-xl border p-4 @xl:p-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id={labelId} className="text-lg font-semibold tracking-tight">
-          {t("label")}
-        </h2>
+        <div className="grid min-w-0 gap-1">
+          <h2 id={labelId} className="text-xl font-semibold tracking-tight">
+            {t("label")}
+          </h2>
+          <SubscriberCountLine slug={slug} />
+        </div>
         <Button variant="ink" size="sm" asChild>
           <Link href={magazineWritePath(slug)}>{t("write")}</Link>
         </Button>
       </div>
-      <SubscriberCountLine slug={slug} />
       {error && (
         <p role="alert" className="text-destructive text-sm">
           {error}

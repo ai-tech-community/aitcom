@@ -153,6 +153,41 @@ describe("CommunityNav", () => {
     ).not.toHaveAttribute("aria-current");
   });
 
+  it("reveals an offscreen current tab within the horizontal strip", () => {
+    m.pathname = "/communities/mlops/magazine";
+    m.spacesError = false;
+    m.spaces = [
+      {
+        id: "mag",
+        name: null,
+        kind: "builtin",
+        builtinSurface: "magazine",
+        slug: "magazine",
+      },
+    ];
+    const width = vi
+      .spyOn(Element.prototype, "scrollWidth", "get")
+      .mockReturnValue(800);
+    const visible = vi
+      .spyOn(Element.prototype, "clientWidth", "get")
+      .mockReturnValue(360);
+    const rect = vi
+      .spyOn(Element.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: Element) {
+        return this.tagName === "NAV"
+          ? new DOMRect(0, 0, 360, 44)
+          : new DOMRect(500, 0, 90, 44);
+      });
+    try {
+      renderNav();
+      expect(screen.getByRole("navigation").scrollLeft).toBe(230);
+    } finally {
+      rect.mockRestore();
+      visible.mockRestore();
+      width.mockRestore();
+    }
+  });
+
   it("marks the open tab, not Overview, on a tab's own page", () => {
     m.pathname = "/communities/mlops/forum/some-thread";
     renderNav();
