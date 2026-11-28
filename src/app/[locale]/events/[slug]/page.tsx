@@ -382,6 +382,7 @@ export default async function EventDetailPage({
   }
 
   const now = new Date();
+  const cancelled = event.status === "cancelled";
   const ended =
     redesign &&
     eventDetailHasEnded(
@@ -556,6 +557,7 @@ export default async function EventDetailPage({
     <EventReservationRail
       slug={slug}
       ended={ended}
+      cancelled={cancelled}
       day={eventDay}
       date={event.date}
       startTime={event.startTime ?? null}
@@ -592,7 +594,7 @@ export default async function EventDetailPage({
           sourceUrl={sourceUrl}
           questions={registrationQuestions}
           timing={registrationTiming}
-          cancelled={event.status === "cancelled"}
+          cancelled={cancelled}
           ended={ended}
         />
       }

@@ -46,3 +46,32 @@ it("shows the event-local date, time and place with an independent organizer act
     screen.getByRole("button", { name: "Attendees" }),
   );
 });
+
+it("shows the missing time zone notice beside a scheduled time", () => {
+  render(
+    <NextIntlClientProvider locale="en" messages={en}>
+      <EventAgendaRow
+        row={{
+          ...event,
+          time: "19:00",
+          timeRange: "19:00–20:30",
+          timezone: null,
+        }}
+      />
+    </NextIntlClientProvider>,
+  );
+  expect(screen.getByText("19:00–20:30")).toBeVisible();
+  expect(screen.getByText("Time zone not specified")).toBeVisible();
+});
+
+it("omits the missing time zone notice when the time is still to be announced", () => {
+  render(
+    <NextIntlClientProvider locale="en" messages={en}>
+      <EventAgendaRow
+        row={{ ...event, time: null, timeRange: null, timezone: null }}
+      />
+    </NextIntlClientProvider>,
+  );
+  expect(screen.getByText("Time to be announced")).toBeVisible();
+  expect(screen.queryByText("Time zone not specified")).not.toBeInTheDocument();
+});

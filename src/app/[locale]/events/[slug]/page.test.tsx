@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   member: false,
   role: "member",
   date: "2026-10-18T09:00:00.000Z",
+  status: "published",
   related: [] as Record<string, unknown>[],
   description: null as null | { root: { children: unknown[] } },
   coverImage: null as { id: number; url: string } | null,
@@ -95,7 +96,7 @@ vi.mock("@/server/payload", () => ({
           id: 85,
           slug: "sunday-10k-social-run-demo-1792244773622",
           title: "Sunday 10K Social Run (demo)",
-          status: "published",
+          status: state.status,
           communityId: "runners",
           date: state.date,
           location: "Amsterdam",
@@ -152,6 +153,7 @@ beforeEach(() => {
   state.member = false;
   state.role = "member";
   state.date = "2026-10-18T09:00:00.000Z";
+  state.status = "published";
   state.related = [];
   state.description = null;
   state.coverImage = null;
@@ -411,6 +413,31 @@ describe("redesigned event detail", () => {
       ),
     ).toBe(false);
   });
+
+  it.each([
+    ["published", true],
+    ["cancelled", false],
+  ])(
+    "shows the calendar link for an upcoming %s event: %s",
+    async (status, calendarVisible) => {
+      state.userId = "member-1";
+      state.member = true;
+      state.date = "2099-12-12";
+      state.status = status;
+      const tree = elements(await EventDetailPage({ params: params() }));
+      const rail = tree.find((node) => node.type === EventReservationRail);
+      expect(rail?.props).toMatchObject({ ended: false });
+      const rendered = elements(
+        await EventReservationRail(
+          rail?.props as Parameters<typeof EventReservationRail>[0],
+        ),
+      );
+      const calendarHref = `/api/events/${(await params()).slug}/ics`;
+      expect(rendered.some((node) => node.props.href === calendarHref)).toBe(
+        calendarVisible,
+      );
+    },
+  );
 
   it("keeps private event details hidden from guests", async () => {
     await expect(EventDetailPage({ params: params() })).rejects.toThrow(

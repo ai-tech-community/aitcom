@@ -39,12 +39,7 @@ export function EventAgendaRow({
   const date =
     dateLabel ?? (row.dateTime ? formatEventDay(row.dateTime, locale) : null);
   const time = row.timeRange ?? row.time;
-  const timezone =
-    row.timezone === null
-      ? t("timeZoneUnspecified")
-      : !time && row.timezone
-        ? row.timezone.replaceAll("_", " ")
-        : null;
+  const timezone = !time ? row.timezone?.replaceAll("_", " ") : null;
   const Arrow = row.link?.kind === "external" ? ArrowUpRight : ArrowRight;
 
   return (
@@ -60,7 +55,10 @@ export function EventAgendaRow({
             {date ? <span>{date}</span> : null}
             {date ? <span aria-hidden="true">·</span> : null}
             <span>{time ?? t("timeToBeAnnounced")}</span>
-            {timezone ? <span className="font-sans">{timezone}</span> : null}
+            {timezone ? <span>{timezone}</span> : null}
+            {time && row.timezone === null ? (
+              <span className="font-sans">{t("timeZoneUnspecified")}</span>
+            ) : null}
           </div>
           <div
             className={cn(

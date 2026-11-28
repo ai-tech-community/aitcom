@@ -7160,6 +7160,7 @@
       "capacity": "{count, plural, one {# plek in totaal} other {# plekken in totaal}}",
       "moreAttendees": "+{count} meer",
       "hackathonNav": "Hackathononderdelen",
+      "hackathonManageNav": "Onderdelen voor hackathonbeheer",
       "organizerAttendees": "Deelnemers",
       "activeAttendees": "Actief",
       "activeAttendeeCount": "{count, plural, one {# actieve aanmelding} other {# actieve aanmeldingen}}",

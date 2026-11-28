@@ -7160,6 +7160,7 @@
       "capacity": "{count, plural, one {# place total} other {# places total}}",
       "moreAttendees": "+{count} more",
       "hackathonNav": "Hackathon sections",
+      "hackathonManageNav": "Hackathon management sections",
       "organizerAttendees": "Attendees",
       "activeAttendees": "Active",
       "activeAttendeeCount": "{count, plural, one {# active sign-up} other {# active sign-ups}}",

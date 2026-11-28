@@ -10,6 +10,7 @@ import type { EventDetailDay } from "./event-detail-when";
 export async function EventReservationRail({
   slug,
   ended,
+  cancelled,
   day,
   date,
   startTime,
@@ -28,6 +29,7 @@ export async function EventReservationRail({
 }: {
   slug: string;
   ended: boolean;
+  cancelled: boolean;
   day: EventDetailDay;
   date: string;
   startTime: string | null;
@@ -59,18 +61,25 @@ export async function EventReservationRail({
           <div className="flex items-start gap-3">
             <EventDateBlock {...day} />
             <div className="min-w-0 space-y-1 pt-0.5">
-              <p className="text-sm font-semibold">{day.label}</p>
+              <p className="font-mono text-sm font-semibold tabular-nums">
+                {day.label}
+              </p>
               <EventTimeDisplay
                 date={date}
                 startTime={startTime}
                 endTime={endTime}
                 timezone={timezone}
+                className="font-mono tabular-nums"
               />
               {startTime ? (
                 <p className="text-muted-foreground text-xs break-words">
-                  {timezone
-                    ? timezone.replaceAll("_", " ")
-                    : t("timeZoneUnspecified")}
+                  {timezone ? (
+                    <span className="font-mono">
+                      {timezone.replaceAll("_", " ")}
+                    </span>
+                  ) : (
+                    t("timeZoneUnspecified")
+                  )}
                 </p>
               ) : null}
             </div>
@@ -114,7 +123,7 @@ export async function EventReservationRail({
           ) : null}
           {registration}
           {followUp}
-          {!ended ? (
+          {!ended && !cancelled ? (
             <Button asChild variant="outline" className="min-h-11 w-full">
               <a href={`/api/events/${encodeURIComponent(slug)}/ics`}>
                 <CalendarPlus aria-hidden="true" />

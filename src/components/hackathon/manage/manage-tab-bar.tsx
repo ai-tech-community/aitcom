@@ -30,7 +30,7 @@ export function ManageTabBar({
 
   return (
     <RouteTabs
-      aria-label={redesign ? t("hackathonNav") : "Manage sections"}
+      aria-label={redesign ? t("hackathonManageNav") : "Manage sections"}
       activeTone={redesign ? "ink" : undefined}
       className={redesign ? "min-h-11 [&_a]:min-h-11" : undefined}
       tabs={ORDER.map((key) => {
