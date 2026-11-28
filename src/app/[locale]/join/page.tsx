@@ -16,6 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
       kicker: t("kicker"),
     }),
     alternates: await localeAlternates("/join"),
+    robots: { index: true, follow: true },
   };
 }
 

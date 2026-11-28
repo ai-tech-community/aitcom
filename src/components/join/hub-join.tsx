@@ -1,7 +1,17 @@
 import { Link } from "@/i18n/navigation";
 import { JsonLd } from "@/components/json-ld";
+import { MemberProof } from "@/components/join/member-proof";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
+import { WeeklyQuestion } from "@/components/join/weekly-question";
 import { SectionLabel } from "@/components/ui/section-label";
+import {
+  JOIN_MEMBER_PROOF,
+  JOIN_WEEKLY_QUESTION,
+  consentedJoinMembers,
+  resolveJoinWeeklyQuestion,
+  type ConsentedJoinMember,
+  type JoinWeeklyQuestion,
+} from "@/lib/join-page-proof";
 import { GUIDE_PATHS } from "@/lib/seo-guides";
 
 export type HubJoinKey =
@@ -22,6 +32,8 @@ export type HubJoinKey =
   | "faqCofounderAnswer"
   | "faqFreeQuestion"
   | "faqFreeAnswer"
+  | "memberProofLabel"
+  | "weeklyQuestionLabel"
   | "memberKicker"
   | "memberTitle"
   | "memberLead"
@@ -29,13 +41,6 @@ export type HubJoinKey =
   | "hubCta"
   | "homeLabel"
   | "guideLabel";
-
-const AUDIENCES = [
-  ["audienceFounders", "lead"],
-  ["audienceJobSeekers", "audienceJobSeekersBody"],
-  ["audienceBuilders", "audienceBuildersBody"],
-  ["audienceHosts", "audienceHostsBody"],
-] as const satisfies ReadonlyArray<readonly [HubJoinKey, HubJoinKey]>;
 
 const FAQ = [
   ["faqAddQuestion", "faqAddAnswer"],
@@ -47,10 +52,14 @@ export function HubJoin({
   t,
   signupHref,
   promoteJoin = true,
+  memberProof = consentedJoinMembers(JOIN_MEMBER_PROOF),
+  weeklyQuestion = resolveJoinWeeklyQuestion(JOIN_WEEKLY_QUESTION),
 }: {
   t: (key: HubJoinKey) => string;
   signupHref: string;
   promoteJoin?: boolean;
+  memberProof?: readonly ConsentedJoinMember[];
+  weeklyQuestion?: JoinWeeklyQuestion | null;
 }) {
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -60,23 +69,10 @@ export function HubJoin({
       </SectionLabel>
 
       <div className="mt-8 max-w-2xl space-y-4">
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+        <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
           {promoteJoin ? t("title") : t("memberTitle")}
         </h1>
-        {promoteJoin ? (
-          <ul className="space-y-4">
-            {AUDIENCES.map(([labelKey, bodyKey]) => (
-              <li key={labelKey}>
-                <p className="text-lg leading-relaxed">
-                  <span className="text-foreground font-semibold">
-                    {t(labelKey)}:{" "}
-                  </span>
-                  <span className="text-muted-foreground">{t(bodyKey)}</span>
-                </p>
-              </li>
-            ))}
-          </ul>
-        ) : (
+        {!promoteJoin && (
           <p className="text-muted-foreground text-lg leading-relaxed">
             {t("memberLead")}
           </p>
@@ -102,6 +98,16 @@ export function HubJoin({
           </Link>
         </p>
       </div>
+
+      {promoteJoin ? (
+        <MemberProof label={t("memberProofLabel")} members={memberProof} />
+      ) : null}
+      {promoteJoin ? (
+        <WeeklyQuestion
+          label={t("weeklyQuestionLabel")}
+          question={weeklyQuestion}
+        />
+      ) : null}
 
       {promoteJoin ? (
         <section className="mt-16 max-w-2xl" aria-labelledby="join-faq">

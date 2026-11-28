@@ -111,6 +111,17 @@ describe("join path landing", () => {
     );
   });
 
+  it("keeps join-page UTMs on the signup CTA", () => {
+    expect(
+      getJoinSignupHref(
+        "?utm_source=aitcom&utm_medium=events&utm_campaign=ai-events",
+        "en",
+      ),
+    ).toBe(
+      "/auth/signup?utm_source=aitcom&utm_medium=events&utm_campaign=ai-events&redirect=%2Fen%2Fcommunities%2Fait",
+    );
+  });
+
   it("keeps a join-door signup target the link already carries", () => {
     expect(
       getJoinSignupHref("?redirect=%2Fen%2Fcommunities%2Frotterdam", "en"),
