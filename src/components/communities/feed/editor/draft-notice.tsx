@@ -6,14 +6,20 @@ import { History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Says the text came back from an unsent draft (as a status, so screen
- * readers learn the field was filled), and offers to drop it.
+ * Shows that unsent text was restored and offers to discard it. Callers with
+ * a persistent live region can turn off the inline announcement.
  */
-export function DraftNotice({ onDiscard }: { onDiscard: () => void }) {
+export function DraftNotice({
+  onDiscard,
+  announce = true,
+}: {
+  onDiscard: () => void;
+  announce?: boolean;
+}) {
   const t = useTranslations("communities.feed.editor");
   return (
     <p
-      role="status"
+      role={announce ? "status" : undefined}
       className="text-muted-foreground flex items-center gap-1.5 text-xs"
     >
       <History aria-hidden="true" className="size-3.5" />

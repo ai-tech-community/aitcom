@@ -10,6 +10,7 @@ import {
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
+import { ConfirmProvider } from "@/components/confirm-dialog";
 import { createMemoryStorage } from "@/test/memory-storage";
 import { PostComposer, type PostComposerDisclosure } from "./post-composer";
 import type { VideoPostState } from "./use-video-post";
@@ -130,19 +131,21 @@ function renderComposer({
 } = {}) {
   const composer = () => (
     <NextIntlClientProvider locale="en" messages={en}>
-      <PostComposer
-        slug="mlops"
-        userId="u1"
-        canPost
-        canAnnounce={canAnnounce}
-        neutralSubmit={neutralSubmit}
-        renderDisclosure={renderDisclosure}
-        home={
-          home
-            ? { communityName: "Workbench Notes", authorName: "Paper Kite" }
-            : undefined
-        }
-      />
+      <ConfirmProvider>
+        <PostComposer
+          slug="mlops"
+          userId="u1"
+          canPost
+          canAnnounce={canAnnounce}
+          neutralSubmit={neutralSubmit}
+          renderDisclosure={renderDisclosure}
+          home={
+            home
+              ? { communityName: "Workbench Notes", authorName: "Paper Kite" }
+              : undefined
+          }
+        />
+      </ConfirmProvider>
     </NextIntlClientProvider>
   );
   const view = render(composer());
@@ -187,7 +190,7 @@ afterEach(() => {
 });
 
 describe("PostComposer on community home", () => {
-  it("opens the redesigned first-week editor directly and returns focus to its row", () => {
+  it("opens the redesigned first-week editor directly and returns focus to its row", async () => {
     const { rerender } = renderComposer({
       home: true,
       neutralSubmit: true,
@@ -235,7 +238,12 @@ describe("PostComposer on community home", () => {
     expect(row).toBeEnabled();
     expect(screen.getByRole("alert")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
-    expect(row).toHaveFocus();
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Discard",
+      }),
+    );
+    await waitFor(() => expect(row).toHaveFocus());
     expect(row).toHaveAttribute("aria-expanded", "false");
     expect(
       screen.queryByRole("button", { name: "Start a post" }),
@@ -260,16 +268,31 @@ describe("PostComposer on community home", () => {
     expect(m.createPost).not.toHaveBeenCalled();
     expect(postButton()).toHaveAttribute("data-variant", "secondary");
     fireEvent.change(text, { target: { value: "Has anyone repaired this?" } });
+    expect(screen.getByText("Unsent draft", { selector: "p" })).toBeVisible();
+    expect(
+      screen.getAllByRole("status").filter((node) => node.textContent),
+    ).toEqual([]);
     fireEvent.click(screen.getByRole("button", { name: "Close composer" }));
     expect(
       screen.getByRole("button", { name: "Continue draft" }),
     ).toHaveFocus();
     unmount();
     renderComposer({ home: true });
+    const restoredStatus = screen.getByRole("status");
+    expect(restoredStatus).toBeEmptyDOMElement();
     fireEvent.click(screen.getByRole("button", { name: "Continue draft" }));
-    expect(screen.getByRole("textbox")).toHaveValue(
-      "Has anyone repaired this?",
+    const restoredText = screen.getByRole("textbox");
+    expect(restoredText).toHaveValue("Has anyone repaired this?");
+    expect(
+      screen.getAllByRole("status").filter((node) => node.textContent),
+    ).toEqual([restoredStatus]);
+    expect(restoredStatus).toHaveTextContent(
+      en.communities.feed.editor.draftRestored,
     );
+    fireEvent.change(restoredText, {
+      target: { value: "Adding some details" },
+    });
+    expect(restoredStatus).toBeEmptyDOMElement();
   });
 
   it("keeps the post in place on failure, retries it, and clears it on success", () => {
@@ -297,7 +320,7 @@ describe("PostComposer on community home", () => {
     expect(window.localStorage.length).toBe(0);
   });
 
-  it("replaces restored-draft feedback with one notice and discards the failed draft", () => {
+  it("keeps the failed draft and attachment until discard is confirmed", async () => {
     const original = renderComposer({ home: true });
     fireEvent.click(screen.getByRole("button", { name: "Start a post" }));
     fireEvent.change(screen.getByRole("textbox"), {
@@ -308,8 +331,11 @@ describe("PostComposer on community home", () => {
     const restored = renderComposer({ home: true });
     fireEvent.click(screen.getByRole("button", { name: "Continue draft" }));
     expect(
-      screen.getByText(en.communities.feed.editor.draftRestored),
+      screen.getByText(en.communities.feed.editor.draftRestored, {
+        selector: "p",
+      }),
     ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: en.composer.gif }));
     fireEvent.click(postButton());
     act(() => m.postMutation.onError?.({}));
 
@@ -324,11 +350,37 @@ describe("PostComposer on community home", () => {
       within(alert.parentElement!).getByRole("button", {
         name: "Retry",
       }),
-    ).toBeVisible();
-    fireEvent.click(
-      within(alert.parentElement!).getByRole("button", { name: "Discard" }),
+    ).toHaveAttribute("data-variant", "ink");
+    const discard = within(alert.parentElement!).getByRole("button", {
+      name: "Discard",
+    });
+    fireEvent.click(discard);
+    const dialog = screen.getByRole("alertdialog", { name: "Discard draft?" });
+    expect(dialog).toHaveAccessibleDescription(
+      "Your draft text, any attachments or poll, and your topic selection will be lost.",
     );
-    expect(screen.getByRole("button", { name: "Start a post" })).toHaveFocus();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(discard).toHaveFocus());
+    expect(screen.getByRole("textbox")).toHaveValue("A saved draft");
+    expect(screen.getByRole("img", { name: "Party parrot" })).toBeVisible();
+    expect(window.localStorage.length).toBe(1);
+
+    fireEvent.click(discard);
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Discard",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Start a post" }),
+      ).toHaveFocus(),
+    );
+    expect(window.localStorage.length).toBe(0);
+    fireEvent.click(screen.getByRole("button", { name: "Start a post" }));
+    expect(
+      screen.queryByRole("img", { name: "Party parrot" }),
+    ).not.toBeInTheDocument();
     restored.unmount();
 
     renderComposer({ home: true });
@@ -512,6 +564,56 @@ describe("PostComposer video", () => {
 });
 
 describe("PostComposer pictures", () => {
+  it("shows upload progress at the attachment and button progress during submission", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 1, url: "https://cdn.test/a.png" }),
+      }),
+    );
+    const { imageInput, rerender } = renderComposer({ home: true });
+    fireEvent.click(screen.getByRole("button", { name: "Start a post" }));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Look at this" },
+    });
+    fireEvent.change(imageInput(), {
+      target: { files: [new File(["img"], "a.png", { type: "image/png" })] },
+    });
+
+    const pictures = screen.getByRole("list", {
+      name: en.communities.feed.editor.pictures,
+    });
+    expect(
+      within(pictures).getByRole("listitem").querySelector(".animate-spin"),
+    ).toBeVisible();
+    expect(screen.getByText("Uploading 1 picture")).toHaveAttribute(
+      "role",
+      "status",
+    );
+    expect(postButton()).not.toHaveAttribute("aria-busy", "true");
+    expect(postButton()).toHaveAttribute("aria-disabled", "true");
+    expect(postButton()).toHaveAccessibleDescription(
+      en.communities.feed.editor.waitForUpload,
+    );
+    fireEvent.click(postButton());
+    expect(m.createPost).not.toHaveBeenCalled();
+
+    await waitFor(() =>
+      expect(postButton()).not.toHaveAttribute("aria-disabled"),
+    );
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ images: [{ id: 1, alt: "" }] }),
+    );
+    m.isPosting = true;
+    rerender();
+    expect(screen.getByRole("button", { name: "Posting…" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+  });
+
   it("does not post while a picture is still uploading, even with Ctrl+Enter", () => {
     vi.stubGlobal(
       "fetch",

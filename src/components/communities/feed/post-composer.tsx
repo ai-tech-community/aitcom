@@ -11,6 +11,7 @@ import {
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useSiteShell } from "@/components/site-chrome-gate";
 import { EmojiPickerButton } from "@/components/composer/emoji-picker-button";
 import {
@@ -98,6 +99,7 @@ export function PostComposer({
   const te = useTranslations("communities.feed.editor");
   const tv = useTranslations("communities.video");
   const th = useTranslations("redesign.homeFeed");
+  const confirm = useConfirm();
   const inCommunityShell = useSiteShell() === "community";
   const hasDisclosure = !!home || !!renderDisclosure;
   const editorId = useId();
@@ -228,7 +230,18 @@ export function PostComposer({
     videoPost.reset();
   };
 
-  const discard = () => {
+  const discard = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    const discardButton = event.currentTarget;
+    const confirmed = await confirm({
+      title: th("discardDraftTitle"),
+      description: th("discardDraftDescription"),
+      confirmLabel: te("discardDraft"),
+      destructive: true,
+      returnFocus: () =>
+        discardButton.isConnected ? discardButton : trigger.current,
+    });
+    if (!confirmed) return;
+
     text.restore("");
     draft.clear();
     pictures.clear();
@@ -259,7 +272,8 @@ export function PostComposer({
     void submitVideo(videoFile);
   };
 
-  const busy = createPost.isPending || videoBusy || isUploading;
+  const submitting = createPost.isPending || videoBusy;
+  const busy = submitting || isUploading;
   // A picture that did not upload is retried or removed before posting;
   // a poll needs every answer filled in, none twice.
   const blocked = pictures.failed || pollProblemNow !== null;
@@ -272,10 +286,11 @@ export function PostComposer({
   const noWords = content.trim() === "";
   const ready =
     (!noWords || wordsOptional) && !text.tooLong && !busy && !blocked;
-  const progressLabel = th(isUploading ? "preparingPost" : "posting");
+  const progressLabel = th("posting");
   let disabledReason: string | undefined;
   if (home && !ready) {
-    if (busy) disabledReason = progressLabel;
+    if (submitting) disabledReason = progressLabel;
+    else if (isUploading) disabledReason = te("waitForUpload");
     else if (pictures.failed) disabledReason = te("fixPictures");
     else if (text.tooLong) disabledReason = te("limitOver");
     else if (noWords && poll) disabledReason = te("pollAskQuestion");
@@ -333,13 +348,13 @@ export function PostComposer({
       disabled={!home && !ready}
       aria-disabled={disabledReason ? true : undefined}
       aria-describedby={disabledReason ? disabledReasonId : undefined}
-      aria-busy={busy}
+      aria-busy={submitting}
       aria-keyshortcuts={SEND_SHORTCUTS}
     >
-      {busy && !home ? (
+      {submitting && !home ? (
         <Loader2 aria-hidden="true" className="size-4 animate-spin" />
       ) : null}
-      {home && busy ? progressLabel : t("post")}
+      {home && submitting ? progressLabel : t("post")}
     </Button>
   );
 
@@ -436,7 +451,7 @@ export function PostComposer({
           <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 empty:hidden">
             {topicPicker}
             {hasDraft && !publishError ? (
-              <p role="status" className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-sm">
                 {th("unsentDraft")}
               </p>
             ) : null}
@@ -590,11 +605,6 @@ export function PostComposer({
               >
                 {disabledReason ?? te("submitShortcut")}
               </TooltipContent>
-              {disabledReason ? (
-                <span id={disabledReasonId} className="sr-only">
-                  {disabledReason}
-                </span>
-              ) : null}
             </Tooltip>
           ) : (
             <ShortcutHint hint={te("submitShortcut")}>
@@ -627,6 +637,7 @@ export function PostComposer({
             </p>
           ) : draft.restored && !publishError ? (
             <DraftNotice
+              announce={!home}
               onDiscard={() => {
                 text.restore("");
                 draft.clear();
@@ -635,6 +646,11 @@ export function PostComposer({
           ) : null
         }
       />
+      {disabledReason ? (
+        <span id={disabledReasonId} className="sr-only">
+          {disabledReason}
+        </span>
+      ) : null}
       {publishError ? (
         <div className="border-destructive/30 bg-card mt-2 flex items-center justify-between gap-2 rounded-md border px-3 py-2">
           <p
@@ -656,18 +672,17 @@ export function PostComposer({
               className="min-h-11 border border-transparent sm:min-h-8"
               data-feed-submit=""
               aria-disabled={!ready}
-              aria-busy={busy}
+              aria-describedby={disabledReason ? disabledReasonId : undefined}
+              aria-busy={submitting}
             >
-              {busy
-                ? th(isUploading ? "preparingPost" : "posting")
-                : th("retryPost")}
+              {submitting ? progressLabel : th("retryPost")}
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="min-h-11 sm:min-h-8"
-              onClick={discard}
+              onClick={(event) => void discard(event)}
               disabled={busy}
             >
               {te("discardDraft")}
@@ -694,23 +709,33 @@ export function PostComposer({
     </form>
   );
 
-  if (renderDisclosure) {
-    return renderDisclosure({
-      editor,
-      editorId,
-      expanded,
-      toggleDisabled: expanded && busy,
-      onToggle: expanded ? close : () => setExpanded(true),
-      triggerRef: trigger,
-    });
-  }
+  if (!hasDisclosure) return editor;
 
-  return home ? (
+  return (
     <>
-      {entry}
-      {editor}
+      {renderDisclosure ? (
+        renderDisclosure({
+          editor,
+          editorId,
+          expanded,
+          toggleDisabled: expanded && busy,
+          onToggle: expanded ? close : () => setExpanded(true),
+          triggerRef: trigger,
+        })
+      ) : (
+        <>
+          {entry}
+          {editor}
+        </>
+      )}
+      {/* Keep the live region mounted while either disclosure is closed. */}
+      {home ? (
+        <span role="status" className="sr-only">
+          {expanded && draft.restored && !publishError
+            ? te("draftRestored")
+            : ""}
+        </span>
+      ) : null}
     </>
-  ) : (
-    editor
   );
 }

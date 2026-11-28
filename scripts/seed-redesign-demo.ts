@@ -1,6 +1,6 @@
 /**
  * Seed the Workbench Notes redesign preview. Run through test-env.sh.
- * Use --feed-timestamps-only or --feed-topics-only for a shared preview.
+ * Use --feed-timestamps-only or --feed-topics-only to update the local aitcom_test preview.
  */
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";

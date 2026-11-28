@@ -64,15 +64,21 @@ export function FeedPage({
     feedPostPolicy === "all_members"
       ? isMember
       : canBroadcast(memberRole) || memberRole === "moderator";
-  const topics = api.topics.list.useQuery(
+  const {
+    data: homeTopics,
+    isLoading: topicsLoading,
+    isError: topicsFailed,
+  } = api.topics.list.useQuery(
     { communitySlug: slug },
     { enabled: !!home && isAuthenticated && isMember },
   );
+  const showTopicChips =
+    !topicsFailed && homeTopics !== undefined && homeTopics.length >= 2;
   const topicLabels = new Map(
-    topics.data?.map((topic) => [topic.slug, topicLabel(topic)]),
+    homeTopics?.map((topic) => [topic.slug, topicLabel(topic)]),
   );
   const currentTopic =
-    topics.data && !topicLabels.has(activeTopic) ? "all" : activeTopic;
+    showTopicChips && topicLabels.has(activeTopic) ? activeTopic : "all";
 
   const composer =
     user && canPost ? (
@@ -178,20 +184,15 @@ export function FeedPage({
               composer
             )}
 
-            {topics.isLoading ? (
+            {topicsLoading ? (
               <Skeleton className="h-11 w-full max-w-96 lg:h-8" />
-            ) : topics.isError && !topics.data ? (
-              <ErrorState
-                title={th("topicsError")}
-                onRetry={() => void topics.refetch()}
-              />
-            ) : topics.data?.length ? (
+            ) : showTopicChips ? (
               <div className="space-y-1.5">
                 <SectionLabel as="div" bordered={false} aria-hidden="true">
                   {th("topics")}
                 </SectionLabel>
                 <TopicChipsView
-                  topics={topics.data}
+                  topics={homeTopics}
                   active={currentTopic}
                   onSelect={setActiveTopic}
                   scrollOnMobile
