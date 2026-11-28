@@ -231,9 +231,13 @@ describe("floating layers across the app", () => {
         /<(?:[A-Za-z]+\.)?Portal\b(?:[^>]|=>)*>/g,
       )) {
         portals += 1;
+        // `container={name}`, where `name` holds `usePortalContainer()`.
+        const name = /container=\{(\w+)\}/.exec(match[0])?.[1];
         const passesHook =
-          match[0].includes("container={") &&
-          source.includes("usePortalContainer()");
+          name !== undefined &&
+          new RegExp(`\\b${name}\\s*=\\s*usePortalContainer\\(\\)`).test(
+            source,
+          );
         if (!passesHook) missing.push(`${path}: ${match[0]}`);
       }
     }
