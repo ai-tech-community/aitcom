@@ -125,7 +125,8 @@ whole frame. Rejected.
   left them in the house light look inside Night; #596 mounts them in a
   layer on `body` that carries the look's tokens (`PortalContainerProvider`,
   DESIGN.md "Floating layer"); dialogs owned by site-root providers read the
-  caller's layer when asked. Toasts still use the one site-wide toaster and
-  stay light (tracked on #596).
+  caller's layer when asked. Toasts (the one site-wide toaster) and the
+  community rules window (an inline window at the site root) still stay
+  light (tracked on #596).
 - Agents may later suggest a look through a `community_theme` draft that an
   admin approves, never apply one directly (spec, slice 2).
