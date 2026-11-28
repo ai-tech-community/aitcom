@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 
@@ -21,9 +22,11 @@ function formatDay(iso: string, locale: string): string {
 export function CommunitySectorNews({
   slug,
   hideEmpty = false,
+  home = false,
 }: {
   slug: string;
   hideEmpty?: boolean;
+  home?: boolean;
 }) {
   const t = useTranslations("communities.profile");
   const sectors = useTranslations("newsSectors");
@@ -38,7 +41,9 @@ export function CommunitySectorNews({
       </div>
     );
   }
-  if (!data || (hideEmpty && data.stories.length === 0)) return null;
+  if (!data) return null;
+  const hasStories = data.hasRealFeeds && data.stories.length > 0;
+  if ((home || hideEmpty) && !hasStories) return null;
 
   const sectorName = sectors(data.sector);
   return (
@@ -48,20 +53,27 @@ export function CommunitySectorNews({
         {data.hasRealFeeds && !data.selectedSources ? (
           <Link
             href={`/news?sector=${data.sector}`}
-            className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
+            className={cn(
+              "text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline",
+              home && "flex min-h-11 items-center",
+            )}
           >
             {t("newsAll", { sector: sectorName })}
           </Link>
         ) : null}
       </div>
-      {data.hasRealFeeds && data.stories.length > 0 ? (
-        <ul className="mt-3 space-y-2">
+      {hasStories ? (
+        <ul className={home ? "divide-border divide-y" : "mt-3 space-y-2"}>
           {data.stories.map((story) => (
             <li key={story.id}>
               <a
                 href={story.url}
                 rel="noopener noreferrer"
-                className="border-border hover:bg-secondary/50 block rounded-lg border px-3 py-2.5"
+                className={
+                  home
+                    ? "hover:bg-secondary/50 focus-visible:ring-ring/50 block min-h-11 rounded-sm py-2.5 outline-none focus-visible:ring-[3px]"
+                    : "border-border hover:bg-secondary/50 block rounded-lg border px-3 py-2.5"
+                }
               >
                 <span className="line-clamp-2 text-sm font-medium">
                   {story.title}

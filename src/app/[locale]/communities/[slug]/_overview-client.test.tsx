@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   act,
@@ -8,6 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { CommunityOverviewPageClient } from "./_overview-client";
+import type { FeedPage } from "@/components/communities/feed/feed-page";
 
 const state = vi.hoisted(() => ({
   redesigned: true,
@@ -43,6 +44,7 @@ vi.mock("@/trpc/react", () => ({
         useQuery: () => ({
           data: {
             slug: "sketch-club",
+            name: "Sketch Club",
             createdAt: state.createdAt,
             isListedInDirectory: true,
             joinPolicy: state.joinPolicy,
@@ -62,21 +64,39 @@ vi.mock("@/components/communities/feed/feed-page", () => ({
   FeedPage: ({
     composerTextareaId,
     feedFirst,
+    home,
     renderFirstWeek,
-  }: {
-    composerTextareaId?: string;
-    feedFirst?: boolean;
-    renderFirstWeek?: (composer: ReactNode) => ReactNode;
-  }) => {
+  }: ComponentProps<typeof FeedPage>) => {
+    const [expanded, setExpanded] = useState(false);
+    const text = useRef<HTMLTextAreaElement>(null);
+    const trigger = useRef<HTMLButtonElement>(null);
+    useLayoutEffect(() => {
+      if (expanded) text.current?.focus();
+    }, [expanded]);
     const composer = (
       <textarea
         id={composerTextareaId}
+        ref={text}
         aria-label="Post body"
         data-first-week={!!renderFirstWeek}
         data-feed-first={feedFirst}
       />
     );
-    return renderFirstWeek ? renderFirstWeek(composer) : composer;
+    return (
+      <>
+        {renderFirstWeek
+          ? renderFirstWeek({
+              editor: <div id="composer">{composer}</div>,
+              editorId: "composer",
+              expanded,
+              toggleDisabled: false,
+              onToggle: () => setExpanded((open) => !open),
+              triggerRef: trigger,
+            })
+          : composer}
+        {home && <h1>Community feed</h1>}
+      </>
+    );
   },
 }));
 
@@ -86,7 +106,7 @@ async function overview(role: "owner" | "member") {
     render(
       <CommunityOverviewPageClient
         params={params}
-        initialUser={null}
+        initialUser={{ id: "u1", name: "Test Member" }}
         initialMemberships={[{ slug: "sketch-club", role, status: "active" }]}
       />,
     );
@@ -215,6 +235,10 @@ describe("community creation handoff", () => {
     await overview("owner");
 
     const welcome = screen.getByRole("region", { name: "title" });
+    const feed = screen.getByRole("heading", { name: "Community feed" });
+    expect(
+      welcome.compareDocumentPosition(feed) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
       welcome.querySelector('[data-community-cover-look="night"]'),
     ).toBeNull();

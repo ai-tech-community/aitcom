@@ -7,7 +7,8 @@ import { MoreLink } from "@/components/ui/more-link";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
-import { ChevronUp } from "lucide-react";
+import { ArrowUpRight, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { CompactEventRow } from "@/components/events/rows/compact-event-row";
 import { presentEventRows } from "@/components/events/rows/event-rows";
 import { useEventRowLabels } from "@/components/events/rows/use-event-row-labels";
@@ -22,6 +23,7 @@ interface CommunitySidebarProps {
   /** "Now" for picking upcoming events; tests pin it. */
   now?: Date;
   hideEmptyNews?: boolean;
+  home?: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export function CommunitySidebar({
   slug,
   now,
   hideEmptyNews = false,
+  home = false,
 }: CommunitySidebarProps) {
   const t = useTranslations("communities.profile");
   const tCommon = useTranslations("common");
@@ -66,13 +69,15 @@ export function CommunitySidebar({
     .slice(0, 3);
 
   return (
-    <div className="flex flex-col gap-8">
-      <CommunitySectorNews slug={slug} hideEmpty={hideEmptyNews} />
+    <div className={cn("flex flex-col gap-8", home && "gap-6")}>
+      {!home ? (
+        <CommunitySectorNews slug={slug} hideEmpty={hideEmptyNews} />
+      ) : null}
 
       {links && links.length > 0 ? (
         <section data-sidebar-section="links">
           <SectionHeader title={t("links")} />
-          <div className="mt-3 space-y-1">
+          <div className={home ? "divide-border divide-y" : "mt-3 space-y-1"}>
             {links.map((link) => (
               <a
                 key={link.id}
@@ -83,12 +88,31 @@ export function CommunitySidebar({
                     ? "noopener noreferrer"
                     : undefined
                 }
-                className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors"
+                className={
+                  home
+                    ? "hover:bg-secondary/50 focus-visible:ring-ring/50 flex min-h-11 items-center gap-2 rounded-sm py-2 text-sm outline-none focus-visible:ring-[3px]"
+                    : "border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors"
+                }
               >
                 {link.emoji ? (
                   <span className="shrink-0">{link.emoji}</span>
                 ) : null}
-                <span className="truncate font-medium">{link.label}</span>
+                <span
+                  className={
+                    home
+                      ? "min-w-0 flex-1 font-medium wrap-break-word"
+                      : "truncate font-medium"
+                  }
+                  dir={home ? "auto" : undefined}
+                >
+                  {link.label}
+                </span>
+                {home ? (
+                  <ArrowUpRight
+                    aria-hidden="true"
+                    className="text-muted-foreground size-3.5 shrink-0"
+                  />
+                ) : null}
               </a>
             ))}
           </div>
@@ -152,6 +176,8 @@ export function CommunitySidebar({
           </div>
         </section>
       ) : null}
+
+      {home ? <CommunitySectorNews slug={slug} home /> : null}
     </div>
   );
 }

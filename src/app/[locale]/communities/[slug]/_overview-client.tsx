@@ -46,7 +46,51 @@ export function CommunityOverviewPageClient({
   );
   const isMember = !!memberRole;
   const inCommunityShell = useSiteShell() === "community";
-  const firstWeek = showCommunityFirstWeek(memberRole, community?.createdAt);
+  const firstWeek =
+    !!user && showCommunityFirstWeek(memberRole, community?.createdAt);
+  const home = inCommunityShell && community;
+  const showLiveness =
+    community &&
+    !isMember &&
+    (community.liveness.activeContributors > 0 ||
+      community.liveness.recentThreads > 0);
+
+  const liveness = showLiveness ? (
+    <div
+      className={
+        inCommunityShell
+          ? "border-border rounded-lg border p-3"
+          : "bg-primary/5 border-primary/20 mb-4 rounded-lg border p-4"
+      }
+    >
+      <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
+        <Activity className="size-4 shrink-0" />
+        <span>
+          {community.liveness.activeContributors > 0 && (
+            <>
+              <strong className="text-foreground">
+                {community.liveness.activeContributors}
+              </strong>{" "}
+              {t("activeThisWeek", {
+                count: community.liveness.activeContributors,
+              })}
+            </>
+          )}
+          {community.liveness.activeContributors > 0 &&
+            community.liveness.recentThreads > 0 &&
+            " · "}
+          {community.liveness.recentThreads > 0 && (
+            <>
+              <strong className="text-foreground">
+                {community.liveness.recentThreads}
+              </strong>{" "}
+              {t("newDiscussions", { count: community.liveness.recentThreads })}
+            </>
+          )}
+        </span>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -65,55 +109,23 @@ export function CommunityOverviewPageClient({
           members-only community sees the layout's members-only state), and
           the server sends the numbers only to them. The join control lives
           in the community rail, who is here in About. */}
-      {community &&
-        !isMember &&
-        (community.liveness.activeContributors > 0 ||
-          community.liveness.recentThreads > 0) && (
-          <div className="bg-primary/5 border-primary/20 mb-4 rounded-lg border p-4">
-            <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
-              <Activity className="size-4 shrink-0" />
-              <span>
-                {community.liveness.activeContributors > 0 && (
-                  <>
-                    <strong className="text-foreground">
-                      {community.liveness.activeContributors}
-                    </strong>{" "}
-                    {t("activeThisWeek", {
-                      count: community.liveness.activeContributors,
-                    })}
-                  </>
-                )}
-                {community.liveness.activeContributors > 0 &&
-                  community.liveness.recentThreads > 0 &&
-                  " · "}
-                {community.liveness.recentThreads > 0 && (
-                  <>
-                    <strong className="text-foreground">
-                      {community.liveness.recentThreads}
-                    </strong>{" "}
-                    {t("newDiscussions", {
-                      count: community.liveness.recentThreads,
-                    })}
-                  </>
-                )}
-              </span>
-            </div>
-          </div>
-        )}
+      {!home && liveness}
 
       <FeedPage
+        key={slug}
         feedFirst={inCommunityShell && isMember}
         slug={slug}
         memberRole={memberRole}
-        currentUserId={user?.id}
+        user={user}
         feedPostPolicy={community?.feedPostPolicy ?? "all_members"}
+        home={home ? { communityName: home.name, liveness } : undefined}
         composerTextareaId={firstWeek ? COMMUNITY_FIRST_POST_ID : undefined}
         renderFirstWeek={
           firstWeek && community
-            ? (composer) => (
+            ? (disclosure) => (
                 <CommunityCreatedWelcome
                   community={community}
-                  composer={composer}
+                  disclosure={disclosure}
                   showCover={!inCommunityShell}
                 />
               )

@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
+import { cn } from "@/lib/utils";
 import { firstLink } from "@/lib/links";
 import { Button } from "@/components/ui/button";
 import {
@@ -108,6 +109,7 @@ interface FeedPostCardProps {
   onPostChange?: (change: FeedPostChange) => void;
   onToggleComments: (postId: number) => void;
   showComments: boolean;
+  home?: { topicLabel?: string };
 }
 
 export function FeedPostCard({
@@ -119,8 +121,10 @@ export function FeedPostCard({
   onPostChange,
   onToggleComments,
   showComments,
+  home,
 }: FeedPostCardProps) {
   const t = useTranslations("communities.feed");
+  const th = useTranslations("redesign.homeFeed");
   const tReport = useTranslations("communities.report");
   const tVideo = useTranslations("communities.video");
   const tCard = useTranslations("memberCard");
@@ -131,8 +135,9 @@ export function FeedPostCard({
   const cardRef = useRef<HTMLDivElement>(null);
   // Opening the editor from the menu: its text box takes focus, not the
   // menu button the menu would otherwise return focus to.
-  const openingEditor = useRef(false);
+  const openingPostControl = useRef(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const commentsId = useId();
 
   // A delete in the collage can take the last item this viewer may see:
   // the collage goes, and the focused tile with it. Focus then moves to the
@@ -161,6 +166,8 @@ export function FeedPostCard({
     memberRole === "owner" ||
     memberRole === "admin" ||
     memberRole === "moderator";
+  const canManage = Boolean(currentUserId && (isAuthor || isPrivileged));
+  const canReport = Boolean(currentUserId && !isAuthor && !post.hiddenAt);
 
   const toggleLike = api.feed.toggleLike.useMutation({
     onSuccess: ({ liked, likeCount }) => {
@@ -183,10 +190,31 @@ export function FeedPostCard({
   });
 
   const pinPost = api.feed.pinPost.useMutation({
-    onSuccess: () => void onRefresh(),
+    onSuccess: () => {
+      const list = home
+        ? cardRef.current?.closest<HTMLElement>("[data-community-activity]")
+        : null;
+      void onRefresh().then(() => {
+        if (!list) return;
+        // A pin can move the post between sections. Restore the trigger if
+        // the old card disappeared and the member hasn't moved focus.
+        requestAnimationFrame(() => {
+          if (document.activeElement !== document.body || !list.isConnected)
+            return;
+          const replacement = list.querySelector<HTMLElement>(
+            `[data-home-feed-post="${post.id}"] [data-feed-post-menu]`,
+          );
+          (replacement ?? list).focus();
+        });
+      });
+    },
     onError: (e) =>
       toast.error(
-        e.message === "PIN_CAP_REACHED" ? t("pinCapReached") : "Failed to pin",
+        e.message === "PIN_CAP_REACHED"
+          ? t("pinCapReached")
+          : home
+            ? th("pinError")
+            : "Failed to pin",
       ),
   });
 
@@ -216,24 +244,44 @@ export function FeedPostCard({
   // Only a preview of the link the post shows now: never a stale one.
   const linkPreview =
     link && post.linkPreview?.url === link ? post.linkPreview : null;
+  const mentions = post.announcedAt
+    ? [...(post.mentions ?? []), { userId: EVERYONE, name: EVERYONE }]
+    : (post.mentions ?? []);
+  const likeCount = post.likeCount ?? 0;
+  const commentCount = post.commentCount ?? 0;
+  const postText = (
+    <FormattedPostText
+      text={post.content}
+      mentions={mentions}
+      className={home ? "max-w-prose text-base leading-relaxed" : undefined}
+    />
+  );
 
+  const Card = home ? "article" : "div";
   return (
-    <div
+    <Card
       ref={cardRef}
+      data-home-feed-post={home ? post.id : undefined}
       // Focusable only as the fallback above; then it shows the ring.
-      className="border-border focus-visible:border-ring focus-visible:ring-ring/50 min-w-0 space-y-3 rounded-lg border p-4 [overflow-wrap:anywhere] outline-none focus-visible:ring-[3px]"
+      className={cn(
+        "border-border focus-visible:border-ring focus-visible:ring-ring/50 min-w-0 space-y-3 rounded-lg border p-4 [overflow-wrap:anywhere] outline-none focus-visible:ring-[3px]",
+        home && "bg-card sm:px-5",
+      )}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <Avatar className="size-8">
+          <Avatar className={home ? "size-9" : "size-8"}>
             {post.authorImage ? (
               <AvatarImage src={post.authorImage} alt={post.authorName ?? ""} />
             ) : null}
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm leading-tight">
+            <p
+              className="text-sm leading-tight"
+              dir={home ? "auto" : undefined}
+            >
               <MemberHoverName
                 member={{
                   userId: post.authorId,
@@ -248,8 +296,13 @@ export function FeedPostCard({
                 {t("galleryAdded", { count: post.gallery.total })}
               </p>
             ) : null}
-            <p className="text-muted-foreground flex items-center gap-1 text-xs">
-              {post.isPinned ? (
+            <p
+              className={cn(
+                "text-muted-foreground flex items-center gap-1 text-xs",
+                home && "mt-0.5 flex-wrap gap-x-1.5",
+              )}
+            >
+              {post.isPinned && !home ? (
                 <span className="text-foreground inline-flex items-center gap-0.5">
                   <Pin className="size-3 fill-current" /> {t("pinned")}
                 </span>
@@ -258,6 +311,12 @@ export function FeedPostCard({
                 <RelativeTime date={post.createdAt} className="text-xs" />
                 {post.isEdited ? ` · (${t("edited")})` : ""}
               </span>
+              {home?.topicLabel ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <bdi>{home.topicLabel}</bdi>
+                </>
+              ) : null}
               {post.video?.visibility === "public" ? (
                 <Badge variant="outline">{tVideo("publicBadge")}</Badge>
               ) : null}
@@ -265,24 +324,34 @@ export function FeedPostCard({
           </div>
         </div>
 
-        {(isAuthor || isPrivileged) && currentUserId ? (
+        {canManage || (home && canReport) ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 ref={menuButton}
                 variant="ghost"
                 size="icon"
-                className="size-7 shrink-0"
+                className={
+                  home
+                    ? "-me-2 -mt-2 size-11 shrink-0 sm:size-9"
+                    : "size-7 shrink-0"
+                }
                 aria-label={t("postActions")}
+                data-feed-post-menu={home ? "" : undefined}
               >
                 <MoreHorizontal aria-hidden="true" className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
+              className={
+                home
+                  ? "motion-reduce:animate-none max-lg:[&_[role=menuitem]]:min-h-11"
+                  : undefined
+              }
               onCloseAutoFocus={(e) => {
-                if (openingEditor.current) {
-                  openingEditor.current = false;
+                if (openingPostControl.current) {
+                  openingPostControl.current = false;
                   e.preventDefault();
                 }
               }}
@@ -290,28 +359,30 @@ export function FeedPostCard({
               {isAuthor && (
                 <DropdownMenuItem
                   onClick={() => {
-                    openingEditor.current = true;
+                    openingPostControl.current = true;
                     setIsEditing(true);
                   }}
                 >
                   {t("edit")}
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={async () => {
-                  if (
-                    await confirm({
-                      description: t("deletePostConfirm"),
-                      destructive: true,
-                    })
-                  ) {
-                    deletePost.mutate({ postId: post.id });
-                  }
-                }}
-              >
-                {t("delete")}
-              </DropdownMenuItem>
+              {canManage ? (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={async () => {
+                    if (
+                      await confirm({
+                        description: t("deletePostConfirm"),
+                        destructive: true,
+                      })
+                    ) {
+                      deletePost.mutate({ postId: post.id });
+                    }
+                  }}
+                >
+                  {t("delete")}
+                </DropdownMenuItem>
+              ) : null}
               {isPrivileged && (
                 <DropdownMenuItem
                   onClick={() =>
@@ -324,6 +395,18 @@ export function FeedPostCard({
                   {post.isPinned ? t("unpinPost") : t("pinPost")}
                 </DropdownMenuItem>
               )}
+              {home && canReport ? (
+                <DropdownMenuItem
+                  className="min-h-11 cursor-pointer sm:min-h-8"
+                  onSelect={() => {
+                    openingPostControl.current = true;
+                    setReportOpen(true);
+                  }}
+                >
+                  <Flag aria-hidden="true" />
+                  {tReport("action")}
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
@@ -357,17 +440,8 @@ export function FeedPostCard({
             menuButton.current?.focus();
           }}
         />
-      ) : !post.content.trim() ? null : (
-        // A post may be just a picture, GIF or video: then no text block.
-        <FormattedPostText
-          text={post.content}
-          mentions={
-            // "@everyone" shows as a mention once it really went out.
-            post.announcedAt
-              ? [...(post.mentions ?? []), { userId: EVERYONE, name: EVERYONE }]
-              : (post.mentions ?? [])
-          }
-        />
+      ) : !post.content.trim() ? null : ( // A post may be just a picture, GIF or video: then no text block.
+        postText
       )}
 
       {/* Media (the edit form shows its own while editing). A gallery post
@@ -407,39 +481,85 @@ export function FeedPostCard({
       ) : null}
 
       {/* Actions */}
-      <div className="flex items-center gap-4 pt-1">
-        <button
-          type="button"
-          onClick={() =>
-            requireAuth(
-              () => toggleLike.mutate({ postId: post.id }),
-              "Sign in to like posts",
-            )
-          }
-          className="flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50"
-          disabled={toggleLike.isPending}
-        >
-          <Heart
-            className={`size-4 ${post.hasLiked ? "fill-foreground text-foreground" : "text-muted-foreground"}`}
-          />
-          <span className="text-muted-foreground font-mono text-xs">
-            {post.likeCount ?? 0}
-          </span>
-        </button>
+      {home ? (
+        <div className="border-border -mb-2 flex flex-wrap items-center gap-x-2 border-t pt-1 sm:gap-x-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="-ms-2 min-h-11 px-2 sm:min-h-9"
+            disabled={toggleLike.isPending}
+            aria-label={th("like")}
+            aria-description={
+              likeCount ? th("likeCount", { count: likeCount }) : undefined
+            }
+            aria-pressed={post.hasLiked}
+            onClick={() =>
+              requireAuth(
+                () => toggleLike.mutate({ postId: post.id }),
+                th("signInToLike"),
+              )
+            }
+          >
+            <Heart
+              aria-hidden="true"
+              className={post.hasLiked ? "fill-current" : undefined}
+            />
+            {th("like")}
+            {likeCount ? (
+              <span className="text-muted-foreground font-mono text-xs">
+                {likeCount}
+              </span>
+            ) : null}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-11 px-2 sm:min-h-9"
+            aria-expanded={showComments}
+            aria-controls={showComments ? commentsId : undefined}
+            onClick={() => onToggleComments(post.id)}
+          >
+            <MessageSquare aria-hidden="true" />
+            {commentCount
+              ? th("comments", { count: commentCount })
+              : th("comment")}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-4 pt-1">
+          <button
+            type="button"
+            onClick={() =>
+              requireAuth(
+                () => toggleLike.mutate({ postId: post.id }),
+                "Sign in to like posts",
+              )
+            }
+            className="flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50"
+            disabled={toggleLike.isPending}
+          >
+            <Heart
+              className={`size-4 ${post.hasLiked ? "fill-foreground text-foreground" : "text-muted-foreground"}`}
+            />
+            <span className="text-muted-foreground font-mono text-xs">
+              {post.likeCount ?? 0}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => onToggleComments(post.id)}
-          className="flex items-center gap-1.5 text-sm transition-colors"
-        >
-          <MessageSquare className="text-muted-foreground size-4" />
-          <span className="text-muted-foreground font-mono text-xs">
-            {post.commentCount ?? 0}
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={() => onToggleComments(post.id)}
+            className="flex items-center gap-1.5 text-sm transition-colors"
+          >
+            <MessageSquare className="text-muted-foreground size-4" />
+            <span className="text-muted-foreground font-mono text-xs">
+              {post.commentCount ?? 0}
+            </span>
+          </button>
 
-        {currentUserId && !isAuthor && !post.hiddenAt ? (
-          <>
+          {canReport ? (
             <Button
               type="button"
               variant="ghost"
@@ -450,18 +570,30 @@ export function FeedPostCard({
               <Flag aria-hidden="true" />
               {tReport("action")}
             </Button>
-            <ReportDialog
-              postId={post.id}
-              open={reportOpen}
-              onOpenChange={setReportOpen}
-            />
-          </>
-        ) : null}
-      </div>
+          ) : null}
+        </div>
+      )}
+      {canReport ? (
+        <ReportDialog
+          postId={post.id}
+          open={reportOpen}
+          onOpenChange={(open) => {
+            setReportOpen(open);
+            if (home && !open)
+              requestAnimationFrame(() => menuButton.current?.focus());
+          }}
+        />
+      ) : null}
 
       {/* Comments — part of the same card/thread as the post */}
       {showComments ? (
-        <div className="border-border -mx-4 mt-1 border-t px-4 pt-3">
+        <div
+          id={home ? commentsId : undefined}
+          className={cn(
+            "border-border -mx-4 mt-1 border-t px-4 pt-3",
+            home && "sm:-mx-5 sm:px-5",
+          )}
+        >
           <FeedComments
             postId={post.id}
             communitySlug={communitySlug}
@@ -478,6 +610,6 @@ export function FeedPostCard({
           />
         </div>
       ) : null}
-    </div>
+    </Card>
   );
 }

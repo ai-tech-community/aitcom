@@ -11,6 +11,7 @@ const m = vi.hoisted(() => ({
 
 vi.mock("@/trpc/react", () => ({
   api: {
+    topics: { list: { useQuery: () => ({ data: [] }) } },
     feed: {
       getReels: {
         useQuery: (input: unknown) => {
@@ -29,7 +30,10 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("@/components/auth/auth-required-dialog", () => ({
   useRequireAuth: () => ({ promptAuth: vi.fn(), requireAuth: vi.fn() }),
 }));
-vi.mock("./post-composer", () => ({ PostComposer: () => null }));
+vi.mock("./post-composer", () => ({
+  PostComposer: ({ canPost }: { canPost: boolean }) =>
+    canPost ? <button>Composer</button> : null,
+}));
 vi.mock("./community-sidebar", () => ({
   CommunitySidebar: () => <div data-testid="community-sidebar" />,
 }));
@@ -38,7 +42,10 @@ vi.mock("@/components/communities/community-about", () => ({
     <section data-testid="community-about" className={className} />
   ),
 }));
-vi.mock("./topic-chips", () => ({ TopicChips: () => null }));
+vi.mock("./topic-chips", () => ({
+  TopicChips: () => null,
+  TopicChipsView: () => null,
+}));
 vi.mock("./community-activity-feed", () => ({
   CommunityActivityFeed: () => <div data-testid="community-activity-feed" />,
   FeedSkeleton: () => null,
@@ -58,7 +65,7 @@ function renderPage(member: boolean, feedFirst = false) {
       <FeedPage
         slug="mlops"
         memberRole={member ? "member" : null}
-        currentUserId={member ? "user-1" : undefined}
+        user={member ? { id: "user-1" } : null}
         feedPostPolicy="all_members"
         feedFirst={feedFirst}
       />
@@ -96,6 +103,45 @@ describe("FeedPage Reels entry", () => {
     expect(
       screen.queryByRole("link", { name: "Reels" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Community home posting access", () => {
+  function home(role: "member" | "moderator" | null) {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <FeedPage
+          slug="workbench"
+          home={{ communityName: "Workbench" }}
+          feedPostPolicy="admins_only"
+          memberRole={role}
+          user={{ id: "user-1", name: "Test Member" }}
+        />
+      </NextIntlClientProvider>,
+    );
+  }
+
+  it("keeps a staff-only feed readable by an ordinary member", () => {
+    home("member");
+    expect(screen.getByText(en.redesign.homeFeed.readOnly)).toBeVisible();
+    expect(screen.getByTestId("community-activity-feed")).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Composer" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps moderator posting permissions", () => {
+    home("moderator");
+    expect(screen.getByRole("button", { name: "Composer" })).toBeVisible();
+  });
+
+  it("keeps member-only feed queries out of the visitor view", () => {
+    home(null);
+    expect(screen.getByText(en.communities.feed.joinTitle)).toBeVisible();
+    expect(
+      screen.queryByTestId("community-activity-feed"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("community-about")).toBeVisible();
   });
 });
 

@@ -10,7 +10,8 @@ import {
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
-import { PostComposer } from "./post-composer";
+import { createMemoryStorage } from "@/test/memory-storage";
+import { PostComposer, type PostComposerDisclosure } from "./post-composer";
 import type { VideoPostState } from "./use-video-post";
 
 vi.mock("@/components/site-chrome-gate", () => ({ useSiteShell: () => null }));
@@ -27,6 +28,11 @@ const m = vi.hoisted(() => ({
   check: vi.fn(),
   cancel: vi.fn(),
   createPost: vi.fn(),
+  isPosting: false,
+  postMutation: {} as {
+    onError?: (error: { data?: { code: string } }) => void;
+    onSuccess?: () => void;
+  },
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   toastInfo: vi.fn(),
@@ -100,7 +106,10 @@ vi.mock("@/trpc/react", () => ({
           m.mentionCandidates(input, opts),
       },
       createPost: {
-        useMutation: () => ({ mutate: m.createPost, isPending: false }),
+        useMutation: (options: typeof m.postMutation) => {
+          m.postMutation = options;
+          return { mutate: m.createPost, isPending: m.isPosting };
+        },
       },
     },
   },
@@ -108,8 +117,18 @@ vi.mock("@/trpc/react", () => ({
 
 const clip = new File(["clip"], "holiday.mov", { type: "video/quicktime" });
 
-function renderComposer({ canAnnounce = false, neutralSubmit = false } = {}) {
-  const view = render(
+function renderComposer({
+  canAnnounce = false,
+  neutralSubmit = false,
+  home = false,
+  renderDisclosure,
+}: {
+  canAnnounce?: boolean;
+  neutralSubmit?: boolean;
+  home?: boolean;
+  renderDisclosure?: (disclosure: PostComposerDisclosure) => React.ReactNode;
+} = {}) {
+  const composer = () => (
     <NextIntlClientProvider locale="en" messages={en}>
       <PostComposer
         slug="mlops"
@@ -117,14 +136,23 @@ function renderComposer({ canAnnounce = false, neutralSubmit = false } = {}) {
         canPost
         canAnnounce={canAnnounce}
         neutralSubmit={neutralSubmit}
+        renderDisclosure={renderDisclosure}
+        home={
+          home
+            ? { communityName: "Workbench Notes", authorName: "Paper Kite" }
+            : undefined
+        }
       />
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+  const view = render(composer());
   const inputs =
     view.container.querySelectorAll<HTMLInputElement>('input[type="file"]');
   const byAccept = (accept: string) =>
     [...inputs].find((input) => input.accept === accept)!;
   return {
+    unmount: view.unmount,
+    rerender: () => view.rerender(composer()),
     imageInput: () => byAccept("image/*"),
     videoInput: () => byAccept("video/*"),
   };
@@ -144,20 +172,169 @@ it("keeps the first-week submit neutral, including when disabled", () => {
 });
 
 beforeEach(() => {
+  vi.stubGlobal("localStorage", createMemoryStorage());
   // jsdom has no object URLs.
   URL.createObjectURL = vi.fn(() => "blob:preview");
   URL.revokeObjectURL = vi.fn();
   m.videoState = { step: "idle" };
+  m.isPosting = false;
   m.post.mockResolvedValue(true);
 });
 
 afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
-  // The composer saves an unsent draft after a short delay; a draft left by
-  // one test must not be restored into the next one's composer. Storage is
-  // missing under some Node versions' jsdom, where drafts are not kept.
-  window.localStorage?.clear();
+});
+
+describe("PostComposer on community home", () => {
+  it("opens the redesigned first-week editor directly and returns focus to its row", () => {
+    const { rerender } = renderComposer({
+      home: true,
+      neutralSubmit: true,
+      renderDisclosure: ({
+        editor,
+        editorId,
+        expanded,
+        onToggle,
+        toggleDisabled,
+        triggerRef,
+      }) => (
+        <div>
+          <button
+            ref={triggerRef}
+            aria-controls={editorId}
+            aria-expanded={expanded}
+            disabled={toggleDisabled}
+            onClick={onToggle}
+          >
+            {expanded ? "Hide editor" : "Write post"}
+          </button>
+          {editor}
+        </div>
+      ),
+    });
+    const row = screen.getByRole("button", { name: "Write post" });
+    fireEvent.click(row);
+    expect(screen.getByRole("textbox")).toHaveFocus();
+    expect(screen.getByText("Workbench Notes · Feed")).toBeVisible();
+    expect(postButton()).toHaveAccessibleDescription("Write something first");
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Welcome to the community" },
+    });
+    expect(postButton()).toHaveAttribute("data-variant", "ink");
+    fireEvent.click(row);
+    expect(row).toHaveFocus();
+    fireEvent.click(row);
+    expect(screen.getByRole("textbox")).toHaveValue("Welcome to the community");
+    fireEvent.click(postButton());
+    m.isPosting = true;
+    rerender();
+    expect(row).toBeDisabled();
+    m.isPosting = false;
+    act(() => m.postMutation.onError?.({}));
+    expect(row).toBeEnabled();
+    expect(screen.getByRole("alert")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(row).toHaveFocus();
+    expect(row).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("button", { name: "Start a post" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens in place and restores focus and unsent text across close and reload", () => {
+    const { unmount } = renderComposer({ home: true });
+    const start = screen.getByRole("button", { name: "Start a post" });
+    expect(start).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    fireEvent.click(start);
+    expect(screen.getByText("Workbench Notes · Feed")).toBeVisible();
+    const text = screen.getByRole("textbox");
+    expect(text).toHaveFocus();
+    expect(text).toHaveAccessibleDescription(
+      "Posting in Workbench Notes · Feed",
+    );
+    expect(postButton()).toHaveAttribute("aria-disabled", "true");
+    expect(postButton()).toHaveAccessibleDescription("Write something first");
+    fireEvent.click(postButton());
+    expect(m.createPost).not.toHaveBeenCalled();
+    expect(postButton()).toHaveAttribute("data-variant", "secondary");
+    fireEvent.change(text, { target: { value: "Has anyone repaired this?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Close composer" }));
+    expect(
+      screen.getByRole("button", { name: "Continue draft" }),
+    ).toHaveFocus();
+    unmount();
+    renderComposer({ home: true });
+    fireEvent.click(screen.getByRole("button", { name: "Continue draft" }));
+    expect(screen.getByRole("textbox")).toHaveValue(
+      "Has anyone repaired this?",
+    );
+  });
+
+  it("keeps the post in place on failure, retries it, and clears it on success", () => {
+    renderComposer({ home: true });
+    fireEvent.click(screen.getByRole("button", { name: "Start a post" }));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "A draft" },
+    });
+    fireEvent.click(postButton());
+    act(() => m.postMutation.onError?.({}));
+    const error = screen.getByRole("alert");
+    expect(error).toHaveTextContent("Couldn't post. Your text is safe.");
+    expect(error).toHaveClass("text-destructive");
+    expect(error.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("textbox")).toHaveValue("A draft");
+    const retry = screen.getByRole("button", { name: "Retry" });
+    expect(retry).toHaveAttribute("data-variant", "ink");
+    fireEvent.click(retry);
+    expect(m.createPost).toHaveBeenCalledTimes(2);
+    expect(m.createPost).toHaveBeenLastCalledWith(
+      expect.objectContaining({ communitySlug: "mlops", content: "A draft" }),
+    );
+    act(() => m.postMutation.onSuccess?.());
+    expect(screen.getByRole("button", { name: "Start a post" })).toHaveFocus();
+    expect(window.localStorage.length).toBe(0);
+  });
+
+  it("replaces restored-draft feedback with one notice and discards the failed draft", () => {
+    const original = renderComposer({ home: true });
+    fireEvent.click(screen.getByRole("button", { name: "Start a post" }));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "A saved draft" },
+    });
+    original.unmount();
+
+    const restored = renderComposer({ home: true });
+    fireEvent.click(screen.getByRole("button", { name: "Continue draft" }));
+    expect(
+      screen.getByText(en.communities.feed.editor.draftRestored),
+    ).toBeVisible();
+    fireEvent.click(postButton());
+    act(() => m.postMutation.onError?.({}));
+
+    expect(
+      screen.queryByText(en.communities.feed.editor.draftRestored),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(en.redesign.homeFeed.unsentDraft, { selector: "p" }),
+    ).not.toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(
+      within(alert.parentElement!).getByRole("button", {
+        name: "Retry",
+      }),
+    ).toBeVisible();
+    fireEvent.click(
+      within(alert.parentElement!).getByRole("button", { name: "Discard" }),
+    );
+    expect(screen.getByRole("button", { name: "Start a post" })).toHaveFocus();
+    restored.unmount();
+
+    renderComposer({ home: true });
+    fireEvent.click(screen.getByRole("button", { name: "Start a post" }));
+    expect(screen.getByRole("textbox")).toHaveValue("");
+  });
 });
 
 describe("PostComposer video", () => {

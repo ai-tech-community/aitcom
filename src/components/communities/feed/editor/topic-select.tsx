@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 
 import { api } from "@/trpc/react";
 import {
@@ -23,12 +24,14 @@ export function TopicSelect({
   onChange,
   disabled,
   redesigned = false,
+  className,
 }: {
   communitySlug: string;
   value: string;
   onChange: (slug: string) => void;
   disabled?: boolean;
   redesigned?: boolean;
+  className?: string;
 }) {
   const t = useTranslations("communities.feed");
   const { data: topics } = api.topics.list.useQuery({ communitySlug });
@@ -47,7 +50,7 @@ export function TopicSelect({
         <SelectTrigger
           aria-label={t("selectTopic")}
           size="sm"
-          className="max-w-44 text-base md:text-sm"
+          className={cn("max-w-44 text-base md:text-sm", className)}
         >
           <SelectValue />
         </SelectTrigger>

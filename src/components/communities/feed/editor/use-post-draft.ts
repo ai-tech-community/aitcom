@@ -27,6 +27,7 @@ export function usePostDraft({
   text,
   mentions,
   restore,
+  saveImmediately = false,
 }: {
   userId: string;
   target: string;
@@ -34,6 +35,7 @@ export function usePostDraft({
   text: string;
   mentions: readonly PostMention[];
   restore: (text: string, mentions: PostMention[]) => void;
+  saveImmediately?: boolean;
 }) {
   const key = postDraftKey(userId, target);
   // Mentions change only with the text, so the text alone times the save.
@@ -68,16 +70,21 @@ export function usePostDraft({
       restoredText.current = null;
       setRestored(false);
     }
-    const timer = window.setTimeout(() => {
+    const save = () => {
       writePostDraft(
         key,
         text === base
           ? null
           : { text, base, mentions: [...latestMentions.current] },
       );
-    }, SAVE_DELAY_MS);
+    };
+    if (saveImmediately) {
+      save();
+      return;
+    }
+    const timer = window.setTimeout(save, SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [key, base, text]);
+  }, [key, base, text, saveImmediately]);
 
   /** The post was sent or the changes thrown away: nothing to keep. */
   const clear = useCallback(() => {

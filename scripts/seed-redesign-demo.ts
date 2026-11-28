@@ -1,5 +1,6 @@
 /**
  * Seed the Workbench Notes redesign preview. Run through test-env.sh.
+ * Use --feed-timestamps-only or --feed-topics-only for a shared preview.
  */
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
@@ -38,6 +39,27 @@ delete process.env.RESEND_API_KEY;
 const communitySlug = fixture.community.id;
 const memberEmail = (id: string) => `${id}@${communitySlug}.aitcommunity.local`;
 const previewMemberId = "glass-pebble";
+const feedTopics = [
+  // The demo has a custom label for the reserved default topic slug.
+  {
+    slug: "general",
+    label: fixture.defaultFeedTopicLabel,
+    sortOrder: 0,
+    isDefault: true,
+  },
+  ...fixture.spaces.flatMap((space, index) =>
+    space.type === "post"
+      ? [
+          {
+            slug: space.id,
+            label: space.name,
+            sortOrder: index + 1,
+            isDefault: false,
+          },
+        ]
+      : [],
+  ),
+];
 
 type SeedCollection =
   | "community-topics"
@@ -84,6 +106,99 @@ async function main() {
     spaces,
     user,
   } = await import("@/server/db/schema");
+  const seedLock = sql`select pg_advisory_xact_lock(hashtext(${`aitcom.seed.${communitySlug}`}))`;
+
+  if (process.argv.includes("--feed-timestamps-only")) {
+    await db.transaction(async (tx) => {
+      await tx.execute(seedLock);
+      const community = await tx.query.communities.findFirst({
+        columns: { id: true },
+        where: eq(communities.slug, communitySlug),
+      });
+      if (!community)
+        throw new Error("The demo community has not been seeded.");
+      const timestamps = (
+        collection: "feed-posts" | "feed-comments",
+        rows: { id: string; createdAt: string }[],
+      ) =>
+        sql.join(
+          rows.map(
+            (row) =>
+              sql`(${fixtureDocumentId(collection, row.id)}::integer, ${row.createdAt}::timestamptz)`,
+          ),
+          sql`, `,
+        );
+      const posts = timestamps("feed-posts", fixture.posts);
+      const comments = timestamps(
+        "feed-comments",
+        fixture.posts.flatMap((post) => post.comments),
+      );
+
+      // A timestamp repair doesn't edit a post's content or run its hooks.
+      const updatedPosts = await tx.execute(sql`
+        update public.feed_posts as post
+        set created_at = fixture.created_at
+        from (values ${posts}) as fixture(id, created_at)
+        where post.id = fixture.id and post.community_id = ${community.id}
+          and post.created_at is distinct from fixture.created_at
+      `);
+      const updatedComments = await tx.execute(sql`
+        update public.feed_comments as comment
+        set created_at = fixture.created_at
+        from (values ${comments}) as fixture(id, created_at)
+        where comment.id = fixture.id and comment.community_id = ${community.id}
+          and comment.created_at is distinct from fixture.created_at
+      `);
+      console.log(
+        `Updated timestamps on ${updatedPosts.rowCount} demo posts and ${updatedComments.rowCount} demo comments.`,
+      );
+    });
+    return;
+  }
+
+  if (process.argv.includes("--feed-topics-only")) {
+    await db.transaction(async (tx) => {
+      await tx.execute(seedLock);
+      const community = await tx.query.communities.findFirst({
+        columns: { id: true },
+        where: eq(communities.slug, communitySlug),
+      });
+      if (!community)
+        throw new Error("The demo community has not been seeded.");
+      for (const { slug, label, sortOrder, isDefault } of feedTopics) {
+        const result = await tx.execute(sql`
+          update public.community_topics
+          set label = ${label}, sort_order = ${sortOrder}, is_default = ${isDefault}
+          where community_id = ${community.id} and slug = ${slug}
+        `);
+        if (!result.rowCount) {
+          await tx.execute(sql`
+            insert into public.community_topics (community_id, slug, label, sort_order, is_default)
+            values (${community.id}, ${slug}, ${label}, ${sortOrder}, ${isDefault})
+          `);
+        }
+      }
+      const assignments = sql.join(
+        fixture.posts.map(
+          (post) =>
+            sql`(${fixtureDocumentId("feed-posts", post.id)}::integer, ${post.topicSlug}::text)`,
+        ),
+        sql`, `,
+      );
+      const posts = await tx.execute(sql`
+        update public.feed_posts as post
+        set topic_slug = fixture.topic_slug
+        from (values ${assignments}) as fixture(id, topic_slug)
+        where post.id = fixture.id and post.community_id = ${community.id}
+          and post.topic_slug is distinct from fixture.topic_slug
+      `);
+      console.log(
+        `Refreshed ${feedTopics.length} demo topics and reassigned ${posts.rowCount} demo posts.`,
+      );
+    });
+    return;
+  }
+
   const { auth } = await import("@/server/better-auth");
   const { getPayloadClient } = await import("@/server/payload");
   const { plainTextToLexical } =
@@ -149,9 +264,7 @@ async function main() {
   // Serialize seed runs. Payload and auth use their own connections, so the
   // individual writes use stable keys and can resume after a partial run.
   await db.transaction(async (lock) => {
-    await lock.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${`aitcom.seed.${communitySlug}`}))`,
-    );
+    await lock.execute(seedLock);
 
     const members = new Map<string, { id: string; name: string }>();
     for (const member of fixture.members) {
@@ -242,21 +355,17 @@ async function main() {
         });
     }
 
+    for (const topic of feedTopics) {
+      await saveDocument(
+        "community-topics",
+        scopedKey("communityId", communityId, "slug", topic.slug),
+        { communityId, ...topic },
+      );
+    }
+
     const roomIds = new Map<string, string>();
     for (const [position, space] of fixture.spaces.entries()) {
-      if (space.type === "post") {
-        await saveDocument(
-          "community-topics",
-          scopedKey("communityId", communityId, "slug", space.id),
-          {
-            communityId,
-            slug: space.id,
-            label: space.name,
-            sortOrder: position,
-          },
-        );
-        continue;
-      }
+      if (space.type === "post") continue;
       const builtinSurface = space.type === "event" ? "events" : "classroom";
       const isRoom = space.type === "chat";
       const slug = isRoom ? space.id : builtinSurface;
@@ -306,7 +415,7 @@ async function main() {
           content: `${post.title}\n\n${post.body}`,
           authorId: author.id,
           authorName: author.name,
-          topicSlug: post.spaceId,
+          topicSlug: post.topicSlug,
           visibility: "community",
           isPinned: post.pinned,
           isDeleted: false,
@@ -527,8 +636,7 @@ async function main() {
             builtins: fixture.spaces.filter(
               (space) => space.type === "event" || space.type === "course",
             ).length,
-            feedTopics: fixture.spaces.filter((space) => space.type === "post")
-              .length,
+            feedTopics: feedTopics.length,
             forum: 1,
           },
           posts: fixture.posts.length,

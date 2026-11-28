@@ -318,20 +318,22 @@
 }
 
 /* In the redesigned frames, pair machine text and initials with their quiet fills. */
-:where([data-community-shell], [data-site-shell="hub"],
-  [data-shell-header]) .font-mono.text-muted-foreground {
+:where([data-community-shell], [data-site-shell="hub"], [data-shell-header])
+  .font-mono.text-muted-foreground {
   color: color-mix(in oklab, var(--foreground) 60%, var(--muted-foreground));
 }
 
-:where([data-community-shell], [data-site-shell="hub"],
-  [data-shell-header]) [data-slot="avatar-fallback"] {
+:where([data-community-shell], [data-site-shell="hub"], [data-shell-header])
+  [data-slot="avatar-fallback"] {
   color: var(--foreground);
 }
 
 /* Use the local theme's ink on solid orange controls in a redesigned frame. */
 body:has([data-shell-header])
   :is(
-    :is(button, a, [role="button"]).bg-primary:where(:not([data-feed-submit]:disabled)),
+    :is(button, a, [role="button"]).bg-primary:where(
+        :not([data-feed-submit]:disabled)
+      ),
     [data-slot="checkbox"][data-tone="primary"][data-state="checked"],
     [data-slot="switch"][data-state="checked"]
   ) {
@@ -350,11 +352,23 @@ body:has([data-shell-header])
 [data-community-shell] [data-feed-submit] {
   transition-property: box-shadow;
 
-  &:disabled {
+  &:is(:disabled, [aria-disabled="true"]) {
     background-color: var(--secondary);
     color: var(--muted-foreground);
     opacity: 1;
   }
+
+  &[aria-disabled="true"] {
+    border-color: var(--border);
+    cursor: not-allowed;
+  }
+}
+
+/* Keep the focus token as the composer's accent while a focus ring is visible. */
+[data-home-composer]:has(textarea:focus, :focus-visible)
+  [data-feed-submit][data-variant="default"] {
+  background-color: var(--foreground);
+  color: var(--background);
 }
 
 :is([data-community-shell], [data-site-shell="hub"]) [data-chat-send] {
@@ -373,14 +387,17 @@ body:has([data-shell-header])
     display: contents;
   }
 
-  [data-community-shell] :is([data-post-insert-tools], [data-post-format-tools]) {
+  [data-community-shell]
+    :is([data-post-insert-tools], [data-post-format-tools]) {
     grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
   }
 
-  [data-community-shell] [data-post-format-tools] [data-composer-toolbar-divider] {
+  [data-community-shell]
+    [data-post-format-tools]
+    [data-composer-toolbar-divider] {
     display: none;
   }
 
@@ -416,7 +433,9 @@ body:has([data-shell-header])
   }
 
   [data-community-shell] [data-post-toolbar] button,
-  :is([data-community-shell], [data-site-shell="hub"]) [data-chat-toolbar] button {
+  :is([data-community-shell], [data-site-shell="hub"])
+    [data-chat-toolbar]
+    button {
     min-height: 44px;
     min-width: 44px;
   }
@@ -434,17 +453,22 @@ body:has([data-shell-header])
     padding-bottom: 0;
   }
 
-  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-categories] button {
+  :is([data-community-shell], [data-site-shell="hub"])
+    [data-forum-categories]
+    button {
     min-width: 44px;
     padding-inline: 0.45rem;
   }
 
-  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-categories] button,
-  :is([data-community-shell], [data-site-shell="hub"]) [data-forum-filters] [data-slot="select-trigger"],
+  :is([data-community-shell], [data-site-shell="hub"])
+    [data-forum-categories]
+    button,
+  :is([data-community-shell], [data-site-shell="hub"])
+    [data-forum-filters]
+    [data-slot="select-trigger"],
   :is([data-community-shell], [data-site-shell="hub"]) [data-forum-submit] {
     min-height: 44px;
   }
-
 }
 
 /* Magazine reading pages. The type pair is loaded per magazine. */

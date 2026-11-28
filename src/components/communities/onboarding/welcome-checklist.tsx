@@ -5,8 +5,15 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Check, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export function WelcomeChecklist({ slug }: { slug: string }) {
+export function WelcomeChecklist({
+  slug,
+  secondary = false,
+}: {
+  slug: string;
+  secondary?: boolean;
+}) {
   const t = useTranslations("communities.onboarding");
   const utils = api.useUtils();
   const { data: stage } = api.activation.myStage.useQuery({ slug });
@@ -33,7 +40,12 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
   const done = steps.filter((s) => s.completed).length;
 
   return (
-    <div className="bg-primary/5 border-primary/20 space-y-3 rounded-md border p-4">
+    <div
+      className={cn(
+        "space-y-3 rounded-md border p-4",
+        secondary ? "border-border" : "bg-primary/5 border-primary/20",
+      )}
+    >
       <div>
         <h2 className="font-medium">{t("welcomeTitle")}</h2>
         <p className="text-muted-foreground text-sm">
@@ -52,11 +64,12 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
             >
               <Link
                 href={step.href as never}
-                className={
+                className={cn(
                   step.completed
                     ? "text-muted-foreground text-sm line-through"
-                    : "text-sm font-medium hover:underline"
-                }
+                    : "text-sm font-medium hover:underline",
+                  secondary && "flex min-h-11 items-center",
+                )}
               >
                 {step.title}
               </Link>
@@ -69,7 +82,10 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="shrink-0"
+                  className={cn(
+                    "shrink-0",
+                    secondary && "min-h-11 shadow-none",
+                  )}
                   onClick={() => markComplete.mutate({ slug, stepId: step.id })}
                   disabled={pending}
                 >

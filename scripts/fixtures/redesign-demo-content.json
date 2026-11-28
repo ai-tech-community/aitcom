@@ -2,6 +2,7 @@
   "fixtureVersion": 1,
   "locale": "en",
   "referenceDate": "2026-12-07",
+  "defaultFeedTopicLabel": "Questions",
   "community": {
     "id": "workbench-notes",
     "name": "Workbench Notes",
@@ -12,20 +13,12 @@
     {
       "id": "start-here",
       "name": "Start here",
-      "spaceIds": [
-        "welcome",
-        "announcements",
-        "general-discussion"
-      ]
+      "spaceIds": ["welcome", "announcements", "general-discussion"]
     },
     {
       "id": "workshop",
       "name": "Workshop",
-      "spaceIds": [
-        "show-your-work",
-        "events",
-        "course"
-      ]
+      "spaceIds": ["show-your-work", "events", "course"]
     }
   ],
   "spaces": [
@@ -43,9 +36,9 @@
     },
     {
       "id": "general-discussion",
-      "name": "General discussion",
+      "name": "Repairs",
       "type": "post",
-      "description": "Ask a question, share a repair or compare ways to work."
+      "description": "Share a repair, document what worked and compare techniques."
     },
     {
       "id": "show-your-work",
@@ -146,21 +139,21 @@
       "title": "Your first visit",
       "body": "Start with one object you would like to keep using. Tell us what works, what gets in the way and what you have already tried. A clear description is plenty for a first post.",
       "authorId": "paper-kite",
-      "spaceId": "welcome",
-      "createdAt": "2026-12-01T09:00:00Z",
+      "topicSlug": "welcome",
+      "createdAt": "2026-11-21T09:00:00Z",
       "pinned": true,
       "comments": [
         {
           "id": "first-visit-comment-1",
           "authorId": "folding-rule",
           "body": "I have a drawer that catches on the last centimetre. I can start with that.",
-          "createdAt": "2026-12-01T09:05:00Z"
+          "createdAt": "2026-11-21T09:05:00Z"
         },
         {
           "id": "first-visit-comment-2",
           "authorId": "copper-fern",
           "body": "Try noting whether it catches with an empty drawer too.",
-          "createdAt": "2026-12-01T09:10:00Z"
+          "createdAt": "2026-11-21T09:10:00Z"
         }
       ]
     },
@@ -169,15 +162,15 @@
       "title": "Three useful pictures",
       "body": "A wide photo shows how the object is used. A close photo shows the problem, and a ruler or coin gives the reader a sense of scale. Set the object on a plain surface if you can.",
       "authorId": "chalk-boat",
-      "spaceId": "welcome",
-      "createdAt": "2026-12-01T10:00:00Z",
+      "topicSlug": "welcome",
+      "createdAt": "2026-11-21T10:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "three-useful-pictures-comment-1",
           "authorId": "soft-pencil",
           "body": "Adding scale next to the problem is a good reminder.",
-          "createdAt": "2026-12-01T10:05:00Z"
+          "createdAt": "2026-11-21T10:05:00Z"
         }
       ]
     },
@@ -186,33 +179,33 @@
       "title": "Share a first tool",
       "body": "What is one tool you reach for regularly and why? I keep a blunt pencil beside the bench so my notes are easy to spot and I never worry about marking the good tools.",
       "authorId": "copper-fern",
-      "spaceId": "welcome",
-      "createdAt": "2026-12-02T11:00:00Z",
+      "topicSlug": "welcome",
+      "createdAt": "2026-11-22T11:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "share-a-first-tool-comment-1",
           "authorId": "glass-pebble",
           "body": "Masking tape. I use it for temporary labels and marking small gaps.",
-          "createdAt": "2026-12-02T11:05:00Z"
+          "createdAt": "2026-11-22T11:05:00Z"
         },
         {
           "id": "share-a-first-tool-comment-2",
           "authorId": "linen-loop",
           "body": "A seam ripper is the most useful little tool in my sewing tin.",
-          "createdAt": "2026-12-02T11:10:00Z"
+          "createdAt": "2026-11-22T11:10:00Z"
         },
         {
           "id": "share-a-first-tool-comment-3",
           "authorId": "maple-clamp",
           "body": "A small square for checking if two edges really meet.",
-          "createdAt": "2026-12-02T11:15:00Z"
+          "createdAt": "2026-11-22T11:15:00Z"
         },
         {
           "id": "share-a-first-tool-comment-4",
           "authorId": "quiet-hinge",
           "body": "A sheet of scrap paper for testing which way a fastener turns.",
-          "createdAt": "2026-12-02T11:20:00Z"
+          "createdAt": "2026-11-22T11:20:00Z"
         }
       ]
     },
@@ -221,8 +214,8 @@
       "title": "How we give feedback",
       "body": "Ask what the person wants to improve before suggesting a new design. Name the first change you would try and say why it matters. If two choices are equally good, explain what would help you choose between them.",
       "authorId": "river-reed",
-      "spaceId": "welcome",
-      "createdAt": "2026-12-03T12:00:00Z",
+      "topicSlug": "welcome",
+      "createdAt": "2026-11-23T12:00:00Z",
       "pinned": false,
       "comments": []
     },
@@ -231,15 +224,15 @@
       "title": "December open bench",
       "body": "The December open bench is in Amsterdam. Bring one item you can carry and a clean towel or mat to work on. We will start with a short round of introductions and then work in pairs.",
       "authorId": "paper-kite",
-      "spaceId": "announcements",
-      "createdAt": "2026-12-02T09:00:00Z",
+      "topicSlug": "announcements",
+      "createdAt": "2026-11-22T09:00:00Z",
       "pinned": true,
       "comments": [
         {
           "id": "december-open-bench-comment-1",
           "authorId": "glass-pebble",
           "body": "I can bring a spare mat and a roll of tape.",
-          "createdAt": "2026-12-02T09:05:00Z"
+          "createdAt": "2026-11-22T09:05:00Z"
         }
       ]
     },
@@ -248,21 +241,21 @@
       "title": "The photo notes course is ready",
       "body": "The first course follows a repair from the initial inspection to a short finished record. Each lesson has one practical task you can do at home. Try it with an object that can sit on your table.",
       "authorId": "river-reed",
-      "spaceId": "announcements",
-      "createdAt": "2026-12-03T10:00:00Z",
+      "topicSlug": "announcements",
+      "createdAt": "2026-11-23T10:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "photo-notes-course-comment-1",
           "authorId": "small-bracket",
           "body": "I am going to use my loose desk tray handle.",
-          "createdAt": "2026-12-03T10:05:00Z"
+          "createdAt": "2026-11-23T10:05:00Z"
         },
         {
           "id": "photo-notes-course-comment-2",
           "authorId": "chalk-boat",
           "body": "Daylight by a window is enough for the photo exercise.",
-          "createdAt": "2026-12-03T10:10:00Z"
+          "createdAt": "2026-11-23T10:10:00Z"
         }
       ]
     },
@@ -271,21 +264,21 @@
       "title": "January show-and-tell signups",
       "body": "The January show-and-tell runs online. Set aside three minutes to show one change, even if the repair is still in progress. Add a comment if you want a spot or would like to watch.",
       "authorId": "paper-kite",
-      "spaceId": "announcements",
-      "createdAt": "2026-12-04T11:00:00Z",
+      "topicSlug": "announcements",
+      "createdAt": "2026-11-24T11:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "january-show-and-tell-comment-1",
           "authorId": "blue-spool",
           "body": "I would like to show the strap repair.",
-          "createdAt": "2026-12-04T11:05:00Z"
+          "createdAt": "2026-11-24T11:05:00Z"
         },
         {
           "id": "january-show-and-tell-comment-2",
           "authorId": "folding-rule",
           "body": "I will watch this time and take notes.",
-          "createdAt": "2026-12-04T11:10:00Z"
+          "createdAt": "2026-11-24T11:10:00Z"
         }
       ]
     },
@@ -294,8 +287,8 @@
       "title": "A small tool swap",
       "body": "We will put a tray of spare hand tools on the side of the open bench. Label anything you bring with the name you use here and whether it is for borrowing or keeping. Please leave powered tools at home for this session.",
       "authorId": "copper-fern",
-      "spaceId": "announcements",
-      "createdAt": "2026-12-05T12:00:00Z",
+      "topicSlug": "announcements",
+      "createdAt": "2026-11-25T12:00:00Z",
       "pinned": false,
       "comments": []
     },
@@ -304,27 +297,27 @@
       "title": "A drawer that catches",
       "body": "Our shallow drawer catches as it closes the last centimetre. It slides freely when it is half open, and the runner looks straight at a glance. Where would you check first?",
       "authorId": "folding-rule",
-      "spaceId": "general-discussion",
-      "createdAt": "2026-12-01T09:00:00Z",
+      "topicSlug": "general",
+      "createdAt": "2026-11-21T09:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "drawer-runner-comment-1",
           "authorId": "quiet-hinge",
           "body": "Look for fresh rub marks on the top corners as well as the runner.",
-          "createdAt": "2026-12-01T09:05:00Z"
+          "createdAt": "2026-11-21T09:05:00Z"
         },
         {
           "id": "drawer-runner-comment-2",
           "authorId": "maple-clamp",
           "body": "Take one measurement at the front and one at the back before removing anything.",
-          "createdAt": "2026-12-01T09:10:00Z"
+          "createdAt": "2026-11-21T09:10:00Z"
         },
         {
           "id": "drawer-runner-comment-3",
           "authorId": "folding-rule",
           "body": "There is a bright mark above the right corner. I will compare those measurements tonight.",
-          "createdAt": "2026-12-01T09:15:00Z"
+          "createdAt": "2026-11-21T09:15:00Z"
         }
       ]
     },
@@ -333,15 +326,15 @@
       "title": "Two stitches for a bag strap",
       "body": "I tried rows of straight stitches on one scrap and a box with a diagonal on the other. Both hold under a light load, but the box keeps the strap from twisting. I will use a wider scrap for the next sample.",
       "authorId": "blue-spool",
-      "spaceId": "general-discussion",
-      "createdAt": "2026-12-02T10:00:00Z",
+      "topicSlug": "general-discussion",
+      "createdAt": "2026-11-22T10:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "strap-stitches-comment-1",
           "authorId": "linen-loop",
           "body": "Did you leave the same distance between the stitching and the cut edge?",
-          "createdAt": "2026-12-02T10:05:00Z"
+          "createdAt": "2026-11-22T10:05:00Z"
         }
       ]
     },
@@ -350,21 +343,21 @@
       "title": "Cardboard spacers that stay put",
       "body": "I used folded card to check where a shelf needs a little more support. A strip of removable tape kept the pieces from sliding while I measured. Marking each spacer saved time when I took the shelf apart.",
       "authorId": "maple-clamp",
-      "spaceId": "general-discussion",
-      "createdAt": "2026-12-03T11:00:00Z",
+      "topicSlug": "general-discussion",
+      "createdAt": "2026-11-23T11:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "cardboard-spacers-comment-1",
           "authorId": "small-bracket",
           "body": "I like the idea of labeling the spacers before taking the shelf apart.",
-          "createdAt": "2026-12-03T11:05:00Z"
+          "createdAt": "2026-11-23T11:05:00Z"
         },
         {
           "id": "cardboard-spacers-comment-2",
           "authorId": "soft-pencil",
           "body": "It would be useful to see a sketch of your stack.",
-          "createdAt": "2026-12-03T11:10:00Z"
+          "createdAt": "2026-11-23T11:10:00Z"
         }
       ]
     },
@@ -373,21 +366,21 @@
       "title": "Can I keep the old screw holes?",
       "body": "The screws on a loose desk tray handle still turn after they should be snug. I would like to keep the existing handle and its position if the holes can be repaired. The tray is unfinished wood.",
       "authorId": "small-bracket",
-      "spaceId": "general-discussion",
-      "createdAt": "2026-12-04T12:00:00Z",
+      "topicSlug": "general",
+      "createdAt": "2026-11-24T12:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "keep-the-old-holes-comment-1",
           "authorId": "quiet-hinge",
           "body": "Check the two screws side by side for damage before changing the wood.",
-          "createdAt": "2026-12-04T12:05:00Z"
+          "createdAt": "2026-11-24T12:05:00Z"
         },
         {
           "id": "keep-the-old-holes-comment-2",
           "authorId": "maple-clamp",
           "body": "Measure the depth too. A short screw looks similar when it is already installed.",
-          "createdAt": "2026-12-04T12:10:00Z"
+          "createdAt": "2026-11-24T12:10:00Z"
         }
       ]
     },
@@ -396,8 +389,8 @@
       "title": "Labels for a box of fabric scraps",
       "body": "I sorted my scraps by how they stretch and put a small label on each bundle. I can find a test piece more quickly now. It makes the box easier to lend because someone else can see what is in it.",
       "authorId": "linen-loop",
-      "spaceId": "general-discussion",
-      "createdAt": "2026-12-05T09:00:00Z",
+      "topicSlug": "general-discussion",
+      "createdAt": "2026-11-25T09:00:00Z",
       "pinned": false,
       "comments": []
     },
@@ -406,15 +399,15 @@
       "title": "A photo of the second attempt",
       "body": "The first photo made my uneven seam look straight because I took it from above. I took another from table height with a sheet of paper behind the edge. The second angle shows exactly where the seam rises.",
       "authorId": "soft-pencil",
-      "spaceId": "general-discussion",
-      "createdAt": "2026-12-05T10:00:00Z",
+      "topicSlug": "general-discussion",
+      "createdAt": "2026-11-25T10:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "second-attempt-comment-1",
           "authorId": "chalk-boat",
           "body": "That angle also makes it much easier to compare a before and after picture.",
-          "createdAt": "2026-12-05T10:05:00Z"
+          "createdAt": "2026-11-25T10:05:00Z"
         }
       ]
     },
@@ -423,21 +416,21 @@
       "title": "Measure with a strip of paper",
       "body": "The gap around my tray was too narrow for the ruler to sit flat. A strip of paper fit inside, so I marked the ends and measured it on the table. I kept the strip in my repair notes so I can repeat the check.",
       "authorId": "quiet-hinge",
-      "spaceId": "general-discussion",
-      "createdAt": "2026-12-06T11:00:00Z",
+      "topicSlug": "general-discussion",
+      "createdAt": "2026-11-26T11:00:00Z",
       "pinned": false,
       "comments": [
         {
           "id": "measuring-with-a-strip-comment-1",
           "authorId": "folding-rule",
           "body": "I can try this at the back of my drawer.",
-          "createdAt": "2026-12-06T11:05:00Z"
+          "createdAt": "2026-11-26T11:05:00Z"
         },
         {
           "id": "measuring-with-a-strip-comment-2",
           "authorId": "river-reed",
           "body": "Keep the strip flat when you transfer the measurement.",
-          "createdAt": "2026-12-06T11:10:00Z"
+          "createdAt": "2026-11-26T11:10:00Z"
         }
       ]
     }
@@ -456,11 +449,7 @@
         "label": "Amsterdam"
       },
       "description": "Bring one small repair you can work on at a shared table. We will compare plans at the start and leave time at the end to write down what changed.",
-      "rsvpMemberIds": [
-        "river-reed",
-        "glass-pebble",
-        "folding-rule"
-      ]
+      "rsvpMemberIds": ["river-reed", "glass-pebble", "folding-rule"]
     },
     {
       "id": "repair-notes-review",
@@ -475,11 +464,7 @@
         "label": "Online"
       },
       "description": "Bring two photos and a short explanation of a repair. We will read each other's notes and point out where another picture or a measurement would help.",
-      "rsvpMemberIds": [
-        "chalk-boat",
-        "quiet-hinge",
-        "soft-pencil"
-      ]
+      "rsvpMemberIds": ["chalk-boat", "quiet-hinge", "soft-pencil"]
     },
     {
       "id": "january-show-and-tell",
@@ -494,10 +479,7 @@
         "label": "Online"
       },
       "description": "Show one thing you repaired or changed over the holidays. An unfinished attempt is welcome, especially if you can explain the next thing you would try.",
-      "rsvpMemberIds": [
-        "blue-spool",
-        "folding-rule"
-      ]
+      "rsvpMemberIds": ["blue-spool", "folding-rule"]
     }
   ],
   "course": {
@@ -654,10 +636,7 @@
   "directMessages": [
     {
       "id": "bench-setup",
-      "participantIds": [
-        "paper-kite",
-        "glass-pebble"
-      ],
+      "participantIds": ["paper-kite", "glass-pebble"],
       "messages": [
         {
           "id": "bench-setup-1",
@@ -687,10 +666,7 @@
     },
     {
       "id": "photo-review",
-      "participantIds": [
-        "chalk-boat",
-        "soft-pencil"
-      ],
+      "participantIds": ["chalk-boat", "soft-pencil"],
       "messages": [
         {
           "id": "photo-review-1",
@@ -720,10 +696,7 @@
     },
     {
       "id": "tray-handle",
-      "participantIds": [
-        "small-bracket",
-        "maple-clamp"
-      ],
+      "participantIds": ["small-bracket", "maple-clamp"],
       "messages": [
         {
           "id": "tray-handle-1",
