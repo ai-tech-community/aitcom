@@ -1,3 +1,4 @@
+import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -9,67 +10,66 @@ import type { IssueCard } from "@/server/magazines/reading";
 import { IssueCoverArt } from "./issue-cover-card";
 import { useIssueDateline } from "./issue-dateline";
 
-/**
- * How the lead action is ranked (One Voice Rule). `primary` where "Read the
- * issue" is the page's single most important action (the `/magazines`
- * home); `ink` where the page around it already owns the orange action —
- * a community's pages, whose frame carries Join.
- */
-export type FeaturedIssueEmphasis = "primary" | "ink";
-
-/**
- * A page's lead issue: its cover beside its magazine, dateline, title,
- * community and the lead action, "Read the issue". The `/magazines` home
- * leads with it ("Featured issue", the page's one orange action), and so
- * does the community Magazine tab ("Latest issue", without the community,
- * whose page it is, and in ink: the community frame's Join is that page's
- * orange). The card's sections stack in a narrow column and sit side by
- * side from the container's `xl` width.
- */
+/** The community masthead already names the publication and its community. */
 export function FeaturedIssue({
   issue,
   labelId,
   label,
-  showCommunity = true,
-  emphasis = "primary",
+  variant = "home",
 }: {
   issue: IssueCard;
   /** The id of the label that names the section. */
   labelId: string;
   /** The section label; "Featured issue" when not given. */
   label?: string;
-  /** Name the issue's community ("From …"); off on the community's own tab. */
-  showCommunity?: boolean;
-  /** The lead action's rank; see `FeaturedIssueEmphasis`. */
-  emphasis?: FeaturedIssueEmphasis;
+  variant?: "home" | "community";
 }) {
   const t = useTranslations("magazines");
   const dateline = useIssueDateline(issue);
+  const community = variant === "community";
   return (
     <div className="bg-card text-card-foreground @container rounded-xl border">
-      <div className="grid gap-6 p-5 @xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] @xl:p-6">
+      <div
+        className={
+          community
+            ? "grid items-center gap-4 p-4 @xs:grid-cols-[minmax(0,1fr)_minmax(5rem,24%)] @lg:gap-7 @lg:p-6 @2xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] @2xl:gap-8"
+            : "grid gap-6 p-5 @xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] @xl:p-6"
+        }
+      >
         {/* The button below is the one way in for keyboards and screen readers. */}
         <Link
           href={issuePath(issue.magazine, issue)}
           tabIndex={-1}
           aria-hidden="true"
-          className="block w-full max-w-60 @xl:max-w-none"
+          className={
+            community
+              ? "order-last block w-full max-w-28 @xs:max-w-none @2xl:order-first"
+              : "block w-full max-w-60 @xl:max-w-none"
+          }
         >
           <IssueCoverArt issue={issue} />
         </Link>
         <div className="flex min-w-0 flex-col gap-4">
-          <SectionLabel as="p" id={labelId}>
+          <SectionLabel as="p" id={labelId} bordered={!community}>
             {label ?? t("home.featured")}
           </SectionLabel>
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-semibold">{issue.magazine.name}</p>
+            {!community && (
+              <p className="text-sm font-semibold">{issue.magazine.name}</p>
+            )}
             <p className="text-muted-foreground font-mono text-xs">
               {dateline}
             </p>
-            <h2 className="text-2xl leading-tight font-semibold tracking-tight text-balance break-words @xl:text-3xl">
+            <h2
+              className={
+                community
+                  ? "font-[family-name:var(--magazine-serif,Georgia,serif)] text-3xl leading-[1.1] font-medium tracking-tight text-balance break-words @xl:text-4xl"
+                  : "text-2xl leading-tight font-semibold tracking-tight text-balance break-words @xl:text-3xl"
+              }
+            >
               {issue.title}
             </h2>
-            {showCommunity && (
+            {!community && (
               <p className="text-muted-foreground text-sm">
                 {t("home.fromCommunity", { community: issue.community.name })}
               </p>
@@ -77,11 +77,12 @@ export function FeaturedIssue({
           </div>
           <Button
             asChild
-            variant={emphasis === "ink" ? "ink" : "default"}
+            variant={community ? "ink" : "default"}
             className="self-start"
           >
             <Link href={issuePath(issue.magazine, issue)}>
               {t("home.readIssue")}
+              {community && <ArrowRight aria-hidden="true" />}
             </Link>
           </Button>
         </div>

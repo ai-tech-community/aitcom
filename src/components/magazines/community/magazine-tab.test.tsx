@@ -98,10 +98,10 @@ describe("MagazineTab", () => {
       const subscribe = screen.getByTestId("subscribe");
       expect(subscribe).toHaveAttribute("data-slug", "agents-weekly");
       expect(subscribe).toHaveTextContent("Agents Weekly");
-      const header = screen
-        .getByRole("heading", { name: "Agents Weekly" })
-        .closest("header")!;
-      expect(header).toContainElement(subscribe);
+      const read = screen.getByRole("link", { name: "Read the issue" });
+      expect(read.compareDocumentPosition(subscribe)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
       expect(
         within(subscribe.parentElement!).getByRole("link", {
           name: "Magazine page",
@@ -187,6 +187,23 @@ describe("MagazineTab", () => {
     expect(covers).toHaveLength(1);
     expect(within(covers[0]!).getByText("Issue three")).toBeInTheDocument();
     expect(within(covers[0]!).getByText("Members only")).toBeInTheDocument();
+  });
+
+  it("keeps published issues together before the editor workspace", () => {
+    renderWithIntl(
+      <MagazineTab
+        data={tabData({ viewerIsEditor: true, viewerRole: "editor" })}
+        communitySlug="amsterdam-ai"
+      />,
+    );
+    const archive = screen.getByRole("region", { name: /Past issues/ });
+    const desk = screen.getByRole("region", { name: "Editor desk stub" });
+    const shortcut = screen.getByRole("link", { name: "Editor's desk" });
+    const targetId = shortcut.getAttribute("href")!.slice(1);
+    expect(document.getElementById(targetId)).toContainElement(desk);
+    expect(
+      archive.compareDocumentPosition(desk) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("spends no orange of its own: the community frame owns it", () => {

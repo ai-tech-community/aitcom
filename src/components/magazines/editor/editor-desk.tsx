@@ -174,12 +174,15 @@ export function EditorDesk({
   return (
     <section
       aria-labelledby={labelId}
-      className="flex flex-col gap-6 rounded-xl border p-4 @xl:p-6"
+      className="bg-card text-card-foreground flex min-w-0 flex-col gap-6 rounded-xl border p-4 @xl:p-6"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id={labelId} className="text-lg font-semibold tracking-tight">
-          {t("label")}
-        </h2>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="grid min-w-0 gap-1">
+          <h2 id={labelId} className="text-xl font-semibold tracking-tight">
+            {t("label")}
+          </h2>
+          <SubscriberCountLine slug={slug} />
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="ink"
@@ -192,24 +195,23 @@ export function EditorDesk({
           <Button variant="outline" size="sm" asChild>
             <Link href={magazineWritePath(slug)}>{t("write")}</Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={magazineAutoDraftPath(slug)}>
-              {tAutoDraft("title")}
-            </Link>
-          </Button>
-          {canManage && (
-            <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={magazineTeamPath(slug)}>{t("team")}</Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={magazineSettingsPath(slug)}>{t("settings")}</Link>
-              </Button>
-            </>
-          )}
         </div>
       </div>
-      <SubscriberCountLine slug={slug} />
+      <div className="flex flex-wrap items-center gap-1 border-y py-2">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={magazineAutoDraftPath(slug)}>{tAutoDraft("title")}</Link>
+        </Button>
+        {canManage && (
+          <>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={magazineTeamPath(slug)}>{t("team")}</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={magazineSettingsPath(slug)}>{t("settings")}</Link>
+            </Button>
+          </>
+        )}
+      </div>
       {createError && (
         <p role="alert" className="text-destructive text-sm">
           {createError}

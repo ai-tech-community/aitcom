@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -30,6 +30,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   const t = useTranslations("communities.profile");
   const pathname = usePathname();
   const manageLabelId = useId();
+  const navRef = useRef<HTMLElement>(null);
 
   const basePath = `/communities/${slug}`;
   const isAdminOrOwner = memberRole === "owner" || memberRole === "admin";
@@ -39,6 +40,26 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   );
 
   const { data: roomTabs } = api.spaces.listRooms.useQuery({ slug });
+
+  useEffect(() => {
+    const nav = navRef.current;
+    const current = nav?.querySelector('[aria-current="page"]');
+    if (!nav || !current) return;
+
+    // Reveal the selected tab horizontally without moving the page vertically.
+    const revealCurrent = () => {
+      if (nav.scrollWidth <= nav.clientWidth) return;
+      const tab = current.getBoundingClientRect();
+      const strip = nav.getBoundingClientRect();
+      if (tab.right > strip.right) nav.scrollLeft += tab.right - strip.right;
+      else if (tab.left < strip.left) nav.scrollLeft += tab.left - strip.left;
+    };
+    revealCurrent();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(revealCurrent);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [pathname, spaceTabs, spaceTabsError, roomTabs, memberRole]);
 
   const surfaceItems: NavItem[] = spaceTabsError
     ? BUILTIN_SURFACES.map((s) => ({
@@ -140,6 +161,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
     // list in the community rail.
     <div className="bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-12 z-40 -mx-4 border-b px-4 backdrop-blur sm:-mx-8 sm:px-8 lg:static lg:z-auto lg:mx-0 lg:border-t lg:border-b-0 lg:bg-transparent lg:px-0 lg:pt-4 lg:backdrop-blur-none">
       <nav
+        ref={navRef}
         className="-mb-px flex gap-1 overflow-x-auto lg:mb-0 lg:flex-col lg:gap-0.5 lg:overflow-visible"
         aria-label="Community navigation"
       >
