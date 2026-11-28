@@ -225,14 +225,16 @@ describe("floating layers across the app", () => {
     const missing: string[] = [];
     let portals = 0;
     for (const { path, source } of sources) {
-      // An opening tag, allowing `=>` inside attribute expressions.
+      // An opening `<X.Portal …>` or `<Portal …>` tag (any import name),
+      // allowing `=>` inside attribute expressions.
       for (const match of source.matchAll(
-        /<[A-Za-z]+Primitive\.Portal\b(?:[^>]|=>)*>/g,
+        /<(?:[A-Za-z]+\.)?Portal\b(?:[^>]|=>)*>/g,
       )) {
         portals += 1;
-        if (!match[0].includes("container=")) {
-          missing.push(`${path}: ${match[0]}`);
-        }
+        const passesHook =
+          match[0].includes("container={") &&
+          source.includes("usePortalContainer()");
+        if (!passesHook) missing.push(`${path}: ${match[0]}`);
       }
     }
     // The check found the portals it guards (one per primitive above).
