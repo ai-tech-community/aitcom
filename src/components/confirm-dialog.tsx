@@ -20,6 +20,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  PortalContainerProvider,
+  usePortalContainer,
+} from "@/components/ui/portal-container";
 
 type ConfirmOptions = {
   /** Headline. Defaults to a generic "Are you sure?". */
@@ -43,15 +47,25 @@ type ConfirmContext = {
   confirm: (options?: ConfirmOptions) => Promise<boolean>;
 };
 
-const Ctx = createContext<ConfirmContext | null>(null);
+type ConfirmRequest = ConfirmOptions & {
+  /**
+   * Where the dialog mounts: the floating layer of the part of the page that
+   * asked (a community look), so the dialog matches it. Undefined: `body`.
+   */
+  container?: HTMLElement;
+};
+
+const Ctx = createContext<{
+  confirm: (request?: ConfirmRequest) => Promise<boolean>;
+} | null>(null);
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const t = useTranslations("common");
   const [open, setOpen] = useState(false);
-  const [options, setOptions] = useState<ConfirmOptions>({});
+  const [options, setOptions] = useState<ConfirmRequest>({});
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
 
-  const confirm = useCallback((opts: ConfirmOptions = {}) => {
+  const confirm = useCallback((opts: ConfirmRequest = {}) => {
     setOptions(opts);
     setOpen(true);
     return new Promise<boolean>((resolve) => {
@@ -70,40 +84,42 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={{ confirm }}>
       {children}
-      <AlertDialog
-        open={open}
-        onOpenChange={(next) => {
-          if (!next) settle(false);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {options.title ?? t("confirmTitle")}
-            </AlertDialogTitle>
-            {options.description && (
-              <AlertDialogDescription>
-                {options.description}
-              </AlertDialogDescription>
-            )}
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => settle(false)}>
-              {options.cancelLabel ?? t("cancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className={
-                options.destructive
-                  ? buttonVariants({ variant: "destructive" })
-                  : undefined
-              }
-              onClick={() => settle(true)}
-            >
-              {options.confirmLabel ?? t("confirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PortalContainerProvider container={options.container ?? null}>
+        <AlertDialog
+          open={open}
+          onOpenChange={(next) => {
+            if (!next) settle(false);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {options.title ?? t("confirmTitle")}
+              </AlertDialogTitle>
+              {options.description && (
+                <AlertDialogDescription>
+                  {options.description}
+                </AlertDialogDescription>
+              )}
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => settle(false)}>
+                {options.cancelLabel ?? t("cancel")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className={
+                  options.destructive
+                    ? buttonVariants({ variant: "destructive" })
+                    : undefined
+                }
+                onClick={() => settle(true)}
+              >
+                {options.confirmLabel ?? t("confirm")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </PortalContainerProvider>
     </Ctx.Provider>
   );
 }
@@ -120,8 +136,17 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
  */
 export function useConfirm(): ConfirmContext["confirm"] {
   const ctx = useContext(Ctx);
+  // The caller's floating layer: a confirm asked from inside a community
+  // look opens in that look, though the provider sits at the site root.
+  const container = usePortalContainer();
+  const confirm = ctx?.confirm;
+  const confirmHere = useCallback(
+    (options?: ConfirmOptions) =>
+      confirm ? confirm({ ...options, container }) : Promise.resolve(false),
+    [confirm, container],
+  );
   if (!ctx) {
     throw new Error("useConfirm must be used inside <ConfirmProvider>");
   }
-  return ctx.confirm;
+  return confirmHere;
 }

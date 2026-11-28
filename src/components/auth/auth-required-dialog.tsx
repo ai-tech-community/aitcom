@@ -1,7 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { createContext, useCallback, useContext, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogIn, UserPlus } from "lucide-react";
@@ -14,6 +20,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  PortalContainerProvider,
+  usePortalContainer,
+} from "@/components/ui/portal-container";
 import { authClient } from "@/server/better-auth/client";
 
 /**
@@ -59,7 +69,20 @@ type AuthRequiredContext = {
   authStatus: AuthStatus;
 };
 
-const Ctx = createContext<AuthRequiredContext | null>(null);
+/**
+ * What the provider takes from a caller: the public options, plus where the
+ * dialog mounts — the caller's floating layer (a community look), so the
+ * dialog matches it. `useRequireAuth` adds it; callers never pass it.
+ */
+type AuthPromptRequest = AuthPromptOptions & { container?: HTMLElement };
+
+type ProviderContext = {
+  prompt: (intent?: string, request?: AuthPromptRequest) => void;
+  isAuthenticated: boolean;
+  authStatus: AuthStatus;
+};
+
+const Ctx = createContext<ProviderContext | null>(null);
 
 export function AuthRequiredProvider({
   children,
@@ -80,56 +103,49 @@ export function AuthRequiredProvider({
   const [intent, setIntent] = useState<string | undefined>();
   const [returnTo, setReturnTo] = useState<string | undefined>();
   const [description, setDescription] = useState<string | undefined>();
+  const [container, setContainer] = useState<HTMLElement | undefined>();
   const t = useTranslations("auth");
 
-  const promptAuth = useCallback(
-    (intentText?: string, options?: AuthPromptOptions) => {
+  const prompt = useCallback(
+    (intentText?: string, request?: AuthPromptRequest) => {
       setIntent(intentText);
-      setReturnTo(options?.returnTo);
-      setDescription(options?.description);
+      setReturnTo(request?.returnTo);
+      setDescription(request?.description);
+      setContainer(request?.container);
       setOpen(true);
     },
     [],
   );
 
-  const requireAuth = useCallback(
-    (action: () => void, intentText?: string, options?: AuthPromptOptions) => {
-      if (isAuthenticated) {
-        action();
-        return;
-      }
-      promptAuth(intentText, options);
-    },
-    [isAuthenticated, promptAuth],
-  );
-
   const redirect = encodeURIComponent(returnTo ?? (pathname || "/"));
 
   return (
-    <Ctx.Provider value={{ requireAuth, promptAuth, authStatus }}>
+    <Ctx.Provider value={{ prompt, isAuthenticated, authStatus }}>
       {children}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{intent ?? t("promptTitle")}</DialogTitle>
-            <DialogDescription>
-              {description ?? t("promptBody")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button asChild className="flex-1">
-              <Link href={`/auth/signin?redirect=${redirect}`}>
-                <LogIn className="h-4 w-4" /> {t("promptSignIn")}
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="flex-1">
-              <Link href={`/auth/signup?redirect=${redirect}`}>
-                <UserPlus className="h-4 w-4" /> {t("promptCreateAccount")}
-              </Link>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PortalContainerProvider container={container ?? null}>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{intent ?? t("promptTitle")}</DialogTitle>
+              <DialogDescription>
+                {description ?? t("promptBody")}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button asChild className="flex-1">
+                <Link href={`/auth/signin?redirect=${redirect}`}>
+                  <LogIn className="h-4 w-4" /> {t("promptSignIn")}
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="flex-1">
+                <Link href={`/auth/signup?redirect=${redirect}`}>
+                  <UserPlus className="h-4 w-4" /> {t("promptCreateAccount")}
+                </Link>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </PortalContainerProvider>
     </Ctx.Provider>
   );
 }
@@ -147,10 +163,40 @@ export function AuthRequiredProvider({
  */
 export function useRequireAuth(): AuthRequiredContext {
   const ctx = useContext(Ctx);
+  // The caller's floating layer: a prompt asked from inside a community
+  // look opens in that look, though the provider sits at the site root.
+  const container = usePortalContainer();
+  const prompt = ctx?.prompt;
+  const isAuthenticated = ctx?.isAuthenticated ?? false;
+
+  const promptAuth = useCallback(
+    (intentText?: string, options?: AuthPromptOptions) =>
+      prompt?.(intentText, { ...options, container }),
+    [prompt, container],
+  );
+  const requireAuth = useCallback(
+    (action: () => void, intentText?: string, options?: AuthPromptOptions) => {
+      if (isAuthenticated) {
+        action();
+        return;
+      }
+      promptAuth(intentText, options);
+    },
+    [isAuthenticated, promptAuth],
+  );
+  const value = useMemo(
+    () => ({
+      requireAuth,
+      promptAuth,
+      authStatus: ctx?.authStatus ?? ("unknown" as AuthStatus),
+    }),
+    [requireAuth, promptAuth, ctx?.authStatus],
+  );
+
   if (!ctx) {
     throw new Error(
       "useRequireAuth must be used inside <AuthRequiredProvider>",
     );
   }
-  return ctx;
+  return value;
 }
