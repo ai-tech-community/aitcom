@@ -110,4 +110,48 @@ describe("useConfirm", () => {
 
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
+
+  it("on leaving, answers only the old page's question, not the new page's", async () => {
+    route.pathname = "/en/communities/belong";
+    const { rerender } = render(tree(<Asker />));
+    let oldAnswer!: Promise<boolean>;
+    act(() => {
+      oldAnswer = confirm({ description: "Discard the draft?" });
+    });
+
+    // Back to a page that asks its own question as it mounts.
+    let newAnswer: boolean | undefined;
+    function AsksOnMount() {
+      const ask = useConfirm();
+      useEffect(() => {
+        void ask({ description: "Leave without saving?" }).then((value) => {
+          newAnswer = value;
+        });
+      }, [ask]);
+      return null;
+    }
+    route.pathname = "/en/communities/belong/settings";
+    rerender(tree(<AsksOnMount />));
+
+    await expect(oldAnswer).resolves.toBe(false);
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      "Leave without saving?",
+    );
+    await Promise.resolve();
+    expect(newAnswer).toBeUndefined();
+  });
+
+  it("answers a pending question no when a new one is asked", async () => {
+    renderWith(<Asker />);
+    let first!: Promise<boolean>;
+    act(() => {
+      first = confirm({ description: "First?" });
+    });
+    act(() => {
+      void confirm({ description: "Second?" });
+    });
+
+    await expect(first).resolves.toBe(false);
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Second?");
+  });
 });

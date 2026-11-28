@@ -4,7 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -70,13 +70,25 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
   const pathname = usePathname();
   const pathnameRef = usePathnameRef();
-  // The page the latest question was asked on.
-  const [openedOn, setOpenedOn] = useState<string | null>(null);
+  // The page the pending question was asked on; null when none is pending.
+  const askedOnRef = useRef<string | null>(null);
+
+  // Resolve the pending promise exactly once. A confirm/cancel click settles
+  // before Radix's own close fires onOpenChange, so the later call no-ops.
+  const settle = useCallback((value: boolean) => {
+    resolverRef.current?.(value);
+    resolverRef.current = null;
+    askedOnRef.current = null;
+    setOpen(false);
+  }, []);
 
   const confirm = useCallback(
     (opts: ConfirmRequest = {}) => {
+      // A new question answers a pending one "no", so no promise is left
+      // waiting forever.
+      resolverRef.current?.(false);
+      askedOnRef.current = pathnameRef.current;
       setOptions(opts);
-      setOpenedOn(pathnameRef.current);
       setOpen(true);
       return new Promise<boolean>((resolve) => {
         resolverRef.current = resolve;
@@ -85,26 +97,26 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     [pathnameRef],
   );
 
-  // Resolve the pending promise exactly once. A confirm/cancel click settles
-  // before Radix's own close fires onOpenChange, so the later call no-ops.
-  const settle = useCallback((value: boolean) => {
-    resolverRef.current?.(value);
-    resolverRef.current = null;
-    setOpen(false);
-  }, []);
-
   // A question belongs to the page it was asked on: leaving that page
   // answers it "no", so the dialog never outlives the floating layer it
-  // opened in (a community look's layer goes away with the community). A
-  // question the new page asks as it mounts carries the new page.
-  useEffect(() => {
-    if (open && openedOn !== pathname) settle(false);
-  }, [open, openedOn, pathname, settle]);
+  // opened in (a community look's layer goes away with the community). This
+  // runs as a layout effect, before the new page's passive effects, so it
+  // closes only the old page's question, never one the new page asks as it
+  // mounts (which carries the new page).
+  useLayoutEffect(() => {
+    if (askedOnRef.current !== null && askedOnRef.current !== pathname) {
+      settle(false);
+    }
+  }, [pathname, settle]);
+
+  // A layer detached since the question was asked (its community went away)
+  // is never rendered into; `body` keeps the dialog visible.
+  const container = options.container?.isConnected ? options.container : null;
 
   return (
     <Ctx.Provider value={{ confirm }}>
       {children}
-      <PortalContainerProvider container={options.container ?? null}>
+      <PortalContainerProvider container={container}>
         <AlertDialog
           open={open}
           onOpenChange={(next) => {

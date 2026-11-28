@@ -5,8 +5,9 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import Link from "next/link";
@@ -109,16 +110,21 @@ export function AuthRequiredProvider({
   const t = useTranslations("auth");
 
   const pathnameRef = usePathnameRef();
-  // The page the latest prompt was asked on.
-  const [openedOn, setOpenedOn] = useState<string | null>(null);
+  // The page the open prompt was asked on; null while closed.
+  const askedOnRef = useRef<string | null>(null);
+
+  const close = useCallback(() => {
+    askedOnRef.current = null;
+    setOpen(false);
+  }, []);
 
   const prompt = useCallback(
     (intentText?: string, request?: AuthPromptRequest) => {
+      askedOnRef.current = pathnameRef.current;
       setIntent(intentText);
       setReturnTo(request?.returnTo);
       setDescription(request?.description);
       setContainer(request?.container);
-      setOpenedOn(pathnameRef.current);
       setOpen(true);
     },
     [pathnameRef],
@@ -126,19 +132,30 @@ export function AuthRequiredProvider({
 
   // A prompt belongs to the page it was asked on: leaving that page closes
   // it, so it never outlives the floating layer it opened in (a community
-  // look's layer goes away with the community). A prompt the new page asks
-  // for as it mounts carries the new page, so it stays open.
-  useEffect(() => {
-    if (open && openedOn !== pathname) setOpen(false);
-  }, [open, openedOn, pathname]);
+  // look's layer goes away with the community). This runs as a layout
+  // effect, before the new page's passive effects, so it closes only the
+  // old page's prompt, never one the new page asks for as it mounts (which
+  // carries the new page).
+  useLayoutEffect(() => {
+    if (askedOnRef.current !== null && askedOnRef.current !== pathname) {
+      close();
+    }
+  }, [pathname, close]);
+
+  // A layer detached since the prompt was asked (its community went away)
+  // is never rendered into; `body` keeps the dialog visible.
+  const shownIn = container?.isConnected ? container : null;
 
   const redirect = encodeURIComponent(returnTo ?? (pathname || "/"));
 
   return (
     <Ctx.Provider value={{ prompt, isAuthenticated, authStatus }}>
       {children}
-      <PortalContainerProvider container={container ?? null}>
-        <Dialog open={open} onOpenChange={setOpen}>
+      <PortalContainerProvider container={shownIn}>
+        <Dialog
+          open={open}
+          onOpenChange={(next) => (next ? setOpen(true) : close())}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{intent ?? t("promptTitle")}</DialogTitle>
