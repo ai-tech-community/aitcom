@@ -109,6 +109,7 @@ export function CourseOutline({
   onSelect,
   onLessonDeleted,
   rewriteLessons,
+  trackModuleSave,
   readOnly,
 }: {
   courseId: number;
@@ -124,6 +125,8 @@ export function CourseOutline({
    * the version the server gave it (see lesson-versions.ts).
    */
   rewriteLessons: RewriteLessons;
+  /** Registers the write and refresh with the redesigned builder's leave guard. */
+  trackModuleSave?: (save: () => Promise<void>) => Promise<void>;
   readOnly: boolean;
 }) {
   const t = useTranslations("classroomBuilder");
@@ -313,9 +316,12 @@ export function CourseOutline({
       | { summary: string | null }
     ),
   ) => {
-    try {
+    const save = async () => {
       await renameModule.mutateAsync(input);
       await utils.classrooms.get.invalidate();
+    };
+    try {
+      await (trackModuleSave ? trackModuleSave(save) : save());
     } catch (err) {
       fail(err);
     }
@@ -368,6 +374,7 @@ export function CourseOutline({
                 lessonCount={group.lessonIds.length}
                 readOnly={readOnly}
                 startEditing={renamingModuleId === group.moduleId}
+                showSavedTitle={!!trackModuleSave}
                 onEditingDone={() => setRenamingModuleId(null)}
                 actions={moduleActions(group.moduleId, group.title ?? "")}
               />

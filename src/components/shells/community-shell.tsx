@@ -136,6 +136,7 @@ export function CommunityShell({
 }: CommunityShellProps) {
   const t = useTranslations("redesign.shell");
   const profile = useTranslations("communities.profile");
+  const courses = useTranslations("redesign.classroom");
   const roles = useTranslations("communities.roles");
   const nav = useTranslations("nav");
   const pathname = usePathname();
@@ -184,7 +185,7 @@ export function CommunityShell({
     match: profile("matching"),
     launchpad: profile("launchpad"),
     magazine: profile("magazine"),
-    classroom: profile("classroom"),
+    classroom: courses("courses"),
     members: profile("members"),
     spaces: t("rooms"),
   } as Record<string, string>;

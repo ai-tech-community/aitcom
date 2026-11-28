@@ -32,19 +32,24 @@ const guardEntryState = () => ({
  */
 export function useLeaveGuard({
   active,
+  hasPending,
   confirmLeave,
 }: {
   active: boolean;
+  /** A write can start on blur before React commits its pending state. */
+  hasPending?: () => boolean;
   confirmLeave: () => Promise<boolean>;
 }): void {
   const router = useRouter();
   const activeRef = useRef(active);
+  const pendingRef = useRef(hasPending);
   const confirmRef = useRef(confirmLeave);
   // The page's own address right now; Back has already changed it by the time
   // popstate fires.
   const hereRef = useRef<string | null>(null);
   useEffect(() => {
     activeRef.current = active;
+    pendingRef.current = hasPending;
     confirmRef.current = confirmLeave;
     hereRef.current = window.location.href;
   });
@@ -54,7 +59,8 @@ export function useLeaveGuard({
   // In-app links.
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (!activeRef.current || e.defaultPrevented) return;
+      if ((!activeRef.current && !pendingRef.current?.()) || e.defaultPrevented)
+        return;
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
         return;
       }
@@ -102,7 +108,7 @@ export function useLeaveGuard({
       }
       if (!onEntryRef.current) return; // Not a Back out of this page.
       onEntryRef.current = false;
-      if (!activeRef.current) {
+      if (!activeRef.current && !pendingRef.current?.()) {
         // Everything is saved: carry on with the author's Back.
         window.history.back();
         return;

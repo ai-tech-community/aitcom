@@ -1,5 +1,6 @@
 "use client";
 
+import styles from "../classroom.module.css";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -28,6 +29,7 @@ import {
 } from "@/lib/classroom/publish-checklist";
 
 export type PublishDialogProps = {
+  redesigned?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** The saved course as it would go live; lesson and module titles come from here. */
@@ -53,6 +55,7 @@ type Phase = "review" | "publishing" | "live";
  * fixes anything that blocks, confirms, and gets a small celebration.
  */
 export function PublishDialog({
+  redesigned = false,
   open,
   onOpenChange,
   input,
@@ -100,10 +103,22 @@ export function PublishDialog({
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogContent showCloseButton={phase !== "publishing"}>
+      <DialogContent
+        showCloseButton={phase !== "publishing"}
+        className={
+          redesigned
+            ? cn(
+                styles.controls,
+                styles.builder,
+                "max-h-[calc(100dvh-2rem)] overflow-y-auto motion-reduce:animate-none",
+              )
+            : undefined
+        }
+        overlayClassName={redesigned ? "motion-reduce:animate-none" : undefined}
+      >
         {phase === "live" ? (
           <>
-            <DialogHeader>
+            <DialogHeader className={redesigned ? "max-lg:pr-8" : undefined}>
               <PartyPopper
                 className="text-muted-foreground size-6"
                 aria-hidden="true"
@@ -129,7 +144,7 @@ export function PublishDialog({
           </>
         ) : (
           <>
-            <DialogHeader>
+            <DialogHeader className={redesigned ? "max-lg:pr-8" : undefined}>
               <DialogTitle>{t("publishTitle")}</DialogTitle>
               <DialogDescription>{t("publishLead")}</DialogDescription>
             </DialogHeader>

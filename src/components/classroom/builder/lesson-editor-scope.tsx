@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { LessonBody } from "@/components/classroom/lesson-body";
+import { classroomBlockRenderers } from "@/components/classroom/materials/block-renderers";
+import { SectionLabel } from "@/components/ui/section-label";
+import { lessonHasContent } from "@/lib/classroom/publish-checklist";
 import { useTranslations } from "next-intl";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { api } from "@/trpc/react";
@@ -72,6 +76,8 @@ export type LessonEditorScopeProps = {
   lesson: LessonLike;
   courseSlug: string;
   readOnly: boolean;
+  redesigned?: boolean;
+  showDraftPreview?: boolean;
   /** Where outline changes that rewrite this lesson find its save queue. */
   versions: LessonVersionRegistry;
   onStatusChange: (state: PaneSaveState) => void;
@@ -100,6 +106,8 @@ export function LessonEditorScope({
   lesson,
   courseSlug,
   readOnly,
+  redesigned = false,
+  showDraftPreview = false,
   versions,
   onStatusChange,
   isDeleted,
@@ -108,6 +116,7 @@ export function LessonEditorScope({
   onToggleSettings,
 }: LessonEditorScopeProps) {
   const t = useTranslations("classroomBuilder");
+  const learning = useTranslations("redesign.classroom");
   const utils = api.useUtils();
   const { mutateAsync } = api.classrooms.updateLesson.useMutation();
   const settingsId = useId();
@@ -199,6 +208,7 @@ export function LessonEditorScope({
           setDraft={setDraft}
           readOnly={readOnly}
           saveError={autosave.status === "error" ? saveError : null}
+          redesigned={redesigned}
         />
       </div>
 
@@ -243,6 +253,35 @@ export function LessonEditorScope({
           id={`${settingsId}-body`}
           className={cn(settingsCollapsed && "lg:hidden")}
         >
+          {showDraftPreview ? (
+            <div className="border-border space-y-3 border-b px-4 py-5">
+              <SectionLabel as="h3" bordered={false}>
+                {learning("learnerPreview")}
+              </SectionLabel>
+              {draft.title.trim() ? (
+                <p className="text-lg font-semibold tracking-tight [overflow-wrap:anywhere]">
+                  {draft.title}
+                </p>
+              ) : null}
+              {lessonHasContent({
+                id: lessonId,
+                title: draft.title,
+                module: null,
+                body: draft.body,
+              }) ? (
+                <div className="text-muted-foreground text-sm [overflow-wrap:anywhere]">
+                  <LessonBody
+                    content={draft.body}
+                    blockRenderers={classroomBlockRenderers}
+                  />
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  {learning("previewEmpty")}
+                </p>
+              )}
+            </div>
+          ) : null}
           <LessonSettingsPane
             lessonId={lessonId}
             draft={draft}

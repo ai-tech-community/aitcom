@@ -1,5 +1,7 @@
 "use client";
 
+import type { Ref } from "react";
+import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, ArrowLeft, ChevronDown, ListTree } from "lucide-react";
 import { Link } from "@/i18n/navigation";
@@ -19,6 +21,8 @@ import type { AutosaveStatus } from "@/components/use-autosave";
 type CourseStatus = "draft" | "published" | "archived";
 
 export type BuilderTopBarProps = {
+  redesigned?: boolean;
+  outlineButtonRef?: Ref<HTMLButtonElement>;
   slug: string;
   courseSlug: string;
   title: string;
@@ -48,6 +52,8 @@ export type BuilderTopBarProps = {
  * edit/preview, and the single Publish action (the screen's only orange).
  */
 export function BuilderTopBar({
+  redesigned = false,
+  outlineButtonRef,
   slug,
   title,
   onRenameTitle,
@@ -66,16 +72,28 @@ export function BuilderTopBar({
   onOpenOutline,
 }: BuilderTopBarProps) {
   const t = useTranslations("classroomBuilder");
+  const learning = useTranslations("redesign.classroom");
 
   return (
     <header className="bg-background border-border sticky top-(--shell-top-offset) z-40 border-b">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 sm:px-6",
+          redesigned && "max-sm:flex-col max-sm:items-stretch sm:py-3.5",
+        )}
+      >
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-3",
+            redesigned && "max-sm:gap-2",
+          )}
+        >
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
             className="lg:hidden"
+            ref={outlineButtonRef}
             onClick={onOpenOutline}
             aria-label={t("outline")}
           >
@@ -83,22 +101,52 @@ export function BuilderTopBar({
           </Button>
           <Link
             href={`/communities/${slug}/classroom` as never}
-            className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1 text-sm"
+            aria-label={redesigned ? learning("courses") : undefined}
+            className={cn(
+              "text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1 text-sm",
+              redesigned &&
+                "focus-visible:ring-ring min-h-11 min-w-11 justify-center rounded-md outline-none focus-visible:ring-2 sm:justify-start",
+            )}
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            {t("backToClassroom")}
+            {redesigned ? (
+              <span className="hidden sm:inline">{learning("courses")}</span>
+            ) : (
+              t("backToClassroom")
+            )}
           </Link>
-          <span className="text-border" aria-hidden="true">
+          <span
+            className={cn("text-border", redesigned && "hidden sm:inline")}
+            aria-hidden="true"
+          >
             /
           </span>
-          <CourseTitleEditor title={title} onRename={onRenameTitle} />
-          <StatusBadge status={status} />
-          <span className="text-muted-foreground hidden shrink-0 text-xs sm:inline">
-            {isPublic ? t("visibilityPublic") : t("visibilityMembers")}
-          </span>
+          {redesigned ? (
+            <div className="min-w-0 flex-1">
+              <p className="text-muted-foreground text-xs">
+                {learning("courseBuilder")}
+              </p>
+              <CourseTitleEditor title={title} onRename={onRenameTitle} />
+            </div>
+          ) : (
+            <CourseTitleEditor title={title} onRename={onRenameTitle} />
+          )}
+          {redesigned && status === "published" ? null : (
+            <StatusBadge status={status} />
+          )}
+          {redesigned ? null : (
+            <span className="text-muted-foreground hidden shrink-0 text-xs sm:inline">
+              {isPublic ? t("visibilityPublic") : t("visibilityMembers")}
+            </span>
+          )}
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-3">
+        <div
+          className={cn(
+            "flex shrink-0 flex-wrap items-center gap-3",
+            redesigned && "border-border max-sm:border-t max-sm:pt-2",
+          )}
+        >
           <SaveStatusText
             status={saveStatus}
             savedAt={savedAt}
@@ -106,6 +154,7 @@ export function BuilderTopBar({
           />
           <SegmentedControl
             size="sm"
+            className={redesigned ? "max-lg:h-12" : undefined}
             aria-label={t("editOrPreview")}
             value={previewing ? "preview" : "edit"}
             onValueChange={(v) => {

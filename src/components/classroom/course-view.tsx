@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "./classroom.module.css";
+import { cn } from "@/lib/utils";
 import { PageMain } from "@/components/page-main";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -8,6 +10,11 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { CourseLearningView } from "./course-learning-view";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -64,7 +71,9 @@ export function CourseView({
    */
   embedded?: boolean;
 }) {
+  const redesigned = isOpenCommunitiesEnabled();
   const t = useTranslations("classroom");
+  const learning = useTranslations("redesign.classroom");
   const tPayments = useTranslations("payments");
   const confirm = useConfirm();
   const router = useRouter();
@@ -72,9 +81,10 @@ export function CourseView({
   const { data: session } = authClient.useSession();
   const { requireAuth } = useRequireAuth();
 
-  const { data, isLoading, isError, error } = api.classrooms.get.useQuery({
-    slug: courseSlug,
-  });
+  const { data, isLoading, isError, error, refetch } =
+    api.classrooms.get.useQuery({
+      slug: courseSlug,
+    });
 
   const { data: mine } = api.communities.getMyCommunities.useQuery(undefined, {
     enabled: !!session?.user,
@@ -127,28 +137,77 @@ export function CourseView({
   // Real enrollment OR an author/staff member previewing unlocks lesson content.
   const canViewContent = enrolled || previewing;
 
+  const classroomHref = `/communities/${slug}/classroom`;
+  const courseHref = `${classroomHref}/${courseSlug}`;
+  const refreshCourse = async () => {
+    await Promise.all([
+      utils.classrooms.get.invalidate({ slug: courseSlug }),
+      utils.classrooms.list.invalidate({ communitySlug: slug }),
+    ]);
+  };
+
   const enroll = api.classrooms.enroll.useMutation({
-    onSuccess: () => void utils.classrooms.get.invalidate({ slug: courseSlug }),
+    onSuccess: () =>
+      redesigned
+        ? refreshCourse()
+        : void utils.classrooms.get.invalidate({ slug: courseSlug }),
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
   });
   const unenroll = api.classrooms.unenroll.useMutation({
-    onSuccess: () => void utils.classrooms.get.invalidate({ slug: courseSlug }),
+    onSuccess: () =>
+      redesigned
+        ? refreshCourse()
+        : void utils.classrooms.get.invalidate({ slug: courseSlug }),
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
   });
   const markComplete = api.classrooms.markLessonComplete.useMutation({
-    onSuccess: () => void utils.classrooms.get.invalidate({ slug: courseSlug }),
+    onSuccess: () =>
+      redesigned
+        ? refreshCourse()
+        : void utils.classrooms.get.invalidate({ slug: courseSlug }),
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
   });
   const setPublic = api.classrooms.setPublic.useMutation({
-    onSuccess: () => void utils.classrooms.get.invalidate({ slug: courseSlug }),
+    onSuccess: () =>
+      redesigned
+        ? refreshCourse()
+        : void utils.classrooms.get.invalidate({ slug: courseSlug }),
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
   });
   const archive = api.classrooms.moderateArchive.useMutation({
-    onSuccess: () => router.push(`/communities/${slug}/classroom` as never),
+    onSuccess: async () => {
+      if (redesigned) {
+        await utils.classrooms.list.invalidate({ communitySlug: slug });
+      }
+      router.push(classroomHref as never);
+    },
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
   });
 
   if (isLoading) {
+    if (redesigned) {
+      return (
+        <div
+          className={cn("mx-auto max-w-6xl space-y-6 py-5", styles.controls)}
+          aria-busy="true"
+          aria-label={t("loading")}
+        >
+          <Skeleton className="h-9 w-28" />
+          <div className="border-border grid gap-4 border-b pb-8 sm:grid-cols-[2fr_1fr]">
+            <div className="space-y-4">
+              <Skeleton className="h-12 max-w-md" />
+              <Skeleton className="h-5 max-w-sm" />
+              <Skeleton className="h-4 max-w-52" />
+            </div>
+            <Skeleton className="h-20 w-full" />
+          </div>
+          <Skeleton className="h-4 w-24" />
+          {Array.from({ length: 3 }, (_, index) => (
+            <Skeleton key={index} className="h-11 w-full" />
+          ))}
+        </div>
+      );
+    }
     return (
       <p className="text-muted-foreground py-12 text-center text-sm">
         {t("loading")}
@@ -159,7 +218,13 @@ export function CourseView({
   if (isError || !data) {
     if (error?.data?.code === "PRECONDITION_FAILED")
       return (
-        <div className="mx-auto max-w-2xl space-y-4 py-12">
+        <div
+          data-classroom-redesign={redesigned ? "" : undefined}
+          className={cn(
+            "mx-auto max-w-2xl space-y-4 py-12",
+            redesigned && styles.controls,
+          )}
+        >
           <Lock className="text-muted-foreground size-7" aria-hidden="true" />
           <h1 className="text-2xl font-semibold">
             {tPayments("purchaseCourse")}
@@ -167,13 +232,41 @@ export function CourseView({
           <p className="text-muted-foreground text-sm">
             {tPayments("courseLocked")}
           </p>
-          <Button asChild>
+          <Button
+            asChild
+            variant={redesigned && role === null ? "ink" : "default"}
+          >
             <Link href={`/communities/${slug}/offers` as never}>
               {tPayments("offersTitle")}
             </Link>
           </Button>
         </div>
       );
+    if (redesigned) {
+      if (
+        error &&
+        error.data?.code !== "NOT_FOUND" &&
+        error.data?.code !== "FORBIDDEN"
+      ) {
+        return (
+          <ErrorState
+            className={styles.controls}
+            onRetry={() => void refetch()}
+          />
+        );
+      }
+      return (
+        <EmptyState
+          title={t("notFound")}
+          description={learning("courseUnavailable")}
+          action={
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href={classroomHref as never}>{learning("courses")}</Link>
+            </Button>
+          }
+        />
+      );
+    }
     return (
       <p className="text-muted-foreground py-12 text-center text-sm">
         {t("notFound")}
@@ -200,6 +293,180 @@ export function CourseView({
   );
   const coverImageUrl = (course as { coverImageUrl?: string | null })
     .coverImageUrl;
+
+  const { materials } = data;
+  const renderLessonContent = (
+    lesson: LessonLike,
+    onExamPassed?: () => void,
+  ) => (
+    <>
+      {/* Body */}
+      {lesson.body ? (
+        <MaterialsManifestProvider manifest={materials}>
+          <LessonBody
+            content={lesson.body}
+            blockRenderers={classroomBlockRenderers}
+          />
+        </MaterialsManifestProvider>
+      ) : null}
+
+      {/* Resources */}
+      {lesson.resources && lesson.resources.length > 0 ? (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">{t("resources")}</h4>
+          <ul className="space-y-1">
+            {lesson.resources.map((r, i) => (
+              <li key={i}>
+                <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={
+                    redesigned
+                      ? "text-foreground inline-flex min-h-11 items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
+                      : "text-primary inline-flex items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
+                  }
+                >
+                  <ExternalLink className="size-3.5" />
+                  {r.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {/* Exam — visible to enrolled learners and to authors previewing */}
+      {canViewContent
+        ? (() => {
+            const exam = lessonExams.find(
+              (e) => e.lessonId === lesson.id && e.questions.length > 0,
+            );
+            if (!exam) return null;
+            // Author preview only: the unstripped lesson (author-only from
+            // `get`) carries correctIndex → mark the right option.
+            const answerKey = previewing
+              ? Object.fromEntries(
+                  (
+                    (lesson.examQuestions ?? []) as {
+                      id: string;
+                      correctIndex: number;
+                    }[]
+                  ).map((q) => [q.id, q.correctIndex]),
+                )
+              : undefined;
+            return (
+              <ExamRunner
+                exam={exam}
+                attempts={attempts}
+                completed={completedLessonIds.includes(lesson.id)}
+                preview={previewing}
+                answerKey={answerKey}
+                redesigned={redesigned}
+                onPassed={onExamPassed}
+              />
+            );
+          })()
+        : null}
+    </>
+  );
+  const toggleVisibility = () =>
+    setPublic.mutate({ courseId: course.id, isPublic: !course.isPublic });
+  const confirmArchive = async () => {
+    if (
+      await confirm({
+        description: t("removeCourseConfirm"),
+        destructive: true,
+      })
+    ) {
+      archive.mutate({ courseId: course.id });
+    }
+  };
+
+  if (redesigned) {
+    return (
+      <CourseLearningView
+        course={course}
+        courseHref={courseHref}
+        classroomHref={classroomHref}
+        groups={groups}
+        completed={completedSet}
+        percent={percent}
+        certificate={certificateIssuedAt}
+        embedded={embedded}
+        // The Community shell gives Join the accent for outsiders.
+        accent={role !== null && !embedded}
+        previewing={previewing}
+        enrolled={enrolled}
+        member={role !== null}
+        memberId={session?.user.id}
+        editHref={isAuthor && !embedded ? `${courseHref}/edit` : undefined}
+        onPreview={
+          canPreview ? () => setPreviewing((current) => !current) : undefined
+        }
+        visibility={
+          isStaff && !embedded && (!isAuthor || course.status === "archived")
+            ? { run: toggleVisibility, pending: setPublic.isPending }
+            : undefined
+        }
+        archive={
+          isStaff && !embedded
+            ? { run: () => void confirmArchive(), pending: archive.isPending }
+            : undefined
+        }
+        enroll={
+          showEnroll
+            ? {
+                pending: enroll.isPending,
+                run: () =>
+                  requireAuth(
+                    () => enroll.mutate({ courseId: course.id }),
+                    learning("signInToEnroll"),
+                  ),
+              }
+            : undefined
+        }
+        unenroll={
+          enrolled && !previewing
+            ? {
+                run: () => unenroll.mutate({ courseId: course.id }),
+                pending: unenroll.isPending,
+              }
+            : undefined
+        }
+        completion={{
+          pending: markComplete.isPending,
+          run: async (lessonId, completed) => {
+            try {
+              const result = await markComplete.mutateAsync({
+                lessonId,
+                completed,
+              });
+              return result.completed === completed;
+            } catch {
+              // The shared mutation already reports the error.
+              return false;
+            }
+          },
+        }}
+        mandatoryExams={
+          new Set(
+            lessonExams
+              .filter((exam) => exam.mandatory)
+              .map((exam) => exam.lessonId),
+          )
+        }
+        renderLesson={(lessonId, onExamPassed) => {
+          const lesson = lessons.find(({ id }) => id === lessonId);
+          return lesson ? (
+            <div className="space-y-6">
+              {renderLessonContent(lesson, onExamPassed)}
+            </div>
+          ) : null;
+        }}
+      />
+    );
+  }
 
   const Title = embedded ? "h2" : "h1";
 
@@ -276,12 +543,7 @@ export function CourseView({
               variant="outline"
               size="sm"
               disabled={setPublic.isPending}
-              onClick={() =>
-                setPublic.mutate({
-                  courseId: course.id,
-                  isPublic: !course.isPublic,
-                })
-              }
+              onClick={toggleVisibility}
             >
               {course.isPublic ? t("makeMembersOnly") : t("makePublic")}
             </Button>
@@ -290,16 +552,7 @@ export function CourseView({
               variant="destructive"
               size="sm"
               disabled={archive.isPending}
-              onClick={async () => {
-                if (
-                  await confirm({
-                    description: t("removeCourseConfirm"),
-                    destructive: true,
-                  })
-                ) {
-                  archive.mutate({ courseId: course.id });
-                }
-              }}
+              onClick={confirmArchive}
             >
               {t("removeCourse")}
             </Button>
@@ -547,73 +800,7 @@ export function CourseView({
                   : null}
               </div>
 
-              {/* Body */}
-              {selectedLesson.body ? (
-                <MaterialsManifestProvider manifest={data.materials}>
-                  <LessonBody
-                    content={selectedLesson.body}
-                    blockRenderers={classroomBlockRenderers}
-                  />
-                </MaterialsManifestProvider>
-              ) : null}
-
-              {/* Resources */}
-              {selectedLesson.resources &&
-              selectedLesson.resources.length > 0 ? (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">{t("resources")}</h4>
-                  <ul className="space-y-1">
-                    {selectedLesson.resources.map((r, i) => (
-                      <li key={i}>
-                        <a
-                          href={r.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary inline-flex items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
-                        >
-                          <ExternalLink className="size-3.5" />
-                          {r.label}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {/* Exam — visible to enrolled learners and to authors previewing */}
-              {canViewContent
-                ? (() => {
-                    const exam = lessonExams.find(
-                      (e) =>
-                        e.lessonId === selectedLesson.id &&
-                        e.questions.length > 0,
-                    );
-                    if (!exam) return null;
-                    // Author preview only: the unstripped lesson (author-only from
-                    // `get`) carries correctIndex → mark the right option.
-                    const answerKey = previewing
-                      ? Object.fromEntries(
-                          (
-                            (selectedLesson.examQuestions ?? []) as {
-                              id: string;
-                              correctIndex: number;
-                            }[]
-                          ).map((q) => [q.id, q.correctIndex]),
-                        )
-                      : undefined;
-                    return (
-                      <ExamRunner
-                        exam={exam}
-                        attempts={attempts}
-                        completed={completedLessonIds.includes(
-                          selectedLesson.id,
-                        )}
-                        preview={previewing}
-                        answerKey={answerKey}
-                      />
-                    );
-                  })()
-                : null}
+              {renderLessonContent(selectedLesson)}
             </div>
           )}
         </PageMain>

@@ -30,6 +30,7 @@ export type LessonPaneProps = {
   draft: LessonDraft;
   setDraft: Dispatch<SetStateAction<LessonDraft>>;
   readOnly: boolean;
+  redesigned?: boolean;
   /** Why the last save failed, in the builder's own words; null when it did not. */
   saveError: BuilderErrorKey | null;
 };
@@ -46,9 +47,11 @@ export function LessonPane({
   draft,
   setDraft,
   readOnly,
+  redesigned = false,
   saveError,
 }: LessonPaneProps) {
   const t = useTranslations("classroomBuilder");
+  const learning = useTranslations("redesign.classroom");
   const { canUpload } = useLessonEditorContext();
   const titleId = useId();
   const titleHintId = useId();
@@ -96,6 +99,11 @@ export function LessonPane({
         <span id={bodyLabelId} className="text-sm leading-none font-medium">
           {t("lessonBodyLabel")}
         </span>
+        {redesigned && !readOnly ? (
+          <p className="text-muted-foreground pb-1 text-sm">
+            {learning("embedTip")}
+          </p>
+        ) : null}
         {readOnly ? (
           // The shared editor has no read-only mode: show what learners see.
           draft.body ? (

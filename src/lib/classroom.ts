@@ -12,6 +12,14 @@ export function courseProgressPercent(
   return Math.min(100, Math.round((completed / total) * 100));
 }
 
+/** Find the first unfinished lesson in the course's existing reading order. */
+export function nextUnfinishedLesson<Lesson extends { id: number }>(
+  lessons: readonly Lesson[],
+  completed: ReadonlySet<number>,
+): Lesson | undefined {
+  return lessons.find(({ id }) => !completed.has(id));
+}
+
 /**
  * The shared shape of the classroom community policies: `admins_only` means
  * owner or admin (moderators excluded); `all_members` means any active

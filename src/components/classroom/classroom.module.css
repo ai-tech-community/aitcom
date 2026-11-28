@@ -1,0 +1,71 @@
+/* Classroom pages and their portaled outline share the same control sizing. */
+.controls {
+  @media (width < 64rem) {
+    :is(
+      [data-slot="button"],
+      [data-slot="segmented-control-item"],
+      input[data-slot="input"]
+    ) {
+      min-height: 44px;
+    }
+
+    [data-slot="button"][data-size^="icon"] {
+      min-width: 44px;
+    }
+
+    [data-slot="dialog-close"] {
+      display: grid;
+      min-width: 44px;
+      min-height: 44px;
+      place-items: center;
+    }
+
+    :is(fieldset, [role="radiogroup"]) label:has(input[type="radio"]) {
+      min-height: 44px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :is(
+      [data-slot="button"],
+      [data-slot="skeleton"],
+      [data-slot="progress-indicator"]
+    ) {
+      animation: none;
+      transition: none;
+    }
+  }
+}
+
+.builder {
+  /* The outline's selection uses neutral ink. Publish owns the orange fill. */
+  nav button[aria-current] > span:first-child[aria-hidden="true"],
+  &:is([role="dialog"])
+    button[aria-current]
+    > span:first-child[aria-hidden="true"] {
+    background-color: var(--foreground);
+  }
+
+  [class~="editor-anchor"] > [class~="text-muted-foreground/40"] {
+    color: var(--muted-foreground);
+  }
+
+  @media (width < 64rem) {
+    &:is([role="dialog"]) button,
+    button[aria-pressed][title] {
+      min-height: 44px;
+    }
+
+    button[aria-pressed][title] {
+      min-width: 44px;
+    }
+  }
+
+  [data-slot="button"][class~="bg-primary"] {
+    color: var(--foreground);
+
+    &:where(.dark, .dark *) {
+      color: var(--background);
+    }
+  }
+}

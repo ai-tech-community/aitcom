@@ -1,6 +1,7 @@
 /**
  * Seed the Workbench Notes redesign preview. Run through test-env.sh.
  * Use --feed-timestamps-only or --feed-topics-only to update the local aitcom_test preview.
+ * Pass --module-titles-only to refresh the existing classroom module names.
  */
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
@@ -209,6 +210,63 @@ async function main() {
     await import("@/server/communities/feed-post-counters");
 
   const payload = await getPayloadClient();
+  if (process.argv.includes("--module-titles-only")) {
+    // The shared preview's other records and settings belong to all lanes.
+    await db.transaction(async (lock) => {
+      await lock.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`aitcom.seed.${communitySlug}`}))`,
+      );
+      const community = await lock.query.communities.findFirst({
+        where: eq(communities.slug, communitySlug),
+      });
+      if (!community) throw new Error("Seed the demo community first.");
+      const {
+        docs: [course],
+      } = await payload.find({
+        collection: "courses",
+        where: scopedKey(
+          "communityId",
+          community.id,
+          "slug",
+          fixture.course.id,
+        ),
+        depth: 0,
+        limit: 1,
+      });
+      if (!course) throw new Error("Seed the demo course first.");
+      const modules = await Promise.all(
+        fixture.course.modules.map(async (module) => {
+          const id = fixtureDocumentId(
+            "modules",
+            `${fixture.course.id}/${module.id}`,
+          );
+          const {
+            docs: [existing],
+          } = await payload.find({
+            collection: "modules",
+            where: scopedKey("course", course.id, "id", id),
+            depth: 0,
+            limit: 1,
+          });
+          if (!existing) throw new Error(`Missing demo module ${module.id}.`);
+          return { existing, title: module.title };
+        }),
+      );
+      for (const { existing, title } of modules) {
+        if (existing.title !== title) {
+          await payload.update({
+            collection: "modules",
+            id: existing.id,
+            data: { title },
+          });
+        }
+      }
+      console.log(
+        `Refreshed ${modules.length} module titles for ${course.slug}.`,
+      );
+    });
+    return;
+  }
   payload.db.allowIDOnCreate = true;
   const counts: Record<
     string,

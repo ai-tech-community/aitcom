@@ -44,6 +44,7 @@ export function OutlineModuleHeader({
   lessonCount,
   readOnly,
   startEditing,
+  showSavedTitle = false,
   onEditingDone,
   actions,
 }: {
@@ -57,19 +58,21 @@ export function OutlineModuleHeader({
   lessonCount: number;
   readOnly: boolean;
   startEditing: boolean;
+  showSavedTitle?: boolean;
   onEditingDone: () => void;
   actions: ModuleHeaderActions;
 }) {
   const t = useTranslations("classroomBuilder");
   const [editingTitle, setEditingTitle] = useState(startEditing && !readOnly);
   const [editingSummary, setEditingSummary] = useState(false);
-  // What the author just saved, shown until the server's copy arrives, so the
-  // old value never flashes back in between.
+  // In the redesigned builder, keep the saved name until the write and
+  // the course refetch finish. The pending value still identifies the save.
   const [pendingTitle, setPendingTitle] = useState<string | null>(null);
   const [pendingSummary, setPendingSummary] = useState<{
     value: string | null;
   } | null>(null);
-  const title = pendingTitle ?? savedTitle;
+  const savingTitle = showSavedTitle && pendingTitle !== null;
+  const title = showSavedTitle ? savedTitle : (pendingTitle ?? savedTitle);
   const summary = pendingSummary ? pendingSummary.value : savedSummary;
 
   const finishTitle = (next: string | null) => {
@@ -112,12 +115,21 @@ export function OutlineModuleHeader({
           <button
             type="button"
             onClick={() => setEditingTitle(true)}
+            disabled={savingTitle}
             aria-label={t("renameModule", { title })}
             className="hover:bg-secondary/50 focus-visible:ring-ring/50 min-w-0 flex-1 truncate rounded-md px-2 py-1 text-left text-sm font-semibold outline-none focus-visible:ring-[3px]"
           >
             {title}
           </button>
         )}
+        {savingTitle ? (
+          <span
+            role="status"
+            className="text-muted-foreground shrink-0 text-xs"
+          >
+            {t("saving")}
+          </span>
+        ) : null}
         {readOnly ? null : (
           <ModuleMenu
             title={title}

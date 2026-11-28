@@ -491,7 +491,7 @@
     "modules": [
       {
         "id": "before-you-change-it",
-        "title": "Before you change it",
+        "title": "Record the starting condition",
         "lessons": [
           {
             "id": "pick-one-symptom",
@@ -512,7 +512,7 @@
       },
       {
         "id": "after-the-first-fix",
-        "title": "After the first fix",
+        "title": "Verify and share the repair",
         "lessons": [
           {
             "id": "change-one-thing",
