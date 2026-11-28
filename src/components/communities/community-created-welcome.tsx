@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useId, type Ref } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowRight, CalendarDays, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,8 @@ import { CommunityBanner } from "./community-banner";
 import { CommunityCoverArt } from "./theme/community-cover-art";
 import { CommunitySetupSharing } from "./community-setup-sharing";
 import { SetupStepStatus } from "./community-setup-step-status";
-import {
-  COMMUNITY_FIRST_POST_ID,
-  communityPublicUrl,
-} from "./create-community-link";
+import { communityPublicUrl } from "./create-community-link";
+import type { PostComposerDisclosure } from "./feed/post-composer";
 
 type Community = RouterOutputs["communities"]["getBySlug"];
 const setupLink =
@@ -30,11 +28,11 @@ const stepAction =
 /** A first-week path for the owner, derived from the current community and feed. */
 export function CommunityCreatedWelcome({
   community,
-  composer,
+  disclosure,
   showCover,
 }: {
   community: Community;
-  composer: ReactNode;
+  disclosure: PostComposerDisclosure;
   showCover: boolean;
 }) {
   const t = useTranslations("redesign.creation.welcome");
@@ -54,12 +52,8 @@ export function CommunityCreatedWelcome({
       });
   const basePath = `/communities/${slug}` as const;
   const publicUrl = communityPublicUrl(basePath);
-  const editorId = useId();
-  const [editorOpen, setEditorOpen] = useState(false);
-
-  useEffect(() => {
-    if (editorOpen) document.getElementById(COMMUNITY_FIRST_POST_ID)?.focus();
-  }, [editorOpen]);
+  const { editor, editorId, expanded, onToggle, toggleDisabled, triggerRef } =
+    disclosure;
 
   return (
     <section
@@ -127,20 +121,18 @@ export function CommunityCreatedWelcome({
           <li>
             <SetupStep
               title={t("postTitle")}
-              actionLabel={t(editorOpen ? "hideEditor" : "writePost")}
+              actionLabel={t(expanded ? "hideEditor" : "writePost")}
               detail={t(hasPost ? "nextPostHelp" : "postHelp")}
               done={posts.data ? hasPost : undefined}
-              primary={!hasPost && !editorOpen}
+              primary={!hasPost && !expanded}
               controls={editorId}
-              expanded={editorOpen}
-              onToggle={() => setEditorOpen((open) => !open)}
+              expanded={expanded}
+              onToggle={onToggle}
+              disabled={toggleDisabled}
+              buttonRef={triggerRef}
             />
-            <div
-              id={editorId}
-              hidden={!editorOpen}
-              className="px-4 pb-4 sm:px-6"
-            >
-              {composer}
+            <div hidden={!expanded} className="px-4 pb-4 sm:px-6">
+              {editor}
             </div>
           </li>
           <CommunitySetupSharing community={community} done={hasMembers} />
@@ -185,6 +177,8 @@ function SetupStep({
   controls,
   expanded,
   onToggle,
+  disabled,
+  buttonRef,
   actionLabel,
   primary = false,
   optional = false,
@@ -201,12 +195,16 @@ function SetupStep({
       controls?: never;
       expanded?: never;
       onToggle?: never;
+      disabled?: never;
+      buttonRef?: never;
     }
   | {
       href?: never;
       controls: string;
       expanded: boolean;
       onToggle: () => void;
+      disabled: boolean;
+      buttonRef: Ref<HTMLButtonElement>;
     }
 )) {
   const titleId = useId();
@@ -264,10 +262,12 @@ function SetupStep({
     </Button>
   ) : (
     <Button
+      ref={buttonRef}
       type="button"
       variant="ghost"
       aria-controls={controls}
       aria-expanded={expanded}
+      disabled={disabled}
       aria-labelledby={actionId}
       aria-describedby={describedBy}
       className={stepAction}

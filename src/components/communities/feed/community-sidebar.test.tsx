@@ -82,17 +82,16 @@ function ev(id: number | string, overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderSidebar(locale: "en" | "nl" = "en", hideEmptyNews = false) {
+function renderSidebar(
+  locale: "en" | "nl" = "en",
+  options: { hideEmptyNews?: boolean; home?: boolean } = {},
+) {
   return render(
     <NextIntlClientProvider
       locale={locale}
       messages={locale === "en" ? en : nl}
     >
-      <CommunitySidebar
-        slug="ai-amsterdam"
-        now={NOW}
-        hideEmptyNews={hideEmptyNews}
-      />
+      <CommunitySidebar slug="ai-amsterdam" now={NOW} {...options} />
     </NextIntlClientProvider>,
   );
 }
@@ -141,18 +140,21 @@ beforeEach(() => {
   ];
 });
 
-it("omits empty news during owner setup without hiding real stories", () => {
-  const empty = renderSidebar("en", true);
-  expect(
-    empty.container.querySelector('[data-sidebar-section="news"]'),
-  ).toBeNull();
-  empty.unmount();
-  m.stories = [
-    { id: "story", url: "https://example.com/news", title: "Actual news" },
-  ];
-  renderSidebar("en", true);
-  expect(screen.getByRole("link", { name: "Actual news" })).toBeVisible();
-});
+it.each([{ hideEmptyNews: true }, { home: true }])(
+  "omits empty news with %o and keeps real stories",
+  (options) => {
+    const empty = renderSidebar("en", options);
+    expect(
+      empty.container.querySelector('[data-sidebar-section="news"]'),
+    ).toBeNull();
+    empty.unmount();
+    m.stories = [
+      { id: "story", url: "https://example.com/news", title: "Actual news" },
+    ];
+    renderSidebar("en", options);
+    expect(screen.getByRole("link", { name: "Actual news" })).toBeVisible();
+  },
+);
 
 describe("CommunitySidebar — upcoming events", () => {
   it("lists the next few upcoming events as compact rows, soonest first", () => {

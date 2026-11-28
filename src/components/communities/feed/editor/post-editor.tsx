@@ -55,6 +55,8 @@ export function PostEditor({
   label,
   placeholder,
   autoFocus,
+  inlineComposer = false,
+  descriptionId,
   onImageFiles,
   imageRefusal,
   onSubmitShortcut,
@@ -70,6 +72,8 @@ export function PostEditor({
   label: string;
   placeholder?: string;
   autoFocus?: boolean;
+  inlineComposer?: boolean;
+  descriptionId?: string;
   onImageFiles?: (files: File[]) => void;
   /** Why a picture cannot be added right now, shown when one is dropped. */
   imageRefusal?: string;
@@ -105,8 +109,11 @@ export function PostEditor({
           data-dragging={dragging || undefined}
           className={cn(
             "border-input bg-background relative rounded-lg border shadow-xs transition-[color,box-shadow]",
-            "has-[textarea:focus]:border-ring has-[textarea:focus]:ring-ring/50 has-[textarea:focus]:ring-[3px]",
-            "data-[dragging]:border-ring data-[dragging]:ring-ring/50 data-[dragging]:ring-[3px]",
+            inlineComposer
+              ? "has-[textarea:focus]:outline-ring data-[dragging]:outline-ring -outline-offset-1 has-[textarea:focus]:outline-2 data-[dragging]:outline-2"
+              : "has-[textarea:focus]:border-ring has-[textarea:focus]:ring-ring/50 data-[dragging]:border-ring data-[dragging]:ring-ring/50 has-[textarea:focus]:ring-[3px] data-[dragging]:ring-[3px]",
+            inlineComposer &&
+              "rounded-t-none shadow-none motion-reduce:transition-none",
           )}
           // Every file drag is ours, so the browser never opens a dropped
           // file in place of the page; a refused one gets a message.
@@ -173,12 +180,17 @@ export function PostEditor({
             aria-label={label}
             {...mentions?.fieldProps}
             aria-invalid={text.tooLong || undefined}
-            aria-describedby={left <= COUNTER_FROM ? counterId : undefined}
+            aria-describedby={
+              [descriptionId, left <= COUNTER_FROM ? counterId : undefined]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
             autoFocus={autoFocus}
             rows={3}
             className={cn(
               "placeholder:text-muted-foreground block field-sizing-content max-h-80 min-h-20 w-full resize-none bg-transparent px-3 pt-3 pb-2 text-base outline-none md:text-sm",
               textareaId && "scroll-mt-32",
+              inlineComposer && "min-h-28 sm:px-4",
             )}
           />
           {mentions?.list}

@@ -151,6 +151,42 @@ describe("FeedPostCard video and moderation", () => {
     expect(screen.getByTestId("report-dialog")).toHaveTextContent("7");
   });
 
+  it("renders the home post in reading order with engagement controls and report in the menu", () => {
+    const onToggleComments = vi.fn();
+    renderCard(
+      {
+        content: "Three useful pictures\n\nUse a **wide photo**.",
+        likeCount: 4,
+        commentCount: 2,
+        hasLiked: true,
+      },
+      { home: { topicLabel: "Welcome" }, onToggleComments },
+    );
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.getByText("Three useful pictures")).toBeVisible();
+    expect(screen.getByText("wide photo").tagName).toBe("STRONG");
+    expect(screen.getByText("2 hours ago")).toHaveAttribute(
+      "dateTime",
+      "2026-09-24T10:00:00.000Z",
+    );
+    expect(screen.getByText("Welcome")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Like" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "2 comments" }));
+    expect(onToggleComments).toHaveBeenCalledWith(7);
+    expect(
+      screen.queryByRole("button", { name: "Report" }),
+    ).not.toBeInTheDocument();
+    fireEvent.keyDown(
+      screen.getByRole("button", { name: en.communities.feed.postActions }),
+      { key: "Enter" },
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Report" }));
+    expect(screen.getByTestId("report-dialog")).toHaveTextContent("7");
+  });
+
   it("offers no Report to the author", () => {
     renderCard({}, { currentUserId: "author-1" });
     expect(

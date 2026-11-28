@@ -35,10 +35,10 @@ const faces = [
   { userId: "b", displayName: "Bo", image: null },
 ];
 
-function renderAbout() {
+function renderAbout(showMemberCount = false) {
   return render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <CommunityAbout slug="mlops" />
+      <CommunityAbout slug="mlops" showMemberCount={showMemberCount} />
     </NextIntlClientProvider>,
   );
 }
@@ -62,6 +62,15 @@ describe("CommunityAbout", () => {
   it("has no members line: the faces say who is here", () => {
     renderAbout();
     expect(screen.queryByText(/members/)).toBeNull();
+  });
+
+  it("pairs the redesigned stack with a readable total and labelled public faces", () => {
+    m.stack = { data: { faces, total: 12 }, isLoading: false };
+    renderAbout(true);
+    expect(screen.getByRole("group", { name: "12 members" })).toBeVisible();
+    expect(screen.getByText("12 members")).toBeVisible();
+    expect(screen.getByRole("img", { name: "Ada" })).toBeVisible();
+    expect(screen.queryByText("+10")).not.toBeInTheDocument();
   });
 
   it("still shows the faces when there is no description", () => {

@@ -17,16 +17,19 @@ export function TopicChipsView({
   topics,
   active,
   onSelect,
+  scrollOnMobile,
 }: {
   topics: TopicChip[];
   active: string;
   onSelect: (slug: string) => void;
+  scrollOnMobile?: boolean;
 }) {
   const t = useTranslations("communities.feed");
   return (
     <ChoiceChips
       className="feed-topic-chips"
       aria-label={t("selectTopic")}
+      scrollOnMobile={scrollOnMobile}
       value={active}
       onValueChange={onSelect}
       options={[

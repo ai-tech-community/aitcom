@@ -23,12 +23,14 @@ function ChoiceChips<T extends string>({
   onValueChange,
   className,
   "aria-label": ariaLabel,
+  scrollOnMobile = false,
 }: {
   options: readonly ChoiceChipOption<T>[];
   value: T;
   onValueChange: (value: T) => void;
   /** Accessible group name. */
   "aria-label": string;
+  scrollOnMobile?: boolean;
   className?: string;
 }) {
   const name = React.useId();
@@ -36,7 +38,12 @@ function ChoiceChips<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={cn("flex flex-wrap gap-1.5", className)}
+      className={cn(
+        "flex flex-wrap gap-1.5",
+        scrollOnMobile &&
+          "max-sm:min-w-0 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:p-1",
+        className,
+      )}
     >
       {options.map((option) => {
         const checked = option.value === value;
@@ -48,6 +55,8 @@ function ChoiceChips<T extends string>({
             className={cn(
               "inline-flex h-8 shrink-0 cursor-pointer items-center rounded-full border px-3 text-sm transition-colors",
               "has-[:focus-visible]:ring-ring/50 has-[:focus-visible]:ring-[3px]",
+              // Keep the visually hidden radio inside the horizontal scroller.
+              scrollOnMobile && "max-sm:relative",
               checked
                 ? "border-foreground bg-foreground text-background"
                 : "border-border text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
@@ -58,7 +67,15 @@ function ChoiceChips<T extends string>({
               name={name}
               value={option.value}
               checked={checked}
-              onChange={() => onValueChange(option.value)}
+              onChange={(event) => {
+                if (scrollOnMobile) {
+                  event.currentTarget.parentElement?.scrollIntoView?.({
+                    block: "nearest",
+                    inline: "nearest",
+                  });
+                }
+                onValueChange(option.value);
+              }}
               className="sr-only"
             />
             {option.label}

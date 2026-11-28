@@ -33,9 +33,11 @@ type FeedT = ReturnType<typeof useTranslations<"communities.feed">>;
 export function ActivityRow({
   item,
   slug,
+  home = false,
 }: {
   item: ActivityItem;
   slug: string;
+  home?: boolean;
 }) {
   const t = useTranslations("communities.feed");
   const tp = useTranslations("communities.profile");
@@ -64,6 +66,7 @@ export function ActivityRow({
           lead={<PersonAvatar name={name} image={thread.authorImage} />}
           sentence={sentence}
           at={item.at}
+          home={home}
         >
           <Link
             href={`/communities/${slug}/forum/${thread.slug}` as never}
@@ -109,6 +112,7 @@ export function ActivityRow({
             }),
           })}
           at={item.at}
+          home={home}
         >
           <Link
             href={`/communities/${slug}/ideas` as never}
@@ -137,6 +141,7 @@ export function ActivityRow({
           lead={<EventDateTile date={event.date} />}
           sentence={t("activityEvent")}
           at={item.at}
+          home={home}
         >
           <Link
             href={`/events/${event.slug}` as never}
@@ -155,6 +160,7 @@ export function ActivityRow({
           lead={<MemberFaces members={item.members} />}
           sentence={joinedSentence(item.members, t)}
           at={item.at}
+          home={home}
         />
       );
   }
@@ -166,15 +172,24 @@ function RowFrame({
   sentence,
   at,
   children,
+  home,
 }: {
   kind: string;
   lead: ReactNode;
   sentence: ReactNode;
   at: string;
   children?: ReactNode;
+  home?: boolean;
 }) {
   return (
-    <article data-activity-row={kind} className="flex gap-3 px-1 py-2">
+    <article
+      data-activity-row={kind}
+      className={
+        home
+          ? "border-border flex gap-3 border-b px-1 py-3 max-lg:[&_a]:min-h-11"
+          : "flex gap-3 px-1 py-2"
+      }
+    >
       <div className="flex w-8 shrink-0 justify-center pt-0.5">{lead}</div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <p className="text-muted-foreground text-sm">

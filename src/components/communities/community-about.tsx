@@ -18,9 +18,11 @@ import { MemberStackView } from "./member-stack";
 export function CommunityAbout({
   slug,
   className,
+  showMemberCount = false,
 }: {
   slug: string;
   className?: string;
+  showMemberCount?: boolean;
 }) {
   const t = useTranslations("communities.profile");
   const headingId = useId();
@@ -46,13 +48,31 @@ export function CommunityAbout({
       <SectionLabel id={headingId}>{t("about")}</SectionLabel>
       {description ? <CommunityDescription text={description} /> : null}
       {stack.isLoading ? (
-        <div className="flex -space-x-2" aria-hidden="true">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="size-7 rounded-full" />
-          ))}
+        <div className="flex items-center gap-3" aria-hidden="true">
+          <div
+            className={cn(
+              "flex",
+              showMemberCount ? "-space-x-1.5" : "-space-x-2",
+            )}
+          >
+            {Array.from({ length: showMemberCount ? 4 : 3 }).map((_, i) => (
+              <Skeleton
+                key={i}
+                className={cn(
+                  "shrink-0 rounded-full",
+                  showMemberCount ? "size-9" : "size-7",
+                )}
+              />
+            ))}
+          </div>
+          {showMemberCount ? <Skeleton className="h-3 w-20" /> : null}
         </div>
       ) : faces ? (
-        <MemberStackView faces={faces.faces} total={faces.total} />
+        <MemberStackView
+          faces={faces.faces}
+          total={faces.total}
+          showMemberCount={showMemberCount}
+        />
       ) : null}
     </section>
   );

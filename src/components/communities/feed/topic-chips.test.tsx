@@ -51,4 +51,26 @@ describe("TopicChipsView", () => {
     fireEvent.click(screen.getByRole("radio", { name: "⭐ Wins" }));
     expect(onSelect).toHaveBeenCalledWith("wins");
   });
+
+  it("reveals the newly selected chip in the mobile scrolling group", () => {
+    const onSelect = vi.fn();
+    render(
+      <TopicChipsView
+        topics={topics}
+        active="all"
+        onSelect={onSelect}
+        scrollOnMobile
+      />,
+    );
+    const group = screen.getByRole("radiogroup");
+    const option = within(group).getByRole("radio", { name: "⭐ Wins" });
+    const reveal = vi.fn();
+    option.parentElement!.scrollIntoView = reveal;
+    fireEvent.click(option);
+    expect(reveal).toHaveBeenCalledWith({
+      inline: "nearest",
+      block: "nearest",
+    });
+    expect(onSelect).toHaveBeenCalledWith("wins");
+  });
 });

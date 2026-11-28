@@ -11,9 +11,11 @@ import { shouldShowFirstSessionPath } from "@/lib/join-path";
 export function FirstSessionPathCard({
   communityName,
   bringHref,
+  secondary = false,
 }: {
   communityName: string;
   bringHref: string;
+  secondary?: boolean;
 }) {
   const t = useTranslations("communities.firstSession");
 
@@ -27,7 +29,11 @@ export function FirstSessionPathCard({
         <p className="text-sm">{t("line")}</p>
         <p className="text-muted-foreground text-sm">{t("bringAgent")}</p>
       </div>
-      <Button asChild>
+      <Button
+        asChild
+        variant={secondary ? "ink" : "default"}
+        className={secondary ? "min-h-11" : undefined}
+      >
         <Link href={bringHref}>{t("bringAgentCta")}</Link>
       </Button>
     </aside>
@@ -37,9 +43,11 @@ export function FirstSessionPathCard({
 export function HubFirstSessionPath({
   slug,
   isMember,
+  secondary,
 }: {
   slug: string;
   isMember: boolean;
+  secondary?: boolean;
 }) {
   const { data: community } = api.communities.getBySlug.useQuery({ slug });
   const agentQuery = api.agentManagement.getMyAgent.useQuery(undefined, {
@@ -61,6 +69,7 @@ export function HubFirstSessionPath({
     <FirstSessionPathCard
       communityName={community?.name ?? HUB_NAME}
       bringHref="/dashboard/agent"
+      secondary={secondary}
     />
   );
 }

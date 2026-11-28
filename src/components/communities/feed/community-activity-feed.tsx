@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { MessageSquarePlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -10,11 +10,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadMore } from "@/components/ui/load-more";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/trpc/react";
+import { SectionLabel } from "@/components/ui/section-label";
+import { api, type RouterOutputs } from "@/trpc/react";
 import { ActivityRow } from "./activity-row";
 import { FeedPostCard } from "./feed-post-card";
 
 type FeedMemberRole = "owner" | "admin" | "moderator" | "member" | null;
+type Post = RouterOutputs["feed"]["getActivity"]["pinned"][number];
 
 /**
  * The Overview stream: pinned posts, then posts, questions, ideas, events,
@@ -25,14 +27,22 @@ export function CommunityActivityFeed({
   currentUserId,
   memberRole,
   firstWeek = false,
+  home,
 }: {
   slug: string;
   currentUserId?: string;
   memberRole?: FeedMemberRole;
   firstWeek?: boolean;
+  home?: {
+    topic: string;
+    topicLabels: ReadonlyMap<string, string>;
+    resetTopic: () => void;
+  };
 }) {
   const t = useTranslations("communities.feed");
+  const th = useTranslations("redesign.homeFeed");
   const utils = api.useUtils();
+  const filteredTopic = home && home.topic !== "all" ? home.topic : undefined;
   const [openComments, setOpenComments] = useState<ReadonlySet<number>>(
     new Set(),
   );
@@ -46,15 +56,21 @@ export function CommunityActivityFeed({
     isFetchingNextPage,
     isFetchNextPageError,
   } = api.feed.getActivity.useInfiniteQuery(
-    { communitySlug: slug, limit: 15 },
+    home ? { communitySlug: slug } : { communitySlug: slug, limit: 15 },
     { getNextPageParam: (last) => last.nextCursor ?? undefined },
   );
 
   const refresh = () => {
-    // The first-week checklist reads a one-post sample of this same feed.
-    if (firstWeek)
-      void utils.feed.getFeed.invalidate({ communitySlug: slug, limit: 1 });
-    return utils.feed.getActivity.invalidate({ communitySlug: slug });
+    const activity = utils.feed.getActivity.invalidate({ communitySlug: slug });
+    // The home filters and the first-week checklist also read the post feed.
+    return home || firstWeek
+      ? Promise.all([
+          activity,
+          utils.feed.getFeed.invalidate(
+            home ? { communitySlug: slug } : { communitySlug: slug, limit: 1 },
+          ),
+        ])
+      : activity;
   };
   const toggleComments = (postId: number) => {
     setOpenComments((current) => {
@@ -65,8 +81,8 @@ export function CommunityActivityFeed({
     });
   };
 
-  if (isLoading) return <FeedSkeleton />;
-  if (isError && !data) {
+  if (!filteredTopic && isLoading) return <FeedSkeleton home={!!home} />;
+  if (!filteredTopic && isError && !data) {
     return <ErrorState title={t("loadError")} onRetry={() => void refetch()} />;
   }
 
@@ -81,17 +97,23 @@ export function CommunityActivityFeed({
         );
         return members.length > 0 ? [{ ...item, members }] : [];
       }) ?? [];
-  const empty = pinned.length === 0 && items.length === 0;
+  const showLatest = items.length > 0 || hasNextPage || isFetchNextPageError;
+  const empty = pinned.length === 0 && items.length === 0 && !filteredTopic;
 
-  if (empty && firstWeek && !hasNextPage) return null;
+  if (firstWeek && empty && !showLatest) return null;
 
-  if (empty && !firstWeek) {
+  if (empty && !firstWeek && !(home && showLatest)) {
     return (
       <EmptyState
         title={t("emptyTitle")}
-        description={t("emptyHelp")}
+        description={home ? th("emptyHelp") : t("emptyHelp")}
         action={
-          <Button asChild variant="outline" size="sm">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className={home ? "min-h-11 shadow-none" : undefined}
+          >
             <Link href={`/communities/${slug}/forum` as never}>
               <MessageSquarePlus aria-hidden="true" />
               {t("emptyAction")}
@@ -102,7 +124,7 @@ export function CommunityActivityFeed({
     );
   }
 
-  const postCard = (post: (typeof pinned)[number]) => (
+  const postCard = (post: Post) => (
     <FeedPostCard
       key={`post-${post.id}`}
       post={post}
@@ -112,33 +134,192 @@ export function CommunityActivityFeed({
       onRefresh={refresh}
       onToggleComments={toggleComments}
       showComments={openComments.has(post.id)}
+      home={
+        home
+          ? { topicLabel: home.topicLabels.get(post.topicSlug ?? "") }
+          : undefined
+      }
     />
   );
 
+  const stream = items.map((item) =>
+    item.kind === "post" ? (
+      postCard(item.post)
+    ) : (
+      <ActivityRow key={item.key} item={item} slug={slug} home={!!home} />
+    ),
+  );
+  const pages = (
+    <LoadMore
+      query={{
+        hasNextPage,
+        isFetchingNextPage,
+        isFetchNextPageError,
+        fetchNextPage,
+      }}
+      label={t("loadMore")}
+      skeleton={!!home}
+    />
+  );
+
+  if (home) {
+    return (
+      <div
+        data-community-activity=""
+        tabIndex={-1}
+        className="focus-visible:ring-ring/50 scroll-mt-20 space-y-6 rounded-sm outline-none focus-visible:ring-[3px]"
+      >
+        {filteredTopic ? (
+          <FilteredPosts
+            slug={slug}
+            topic={filteredTopic}
+            pinned={pinned.filter((post) => post.topicSlug === filteredTopic)}
+            renderPost={postCard}
+            resetTopic={home.resetTopic}
+          />
+        ) : (
+          <>
+            {pinned.length ? (
+              <FeedSection title={t("pinned")}>
+                {pinned.map(postCard)}
+              </FeedSection>
+            ) : null}
+            {showLatest ? (
+              <FeedSection title={th("latest")}>
+                {stream}
+                {pages}
+              </FeedSection>
+            ) : null}
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div data-community-activity="" className="flex flex-col gap-3">
-      {pinned.map(postCard)}
-      {items.map((item) =>
-        item.kind === "post" ? (
-          postCard(item.post)
-        ) : (
-          <ActivityRow key={item.key} item={item} slug={slug} />
-        ),
-      )}
-      <LoadMore
-        query={{
-          hasNextPage,
-          isFetchingNextPage,
-          isFetchNextPageError,
-          fetchNextPage,
-        }}
-        label={t("loadMore")}
-      />
+      {pinned.map((post) => postCard(post))}
+      {stream}
+      {pages}
     </div>
   );
 }
 
-export function FeedSkeleton() {
+function FeedSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <section aria-labelledby={id} className="space-y-2">
+      <SectionLabel id={id} bordered={false}>
+        {title}
+      </SectionLabel>
+      <div className="space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function FilteredPosts({
+  slug,
+  topic,
+  pinned,
+  renderPost,
+  resetTopic,
+}: {
+  slug: string;
+  topic: string;
+  pinned: readonly Post[];
+  renderPost: (post: Post) => ReactNode;
+  resetTopic: () => void;
+}) {
+  const t = useTranslations("communities.feed");
+  const th = useTranslations("redesign.homeFeed");
+  const query = api.feed.getFeed.useInfiniteQuery(
+    { communitySlug: slug, topicSlug: topic, limit: 20 },
+    { getNextPageParam: (last) => last.nextCursor ?? undefined },
+  );
+
+  const pins = new Map(pinned.map((post) => [post.id, post]));
+  const posts = query.data?.pages.flatMap((page) => page.posts) ?? [];
+  for (const post of posts) {
+    if (post.isPinned && !pins.has(post.id)) pins.set(post.id, post);
+  }
+  const latest = posts.filter((post) => !pins.has(post.id));
+  const showLatest =
+    latest.length > 0 || query.hasNextPage || query.isFetchNextPageError;
+  return (
+    <>
+      {pins.size ? (
+        <FeedSection title={t("pinned")}>
+          {Array.from(pins.values(), renderPost)}
+        </FeedSection>
+      ) : null}
+      {query.isLoading ? (
+        <FeedSkeleton home />
+      ) : query.isError && !query.data ? (
+        <ErrorState
+          title={t("loadError")}
+          onRetry={() => void query.refetch()}
+        />
+      ) : showLatest ? (
+        <FeedSection title={th("latest")}>
+          {latest.map(renderPost)}
+          <LoadMore query={query} label={t("loadMore")} skeleton />
+        </FeedSection>
+      ) : !pins.size ? (
+        <EmptyState
+          title={t("noPostsYet")}
+          action={
+            <Button
+              variant="outline"
+              className="min-h-11 shadow-none"
+              onClick={resetTopic}
+            >
+              {th("showAllPosts")}
+            </Button>
+          }
+        />
+      ) : null}
+    </>
+  );
+}
+
+export function FeedSkeleton({ home = false }: { home?: boolean } = {}) {
+  const t = useTranslations("common");
+  if (home) {
+    return (
+      <div role="status" aria-label={t("loading")} className="space-y-2">
+        <Skeleton className="h-4 w-20 motion-reduce:animate-none" />
+        {Array.from({ length: 2 }, (_, index) => (
+          <div
+            key={index}
+            className="border-border space-y-4 rounded-lg border p-4 sm:p-5"
+          >
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="size-9 rounded-full motion-reduce:animate-none" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3 w-28 motion-reduce:animate-none" />
+                <Skeleton className="h-2.5 w-16 motion-reduce:animate-none" />
+              </div>
+            </div>
+            <Skeleton className="h-6 w-2/3 motion-reduce:animate-none" />
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-full motion-reduce:animate-none" />
+              <Skeleton className="h-3 w-4/5 motion-reduce:animate-none" />
+            </div>
+            <div className="border-border flex gap-6 border-t pt-3">
+              <Skeleton className="h-6 w-12 motion-reduce:animate-none" />
+              <Skeleton className="h-6 w-24 motion-reduce:animate-none" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="space-y-4">
       {Array.from({ length: 3 }).map((_, index) => (

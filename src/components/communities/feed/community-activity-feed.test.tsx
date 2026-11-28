@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
@@ -9,8 +9,9 @@ import {
 } from "@/test/member-card-fixture";
 import { CommunityActivityFeed } from "./community-activity-feed";
 
-const { query, fetchNextPage } = vi.hoisted(() => ({
+const { query, topicQuery, fetchNextPage } = vi.hoisted(() => ({
   query: { current: {} as Record<string, unknown> },
+  topicQuery: vi.fn(),
   fetchNextPage: vi.fn(),
 }));
 
@@ -37,9 +38,15 @@ vi.mock("./feed-post-card", () => ({
 
 vi.mock("@/trpc/react", () => ({
   api: {
-    useUtils: () => ({ feed: { getActivity: { invalidate: vi.fn() } } }),
+    useUtils: () => ({
+      feed: {
+        getActivity: { invalidate: vi.fn() },
+        getFeed: { invalidate: vi.fn() },
+      },
+    }),
     feed: {
       getActivity: { useInfiniteQuery: () => query.current },
+      getFeed: { useInfiniteQuery: topicQuery },
     },
   },
 }));
@@ -70,7 +77,13 @@ function post(id: number, content: string) {
 function renderFeed(
   pages: unknown[],
   extra: Record<string, unknown> = {},
-  firstWeek = false,
+  {
+    firstWeek,
+    home,
+  }: Pick<
+    React.ComponentProps<typeof CommunityActivityFeed>,
+    "firstWeek" | "home"
+  > = {},
 ) {
   query.current = {
     data: { pages },
@@ -94,6 +107,7 @@ function renderFeed(
         currentUserId="u1"
         memberRole="member"
         firstWeek={firstWeek}
+        home={home}
       />
     </NextIntlClientProvider>,
   );
@@ -123,7 +137,7 @@ describe("CommunityActivityFeed", () => {
         },
       ],
       {},
-      true,
+      { firstWeek: true },
     );
     expect(screen.queryByText("Nothing here yet")).not.toBeInTheDocument();
     expect(
@@ -139,38 +153,126 @@ describe("CommunityActivityFeed", () => {
     renderFeed(
       [{ pinned: [post(9, "Welcome to the club")], items: [] }],
       {},
-      true,
+      { firstWeek: true },
     );
     expect(screen.getByText("Welcome to the club")).toBeInTheDocument();
   });
 
-  it("keeps other members in a join group when the owner is filtered out", () => {
-    const { container } = renderFeed(
-      [
-        {
-          pinned: [],
-          items: [
-            {
-              kind: "joins",
-              key: "join:group",
-              at: AT,
-              members: [
-                {
-                  id: "u1",
-                  name: "Owner",
-                  image: null,
-                  card: openMemberCard(),
-                },
-                { id: "u2", name: "Rosa", image: null, card: openMemberCard() },
-              ],
-            },
-          ],
-        },
-      ],
+  it.each([
+    undefined,
+    { topic: "all", topicLabels: new Map(), resetTopic: vi.fn() },
+  ])(
+    "keeps other members in a join group when the owner is filtered out (%o)",
+    (home) => {
+      const { container } = renderFeed(
+        [
+          {
+            pinned: [],
+            items: [
+              {
+                kind: "joins",
+                key: "join:group",
+                at: AT,
+                members: [
+                  {
+                    id: "u1",
+                    name: "Owner",
+                    image: null,
+                    card: openMemberCard(),
+                  },
+                  {
+                    id: "u2",
+                    name: "Rosa",
+                    image: null,
+                    card: openMemberCard(),
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        {},
+        { firstWeek: true, home },
+      );
+      expect(sentenceOf(container, "joins")).toBe("Rosa joined");
+    },
+  );
+
+  it("puts pins for the selected topic above the filtered posts without duplicates", () => {
+    const welcome = { ...post(9, "House rules"), topicSlug: "welcome" };
+    const other = { ...post(6, "Off-topic pin"), topicSlug: "showcase" };
+    topicQuery.mockReturnValueOnce({
+      data: { pages: [{ posts: [welcome, post(3, "A new post")] }] },
+    });
+    renderFeed(
+      [{ pinned: [welcome, other], items: [] }],
       {},
-      true,
+      {
+        home: {
+          topic: "welcome",
+          topicLabels: new Map([["welcome", "Welcome"]]),
+          resetTopic: vi.fn(),
+        },
+      },
     );
-    expect(sentenceOf(container, "joins")).toBe("Rosa joined");
+    expect(topicQuery).toHaveBeenCalledWith(
+      { communitySlug: "mlops", limit: 20, topicSlug: "welcome" },
+      expect.anything(),
+    );
+    const pins = screen.getByRole("region", { name: "Pinned" });
+    expect(within(pins).getByText("House rules")).toBeInTheDocument();
+    expect(screen.getAllByText("House rules")).toHaveLength(1);
+    expect(screen.queryByText("Off-topic pin")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("region", { name: "Latest" })).getByText(
+        "A new post",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("still shows a topic while the broader activity request has failed", () => {
+    const pin = { ...post(9, "A pinned topic post"), isPinned: true };
+    topicQuery.mockReturnValueOnce({
+      data: { pages: [{ posts: [pin, post(3, "A newer topic post")] }] },
+    });
+    renderFeed(
+      [],
+      { data: undefined, isError: true },
+      {
+        home: {
+          topic: "welcome",
+          topicLabels: new Map(),
+          resetTopic: vi.fn(),
+        },
+      },
+    );
+    expect(
+      within(screen.getByRole("region", { name: "Pinned" })).getByText(
+        "A pinned topic post",
+      ),
+    ).toBeVisible();
+    expect(
+      within(screen.getByRole("region", { name: "Latest" })).getByText(
+        "A newer topic post",
+      ),
+    ).toBeVisible();
+  });
+
+  it("keeps the next page reachable when no decorated activity is visible yet", () => {
+    fetchNextPage.mockClear();
+    renderFeed(
+      [{ pinned: [], items: [] }],
+      { hasNextPage: true },
+      {
+        home: {
+          topic: "all",
+          topicLabels: new Map(),
+          resetTopic: vi.fn(),
+        },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    expect(fetchNextPage).toHaveBeenCalledOnce();
   });
 
   it("shows pinned posts first, then every kind of activity in order", () => {
