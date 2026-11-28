@@ -67,7 +67,9 @@ export function FeedPage({
   const about = (
     <CommunityAbout
       slug={slug}
-      className={firstWeek ? undefined : "xl:col-start-2 xl:row-start-1 xl:mb-8"}
+      className={
+        firstWeek ? undefined : "xl:col-start-2 xl:row-start-1 xl:mb-8"
+      }
     />
   );
 
