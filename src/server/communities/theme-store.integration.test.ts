@@ -154,13 +154,11 @@ describe.skipIf(!RUN_DB)("community theme store [DB integration]", () => {
     // An admin other than the creator, so deleting them leaves the
     // community in place.
     editorId = `${userId}-editor`;
-    await db
-      .insert(schema.user)
-      .values({
-        id: editorId,
-        email: `${editorId}@example.test`,
-        name: editorId,
-      });
+    await db.insert(schema.user).values({
+      id: editorId,
+      email: `${editorId}@example.test`,
+      name: editorId,
+    });
     await store.writeCommunityThemeId(db, id, "sunset", editorId);
     await expect(storedRows()).resolves.toMatchObject([
       { themeId: "sunset", updatedBy: editorId },
