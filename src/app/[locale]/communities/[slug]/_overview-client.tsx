@@ -12,6 +12,7 @@ import {
 } from "@/server/better-auth/hub-session";
 import { FeedPage } from "@/components/communities/feed/feed-page";
 import { Activity, UserPlus } from "lucide-react";
+import { useSiteShell } from "@/components/site-chrome-gate";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 
@@ -41,10 +42,11 @@ export function CommunityOverviewPageClient({
     slug,
   );
   const isMember = !!memberRole;
+  const hasShellInvite = useSiteShell() === "community";
 
   return (
     <>
-      {isMember && (
+      {isMember && !hasShellInvite && (
         <div className="mb-4 flex justify-end">
           <Button asChild variant="outline">
             <Link href={`/communities/${slug}/referrals`}>

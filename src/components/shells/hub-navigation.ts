@@ -12,7 +12,6 @@ import {
   LayoutDashboard,
   LayoutGrid,
   ListChecks,
-  MessageSquare,
   Newspaper,
   Rocket,
   Search,
@@ -58,7 +57,6 @@ export function useHubNavigation(signedIn: boolean) {
           icon: LayoutGrid,
         },
         { href: "/dashboard/events", label: t("myEvents"), icon: CalendarDays },
-        { href: "/messages", label: nav("messages"), icon: MessageSquare },
         {
           href: "/dashboard/notifications",
           label: t("notifications"),
@@ -68,7 +66,7 @@ export function useHubNavigation(signedIn: boolean) {
         { href: "/dashboard/payments", label: t("payments"), icon: CreditCard },
         {
           href: "/dashboard/onboarding",
-          label: t("onboarding"),
+          label: t("onboardingQuestions"),
           icon: ListChecks,
         },
         { href: "/dashboard/agent", label: nav("myAgent"), icon: Workflow },

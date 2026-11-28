@@ -54,7 +54,11 @@ vi.mock("./use-onboarding-checklist", () => ({
   },
 }));
 
-import { OnboardingReminder } from "./onboarding-reminder";
+import {
+  OnboardingReminder,
+  OnboardingReminderProvider,
+  OnboardingReminderRow,
+} from "./onboarding-reminder";
 import { resetHiddenForVisitForTests } from "./use-hidden-for-visit";
 
 const INCOMPLETE: OnboardingChecklistView = {
@@ -347,5 +351,36 @@ describe("onboarding translations", () => {
         expect(text.trim().length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe("OnboardingReminder in the shell", () => {
+  it("keeps syncing while the menu is closed and focuses the next destination after dismissal", async () => {
+    const tree = (open: boolean) => (
+      <NextIntlClientProvider locale="en" messages={en}>
+        <OnboardingReminderProvider enabled>
+          <nav>
+            {open ? <OnboardingReminderRow /> : null}
+            <a href="/events">Events</a>
+          </nav>
+        </OnboardingReminderProvider>
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(tree(false));
+    expect(controller.lastSync).toBe("on-finish");
+    expect(
+      screen.queryByRole("button", { name: /getting started/i }),
+    ).toBeNull();
+    rerender(tree(true));
+    expect(pill()).toHaveTextContent("2/5");
+    const dismiss = screen.getByRole("button", { name: "Hide until next visit" });
+    dismiss.focus();
+    fireEvent.click(dismiss);
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Events" })).toHaveFocus(),
+    );
+    expect(
+      screen.queryByRole("button", { name: /getting started/i }),
+    ).toBeNull();
   });
 });

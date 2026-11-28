@@ -6806,6 +6806,16 @@
   },
   "redesign": {
     "shell": {
+      "switchNamedCommunity": "{name}, changer de communauté",
+      "yourRole": "Votre rôle : {role}",
+      "pageResults": "{count, plural, one {# page} other {# pages}}",
+      "keysNavigate": "Naviguer",
+      "keysOpen": "Ouvrir",
+      "keysClose": "Fermer",
+      "keyEnter": "Entrée",
+      "keyEscape": "Échap",
+      "onboardingQuestions": "Questions de bienvenue",
+      "latestMessages": "Aller aux derniers messages",
       "inYourCommunities": "Dans vos communautés",
       "guides": "Guides",
       "setup": "Guide de configuration",

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 // Pins the kind the floating chat window and the mobile inbox hand the
 // composer: both only render once the conversation (and so its type) is
@@ -11,12 +11,16 @@ vi.mock("@/server/better-auth/client", () => ({
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
 }));
+
+const inbox = vi.hoisted(() => ({
+  setActiveChat: vi.fn(),
+  toggleList: vi.fn(),
+}));
 vi.mock("./inbox-provider", () => ({
   useInbox: () => ({
     closeChat: vi.fn(),
     minimizeChat: vi.fn(),
-    setActiveChat: vi.fn(),
-    toggleList: vi.fn(),
+    ...inbox,
   }),
 }));
 vi.mock("./use-inbox-stream", () => ({ useInboxStream: () => undefined }));
@@ -73,4 +77,21 @@ describe("composer kind per surface", () => {
 
     expect(composerKind()).toBe(kind);
   });
+});
+
+it("closes a shell chat without reopening the floating Inbox list", () => {
+  render(
+    <InboxMobileView
+      restoreListOnClose={false}
+      chatInfo={{
+        conversationId: "c1",
+        displayName: "Bob",
+        image: null,
+        isAgent: false,
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "close" }));
+  expect(inbox.setActiveChat).toHaveBeenCalledWith(null);
+  expect(inbox.toggleList).not.toHaveBeenCalled();
 });

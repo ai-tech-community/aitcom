@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { useTranslations } from "next-intl";
 import {
   ArrowUpRight,
   Check,
-  ChevronsUpDown,
+  ChevronDown,
   Compass,
   LayoutGrid,
   X,
@@ -44,6 +44,10 @@ export function CommunitySwitcher({
   signedIn,
   activeSlug,
   onNavigate,
+  identity,
+  triggerRef,
+  context,
+  details,
   compact = false,
 }: {
   memberships: readonly HubMembershipSeed[];
@@ -52,6 +56,10 @@ export function CommunitySwitcher({
   activeSlug?: string;
   onNavigate?: () => void;
   compact?: boolean;
+  identity?: { name: string; logoUrl: string | null };
+  triggerRef?: Ref<HTMLButtonElement>;
+  details?: (close: () => void) => ReactNode;
+  context?: string;
 }) {
   const t = useTranslations("redesign.shell");
   const common = useTranslations("common");
@@ -60,6 +68,11 @@ export function CommunitySwitcher({
   const [open, setOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const communities = signedIn ? usableMemberships(memberships) : [];
+  const ordered = [
+    ...communities.filter(({ slug }) => slug !== activeSlug),
+    ...communities.filter(({ slug }) => slug === activeSlug),
+  ];
+  const close = () => setOpen(false);
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -68,20 +81,51 @@ export function CommunitySwitcher({
       <DialogTrigger asChild>
         <button
           type="button"
-          aria-label={t("switchCommunity")}
+          ref={triggerRef}
+          aria-label={
+            identity
+              ? t("switchNamedCommunity", { name: identity.name })
+              : t("switchCommunity")
+          }
+          title={t("switchCommunity")}
+          aria-description={context}
           className={cn(
             "focus-visible:ring-ring hover:bg-secondary inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset",
-            compact
-              ? "px-2"
-              : "border-border text-muted-foreground hover:text-foreground w-full justify-between border px-3 text-sm font-medium lg:min-h-9",
+            identity
+              ? "w-full min-w-0 justify-start gap-2 px-2 text-left"
+              : "px-2",
           )}
         >
-          {compact ? (
-            <AitLogo className="h-4 w-auto" aria-hidden />
+          {identity ? (
+            <>
+              {compact ? null : (
+                <Avatar aria-hidden className="size-8 rounded-md">
+                  {identity.logoUrl ? (
+                    <AvatarImage src={identity.logoUrl} alt="" />
+                  ) : null}
+                  <AvatarFallback className="bg-secondary text-foreground rounded-md text-xs">
+                    {getInitials(identity.name)}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate text-sm leading-tight font-semibold">
+                  {identity.name}
+                </span>
+                {context ? (
+                  <span className="text-muted-foreground truncate text-xs leading-tight">
+                    {context}
+                  </span>
+                ) : null}
+              </span>
+            </>
           ) : (
-            t("switchCommunity")
+            <AitLogo className="h-4 w-auto" aria-hidden />
           )}
-          <ChevronsUpDown className="size-3.5 shrink-0" aria-hidden />
+          <ChevronDown
+            className="text-muted-foreground ml-auto size-3.5 shrink-0"
+            aria-hidden
+          />
         </button>
       </DialogTrigger>
       <DialogContent
@@ -104,25 +148,6 @@ export function CommunitySwitcher({
             >
               <X className="size-5" aria-hidden />
             </Button>
-          </DialogClose>
-        </div>
-        <div className="px-2 pt-2">
-          <DialogClose asChild>
-            <Link
-              href="/"
-              onNavigate={onNavigate}
-              aria-current={
-                !activeSlug && pathname === "/" ? "page" : undefined
-              }
-              className="border-border hover:bg-secondary focus-visible:ring-ring flex min-h-11 items-center gap-3 rounded-md border px-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset"
-            >
-              <AitLogo className="h-3.5 w-8" aria-hidden />
-              <span className="flex-1">{t("hub")}</span>
-              <ArrowUpRight
-                className="text-muted-foreground size-4"
-                aria-hidden
-              />
-            </Link>
           </DialogClose>
         </div>
         {signedIn && retryMemberships ? (
@@ -148,7 +173,7 @@ export function CommunitySwitcher({
               <CommandEmpty>
                 {t(communities.length ? "noCommunityMatches" : "noMemberships")}
               </CommandEmpty>
-              {communities.map((item) => (
+              {ordered.map((item) => (
                 <CommandItem
                   key={item.slug}
                   value={item.slug}
@@ -164,7 +189,7 @@ export function CommunitySwitcher({
                     {item.logoUrl ? (
                       <AvatarImage src={item.logoUrl} alt="" />
                     ) : null}
-                    <AvatarFallback className="rounded-sm text-xs">
+                    <AvatarFallback className="text-foreground rounded-sm text-xs">
                       {getInitials(item.name ?? item.slug)}
                     </AvatarFallback>
                   </Avatar>
@@ -182,7 +207,31 @@ export function CommunitySwitcher({
             </CommandList>
           </Command>
         ) : null}
-        <div className="border-border mt-2 border-t p-2">
+        {details ? (
+          <div className="border-border border-t px-2 py-2">
+            {details(close)}
+          </div>
+        ) : null}
+        <div className="border-border border-t px-2 pt-2">
+          <DialogClose asChild>
+            <Link
+              href="/"
+              onNavigate={onNavigate}
+              aria-current={
+                !activeSlug && pathname === "/" ? "page" : undefined
+              }
+              className="border-border hover:bg-secondary focus-visible:ring-ring flex min-h-11 items-center gap-3 rounded-md border px-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset"
+            >
+              <AitLogo className="h-3.5 w-8" aria-hidden />
+              <span className="flex-1">{t("hub")}</span>
+              <ArrowUpRight
+                className="text-muted-foreground size-4"
+                aria-hidden
+              />
+            </Link>
+          </DialogClose>
+        </div>
+        <div className="p-2">
           <ShellNavLink
             item={{ href: "/communities", label: t("discover"), icon: Compass }}
             onNavigate={() => {

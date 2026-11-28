@@ -120,6 +120,13 @@
         "files": ["src/components/communities/community-nav.tsx"],
         "createdAt": "2026-11-28T12:10:57.592Z",
         "reason": "Agent review: the legacy mobile tab has square corners and a 2px bottom border. At lg the desktop row applies a radius and sets the bottom border width to zero."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "4.6rem",
+        "files": ["src/styles/globals.css"],
+        "createdAt": "2026-11-28T13:12:04.333Z",
+        "reason": "The existing magazine article drop cap intentionally uses 4.6rem as editorial display typography. This size is scoped to the article first letter and predates the shell redesign."
       }
     ]
   }

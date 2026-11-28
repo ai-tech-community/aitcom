@@ -48,7 +48,7 @@ export function SessionChrome({
   const { data: session } = authClient.useSession();
   const publishedUser = useInitialAuthUser();
   const shell = useSiteShell();
-  const aboveMobileNav = shell === "community";
+  const aboveMobileNav = shell === "community" || shell === "hub";
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
   const user = documentAuthUser(initialUser, publishedUser, session?.user);
@@ -59,7 +59,8 @@ export function SessionChrome({
   return (
     <>
       <InboxRoot
-        dockLeading={<OnboardingReminder />}
+        dockLeading={shell ? undefined : <OnboardingReminder />}
+        showLauncher={!shell}
         aboveMobileNav={aboveMobileNav}
       />
       <SpaceWindowRoot aboveMobileNav={aboveMobileNav} />

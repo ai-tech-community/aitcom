@@ -49,17 +49,18 @@ export function useSiteShell() {
 }
 
 export function SiteToaster() {
-  const community = useSiteShell() === "community";
+  const shell = useSiteShell();
+  const hasMobileBar = shell === "community" || shell === "hub";
   return (
     <Toaster
       position="bottom-right"
       offset={
-        community
+        hasMobileBar
           ? "max(60px, calc(var(--community-mobile-bar-height) + 12px))"
           : 60
       }
       mobileOffset={
-        community
+        hasMobileBar
           ? { bottom: "calc(var(--community-mobile-bar-height) + 12px)" }
           : undefined
       }
@@ -75,7 +76,11 @@ export function SiteContent({ children }: { children: ReactNode }) {
       data-site-shell={shell ?? undefined}
       id={hub ? "shell-content" : undefined}
       tabIndex={hub ? -1 : undefined}
-      className={hub ? "flex-1 scroll-mt-14 focus:outline-none" : "flex-1"}
+      className={
+        hub
+          ? "flex-1 scroll-mt-14 pb-(--community-mobile-bar-height) focus:outline-none lg:pb-0"
+          : "flex-1"
+      }
     >
       {children}
     </main>

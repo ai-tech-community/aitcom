@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
@@ -71,6 +71,24 @@ describe("useConfirm", () => {
     });
     act(() => screen.getByRole("button", { name: "Confirm" }).click());
     await expect(answer).resolves.toBe(true);
+  });
+
+  it("returns focus to the shell trigger when the calling menu closed", async () => {
+    renderWith(
+      <>
+        <Asker />
+        <button>Switch community</button>
+      </>,
+    );
+    const trigger = screen.getByRole("button", { name: "Switch community" });
+    act(() => {
+      void confirm({
+        description: "Leave the community?",
+        returnFocus: () => trigger,
+      });
+    });
+    act(() => screen.getByRole("button", { name: "Cancel" }).click());
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it("answers a pending question no when a new one is asked", async () => {

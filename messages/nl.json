@@ -6806,6 +6806,16 @@
   },
   "redesign": {
     "shell": {
+      "switchNamedCommunity": "{name}, wissel van community",
+      "yourRole": "Je rol: {role}",
+      "pageResults": "{count, plural, one {# pagina} other {# pagina’s}}",
+      "keysNavigate": "Navigeren",
+      "keysOpen": "Openen",
+      "keysClose": "Sluiten",
+      "keyEnter": "Enter",
+      "keyEscape": "Esc",
+      "onboardingQuestions": "Welkomstvragen",
+      "latestMessages": "Naar de nieuwste berichten",
       "inYourCommunities": "In jouw communities",
       "guides": "Handleidingen",
       "setup": "Installatiehandleiding",

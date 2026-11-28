@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo } from "react";
 import {
   ArrowLeftIcon,
   BotIcon,
@@ -8,7 +8,9 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useStickToBottomContext } from "use-stick-to-bottom";
 import { authClient } from "@/server/better-auth/client";
+import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,6 +38,7 @@ type ConversationViewProps = {
   /** When true, the built-in header (avatar / peer name / profile toggle) is hidden.
    *  Use this when the parent supplies its own room header. */
   hideHeader?: boolean;
+  roomViewport?: boolean;
 };
 
 function formatTime(date: Date): string {
@@ -46,6 +49,65 @@ function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
+/** At the latest message, keep a partial leading row out of the reading area.
+ * The original scroll range stays intact so scrolling back reveals that row. */
+function RoomViewportEdge() {
+  const { scrollRef, contentRef } = useStickToBottomContext();
+
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    const content = contentRef.current;
+    if (!scroll || !content) return;
+    let clipped: HTMLElement | undefined;
+    function refresh() {
+      if (!scroll || !content) return;
+      const latest =
+        scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight <= 2;
+      const edge = scroll.getBoundingClientRect().top;
+      const next = latest
+        ? [
+            ...content.querySelectorAll<HTMLElement>("[data-room-message]"),
+          ].find((row) => {
+            const { top, bottom } = row.getBoundingClientRect();
+            return (
+              top < edge &&
+              bottom > edge &&
+              row.nextElementSibling?.hasAttribute("data-room-message")
+            );
+          })
+        : undefined;
+      if (next === clipped) return;
+      clipped?.removeAttribute("data-clipped-room-message");
+      clipped = next;
+      clipped?.setAttribute("data-clipped-room-message", "");
+    }
+
+    const resize = new ResizeObserver(refresh);
+    resize.observe(scroll);
+    resize.observe(content);
+    scroll.addEventListener("scroll", refresh, { passive: true });
+    refresh();
+    return () => {
+      resize.disconnect();
+      scroll.removeEventListener("scroll", refresh);
+      clipped?.removeAttribute("data-clipped-room-message");
+    };
+  }, [scrollRef, contentRef]);
+
+  return null;
+}
+
+/** Refresh the existing counts once the room loads a new latest message.
+ * The messages read path advances the room membership's read marker. */
+function RoomReadBadgeSync({ latestMessageId }: { latestMessageId: string }) {
+  const utils = api.useUtils();
+  useEffect(() => {
+    void utils.inbox.totalUnreadCount.invalidate();
+    void utils.inbox.listConversations.invalidate();
+  }, [utils, latestMessageId]);
+  return null;
+}
+
 export function ConversationView({
   conversationId,
   peer,
@@ -53,8 +115,10 @@ export function ConversationView({
   onToggleProfile,
   onBack,
   hideHeader = false,
+  roomViewport = false,
 }: ConversationViewProps) {
   const t = useTranslations("inbox");
+  const shell = useTranslations("redesign.shell");
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id;
 
@@ -65,6 +129,7 @@ export function ConversationView({
     [messagesQuery.data],
   );
 
+  const latestMessageId = roomViewport ? messages.at(-1)?.id : undefined;
   const isAgent = peer?.isAgent ?? false;
   // The GIF button shows only once the conversation is known to be with a
   // person: the peer is null while the conversation list loads, and stays
@@ -73,6 +138,9 @@ export function ConversationView({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {latestMessageId ? (
+        <RoomReadBadgeSync latestMessageId={latestMessageId} />
+      ) : null}
       {/* Header — hidden when the parent supplies its own (e.g. room header). */}
       {!hideHeader && (
         <div className="border-border flex items-center gap-2 border-b px-4 py-3">
@@ -150,7 +218,10 @@ export function ConversationView({
           ))}
         </div>
       ) : (
-        <Conversation className="flex-1">
+        <Conversation
+          className={roomViewport ? "min-h-0 flex-1" : "flex-1"}
+          {...(roomViewport ? { initial: "instant", resize: "instant" } : {})}
+        >
           <ConversationContent className="gap-4 p-4 sm:px-6">
             {isAgent && messages.length === 0 && (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
@@ -211,7 +282,11 @@ export function ConversationView({
               }
 
               return (
-                <div key={msg.id} className="flex flex-col gap-4">
+                <div
+                  key={msg.id}
+                  data-room-message={roomViewport ? "" : undefined}
+                  className="flex flex-col gap-4 data-[clipped-room-message]:invisible"
+                >
                   {dateLabel && (
                     <div className="flex items-center gap-3">
                       <div className="bg-border h-px flex-1" />
@@ -239,7 +314,10 @@ export function ConversationView({
               );
             })}
           </ConversationContent>
-          <ConversationScrollButton />
+          {roomViewport ? <RoomViewportEdge /> : null}
+          <ConversationScrollButton
+            aria-label={roomViewport ? shell("latestMessages") : undefined}
+          />
         </Conversation>
       )}
 

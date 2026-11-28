@@ -7,6 +7,8 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { cn } from "@/lib/utils";
 import { LIVE_BADGE_REFETCH_MS } from "./live-refetch";
+import { shellActiveTab } from "@/components/shells/shell-navigation";
+import { ShellUnreadBadge } from "@/components/shells/unread-badge";
 
 /**
  * Direct top-bar entry to the dedicated Messages page (`/messages`), so members
@@ -19,7 +21,7 @@ export function MessagesNavLink({
   presentation = "legacy",
   signedIn = false,
 }: {
-  presentation?: "legacy" | "header" | "desktop" | "bottom";
+  presentation?: "legacy" | "desktop" | "bottom";
   signedIn?: boolean;
 } = {}) {
   const { data: session } = authClient.useSession();
@@ -36,7 +38,7 @@ export function MessagesNavLink({
   const authenticated = !!session?.user || signedIn;
   if (!authenticated && presentation !== "bottom") return null;
 
-  const count = unreadData?.count ?? 0;
+  const count = authenticated ? (unreadData?.count ?? 0) : 0;
   const label = t("messages");
   const active =
     pathname === "/messages" ||
@@ -55,36 +57,39 @@ export function MessagesNavLink({
             }
       }
       aria-label={`${label}${count > 0 ? `, ${compact ? shell("unread", { count }) : `${count} unread`}` : ""}`}
+      title={compact ? label : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
         "hover:bg-muted relative flex items-center justify-center rounded-md p-2 transition-colors",
         active && "bg-muted",
         compact &&
-          "focus-visible:ring-ring size-11 outline-none focus-visible:ring-2 focus-visible:ring-inset",
+          "focus-visible:ring-ring h-11 min-w-11 gap-1 px-1 outline-none focus-visible:ring-2 focus-visible:ring-inset",
         presentation === "desktop" && "hidden lg:flex",
         bottom &&
           "h-auto min-h-14 w-full flex-col gap-1 p-1 text-xs leading-tight font-medium",
+        active && bottom && shellActiveTab,
       )}
     >
-      <MessageSquareIcon
-        className={cn(
-          "h-5 w-5",
-          active ? "text-foreground" : "text-muted-foreground",
-        )}
-      />
-      {bottom ? <span className="max-w-full break-words">{label}</span> : null}
-      {count > 0 && (
-        <span
+      <span className={compact ? "inline-flex items-center gap-1" : "contents"}>
+        <MessageSquareIcon
           aria-hidden={compact || undefined}
           className={cn(
-            "bg-primary text-primary-foreground absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold",
-            compact && "bg-foreground text-background font-mono text-xs",
-            bottom && "right-[calc(50%-1.25rem)]",
+            "size-5 shrink-0",
+            active ? "text-foreground" : "text-muted-foreground",
           )}
-        >
+        />
+        {compact ? <ShellUnreadBadge count={count} /> : null}
+      </span>
+      {bottom ? (
+        <span data-shell-nav-label="" className="max-w-full wrap-break-word">
+          {label}
+        </span>
+      ) : null}
+      {!compact && count > 0 ? (
+        <span className="bg-primary text-primary-foreground absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold">
           {count > 99 ? "99+" : count}
         </span>
-      )}
+      ) : null}
     </Link>
   );
 }

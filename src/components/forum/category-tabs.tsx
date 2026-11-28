@@ -21,7 +21,10 @@ export function CategoryTabs({ active, onChange }: CategoryTabsProps) {
   const t = useTranslations("forum");
 
   return (
-    <div className="border-border flex gap-1 overflow-x-auto border-b pb-3 [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
+    <div
+      data-forum-categories=""
+      className="border-border flex gap-1 overflow-x-auto border-b pb-3 [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+    >
       {categories.map((cat) => (
         <button
           key={cat}

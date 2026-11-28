@@ -11,7 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { ShellUnreadBadge } from "@/components/shells/unread-badge";
 import { NotificationPanel } from "./notification-panel";
 
 export function NotificationBell({
@@ -51,17 +51,13 @@ function NotificationIcon({
         className="text-muted-foreground h-5 w-5"
         aria-hidden={compact || undefined}
       />
-      {count > 0 && (
-        <span
-          aria-hidden={compact || undefined}
-          className={cn(
-            "bg-primary text-primary-foreground absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold",
-            compact && "bg-foreground text-background font-mono text-xs",
-          )}
-        >
+      {compact ? (
+        <ShellUnreadBadge count={count} />
+      ) : count > 0 ? (
+        <span className="bg-primary text-primary-foreground absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold">
           {count > 99 ? "99+" : count}
         </span>
-      )}
+      ) : null}
     </>
   );
 }
@@ -81,7 +77,8 @@ function CompactNotificationBell({ signedIn }: { signedIn: boolean }) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="hover:bg-muted focus-visible:ring-ring relative flex size-11 items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          className="hover:bg-muted focus-visible:ring-ring relative flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-md px-1 outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          title={t("notifications")}
           aria-label={
             count
               ? `${t("notifications")}, ${t("unread", { count })}`

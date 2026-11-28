@@ -130,6 +130,7 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
                 ? (`/forum/new?community=${communitySlug}` as never)
                 : "/forum/new"
             }
+            data-forum-submit=""
             className="bg-primary text-primary-foreground hover:bg-primary/90 flex shrink-0 items-center gap-1.5 rounded-md px-4 py-2 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
           >
             <Plus className="h-3 w-3" />
@@ -147,7 +148,10 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       </div>
 
       {/* Category tabs + Sort */}
-      <div className="border-border mb-5 flex items-center justify-between gap-4 border-b pb-3">
+      <div
+        data-forum-filters=""
+        className="border-border mb-5 flex items-center justify-between gap-4 border-b pb-3"
+      >
         <CategoryTabs active={category} onChange={handleCategoryChange} />
         <div className="flex shrink-0 items-center gap-2">
           <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">

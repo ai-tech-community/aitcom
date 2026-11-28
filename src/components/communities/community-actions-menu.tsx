@@ -26,6 +26,9 @@ interface CommunityActionsMenuProps {
   /** After a successful leave, before the page data refreshes. */
   onLeft?: () => void;
   compact?: boolean;
+  /** Place the existing action inside the community switcher. */
+  onRowAction?: () => void;
+  returnFocusAfterLeave?: () => HTMLElement | null;
 }
 
 /**
@@ -42,6 +45,8 @@ export function CommunityActionsMenu({
   memberRole,
   onLeft,
   compact = false,
+  onRowAction,
+  returnFocusAfterLeave,
 }: CommunityActionsMenuProps) {
   const t = useTranslations("communities.profile");
   const router = useRouter();
@@ -52,6 +57,7 @@ export function CommunityActionsMenu({
     membership: membershipStatus
       ? { status: membershipStatus, role: memberRole ?? "member" }
       : null,
+    returnFocusAfterLeave,
     onChange: () => {
       onLeft?.();
       router.refresh();
@@ -59,6 +65,24 @@ export function CommunityActionsMenu({
   });
 
   if (action.kind !== "member" || !action.canLeave) return null;
+
+  if (onRowAction) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        className="min-h-11 w-full justify-start"
+        disabled={busy}
+        onClick={() => {
+          onRowAction();
+          void leave();
+        }}
+      >
+        <LogOut aria-hidden />
+        {t("leave")}
+      </Button>
+    );
+  }
 
   return (
     <DropdownMenu>

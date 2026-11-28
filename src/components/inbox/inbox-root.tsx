@@ -23,9 +23,11 @@ import { InboxMobileView } from "./inbox-mobile-view";
 export function InboxRoot({
   dockLeading,
   aboveMobileNav = false,
+  showLauncher = true,
 }: {
   dockLeading?: ReactNode;
   aboveMobileNav?: boolean;
+  showLauncher?: boolean;
 } = {}) {
   const { data: session } = authClient.useSession();
   const inbox = useInbox();
@@ -43,8 +45,6 @@ export function InboxRoot({
           inbox.activeChat !== null),
     },
   );
-
-  if (!session?.user) return null;
 
   const conversations = conversationsData?.conversations ?? [];
 
@@ -73,6 +73,8 @@ export function InboxRoot({
     inbox.minimizedChats.length > 0 ||
     inbox.activeChat !== null;
 
+  if (!session?.user || (!showLauncher && !inboxInUse)) return null;
+
   // Mobile active chat
   const activeChatInfo = inbox.activeChat
     ? getConvInfo(inbox.activeChat)
@@ -87,6 +89,7 @@ export function InboxRoot({
         <InboxMobileView
           key={activeChatInfo.conversationId}
           chatInfo={activeChatInfo}
+          restoreListOnClose={showLauncher}
         />
       )}
 
@@ -147,7 +150,7 @@ export function InboxRoot({
         {inbox.isListOpen && <InboxList />}
 
         {/* Inbox pill (collapsed) */}
-        <InboxPill />
+        {showLauncher ? <InboxPill /> : null}
       </div>
     </>
   );

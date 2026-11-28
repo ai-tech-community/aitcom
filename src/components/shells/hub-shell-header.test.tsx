@@ -39,6 +39,14 @@ vi.mock("@/trpc/react", () => ({
     },
   },
 }));
+vi.mock("@/components/onboarding/onboarding-reminder", () => ({
+  OnboardingReminderProvider: ({ children }: { children: React.ReactNode }) =>
+    children,
+  OnboardingReminderRow: () => <button type="button">Getting started</button>,
+}));
+vi.mock("@/components/inbox/messages-nav-link", () => ({
+  MessagesNavLink: () => <a href="/messages">Messages</a>,
+}));
 vi.mock("./shell-header", () => ({
   ShellHeader: ({
     location,
@@ -108,12 +116,14 @@ describe("Hub shell header", () => {
       within(primary!).getByRole("link", { name: "Events" }),
     ).toHaveAttribute("aria-current", "page");
     expect(screen.getByTestId("section")).toHaveTextContent("Events");
-    expect(screen.getByRole("link", { name: "Workbench" })).toHaveAttribute(
-      "href",
-      "/communities/workbench/events",
-    );
+    expect(
+      within(screen.getByRole("banner")).getByRole("link", {
+        name: "Workbench",
+      }),
+    ).toHaveAttribute("href", "/communities/workbench/events");
     expect(screen.queryByRole("link", { name: "Stale" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Archived" })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Messages" })).toHaveLength(1);
     expect(data.getSpaces).not.toHaveBeenCalledWith({ slug: "pending" });
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { api } from "@/trpc/react";
 import { LIVE_MESSAGES_FALLBACK_MS } from "@/components/inbox/live-refetch";
 
@@ -8,8 +8,9 @@ export function useRoomUnread(
   slug: string,
   roomIds: readonly string[],
   enabled: boolean,
+  readingRoomId?: string,
 ) {
-  const { data, isError, isFetching, hasNextPage, fetchNextPage } =
+  const { data, isError, isFetching, hasNextPage, fetchNextPage, refetch } =
     api.inbox.listConversations.useInfiniteQuery(
       { limit: 50 },
       {
@@ -25,6 +26,20 @@ export function useRoomUnread(
         },
       },
     );
+
+  const previousRoom = useRef(readingRoomId);
+  useEffect(() => {
+    // Loading the conversation advances its existing read marker. Read the
+    // summaries again after leaving the timeline instead of carrying its badge.
+    if (
+      enabled &&
+      previousRoom.current &&
+      previousRoom.current !== readingRoomId
+    ) {
+      void refetch();
+    }
+    previousRoom.current = readingRoomId;
+  }, [enabled, readingRoomId, refetch]);
 
   const counts = new Map<string, number>();
   if (enabled && !isError) {
@@ -56,5 +71,6 @@ export function useRoomUnread(
     fetchNextPage,
   ]);
 
+  if (readingRoomId) counts.delete(readingRoomId);
   return counts;
 }

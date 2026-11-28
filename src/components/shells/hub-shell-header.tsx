@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Ellipsis, Menu } from "lucide-react";
+import { ArrowUpRight, Ellipsis } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useInitialAuthUser } from "@/components/auth/session-provider";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -12,6 +12,11 @@ import {
   type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
 import { api } from "@/trpc/react";
+import {
+  OnboardingReminderProvider,
+  OnboardingReminderRow,
+} from "@/components/onboarding/onboarding-reminder";
+import { MessagesNavLink } from "@/components/inbox/messages-nav-link";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BuiltinSurface } from "@/server/communities/space-defaults";
@@ -21,6 +26,10 @@ import { activeDestination, type ShellDestination } from "./navigation";
 import { ShellHeader } from "./shell-header";
 import {
   shellIconButton,
+  shellActiveTab,
+  shellMobileButton,
+  ShellMobileNav,
+  ShellMobileLabel,
   ShellDrawer,
   ShellNavGroups,
   ShellNavLink,
@@ -98,6 +107,7 @@ export function HubShellHeader({
 }) {
   const t = useTranslations("redesign.shell");
   const legal = useTranslations("footer");
+  const nav = useTranslations("nav");
   const auth = useTranslations("auth");
   const pathname = usePathname();
   const publishedUser = useInitialAuthUser();
@@ -119,6 +129,7 @@ export function HubShellHeader({
       ? "launchpad"
       : localSurfaces[active?.href ?? ""];
   const contextualDestinations: ShellDestination[] = [
+    { href: "/messages", label: nav("messages") },
     { href: "/privacy", label: legal("privacy") },
     { href: "/security", label: legal("security") },
     { href: "/terms", label: legal("terms") },
@@ -138,77 +149,114 @@ export function HubShellHeader({
     label: membership.name ?? membership.slug,
   }));
 
+  function more(close: () => void) {
+    return (
+      <>
+        {counterpart && usable.length > 0 ? (
+          <CommunityCounterparts
+            memberships={usable}
+            surface={counterpart}
+            onNavigate={close}
+          />
+        ) : null}
+        <ShellNavGroups groups={groups} onNavigate={close}>
+          {user ? <OnboardingReminderRow /> : null}
+        </ShellNavGroups>
+      </>
+    );
+  }
+
   return (
-    <ShellHeader
-      location={t("hub")}
-      section={section}
-      sectionInNavigation={primaryActive}
-      user={user}
-      destinations={[...destinations, ...membershipHomes]}
-      account={account}
-      leading={
-        <CommunitySwitcher
-          compact
-          signedIn={!!user}
-          memberships={memberships}
-          retryMemberships={
-            membershipQuery.isError
-              ? () => void membershipQuery.refetch()
-              : undefined
-          }
-        />
-      }
-      navigation={
-        <nav
-          className="hidden shrink-0 items-center gap-0.5 lg:flex xl:gap-1"
-          aria-label={t("hubNavigation")}
-        >
-          {main.map((item) => (
+    <OnboardingReminderProvider enabled={!!user}>
+      <ShellHeader
+        location={t("hub")}
+        section={section}
+        sectionInNavigation={primaryActive}
+        user={user}
+        destinations={[...destinations, ...membershipHomes]}
+        account={account}
+        leading={
+          <CommunitySwitcher
+            compact
+            signedIn={!!user}
+            memberships={memberships}
+            retryMemberships={
+              membershipQuery.isError
+                ? () => void membershipQuery.refetch()
+                : undefined
+            }
+          />
+        }
+        navigation={
+          <nav
+            className="hidden shrink-0 items-center gap-0.5 lg:flex xl:gap-1"
+            aria-label={t("hubNavigation")}
+          >
+            {main.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active === item ? "page" : undefined}
+                className={cn(
+                  "focus-visible:ring-ring inline-flex min-h-9 items-center rounded-md px-2 text-sm font-medium outline-none focus-visible:ring-2 xl:px-3",
+                  active === item
+                    ? "bg-secondary text-foreground decoration-foreground/60 font-semibold underline underline-offset-4"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        }
+        trailing={
+          <ShellDrawer
+            side="right"
+            title={t("hubNavigation")}
+            trigger={
+              <button
+                type="button"
+                className={cn(shellIconButton, "hidden lg:inline-flex")}
+                aria-label={t("hubNavigation")}
+                title={t("hubNavigation")}
+              >
+                <Ellipsis className="size-5" aria-hidden />
+              </button>
+            }
+          >
+            {more}
+          </ShellDrawer>
+        }
+      />
+      <ShellMobileNav label={t("hubNavigation")}>
+        {main.slice(0, 2).map((item) =>
+          item.icon ? (
             <Link
               key={item.href}
               href={item.href}
               aria-current={active === item ? "page" : undefined}
               className={cn(
-                "focus-visible:ring-ring inline-flex min-h-9 items-center rounded-md px-2 text-sm font-medium outline-none focus-visible:ring-2 xl:px-3",
-                active === item
-                  ? "bg-secondary text-foreground decoration-foreground/60 font-semibold underline underline-offset-4"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                shellMobileButton,
+                active === item && shellActiveTab,
               )}
             >
-              {item.label}
+              <ShellMobileLabel icon={item.icon} label={item.label} />
             </Link>
-          ))}
-        </nav>
-      }
-      trailing={
+          ) : null,
+        )}
+        <MessagesNavLink presentation="bottom" signedIn={!!user} />
         <ShellDrawer
           side="right"
           title={t("hubNavigation")}
           trigger={
-            <button
-              type="button"
-              className={shellIconButton}
-              aria-label={t("hubNavigation")}
-            >
-              <Menu className="size-5 lg:hidden" aria-hidden />
-              <Ellipsis className="hidden size-5 lg:block" aria-hidden />
+            <button type="button" className={shellMobileButton}>
+              <ShellMobileLabel icon={Ellipsis} label={nav("more")} />
             </button>
           }
         >
-          {(close) => (
-            <>
-              {counterpart && usable.length > 0 ? (
-                <CommunityCounterparts
-                  memberships={usable}
-                  surface={counterpart}
-                  onNavigate={close}
-                />
-              ) : null}
-              <ShellNavGroups groups={groups} onNavigate={close} />
-            </>
-          )}
+          {more}
         </ShellDrawer>
-      }
-    />
+      </ShellMobileNav>
+    </OnboardingReminderProvider>
   );
 }

@@ -337,6 +337,7 @@ export function PostComposer({
             <Button
               type="submit"
               size="sm"
+              data-feed-submit=""
               disabled={!ready}
               aria-busy={busy}
               aria-keyshortcuts={SEND_SHORTCUTS}

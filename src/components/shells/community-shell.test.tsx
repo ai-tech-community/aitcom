@@ -42,6 +42,7 @@ const m = vi.hoisted(() => ({
   listSpaces: vi.fn(),
   listRooms: vi.fn(),
   summaries: vi.fn(),
+  refreshSummaries: vi.fn(),
 }));
 
 vi.mock("@/i18n/navigation", () => ({
@@ -55,8 +56,13 @@ vi.mock("@/i18n/navigation", () => ({
   usePathname: () => m.pathname,
   useRouter: () => ({ push: vi.fn() }),
 }));
-vi.mock("@/components/communities/community-identity", () => ({
-  CommunityIdentity: () => <div>Workbench Notes</div>,
+vi.mock("@/components/communities/join-button", () => ({
+  JoinButton: () => <button type="button">Join</button>,
+}));
+vi.mock("@/components/onboarding/onboarding-reminder", () => ({
+  OnboardingReminderProvider: ({ children }: { children: React.ReactNode }) =>
+    children,
+  OnboardingReminderRow: () => <button type="button">Getting started</button>,
 }));
 vi.mock("@/components/communities/theme/community-theme-cover", () => ({
   CommunityThemeCover: () => <div>Cover</div>,
@@ -111,7 +117,9 @@ beforeEach(() => {
   m.pathname = "/communities/workbench-notes/spaces/workshop";
   m.listSpaces.mockReset().mockReturnValue({ data: m.spaces });
   m.listRooms.mockReset().mockReturnValue({ data: m.rooms });
+  m.refreshSummaries.mockReset().mockResolvedValue(undefined);
   m.summaries.mockReset().mockReturnValue({
+    refetch: m.refreshSummaries,
     data: {
       pages: [
         {
@@ -148,7 +156,7 @@ function renderShell(canRead: boolean, role: "owner" | "member" | null) {
     viewerCanReadContent: canRead,
     themeId: "night",
   } as React.ComponentProps<typeof CommunityShell>["community"];
-  return render(
+  const tree = () => (
     <NextIntlClientProvider locale="en" messages={en}>
       <CommunityShell
         community={community}
@@ -160,12 +168,14 @@ function renderShell(canRead: boolean, role: "owner" | "member" | null) {
       >
         <p>Child page</p>
       </CommunityShell>
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+  const view = render(tree());
+  return { ...view, update: () => view.rerender(tree()) };
 }
 
 describe("CommunityShell", () => {
-  it("renders ordered spaces, scoped unread and owner links under one theme", () => {
+  it("renders one ordered Spaces group, clears unread on the active room and shows owner links", () => {
     renderShell(true, "owner");
     const navigation = screen.getByRole("navigation", {
       name: "Community navigation",
@@ -175,8 +185,20 @@ describe("CommunityShell", () => {
     expect(events).toHaveTextContent("Events");
     expect(forum).toHaveTextContent("Forum");
     expect(
-      within(navigation).getByRole("link", { name: "Workshop, 3 unread" }),
+      within(navigation).getByRole("link", { name: "Workshop" }),
     ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(navigation).getByRole("button", { name: "Getting started" }),
+    ).toBeInTheDocument();
+    expect(
+      within(navigation).queryByRole("link", { name: "Invite friends" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Invite friends" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("search-destinations")).not.toHaveTextContent(
+      "/referrals",
+    );
     expect(
       within(navigation).getByRole("link", {
         name: "Private workshop, Private room, access required",
@@ -190,6 +212,24 @@ describe("CommunityShell", () => {
     expect(theme).toContainElement(navigation);
     expect(theme).toContainElement(screen.getByRole("banner"));
     expect(theme).toContainElement(screen.getByText("Child page"));
+  });
+
+  it("adds readable room counts to the mobile tab and refreshes after leaving a chat", () => {
+    m.pathname = "/communities/workbench-notes";
+    const { update } = renderShell(true, "member");
+    expect(
+      screen.getByRole("button", { name: "Spaces, 3 unread" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Workshop, 3 unread" }),
+    ).toBeInTheDocument();
+    m.pathname = "/communities/workbench-notes/spaces/workshop";
+    update();
+    expect(screen.queryByRole("button", { name: /unread/ })).toBeNull();
+    expect(m.refreshSummaries).not.toHaveBeenCalled();
+    m.pathname = "/communities/workbench-notes/forum";
+    update();
+    expect(m.refreshSummaries).toHaveBeenCalledOnce();
   });
 
   it("omits stale restricted rows from the rail, finder and unread queries for outsiders", () => {

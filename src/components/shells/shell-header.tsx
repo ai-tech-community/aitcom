@@ -8,10 +8,12 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
+import { useCommandState } from "cmdk";
 import {
   ChevronRight,
   Globe,
   LogOut,
+  MessageSquare,
   Search,
   UserRound,
   X,
@@ -52,6 +54,36 @@ import { JOIN_HREF, keyboardNavItems } from "@/components/site-nav";
 import type { ShellDestination } from "./navigation";
 import { shellIconButton, ShellNavLink } from "./shell-navigation";
 
+function PageFinderFooter() {
+  const t = useTranslations("redesign.shell");
+  const count = useCommandState((state) => state.filtered.count);
+  return (
+    <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t px-3 py-2 text-xs">
+      <span aria-live="polite">{t("pageResults", { count })}</span>
+      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <li>
+          <kbd className="bg-secondary text-foreground mr-1 rounded px-1">
+            ↑↓
+          </kbd>
+          {t("keysNavigate")}
+        </li>
+        <li>
+          <kbd className="bg-secondary text-foreground mr-1 rounded px-1">
+            {t("keyEnter")}
+          </kbd>
+          {t("keysOpen")}
+        </li>
+        <li>
+          <kbd className="bg-secondary text-foreground mr-1 rounded px-1">
+            {t("keyEscape")}
+          </kbd>
+          {t("keysClose")}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 function PageFinder({
   destinations,
 }: {
@@ -63,6 +95,8 @@ function PageFinder({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const pointerReturn = useRef(false);
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -90,12 +124,19 @@ function PageFinder({
       <DialogTrigger asChild>
         <button
           type="button"
+          ref={trigger}
+          onBlur={(event) =>
+            event.currentTarget.removeAttribute("data-pointer-return")
+          }
+          onKeyDown={(event) =>
+            event.currentTarget.removeAttribute("data-pointer-return")
+          }
           aria-label={t("findPage")}
           aria-keyshortcuts="Control+K Meta+K"
           title={t("findPage")}
           className={cn(
             shellIconButton,
-            "text-muted-foreground hover:text-foreground lg:w-auto lg:gap-2 lg:px-2.5",
+            "text-muted-foreground hover:text-foreground data-[pointer-return]:focus-visible:ring-0 lg:w-auto lg:gap-2 lg:px-2.5",
           )}
         >
           <Search className="size-4 shrink-0" aria-hidden />
@@ -106,6 +147,23 @@ function PageFinder({
       </DialogTrigger>
       <DialogContent
         showCloseButton={false}
+        onPointerDownCapture={() => {
+          pointerReturn.current = true;
+        }}
+        onPointerDownOutside={() => {
+          pointerReturn.current = true;
+        }}
+        onKeyDownCapture={() => {
+          pointerReturn.current = false;
+        }}
+        onEscapeKeyDown={() => {
+          pointerReturn.current = false;
+        }}
+        onCloseAutoFocus={() => {
+          if (pointerReturn.current)
+            trigger.current?.setAttribute("data-pointer-return", "");
+          pointerReturn.current = false;
+        }}
         className="top-[max(1rem,env(safe-area-inset-top))] translate-y-0 gap-0 overflow-hidden p-0 motion-reduce:animate-none sm:top-[12vh]"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
@@ -134,7 +192,7 @@ function PageFinder({
             placeholder={t("findPlaceholder")}
             className="h-11 text-base sm:text-sm"
           />
-          <CommandList className="max-h-[min(52dvh,25rem)] p-2">
+          <CommandList className="max-h-[min(50dvh,23rem)] p-2 [scrollbar-width:thin]">
             <CommandEmpty>{t("noPages")}</CommandEmpty>
             {destinations.map((item) => (
               <CommandItem
@@ -152,6 +210,7 @@ function PageFinder({
               </CommandItem>
             ))}
           </CommandList>
+          <PageFinderFooter />
         </Command>
       </DialogContent>
     </Dialog>
@@ -178,6 +237,7 @@ function AccountMenu({
           type="button"
           className={shellIconButton}
           aria-label={user ? t("account") : t("accountAndLanguage")}
+          title={user ? t("account") : t("accountAndLanguage")}
         >
           {user ? (
             <Avatar className="size-7">
@@ -243,6 +303,7 @@ export function ShellHeader({
   sectionInNavigation,
   leading,
   navigation,
+  mobileLocation,
   trailing,
   destinations,
   account,
@@ -254,6 +315,7 @@ export function ShellHeader({
   sectionInNavigation?: boolean;
   leading?: ReactNode;
   navigation?: ReactNode;
+  mobileLocation?: ReactNode;
   trailing?: ReactNode;
   destinations: readonly ShellDestination[];
   account: readonly ShellDestination[];
@@ -263,6 +325,12 @@ export function ShellHeader({
   const t = useTranslations("redesign.shell");
   const nav = useTranslations("nav");
   const router = useRouter();
+  const searchable = user
+    ? [
+        ...destinations,
+        { href: "/messages", label: nav("messages"), icon: MessageSquare },
+      ]
+    : destinations;
 
   function onShortcut(event: KeyboardEvent<HTMLElement>) {
     // Single-letter shortcuts are scoped to focus in the header (WCAG 2.1.4).
@@ -311,7 +379,15 @@ export function ShellHeader({
       <div className="flex min-h-12 items-center justify-between gap-1 px-2 sm:gap-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
           {leading}
-          <div className="flex min-w-0 items-center gap-x-2 max-lg:flex-col max-lg:items-start max-lg:gap-y-0.5">
+          {mobileLocation ? (
+            <div className="min-w-0 lg:hidden">{mobileLocation}</div>
+          ) : null}
+          <div
+            className={cn(
+              "flex min-w-0 items-center gap-x-2 max-lg:flex-col max-lg:items-start max-lg:gap-y-0.5",
+              mobileLocation && "max-lg:hidden",
+            )}
+          >
             <span
               className="max-w-full truncate text-xs leading-tight font-semibold lg:text-sm"
               title={location}
@@ -343,14 +419,11 @@ export function ShellHeader({
         </div>
         {navigation}
         <div className="flex shrink-0 items-center gap-0.5">
-          <PageFinder destinations={destinations} />
+          <PageFinder destinations={searchable} />
           {user ? (
             <>
               <NotificationBell compact signedIn />
-              <MessagesNavLink
-                presentation={community ? "desktop" : "header"}
-                signedIn
-              />
+              <MessagesNavLink presentation="desktop" signedIn />
             </>
           ) : !community ? (
             <Link
