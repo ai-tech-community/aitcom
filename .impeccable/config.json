@@ -113,6 +113,13 @@
         "files": ["src/server/communities/referral-email/mail.ts"],
         "createdAt": "2026-11-01T07:27:57.033Z",
         "reason": "Agent: DESIGN.md mandates Geist Sans for AIT; email uses Arial/sans-serif fallbacks without remote fonts."
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": ["src/components/communities/community-nav.tsx"],
+        "createdAt": "2026-11-28T12:10:57.592Z",
+        "reason": "Agent review: the legacy mobile tab has square corners and a 2px bottom border. At lg the desktop row applies a radius and sets the bottom border width to zero."
       }
     ]
   }

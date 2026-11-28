@@ -1,5 +1,6 @@
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 import { api, HydrateClient } from "@/trpc/server";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 
 import { CommunityLayoutClient } from "./_community-layout-client";
 
@@ -25,6 +26,14 @@ export default async function CommunityLayout({
     loadHubAuthSeed(),
     api.communities.getBySlug.prefetch({ slug }),
   ]);
+  if (isOpenCommunitiesEnabled()) {
+    // These procedures apply the same visibility rules as the sidebar's
+    // client queries. Rejected prefetches never hydrate inaccessible rows.
+    await Promise.all([
+      api.spaces.list.prefetch({ slug }),
+      initialUser ? api.spaces.listRooms.prefetch({ slug }) : undefined,
+    ]);
+  }
   return (
     <HydrateClient>
       <CommunityLayoutClient

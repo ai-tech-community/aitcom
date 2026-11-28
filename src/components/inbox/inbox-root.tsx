@@ -20,7 +20,13 @@ import { InboxMobileView } from "./inbox-mobile-view";
  * (list, a chat, or minimized chats), when the corner belongs to the
  * conversation.
  */
-export function InboxRoot({ dockLeading }: { dockLeading?: ReactNode } = {}) {
+export function InboxRoot({
+  dockLeading,
+  aboveMobileNav = false,
+}: {
+  dockLeading?: ReactNode;
+  aboveMobileNav?: boolean;
+} = {}) {
   const { data: session } = authClient.useSession();
   const inbox = useInbox();
   const t = useTranslations("inbox");
@@ -88,7 +94,10 @@ export function InboxRoot({ dockLeading }: { dockLeading?: ReactNode } = {}) {
           On mobile when inbox list is open, bump to z-60 so it sits above the sticky navbar (z-50). */}
       <div
         className={cn(
-          "fixed right-3 bottom-3 z-40 flex items-end gap-2 sm:right-4 sm:bottom-4",
+          "fixed right-3 z-40 flex items-end gap-2 sm:right-4",
+          aboveMobileNav
+            ? "bottom-[calc(var(--community-mobile-bar-height)+0.75rem)] lg:bottom-4"
+            : "bottom-3 sm:bottom-4",
           inbox.isListOpen && "max-sm:z-60",
         )}
       >

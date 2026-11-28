@@ -1,7 +1,7 @@
 "use client";
 
 import { MessageSquareIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
@@ -15,9 +15,17 @@ import { LIVE_BADGE_REFETCH_MS } from "./live-refetch";
  * shares the same unread query as the inbox pill (React Query dedupes the
  * fetch). Authenticated-only — it self-gates to null when signed out.
  */
-export function MessagesNavLink() {
+export function MessagesNavLink({
+  presentation = "legacy",
+  signedIn = false,
+}: {
+  presentation?: "legacy" | "header" | "desktop" | "bottom";
+  signedIn?: boolean;
+} = {}) {
   const { data: session } = authClient.useSession();
   const t = useTranslations("nav");
+  const shell = useTranslations("redesign.shell");
+  const locale = useLocale();
   const pathname = usePathname();
 
   const { data: unreadData } = api.inbox.totalUnreadCount.useQuery(undefined, {
@@ -25,20 +33,37 @@ export function MessagesNavLink() {
     refetchInterval: LIVE_BADGE_REFETCH_MS,
   });
 
-  if (!session?.user) return null;
+  const authenticated = !!session?.user || signedIn;
+  if (!authenticated && presentation !== "bottom") return null;
 
   const count = unreadData?.count ?? 0;
   const label = t("messages");
-  const active = pathname === "/messages";
+  const active =
+    pathname === "/messages" ||
+    (presentation !== "legacy" && pathname.startsWith("/messages/"));
+  const compact = presentation !== "legacy";
+  const bottom = presentation === "bottom";
 
   return (
     <Link
-      href="/messages"
-      aria-label={`${label}${count > 0 ? `, ${count} unread` : ""}`}
+      href={
+        authenticated
+          ? "/messages"
+          : {
+              pathname: "/auth/signin",
+              query: { redirect: `/${locale}/messages` },
+            }
+      }
+      aria-label={`${label}${count > 0 ? `, ${compact ? shell("unread", { count }) : `${count} unread`}` : ""}`}
       aria-current={active ? "page" : undefined}
       className={cn(
         "hover:bg-muted relative flex items-center justify-center rounded-md p-2 transition-colors",
         active && "bg-muted",
+        compact &&
+          "focus-visible:ring-ring size-11 outline-none focus-visible:ring-2 focus-visible:ring-inset",
+        presentation === "desktop" && "hidden lg:flex",
+        bottom &&
+          "h-auto min-h-14 w-full flex-col gap-1 p-1 text-xs leading-tight font-medium",
       )}
     >
       <MessageSquareIcon
@@ -47,8 +72,16 @@ export function MessagesNavLink() {
           active ? "text-foreground" : "text-muted-foreground",
         )}
       />
+      {bottom ? <span className="max-w-full break-words">{label}</span> : null}
       {count > 0 && (
-        <span className="bg-primary text-primary-foreground absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold">
+        <span
+          aria-hidden={compact || undefined}
+          className={cn(
+            "bg-primary text-primary-foreground absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold",
+            compact && "bg-foreground text-background font-mono text-xs",
+            bottom && "right-[calc(50%-1.25rem)]",
+          )}
+        >
           {count > 99 ? "99+" : count}
         </span>
       )}

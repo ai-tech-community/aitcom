@@ -6803,5 +6803,47 @@
       "reportsLoadFailed": "Impossible de charger les motifs du signalement.",
       "reviewFailed": "L’examen n’a pas abouti. Veuillez réessayer."
     }
+  },
+  "redesign": {
+    "shell": {
+      "inYourCommunities": "Dans vos communautés",
+      "guides": "Guides",
+      "setup": "Guide de configuration",
+      "join": "Rejoindre",
+      "myEvents": "Mes événements",
+      "jobTracker": "Suivi des candidatures",
+      "hub": "AIT Hub",
+      "hubNavigation": "Navigation du Hub",
+      "communityNavigation": "Navigation de la communauté",
+      "mobileNavigation": "Raccourcis de la communauté",
+      "account": "Compte",
+      "accountAndLanguage": "Compte et langue",
+      "dashboard": "Tableau de bord",
+      "settings": "Paramètres",
+      "notifications": "Notifications",
+      "payments": "Paiements",
+      "onboarding": "Premiers pas",
+      "signOut": "Se déconnecter",
+      "discover": "Découvrir",
+      "myCommunities": "Mes communautés",
+      "switchCommunity": "Changer de communauté",
+      "searchCommunities": "Rechercher dans vos communautés",
+      "noMemberships": "Explorez Découvrir pour trouver une communauté à rejoindre.",
+      "noCommunityMatches": "Aucun résultat. Essayez un autre nom.",
+      "currentCommunity": "Communauté actuelle",
+      "home": "Accueil",
+      "spaces": "Espaces",
+      "rooms": "Salons",
+      "communityPage": "Page de la communauté",
+      "spacesCurrent": "Espaces, vous consultez {section}",
+      "lockedRoom": "Salon privé, accès requis",
+      "unread": "{count, plural, one {# non lu} other {# non lus}}",
+      "findPage": "Trouver une page",
+      "findDescription": "Recherchez une destination dans cette navigation.",
+      "findPlaceholder": "Saisissez le nom d’une page…",
+      "noPages": "Aucun résultat. Essayez un autre nom de page.",
+      "skipContent": "Aller au contenu",
+      "source": "Voir le code source sur GitHub"
+    }
   }
 }

@@ -7,6 +7,8 @@ export type HubAuthUser = {
 
 export type HubMembershipSeed = {
   slug: string;
+  name?: string;
+  logoUrl?: string | null;
   status: "active" | "pending_approval" | "invited" | "banned";
   role: "owner" | "admin" | "moderator" | "member";
 };

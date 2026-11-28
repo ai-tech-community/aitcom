@@ -1,0 +1,369 @@
+"use client";
+
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+import { useTranslations } from "next-intl";
+import {
+  ChevronRight,
+  Globe,
+  LogOut,
+  Search,
+  UserRound,
+  X,
+} from "lucide-react";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { MessagesNavLink } from "@/components/inbox/messages-nav-link";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { SectionLabel } from "@/components/ui/section-label";
+import { Button } from "@/components/ui/button";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { getInitials } from "@/lib/avatar";
+import { clearAllPostDrafts } from "@/lib/post-drafts";
+import { cn } from "@/lib/utils";
+import { authClient } from "@/server/better-auth/client";
+import type { HubAuthUser } from "@/server/better-auth/hub-session";
+import { JOIN_HREF, keyboardNavItems } from "@/components/site-nav";
+import type { ShellDestination } from "./navigation";
+import { shellIconButton, ShellNavLink } from "./shell-navigation";
+
+function PageFinder({
+  destinations,
+}: {
+  destinations: readonly ShellDestination[];
+}) {
+  const t = useTranslations("redesign.shell");
+  const common = useTranslations("common");
+  const pathname = usePathname();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    function onKey(event: globalThis.KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        if (
+          event.defaultPrevented ||
+          (event.target instanceof HTMLElement &&
+            event.target.closest("input, select, textarea, [contenteditable]"))
+        )
+          return;
+        // Let the shell's own dialogs retain their focus trap.
+        if (document.querySelector('[role="dialog"][data-state="open"]'))
+          return;
+        event.preventDefault();
+        setOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={t("findPage")}
+          aria-keyshortcuts="Control+K Meta+K"
+          title={t("findPage")}
+          className={cn(
+            shellIconButton,
+            "text-muted-foreground hover:text-foreground lg:w-auto lg:gap-2 lg:px-2.5",
+          )}
+        >
+          <Search className="size-4 shrink-0" aria-hidden />
+          <span className="hidden text-sm font-medium xl:inline">
+            {t("findPage")}
+          </span>
+        </button>
+      </DialogTrigger>
+      <DialogContent
+        showCloseButton={false}
+        className="top-[max(1rem,env(safe-area-inset-top))] translate-y-0 gap-0 overflow-hidden p-0 motion-reduce:animate-none sm:top-[12vh]"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          input.current?.focus();
+        }}
+      >
+        <div className="border-border flex items-center justify-between gap-2 border-b px-4">
+          <DialogTitle>{t("findPage")}</DialogTitle>
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              className={shellIconButton}
+              aria-label={common("close")}
+            >
+              <X className="size-5" aria-hidden />
+            </Button>
+          </DialogClose>
+        </div>
+        <DialogDescription className="sr-only">
+          {t("findDescription")}
+        </DialogDescription>
+        <Command>
+          <CommandInput
+            ref={input}
+            aria-label={t("findPage")}
+            placeholder={t("findPlaceholder")}
+            className="h-11 text-base sm:text-sm"
+          />
+          <CommandList className="max-h-[min(52dvh,25rem)] p-2">
+            <CommandEmpty>{t("noPages")}</CommandEmpty>
+            {destinations.map((item) => (
+              <CommandItem
+                key={item.href}
+                value={item.href}
+                keywords={[item.label]}
+                onSelect={() => {
+                  setOpen(false);
+                  router.push(item.href);
+                }}
+                className="min-h-11 cursor-pointer px-2 py-2"
+              >
+                {item.icon ? <item.icon aria-hidden /> : null}
+                {item.label}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AccountMenu({
+  user,
+  links,
+}: {
+  user: HubAuthUser | null;
+  links: readonly ShellDestination[];
+}) {
+  const t = useTranslations("redesign.shell");
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [pathname]);
+  const name = user?.name?.trim() || user?.email || t("account");
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={shellIconButton}
+          aria-label={user ? t("account") : t("accountAndLanguage")}
+        >
+          {user ? (
+            <Avatar className="size-7">
+              {user.image ? <AvatarImage src={user.image} alt="" /> : null}
+              <AvatarFallback className="bg-secondary text-foreground text-xs font-semibold">
+                {getInitials(name)}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <UserRound className="size-4" aria-hidden />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="max-h-(--radix-popover-content-available-height) w-[min(17rem,calc(100vw-1.5rem))] overflow-y-auto p-2 motion-reduce:animate-none"
+        aria-label={t("accountAndLanguage")}
+      >
+        <SectionLabel bordered={false} className="px-3 pt-2 pb-1">
+          {t("account")}
+        </SectionLabel>
+        {user ? (
+          <p className="px-3 pb-2 text-sm font-semibold wrap-break-word">
+            {name}
+          </p>
+        ) : null}
+        {links.map((item) => (
+          <ShellNavLink
+            key={item.href}
+            item={item}
+            onNavigate={() => setOpen(false)}
+          />
+        ))}
+        <div className="border-border mt-2 flex min-h-11 items-center gap-2 border-t px-3 pt-2">
+          <Globe className="text-muted-foreground size-4" aria-hidden />
+          <LanguageSwitcher compact />
+        </div>
+        {user ? (
+          <button
+            type="button"
+            className="hover:bg-secondary focus-visible:ring-ring flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset"
+            onClick={() =>
+              void authClient.signOut().then(() => {
+                clearAllPostDrafts();
+                window.location.reload();
+              })
+            }
+          >
+            <LogOut className="size-4 shrink-0" aria-hidden />
+            {t("signOut")}
+          </button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const shortcuts = keyboardNavItems();
+
+export function ShellHeader({
+  location,
+  section,
+  sectionInNavigation,
+  leading,
+  navigation,
+  trailing,
+  destinations,
+  account,
+  user,
+  community = false,
+}: {
+  location: string;
+  section?: string;
+  sectionInNavigation?: boolean;
+  leading?: ReactNode;
+  navigation?: ReactNode;
+  trailing?: ReactNode;
+  destinations: readonly ShellDestination[];
+  account: readonly ShellDestination[];
+  user: HubAuthUser | null;
+  community?: boolean;
+}) {
+  const t = useTranslations("redesign.shell");
+  const nav = useTranslations("nav");
+  const router = useRouter();
+
+  function onShortcut(event: KeyboardEvent<HTMLElement>) {
+    // Single-letter shortcuts are scoped to focus in the header (WCAG 2.1.4).
+    if (
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      event.defaultPrevented
+    )
+      return;
+    const target = event.target as HTMLElement;
+    if (
+      !event.currentTarget.contains(target) ||
+      target.closest("input, select, textarea, [contenteditable]")
+    )
+      return;
+    const key = event.key.toUpperCase();
+    const href =
+      shortcuts.find((item) => item.shortcut === key)?.href ??
+      (key === "D" && user
+        ? "/dashboard"
+        : key === "A" && user
+          ? "/dashboard/agent"
+          : key === "J" && !user
+            ? JOIN_HREF
+            : undefined);
+    if (href) {
+      event.preventDefault();
+      router.push(href);
+    }
+  }
+
+  return (
+    <header
+      role="banner"
+      onKeyDown={onShortcut}
+      data-shell-header=""
+      className="border-border bg-background sticky top-0 z-40 border-b"
+    >
+      <a
+        href="#shell-content"
+        className="bg-foreground text-background sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-md focus:px-4 focus:py-3"
+      >
+        {t("skipContent")}
+      </a>
+      <div className="flex min-h-12 items-center justify-between gap-1 px-2 sm:gap-3 sm:px-4">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
+          {leading}
+          <div className="flex min-w-0 items-center gap-x-2 max-lg:flex-col max-lg:items-start max-lg:gap-y-0.5">
+            <span
+              className="max-w-full truncate text-xs leading-tight font-semibold lg:text-sm"
+              title={location}
+            >
+              {location}
+            </span>
+            {section && section !== location ? (
+              <>
+                <ChevronRight
+                  className={cn(
+                    "text-muted-foreground hidden size-3.5 shrink-0 lg:block",
+                    sectionInNavigation && "lg:hidden",
+                  )}
+                  aria-hidden
+                />
+                <span
+                  className={cn(
+                    "text-muted-foreground max-w-full truncate text-xs leading-tight font-medium lg:text-sm",
+                    sectionInNavigation && "lg:hidden",
+                  )}
+                  aria-live="polite"
+                  title={section}
+                >
+                  {section}
+                </span>
+              </>
+            ) : null}
+          </div>
+        </div>
+        {navigation}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <PageFinder destinations={destinations} />
+          {user ? (
+            <>
+              <NotificationBell compact signedIn />
+              <MessagesNavLink
+                presentation={community ? "desktop" : "header"}
+                signedIn
+              />
+            </>
+          ) : !community ? (
+            <Link
+              href={JOIN_HREF}
+              className="focus-visible:ring-ring hover:bg-secondary inline-flex min-h-11 items-center rounded-md px-2.5 text-sm font-medium outline-none focus-visible:ring-2"
+            >
+              {nav("join")}
+            </Link>
+          ) : null}
+          <AccountMenu user={user} links={account} />
+          {trailing}
+        </div>
+      </div>
+    </header>
+  );
+}

@@ -15,6 +15,7 @@ import type {
   MembershipStatus,
 } from "@/server/communities/invite-policy";
 import { useCommunityJoin } from "./use-community-join";
+import { cn } from "@/lib/utils";
 
 interface CommunityActionsMenuProps {
   slug: string;
@@ -24,6 +25,7 @@ interface CommunityActionsMenuProps {
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
   /** After a successful leave, before the page data refreshes. */
   onLeft?: () => void;
+  compact?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export function CommunityActionsMenu({
   membershipStatus,
   memberRole,
   onLeft,
+  compact = false,
 }: CommunityActionsMenuProps) {
   const t = useTranslations("communities.profile");
   const router = useRouter();
@@ -76,7 +79,11 @@ export function CommunityActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled={busy} onSelect={() => void leave()}>
+        <DropdownMenuItem
+          className={cn(compact && "min-h-11 motion-reduce:transition-none")}
+          disabled={busy}
+          onSelect={() => void leave()}
+        >
           <LogOut aria-hidden="true" />
           {t("leave")}
         </DropdownMenuItem>

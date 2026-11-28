@@ -4,42 +4,33 @@ import { useEffect, useId, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
-import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import { SectionLabel } from "@/components/ui/section-label";
+import { useCommunityNavigation } from "./community-navigation";
 import {
-  BUILTIN_SURFACES,
-  resolveSpaceLabel,
-  type BuiltinSurface,
-} from "@/server/communities/space-defaults";
+  activeDestination,
+  type ShellDestination,
+} from "@/components/shells/navigation";
 
 interface CommunityNavProps {
   slug: string;
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 }
 
-interface NavItem {
-  key: string;
-  href: string;
-  label: string;
-  isPrivate?: boolean;
-}
-
 export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
-  const tRooms = useTranslations("communities.rooms");
   const t = useTranslations("communities.profile");
   const pathname = usePathname();
   const manageLabelId = useId();
   const navRef = useRef<HTMLElement>(null);
-
-  const basePath = `/communities/${slug}`;
-  const isAdminOrOwner = memberRole === "owner" || memberRole === "admin";
-
-  const { data: spaceTabs, isError: spaceTabsError } = api.spaces.list.useQuery(
-    { slug },
+  const { home, spaces, rooms, referrals, manage } = useCommunityNavigation({
+    slug,
+    memberRole,
+  });
+  const destinations = [home, ...spaces, ...rooms, ...referrals];
+  const current = activeDestination(pathname, [...destinations, ...manage]);
+  const currentPosition = [...destinations, ...manage].findIndex(
+    (item) => item === current,
   );
-
-  const { data: roomTabs } = api.spaces.listRooms.useQuery({ slug });
 
   useEffect(() => {
     const nav = navRef.current;
@@ -59,81 +50,15 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
     const observer = new ResizeObserver(revealCurrent);
     observer.observe(nav);
     return () => observer.disconnect();
-  }, [pathname, spaceTabs, spaceTabsError, roomTabs, memberRole]);
+  }, [pathname, current?.href, current?.label, currentPosition]);
 
-  const surfaceItems: NavItem[] = spaceTabsError
-    ? BUILTIN_SURFACES.map((s) => ({
-        key: `space-${s}`,
-        href: `${basePath}/${s}`,
-        label: t(s),
-      }))
-    : (spaceTabs ?? [])
-        .filter((s) => s.kind === "builtin" && s.builtinSurface)
-        .map((s) => ({
-          key: `space-${s.id}`,
-          href: `${basePath}/${s.slug}`,
-          label: resolveSpaceLabel(
-            { kind: s.kind, builtinSurface: s.builtinSurface, name: s.name },
-            (k: BuiltinSurface) => t(k),
-          ),
-        }));
-
-  const roomItems: NavItem[] = (roomTabs ?? []).map((room) => ({
-    key: `room-${room.id}`,
-    href: `${basePath}/spaces/${room.slug}`,
-    label: room.name ?? tRooms("untitled"),
-    isPrivate: room.visibility === "private" && room.membership !== "active",
-  }));
-
-  // Every member's places first: Overview, the spaces, rooms, invites.
-  const spaceNavItems: NavItem[] = [
-    { key: "overview", href: basePath, label: t("overview") },
-    ...surfaceItems,
-    ...roomItems,
-    ...(memberRole
-      ? [
-          {
-            key: "referrals",
-            href: `${basePath}/referrals`,
-            label: t("referrals"),
-          },
-        ]
-      : []),
-  ];
-
-  // Then the tools for running the community, grouped under Manage.
-  const manageNavItems: NavItem[] = [
-    ...(isAdminOrOwner || memberRole === "moderator"
-      ? [
-          {
-            key: "insights",
-            href: `${basePath}/insights`,
-            label: t("insights"),
-          },
-          { key: "rituals", href: `${basePath}/rituals`, label: t("rituals") },
-        ]
-      : []),
-    ...(isAdminOrOwner
-      ? [
-          {
-            key: "settings",
-            href: `${basePath}/settings`,
-            label: t("settings"),
-          },
-        ]
-      : []),
-  ];
-
-  const renderItem = (item: NavItem) => {
-    const isActive =
-      item.key === "overview"
-        ? pathname === basePath || pathname === `${basePath}/`
-        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+  const renderItem = (item: ShellDestination) => {
+    const isActive = item.href === current?.href;
 
     return (
       <Link
-        key={item.key}
-        href={item.href as never}
+        key={item.href}
+        href={item.href}
         aria-current={isActive ? "page" : undefined}
         className={cn(
           "focus-visible:ring-ring/50 border-b-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-inset lg:rounded-md lg:border-b-0 lg:py-2 lg:whitespace-normal",
@@ -143,7 +68,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
         )}
       >
         {item.label}
-        {item.isPrivate && (
+        {item.locked && (
           <>
             <Lock
               className="text-muted-foreground ml-1 inline-block size-3"
@@ -165,8 +90,8 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
         className="-mb-px flex gap-1 overflow-x-auto lg:mb-0 lg:flex-col lg:gap-0.5 lg:overflow-visible"
         aria-label="Community navigation"
       >
-        {spaceNavItems.map(renderItem)}
-        {manageNavItems.length > 0 ? (
+        {destinations.map(renderItem)}
+        {manage.length > 0 ? (
           // In the tab bar the group's links simply follow the others; the
           // kicker shows only in the rail's vertical list.
           <div
@@ -182,7 +107,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
             >
               {t("manageGroup")}
             </SectionLabel>
-            {manageNavItems.map(renderItem)}
+            {manage.map(renderItem)}
           </div>
         ) : null}
       </nav>

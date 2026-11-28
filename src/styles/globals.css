@@ -295,6 +295,31 @@
   }
 }
 
+/* Existing workspaces account for a site header in their frame utilities. */
+[data-site-shell="focus"] .sticky.top-12 {
+  top: 0;
+}
+
+[data-site-shell="focus"] [class~="min-h-[calc(100dvh-3rem)]"] {
+  min-height: 100dvh;
+}
+
+@media (width >= 64rem) {
+  [data-site-shell="focus"] [class~="lg:h-[calc(100dvh-3rem-1px)]"] {
+    height: 100dvh;
+  }
+}
+
+@media (width < 64rem) {
+  [data-community-shell] .sticky.bottom-4 {
+    bottom: calc(var(--community-mobile-bar-height) + 1rem);
+  }
+}
+
+:root {
+  --community-mobile-bar-height: calc(57px + env(safe-area-inset-bottom));
+}
+
 /* Magazine reading pages. The type pair is loaded per magazine. */
 .magazine-theme {
   font-family: var(--magazine-sans);

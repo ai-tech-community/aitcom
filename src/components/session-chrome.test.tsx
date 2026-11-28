@@ -14,6 +14,8 @@ vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => ({ data: null }) },
 }));
 
+vi.mock("@/i18n/navigation", () => ({ usePathname: () => "/" }));
+
 import { SessionProvider } from "@/components/auth/session-provider";
 import { SessionChrome } from "./session-chrome";
 
