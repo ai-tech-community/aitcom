@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { useState, type ReactNode } from "react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -42,7 +44,8 @@ import {
 
 /**
  * Every floating primitive in `ui/`, open, with the text it shows. A new
- * floating primitive gets a row here, so it cannot lose `container`.
+ * floating primitive gets a row here; the source check below catches one
+ * that forgets `container`.
  */
 const FLOATING: [name: string, layer: ReactNode][] = [
   [
@@ -177,5 +180,27 @@ describe("PortalContainerProvider", () => {
     const host = screen.getByTestId("host");
 
     expect(floatingNodes().every((node) => host.contains(node))).toBe(true);
+  });
+});
+
+describe("floating primitives in ui/", () => {
+  it("pass the provided container to every Radix portal", () => {
+    const dir = join(process.cwd(), "src/components/ui");
+    const missing: string[] = [];
+    let portals = 0;
+    for (const file of readdirSync(dir)) {
+      if (!file.endsWith(".tsx") || file.endsWith(".test.tsx")) continue;
+      const source = readFileSync(join(dir, file), "utf8");
+      for (const match of source.matchAll(
+        /<[A-Za-z]+Primitive\.Portal\b[^>]*>/g,
+      )) {
+        portals += 1;
+        if (!match[0].includes("container="))
+          missing.push(`${file}: ${match[0]}`);
+      }
+    }
+    // The check found the portals it guards (one per primitive above).
+    expect(portals).toBeGreaterThanOrEqual(FLOATING.length);
+    expect(missing).toEqual([]);
   });
 });
