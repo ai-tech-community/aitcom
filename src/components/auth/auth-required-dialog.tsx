@@ -129,6 +129,20 @@ export function AuthRequiredProvider({
   );
 
   const redirect = encodeURIComponent(returnTo ?? (pathname || "/"));
+  // Following a link in this tab closes the prompt, so it does not reappear
+  // on the sign-in page (outside the community, on `body`). A modified click
+  // opens a new tab and leaves the prompt here.
+  const closeOnPlainClick = (event: React.MouseEvent) => {
+    if (
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey
+    ) {
+      setOpen(false);
+    }
+  };
 
   return (
     <Ctx.Provider value={value}>
@@ -144,12 +158,18 @@ export function AuthRequiredProvider({
             </DialogHeader>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button asChild className="flex-1">
-                <Link href={`/auth/signin?redirect=${redirect}`}>
+                <Link
+                  href={`/auth/signin?redirect=${redirect}`}
+                  onClick={closeOnPlainClick}
+                >
                   <LogIn className="h-4 w-4" /> {t("promptSignIn")}
                 </Link>
               </Button>
               <Button asChild variant="outline" className="flex-1">
-                <Link href={`/auth/signup?redirect=${redirect}`}>
+                <Link
+                  href={`/auth/signup?redirect=${redirect}`}
+                  onClick={closeOnPlainClick}
+                >
                   <UserPlus className="h-4 w-4" /> {t("promptCreateAccount")}
                 </Link>
               </Button>

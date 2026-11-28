@@ -175,4 +175,27 @@ describe("AuthRequiredProvider", () => {
     expect(container.contains(dialog)).toBe(false);
     expect(dialog.closest("[data-testid=layer]")).toBeNull();
   });
+
+  it("closes when the visitor follows a link in this tab", () => {
+    session.value = { data: null, isPending: false, error: null };
+    renderProvider();
+    act(() => captured!.promptAuth("Sign in to join"));
+    const link = screen.getByRole("link", { name: /sign in/i });
+    link.addEventListener("click", (event) => event.preventDefault());
+
+    act(() => {
+      link.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          metaKey: true,
+        }),
+      );
+    });
+    // A new tab: the prompt stays here.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    act(() => link.click());
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 });
