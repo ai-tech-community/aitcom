@@ -4,16 +4,16 @@ Draft 2026-11-28. Companion to the [redesign spec](2026-11-28-open-community-pla
 
 ## Intent
 
-Capture equivalent starting states and outcomes for a blind comparison. Use screenshots for layout, recordings for tasks, and task logs for creation, builder access and portability.
+Capture equivalent starting states and outcomes for a blind comparison. Use screenshots for layout, recordings for tasks, and task logs for the existing creation, builder and export flows.
 
 ## Setup
 
 - Use [Workbench Notes](2026-11-28-redesign-demo-content.json) in the Circle trial and the isolated AIT test database. Copy names, text, ordering, roles, dates and RSVP data unchanged. Use synthetic test accounts. Map Paper Kite to owner, River Reed to admin, Copper Fern to moderator and the other nine to members. If the reference has separate admin and space moderator roles, assign the narrow equivalent. No private account data goes into the review packet.
-- In Circle, create the two named space groups and the six ordered spaces. Use three post spaces, one chat space, one event space and one course space. The course space title and course title may share one field. Keep the fixture's course title visible and use its Course label in navigation where independently configurable. Map the two modules to sections, each first chat message to a parent and the rest to replies, and the DMs to two-person conversations. Give the member viewer access to at least the three post spaces so the Circle Feed is populated. For AIT, use the equivalent discussion, room, event and classroom types, using native IDs linked back to fixture IDs. Keep normalized records aligned when a product generates different IDs or cannot backdate visible timestamps. [Circle Feed](https://help.circle.so/p/basics/home/home-overview)
-- Start member views as Folding Rule, unless a row names a different viewer. Use River Reed for admin views and Paper Kite for owner-only setup. Make the same unread mention using another fixture account, and mark the same first lesson complete for course resume. Use a second empty synthetic community called Workbench Sandbox on both systems for membership and isolation checks. The demo remains one content fixture. Keep temporary mutations, including restricted-access and checkout drills, in resettable scenarios seeded from the fixture.
+- In Circle, create the two named space groups and the six ordered spaces. Use three post spaces, one chat space, one event space and one course space. The course space title and course title may share one field. Keep the fixture's course title visible and use its Course label in navigation where independently configurable. Map the two modules to sections and the DMs to two-person conversations. Give the member viewer access to at least the three post spaces so the Circle Feed is populated. For AIT, use the existing ordered built-in and room sections, the feed and forum for discussion, and the room timeline for chat. Map native records to fixture IDs. [Circle Feed](https://help.circle.so/p/basics/home/home-overview)
+- Start member views as Folding Rule, unless a row names a different viewer. Use River Reed for admin views and Paper Kite for owner-only setup. Make the same unread mention using another fixture account, and mark the same first lesson complete for course resume. Use a second empty synthetic community called Workbench Sandbox on both systems for membership and isolation checks. Run item 12 in a fresh scenario with that name available. Keep temporary mutations, including restricted-access and checkout drills, in resettable scenarios seeded from the fixture.
 - Set English, browser zoom 100%, and timezone Europe/Amsterdam. Capture with the event dates still upcoming, using the fixture's reference date where the environment permits. If a provider uses its own clock, capture during the shared upcoming date window or record the temporal difference. Keep sample query, scroll position, selected space, pending/draft state and browser chrome consistent within each pair.
 - Capture **1440x900 and 390x844** CSS-pixel browser viewports for every row. Use desktop and mobile web. Capture light and dark where Circle exposes the theme in the browser for that state. Use AIT Plain and Night for scoped community pairs, and the actual available setting for Hub, auth, portal or full-screen workspace views. Record unavailable themes or surfaces in the run log. [Circle browser theme controls](https://help.circle.so/c/core-features/how-can-i-customize-my-community-theme)
-- Put Circle screenshots at `.gauntlet/reference/circle/<item-slug>/<screen>-<viewport>-<theme>.png` and AIT screenshots at `.gauntlet/ours/<item-slug>/<screen>-<viewport>-<theme>.png`. Use the screen IDs below and literal `1440x900`, `390x844`, `light`, `dark`. If one side only renders light, capture that honestly and record the missing pair. Record the required flows at both viewports in light by default using `<flow>-<viewport>-light.mp4` in the same item directories. Put external references at `.gauntlet/reference/skool/` and `.gauntlet/reference/ghost/` using the same suffix convention.
+- Put Circle screenshots at `.gauntlet/reference/circle/<item-slug>/<screen>-<viewport>-<theme>.png` and AIT screenshots at `.gauntlet/ours/<item-slug>/<screen>-<viewport>-<theme>.png`. Use the screen IDs below and literal `1440x900`, `390x844`, `light`, `dark`. If one side only renders light, capture that honestly and record the missing pair. Record the required flows at both viewports in light by default using `<flow>-<viewport>-light.mp4` in the same item directories. Put Skool references at `.gauntlet/reference/skool/` using the same suffix convention.
 - Use the provider UI's visible control for each named state. Record actual path, date, browser, trial or plan, actor, theme, and whether a screen is gated, absent or verified from docs. Capture the gate when access is denied. Use a plan-authorized test environment for a like-for-like run when available. Where the product has no corresponding operation, record its closest supported workflow and the endpoint reached. Keep original evidence, remove secrets and test emails from packets, and shuffle product ordering for the critic.
 - In the tables, `C` means `/communities/workbench-notes` and `D` means `/dashboard` on AIT. Resolve IDs through the fixture map. AIT captures use the flagged preview.
 
@@ -23,10 +23,10 @@ Capture equivalent starting states and outcomes for a blind comparison. Use scre
 
 | Screen | Viewer | Circle action and state | AIT action and state |
 | --- | --- | --- | --- |
-| `home-expanded` | Member | Home → Feed. On mobile web open the sidebar. Show both groups expanded, the active Home and Show your work with its unread cue. | Open `C`. On mobile open Spaces. Show the same groups, active Home, chat unread and header entries. |
-| `space-active` | Member | Open General discussion, then collapse Workshop. On mobile reopen the sidebar after navigation. | Open the General discussion space in `C/spaces/general-discussion` and reproduce the collapse and active state. Before item 3 ships, use the existing Forum destination, then recapture at the release gate. |
+| `home-expanded` | Member | Home → Feed. On mobile web open the sidebar. Show both groups expanded, the active Home and Show your work with its unread cue. | Open `C`. On mobile open Spaces. Show the current space sections and order, active Home, chat unread and header entries. |
+| `space-active` | Member | Open General discussion. On mobile reopen the sidebar after navigation. | Open Forum from the sidebar and show its active state on `C/forum` and a thread detail URL. |
 | `switcher-open` | Member | Open the community switcher with Workbench Notes and Workbench Sandbox visible. | Open the switcher with both test memberships and the Hub entry. |
-| `manage-entry` | Admin | Open the community name menu with the admin entry visible. Then open the group action menu for Workshop. | Open the community identity or mobile drawer and show Manage, Settings and the Workshop group. Capture group editing in item 10. |
+| `manage-entry` | Admin | Open the community name menu with the admin entry visible. | Open the community identity or mobile drawer and show Manage and Settings. Capture space controls in item 10. |
 | `restricted-landing` | Visitor | Open the fixture's private community URL in a signed-out session. | Open `C` configured invite-only, signed out. Capture identity and entry control with scoped navigation suppressed. |
 
 Open an unread space, switch to Sandbox and back, and open Settings with the keyboard. On phones record drawer open, navigation and focus return. [Circle desktop navigation](https://help.circle.so/p/basics/getting-started/navigating-circle-on-desktop) · [Circle community switcher](https://help.circle.so/p/basics/customization/get-to-know-the-community-switcher)
@@ -36,34 +36,34 @@ Open an unread space, switch to Sandbox and back, and open Settings with the key
 | Screen | Viewer | Circle action and state | AIT action and state |
 | --- | --- | --- | --- |
 | `feed-latest` | Member | Home → Feed. Set sorting to Latest and show the first viewport. | Open `C` at the newest community posts, with pinned context visible. |
-| `composer-empty` | Member | Start from Feed and open its post action if available. Otherwise choose General discussion → New post. | Start from `C` and open the inline composer with General discussion as the destination when item 3 is present. |
+| `composer-empty` | Member | Start from Feed and open its post action if available. Otherwise choose General discussion → New post. | Start from `C` and open the inline composer for the community feed. |
 | `composer-draft` | Member | Enter the shared draft below, choose General discussion and show the selected destination and publish control. | Enter the same draft and capture its in-place editor state. |
 | `post-published` | Member | Return to the Feed or the post space view with the new post fully visible. Record any extra navigation needed. | Show the published post in `C` with destination and confirmation visible. |
 | `announcement-controls` | Admin | Open the post menu on December open bench in Announcements and show the pin and edit controls. | Open the same post menu from the community feed and show pin/edit controls. |
 
-**Record `composer`.** From the feed, create **A quick hinge check** with body “I marked the point where the hinge shifts. I will try tightening it and measure the gap again.” Choose General discussion, publish, locate the result and return to the feed. Save the unsent-draft recovery state separately if supported. [Circle post workflow](https://help.circle.so/p/members/additional-resources/creating-and-managing-posts-as-a-member)
+**Record `composer`.** From the feed, create **A quick hinge check** with body “I marked the point where the hinge shifts. I will try tightening it and measure the gap again.” Use General discussion in Circle and the community feed in AIT. Publish, locate the result and return to the feed. Save the unsent-draft recovery state separately if supported. [Circle post workflow](https://help.circle.so/p/members/additional-resources/creating-and-managing-posts-as-a-member)
 
-### 03-discussion-spaces-posts
+### 03-feed-discussions-forum
 
 | Screen | Viewer | Circle action and state | AIT action and state |
 | --- | --- | --- | --- |
-| `space-post-list` | Member | Open General discussion with its List layout from Home and show the most recent posts. | Open `C/spaces/general-discussion` with the same posts. |
-| `post-comments` | Member | Open A drawer that catches, scroll to its three replies, and focus the comment composer. | Open the mapped `C/posts/[postId]` with the same body and replies. |
-| `moderation-menu` | Admin | Open the detail's More actions menu and show available moderation and pin controls. | Open the corresponding post's moderation menu, with legacy thread controls verified separately. |
-| `legacy-thread-parity` | Admin | Capture the closest equivalent, a pinned post with comments available to the admin, in General discussion. | Follow an existing fixture deep link to `C/forum/[threadSlug]` and show replies and role-appropriate pin/lock controls. Use a separate legacy parity record. |
+| `discussion-list` | Member | Open General discussion with its List layout from Home and show the most recent posts. | Open `C/forum` from the sidebar and show the existing list. |
+| `post-comments` | Member | Open A drawer that catches, scroll to its three replies, and focus the comment composer. | Find the mapped post on `C`, open its existing comments and focus the composer. |
+| `moderation-menu` | Admin | Open the detail's More actions menu and show available moderation and pin controls. | Open the corresponding feed post's existing moderation menu. |
+| `forum-thread` | Admin | Capture a pinned post with comments available to the admin in General discussion. | Follow an existing fixture deep link to `C/forum/[threadSlug]` and show replies and role-appropriate pin/lock controls. |
 
-Record opening from the list, posting a reply and going back, and verify a direct link opens the same discussion. [Circle post-space settings](https://help.circle.so/p/posts/post-spaces/customize-post-space-settings)
+Record opening from the list, posting a reply and going back. Verify direct links to the AIT thread and its legacy redirects in parity. [Circle post-space settings](https://help.circle.so/p/posts/post-spaces/customize-post-space-settings)
 
 ### 04-chat-direct-messages
 
 | Screen | Viewer | Circle action and state | AIT action and state |
 | --- | --- | --- | --- |
 | `room-unread` | Member | In Home, capture unread Show your work, then open the chat space at its unread boundary. | Open `C/spaces/show-your-work` from the unread row. |
-| `thread-open` | Member | Open the reply count on the Drawer fit check parent and show replies and composer. | Open the same parent and replies in the room view. |
+| `room-timeline` | Member | Open Show your work and show its recent messages and composer. | Open Show your work and show the same messages in the current room timeline. |
 | `dm-open` | Member, Chalk Boat | Open header Direct Messages → Soft Pencil. Show Photo review and its message composer. | Open the mapped conversation under `/messages/[conversationId]` and show the same message history. |
-| `thread-admin-menu` | Admin | On another member's reply, open More actions with the available moderator actions. | Open the corresponding role-appropriate room moderation or membership controls. Record any difference in available actions. |
+| `room-admin-menu` | Admin | From Show your work, show the available moderation or membership controls. | Open the corresponding role-appropriate room moderation or membership controls. Record any difference in available actions. |
 
-**Record `chat-send`.** Open the Drawer fit check thread, type “I checked the gap with a strip of paper.”, send and show it once in a second session. Open the Photo review DM as Chalk Boat and send “I can look at the matching photo this evening.” Record pending, received and reconnect behavior where reproducible, with the same network conditions on both sides. [Circle chat threads](https://help.circle.so/p/chat/chat-spaces/understanding-chat-threads)
+**Record `chat-send`.** Open Show your work, send “I checked the gap with a strip of paper.” and show it once in a second session. Open the Photo review DM as Chalk Boat and send “I can look at the matching photo this evening.” Record pending, received and reconnect behavior where reproducible, with the same network conditions on both sides.
 
 ### 05-events
 
@@ -105,8 +105,9 @@ Record finding Quiet Hinge's work and returning to the roster. Verify hidden pro
 
 | Screen | Viewer | Circle action and state | AIT action and state |
 | --- | --- | --- | --- |
-| `search-results` | Member | Open Search from the header, type drawer and show results for the post and any matching space or message that Circle returns. | Open header Search on `C`, query drawer with the Community scope and show grouped results. |
-| `search-empty` | Member | Change the query to qzxnohit and show the zero-results state. | Same query, scope and empty state. |
+| `find-forum` | Member | Open Search from the header and find General discussion. | Open the header page finder on `C`, filter to Forum and follow the visible link. |
+| `search-results` | Member | From Search, type drawer and show the matching discussion. | Search drawer in the existing `C/forum` search and open a mapped matching thread. |
+| `search-empty` | Member | Change the query to qzxnohit and show the zero-results state. | Use the same query in Forum and show its empty state. |
 | `unread-notification` | Member | Open header Notifications → Inbox with the seeded unread mention, then open its target. | Open the bell with the same mention and follow it to the source. |
 | `notification-prefs` | Member | Open the user's notification settings and show available in-app and email toggles. | Open `D/settings` → notification preferences with the same categories where supported. |
 | `moderation-inbox` | Admin | Admin Inbox → moderation controls with a fixture report, if available. | Follow the organizer notification to the same kind of community report and its authorized action. |
@@ -119,23 +120,23 @@ Record finding and opening A drawer that catches, then returning and opening the
 | --- | --- | --- | --- |
 | `invite-landing` | Visitor | Open a Workbench Notes invitation link in a signed-out browser. Capture the sign-up and existing-account affordance. | Open the equivalent `/invite/[token]` and show join/sign-in choices. |
 | `verification-or-profile` | New member | Follow the invite through any code verification and the profile step, capturing each shown state. | Use `/auth/signup`, email verification and `D/onboarding`, capturing the equivalent steps. |
-| `first-member-home` | New member | Accept and finish on Feed or the configured welcome space, with next action visible. | Open `C` after join with the welcome checklist and initial space. |
+| `first-member-home` | New member | Accept and finish on Feed or the configured welcome space, with next action visible. | Open `C` after join with its current space links and the welcome checklist if configured. |
 | `paywall-checkout` | Visitor | Open the fixture's paywall checkout URL and show the offer and next step. | Open `C/offers/[offerId]` with matching offer text and test checkout entry. |
 | `invite-admin` | Admin | Admin → Audience → Invitation links and open the fixture link's access settings. | Open `C/settings/invites` and show the same link's intended role and limits. |
 
-**Record `join`.** Open a fixture link, create or use the synthetic account, verify when prompted and complete onboarding. Show the member opening Welcome. Record a returning existing-account path from the same logged-out starting point. Use sandbox checkout only where permitted. Record the paywall gate and AIT pending approval separately. [Circle onboarding](https://help.circle.so/p/audience/onboarding/guide-members-through-the-community-onboarding-process) · [Circle invitation links](https://help.circle.so/p/audience/onboarding/set-up-an-invitation-link)
+**Record `join`.** Open a fixture link, create or use the synthetic account, verify when prompted and complete onboarding. Show the member reaching the community home and opening an existing space. Record a returning existing-account path from the same logged-out starting point. Use sandbox checkout only where permitted. Record the paywall gate and AIT pending approval separately. [Circle onboarding](https://help.circle.so/p/audience/onboarding/guide-members-through-the-community-onboarding-process) · [Circle invitation links](https://help.circle.so/p/audience/onboarding/set-up-an-invitation-link)
 
 ### 10-admin-settings
 
 | Screen | Viewer | Circle action and state | AIT action and state |
 | --- | --- | --- | --- |
 | `general-settings` | Admin | Community name → Settings → Website → General. Show community identity and default controls. | Open `C/settings/general` with the matching structure and save state. |
-| `spaces-admin` | Admin | Admin → Community → Spaces. Open the Workshop group settings and Show your work's Edit space view. | Open `C/settings/spaces` and show ordered groups, group editor and Show your work controls. |
+| `spaces-admin` | Admin | Admin → Community → Spaces. Open Show your work's Edit space view. | Open `C/settings/spaces` and show the existing Surfaces and Rooms sections and Show your work controls. |
 | `audience-admin` | Admin | Admin → Audience, search Blue Spool, open member actions. | Open `C/settings/members` with the same member selected. |
 | `theme-preview` | Admin | Community menu → Customize theme. Preview a light and a dark appearance before saving. | From `C/settings/themes`, preview Plain and Night, then cancel. |
 | `member-return` | Member | Open Home as a standard member and show the community menu without admin controls. | Open `C` as a member and show the same control state. In the parity run, also attempt a direct Settings URL. |
 
-Record moving a space to a group, saving, and switching to the member view. Run the full AIT settings inventory in the parity gate. [Circle admin navigation](https://help.circle.so/p/basics/getting-started/navigating-circle-on-desktop) · [Circle theme customization](https://help.circle.so/c/core-features/how-can-i-customize-my-community-theme)
+Record renaming a space, saving, and switching to the member view. Run the full AIT settings inventory in the parity gate. [Circle admin navigation](https://help.circle.so/p/basics/getting-started/navigating-circle-on-desktop) · [Circle theme customization](https://help.circle.so/c/core-features/how-can-i-customize-my-community-theme)
 
 ### 11-cross-community-discovery
 
@@ -169,31 +170,30 @@ Use the same polished Circle post space in Feed layout for text/list/detail task
 
 For rows with several distinct views, append a short suffix to the screen ID on both sides, for example `magazine-reading-and-desk-editor`. Record entering an extra from the sidebar or Hub, taking one visible action and returning. The full item 15 route inventory still runs in parity, including authoring, moderation and redirects.
 
-## Backend task scripts
+## Existing workflow recordings
 
-Run on synthetic accounts and content. Record start and end, clicks or commands, elapsed time, errors, recovery and the final screen. Keep key material, invite grants and download links out of shared logs. Use the same data and task order. Judge documented plan gates as part of the path to completion and label them in the evidence.
+Run on synthetic accounts and content. Record start and end, clicks or commands, elapsed time, errors, recovery and the final screen. Keep key material, invite grants and download links out of shared logs. Use the same data, task order and desktop and mobile viewports. Record the existing role or plan gate when it affects a task and mark unavailable steps in the comparison.
 
 ### 12-free-community-creation
 
-**Task.** From a fresh verified account, launch Workbench Sandbox alone, open Welcome and share a working member link.
+**Task.** From a fresh account, create Workbench Sandbox through the current product UI, open an existing destination and share a member invite through the product's invitation controls.
 
-1. **Circle.** Begin at Circle's Start free trial flow. If signed in, use the switcher's plus control. Run through account and community setup, create or identify the first usable space, then go to Audience → Invitation links and create and copy a normal member invite. Verify from a second browser that the invited test account can enter Welcome. Record the trial and billing state as shown. [Circle trial and pricing](https://circle.so/pricing) · [Circle invite setup](https://help.circle.so/p/audience/onboarding/set-up-an-invitation-link)
-2. **AIT.** Start from a fresh account at `/communities/new` or the Create community entry. Enter Workbench Sandbox. Accept the displayed defaults, open the first usable space, copy the delivered invite, then join from a second session. Reload the success view and repeat the original submission to verify one community and one invite.
-3. **Record `create-community` on both at 1440x900 and 390x844.** Score prompts required, time to usable Welcome, clarity of share/join, and any trial or payment prerequisite. Record the confirmed ongoing state from the product or its official plan terms.
+1. **Circle.** Start from its current trial or community creation entry. Complete the available setup, open a usable destination, then use Audience → Invitation links to create and copy a member invite. Test the link in a second session. Capture the trial and billing state shown. [Circle trial and pricing](https://circle.so/pricing) · [Circle invite setup](https://help.circle.so/p/audience/onboarding/set-up-an-invitation-link)
+2. **AIT.** Open `/communities` → Create community. Complete the existing dialog for Workbench Sandbox and record its default selections. Follow the success navigation to the new home, open a built-in space and create and copy a member invite from Settings → Invites. Test the link in a second session. Capture the `/communities?create=1` sign-in continuation and name conflict separately for parity.
+3. **Record `create-community`.** Score how easily a person finds Create, understands the form, reaches the created community and finds the invite action. Record any trial or payment prerequisite shown.
 
-### 13-builder-platform
+### 13-builder-access
 
-**Task.** Retrieve the General discussion post list, receive a post-published callback, and retrieve the same scoped content through MCP.
+**Task.** Find and use the current key controls, connect an MCP client and set up and test a webhook using the product's documented flow.
 
-1. **Circle.** Start in the public Developer docs. In the trial community, open Settings → Developers → Tokens and create an Admin v2 test token if permitted. Use the documented list-posts operation for General discussion, and use the native pagination to retrieve another page. In Workflows, choose a Published a post trigger scoped to General discussion and a Send to webhook action. Point it at a test receiver, send the test, then publish the shared composer post and check workflow history and receiver delivery. Connect the documented MCP endpoint using its community authorization and request the same list. Try the equivalent narrow access if exposed, then revoke the test credential and repeat the REST request. Capture any tier gate, and use authorized paid test access if available for remaining steps. [Circle API quick start](https://api.circle.so/apis/admin-api/quick-start) · [Circle webhook workflow](https://help.circle.so/p/workflows/workflow-setup/configure-automation-workflows-to-send-webhooks) · [Circle MCP setup](https://circle.so/blog/circle-mcp-use-cases)
-2. **AIT.** Start at `/developers` as owner of a free community. In `C/settings/developers` issue a read key, list General discussion posts through the v1 contract with page size two and follow the cursor. Subscribe the test receiver, publish the same post, verify the signature over the raw body and inspect the delivery log. Make the receiver return a temporary failure once and verify retry with a stable event ID. Connect the existing claimed agent over `/api/mcp`, grant the tenant scope and read the same list. Check that the key cannot read a different tenant, revoke the key and repeat. Verify the linked agent draft stays pending human review as an AIT parity check.
-3. **Score.** Record time to first response, credential and scope clarity, callback verification/replay, denied access and recovery. Record actual response codes and endpoint support without including secrets.
+1. **Circle.** Follow the current developer guide to create a test credential and run a supported read if the plan allows. Follow its MCP setup instructions and complete one documented operation. Use the existing Webhook action in Workflows to send a test to the recording fixture's receiver, where available. Capture any access or plan gate. [Circle API quick start](https://api.circle.so/apis/admin-api/quick-start) · [Circle webhook workflow](https://help.circle.so/p/workflows/workflow-setup/configure-automation-workflows-to-send-webhooks) · [Circle MCP setup](https://circle.so/blog/circle-mcp-use-cases)
+2. **AIT.** As the owner of a synthetic claimed agent, open `D/agent` → Profile to generate an agent key. Use Connect and the existing setup guides to connect the client to `/api/mcp` and run an authorized read such as `get-community-info` for the fixture community. In Connect → Webhook, configure the test receiver and use Test. Record the returned status and receiver result. Exercise revocation, the existing agent-draft approval path and the Luma integration screen separately for parity.
+3. **Record `builder-access`.** Score how quickly a person finds the controls and guides, uses the credential and client, and understands webhook feedback. Use each product's actual permissions and available operations.
 
-### 14-export-portability
+### 14-existing-exports
 
-**Task.** Get a portable copy of Workbench Notes and restore supported material into a new private workspace, keeping authorship and relationships.
+**Task.** As an eligible organizer or owner, find an existing export, download it and identify what the file covers.
 
-1. **Circle.** As admin, go to Audience → Audience → More → Export CSV for the roster. Follow the documented full data export request and time both the request and actual delivery when available. Inspect supplied exports for spaces, posts, comments, events and media. In a fresh trial workspace, use Audience → Add → Invite members → Import CSV and preview the mapped fields. If the trial permits, attempt to restore the posts and comments through an authorized import or migration path. Record the boundary between self-service and assisted work, and the columns, attachments or relationships received. Use a synthetic media attachment as supplemental evidence. [Circle member CSV](https://help.circle.so/p/administration/analytics/export-a-csv-of-your-members) · [Circle full export process](https://help.circle.so/p/administration/analytics/export-your-data) · [Circle member import](https://help.circle.so/p/audience/onboarding/importing-members-in-bulk) · [Circle post import option](https://help.circle.so/p/sso-and-integrations/automations/use-easycsv-to-perform-bulk-actions)
-2. **AIT.** As owner, open `C/settings/portability`, start the export, return to check status, then download and inspect the ZIP and manifest. Validate the import into a fresh private target with a documented preview. Compare counts and remapped IDs, then open a restored post with comments and media, the course and the event. Verify restricted content remains restricted, private account data is absent, and retrying the same import creates no duplicates.
-3. **Ghost craft reference.** As site owner use Settings → Advanced → Import/Export, export content and members, then import content and mapped members on a fresh Ghost site. Use the supported overlapping post, roster and media shapes. Record the handling of file choice, progress, field mapping and completed status. [Ghost export](https://ghost.org/help/exports/) · [Ghost import](https://ghost.org/help/imports/) · [Ghost member import](https://ghost.org/help/import-members/)
-4. **Score.** Compare time and clarity to a useful archive, data coverage, association and media integrity, retry behavior, and how clearly each workflow reports omissions. Capture before/after counts and one representative source-to-target content trace.
+1. **Circle.** Open the fixture event's attendee management screen as organizer and use its export if available. If the trial or screen does not expose that action, capture the closest existing CSV workflow, Audience → More → Export CSV. Record the entry point, scope and download or delivery state. [Circle attendee management](https://help.circle.so/p/live-and-events/events/add-members-to-an-event) · [Circle member CSV](https://help.circle.so/p/administration/analytics/export-a-csv-of-your-members)
+2. **AIT.** Open `C/events/[eventSlug]/attendees` as organizer and download the CSV. Use the existing attendee filters and compare the file with the visible roster. In parity, download the owner-only payments CSV from Settings → Payments and both formats from a completed collector run, and check the other file actions in item 14's inventory.
+3. **Record `export-download`.** Score discoverability, clarity of format and scope, and how the UI communicates the result. Record the actual dataset and eligibility for each product.
