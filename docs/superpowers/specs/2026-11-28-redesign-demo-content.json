@@ -1,0 +1,755 @@
+{
+  "fixtureVersion": 1,
+  "locale": "en",
+  "referenceDate": "2026-12-07",
+  "community": {
+    "id": "workbench-notes",
+    "name": "Workbench Notes",
+    "tagline": "Small repairs, shared methods and good notes.",
+    "description": "A workshop group for people who want to repair everyday objects and explain what they learned along the way."
+  },
+  "spaceGroups": [
+    {
+      "id": "start-here",
+      "name": "Start here",
+      "spaceIds": [
+        "welcome",
+        "announcements",
+        "general-discussion"
+      ]
+    },
+    {
+      "id": "workshop",
+      "name": "Workshop",
+      "spaceIds": [
+        "show-your-work",
+        "events",
+        "course"
+      ]
+    }
+  ],
+  "spaces": [
+    {
+      "id": "welcome",
+      "name": "Welcome",
+      "type": "post",
+      "description": "Start here, meet the group and pick a first project."
+    },
+    {
+      "id": "announcements",
+      "name": "Announcements",
+      "type": "post",
+      "description": "Workshop updates and notes from the hosts."
+    },
+    {
+      "id": "general-discussion",
+      "name": "General discussion",
+      "type": "post",
+      "description": "Ask a question, share a repair or compare ways to work."
+    },
+    {
+      "id": "show-your-work",
+      "name": "Show your work",
+      "type": "chat",
+      "description": "Share quick progress and get a second pair of eyes."
+    },
+    {
+      "id": "events",
+      "name": "Events",
+      "type": "event",
+      "description": "Open benches, repair sessions and online show-and-tells."
+    },
+    {
+      "id": "course",
+      "name": "Course",
+      "type": "course",
+      "description": "A short guide to making your first repair record."
+    }
+  ],
+  "members": [
+    {
+      "id": "paper-kite",
+      "displayName": "Paper Kite",
+      "bio": "Runs the workshop calendar and keeps a notebook of things worth repairing.",
+      "role": "owner"
+    },
+    {
+      "id": "river-reed",
+      "displayName": "River Reed",
+      "bio": "Makes small cardboard prototypes and writes clear assembly notes.",
+      "role": "admin"
+    },
+    {
+      "id": "copper-fern",
+      "displayName": "Copper Fern",
+      "bio": "Helps newcomers choose a project they can finish in an evening.",
+      "role": "moderator"
+    },
+    {
+      "id": "blue-spool",
+      "displayName": "Blue Spool",
+      "bio": "Mends bags, jackets and the occasional stubborn zip.",
+      "role": "member"
+    },
+    {
+      "id": "linen-loop",
+      "displayName": "Linen Loop",
+      "bio": "Collects practical ways to reuse fabric scraps.",
+      "role": "member"
+    },
+    {
+      "id": "maple-clamp",
+      "displayName": "Maple Clamp",
+      "bio": "Builds little shelves and enjoys making jigs from offcuts.",
+      "role": "member"
+    },
+    {
+      "id": "quiet-hinge",
+      "displayName": "Quiet Hinge",
+      "bio": "Draws repair diagrams and tests whether other people can follow them.",
+      "role": "member"
+    },
+    {
+      "id": "chalk-boat",
+      "displayName": "Chalk Boat",
+      "bio": "Takes photos of works in progress and labels the parts that matter.",
+      "role": "member"
+    },
+    {
+      "id": "small-bracket",
+      "displayName": "Small Bracket",
+      "bio": "Likes projects that fit on a kitchen table.",
+      "role": "member"
+    },
+    {
+      "id": "soft-pencil",
+      "displayName": "Soft Pencil",
+      "bio": "Keeps a sketchbook of measurements, mistakes and second attempts.",
+      "role": "member"
+    },
+    {
+      "id": "glass-pebble",
+      "displayName": "Glass Pebble",
+      "bio": "Organizes tool swaps and brings spare masking tape.",
+      "role": "member"
+    },
+    {
+      "id": "folding-rule",
+      "displayName": "Folding Rule",
+      "bio": "Is learning the difference between a quick fix and a lasting one.",
+      "role": "member"
+    }
+  ],
+  "posts": [
+    {
+      "id": "first-visit",
+      "title": "Your first visit",
+      "body": "Start with one object you would like to keep using. Tell us what works, what gets in the way and what you have already tried. A clear description is plenty for a first post.",
+      "authorId": "paper-kite",
+      "spaceId": "welcome",
+      "createdAt": "2026-12-01T09:00:00Z",
+      "pinned": true,
+      "comments": [
+        {
+          "id": "first-visit-comment-1",
+          "authorId": "folding-rule",
+          "body": "I have a drawer that catches on the last centimetre. I can start with that.",
+          "createdAt": "2026-12-01T09:05:00Z"
+        },
+        {
+          "id": "first-visit-comment-2",
+          "authorId": "copper-fern",
+          "body": "Try noting whether it catches with an empty drawer too.",
+          "createdAt": "2026-12-01T09:10:00Z"
+        }
+      ]
+    },
+    {
+      "id": "three-useful-pictures",
+      "title": "Three useful pictures",
+      "body": "A wide photo shows how the object is used. A close photo shows the problem, and a ruler or coin gives the reader a sense of scale. Set the object on a plain surface if you can.",
+      "authorId": "chalk-boat",
+      "spaceId": "welcome",
+      "createdAt": "2026-12-01T10:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "three-useful-pictures-comment-1",
+          "authorId": "soft-pencil",
+          "body": "Adding scale next to the problem is a good reminder.",
+          "createdAt": "2026-12-01T10:05:00Z"
+        }
+      ]
+    },
+    {
+      "id": "share-a-first-tool",
+      "title": "Share a first tool",
+      "body": "What is one tool you reach for regularly and why? I keep a blunt pencil beside the bench so my notes are easy to spot and I never worry about marking the good tools.",
+      "authorId": "copper-fern",
+      "spaceId": "welcome",
+      "createdAt": "2026-12-02T11:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "share-a-first-tool-comment-1",
+          "authorId": "glass-pebble",
+          "body": "Masking tape. I use it for temporary labels and marking small gaps.",
+          "createdAt": "2026-12-02T11:05:00Z"
+        },
+        {
+          "id": "share-a-first-tool-comment-2",
+          "authorId": "linen-loop",
+          "body": "A seam ripper is the most useful little tool in my sewing tin.",
+          "createdAt": "2026-12-02T11:10:00Z"
+        },
+        {
+          "id": "share-a-first-tool-comment-3",
+          "authorId": "maple-clamp",
+          "body": "A small square for checking if two edges really meet.",
+          "createdAt": "2026-12-02T11:15:00Z"
+        },
+        {
+          "id": "share-a-first-tool-comment-4",
+          "authorId": "quiet-hinge",
+          "body": "A sheet of scrap paper for testing which way a fastener turns.",
+          "createdAt": "2026-12-02T11:20:00Z"
+        }
+      ]
+    },
+    {
+      "id": "how-we-give-feedback",
+      "title": "How we give feedback",
+      "body": "Ask what the person wants to improve before suggesting a new design. Name the first change you would try and say why it matters. If two choices are equally good, explain what would help you choose between them.",
+      "authorId": "river-reed",
+      "spaceId": "welcome",
+      "createdAt": "2026-12-03T12:00:00Z",
+      "pinned": false,
+      "comments": []
+    },
+    {
+      "id": "december-open-bench",
+      "title": "December open bench",
+      "body": "The December open bench is in Amsterdam. Bring one item you can carry and a clean towel or mat to work on. We will start with a short round of introductions and then work in pairs.",
+      "authorId": "paper-kite",
+      "spaceId": "announcements",
+      "createdAt": "2026-12-02T09:00:00Z",
+      "pinned": true,
+      "comments": [
+        {
+          "id": "december-open-bench-comment-1",
+          "authorId": "glass-pebble",
+          "body": "I can bring a spare mat and a roll of tape.",
+          "createdAt": "2026-12-02T09:05:00Z"
+        }
+      ]
+    },
+    {
+      "id": "photo-notes-course",
+      "title": "The photo notes course is ready",
+      "body": "The first course follows a repair from the initial inspection to a short finished record. Each lesson has one practical task you can do at home. Try it with an object that can sit on your table.",
+      "authorId": "river-reed",
+      "spaceId": "announcements",
+      "createdAt": "2026-12-03T10:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "photo-notes-course-comment-1",
+          "authorId": "small-bracket",
+          "body": "I am going to use my loose desk tray handle.",
+          "createdAt": "2026-12-03T10:05:00Z"
+        },
+        {
+          "id": "photo-notes-course-comment-2",
+          "authorId": "chalk-boat",
+          "body": "Daylight by a window is enough for the photo exercise.",
+          "createdAt": "2026-12-03T10:10:00Z"
+        }
+      ]
+    },
+    {
+      "id": "january-show-and-tell",
+      "title": "January show-and-tell signups",
+      "body": "The January show-and-tell runs online. Set aside three minutes to show one change, even if the repair is still in progress. Add a comment if you want a spot or would like to watch.",
+      "authorId": "paper-kite",
+      "spaceId": "announcements",
+      "createdAt": "2026-12-04T11:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "january-show-and-tell-comment-1",
+          "authorId": "blue-spool",
+          "body": "I would like to show the strap repair.",
+          "createdAt": "2026-12-04T11:05:00Z"
+        },
+        {
+          "id": "january-show-and-tell-comment-2",
+          "authorId": "folding-rule",
+          "body": "I will watch this time and take notes.",
+          "createdAt": "2026-12-04T11:10:00Z"
+        }
+      ]
+    },
+    {
+      "id": "small-tool-swap",
+      "title": "A small tool swap",
+      "body": "We will put a tray of spare hand tools on the side of the open bench. Label anything you bring with the name you use here and whether it is for borrowing or keeping. Please leave powered tools at home for this session.",
+      "authorId": "copper-fern",
+      "spaceId": "announcements",
+      "createdAt": "2026-12-05T12:00:00Z",
+      "pinned": false,
+      "comments": []
+    },
+    {
+      "id": "drawer-runner",
+      "title": "A drawer that catches",
+      "body": "Our shallow drawer catches as it closes the last centimetre. It slides freely when it is half open, and the runner looks straight at a glance. Where would you check first?",
+      "authorId": "folding-rule",
+      "spaceId": "general-discussion",
+      "createdAt": "2026-12-01T09:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "drawer-runner-comment-1",
+          "authorId": "quiet-hinge",
+          "body": "Look for fresh rub marks on the top corners as well as the runner.",
+          "createdAt": "2026-12-01T09:05:00Z"
+        },
+        {
+          "id": "drawer-runner-comment-2",
+          "authorId": "maple-clamp",
+          "body": "Take one measurement at the front and one at the back before removing anything.",
+          "createdAt": "2026-12-01T09:10:00Z"
+        },
+        {
+          "id": "drawer-runner-comment-3",
+          "authorId": "folding-rule",
+          "body": "There is a bright mark above the right corner. I will compare those measurements tonight.",
+          "createdAt": "2026-12-01T09:15:00Z"
+        }
+      ]
+    },
+    {
+      "id": "strap-stitches",
+      "title": "Two stitches for a bag strap",
+      "body": "I tried rows of straight stitches on one scrap and a box with a diagonal on the other. Both hold under a light load, but the box keeps the strap from twisting. I will use a wider scrap for the next sample.",
+      "authorId": "blue-spool",
+      "spaceId": "general-discussion",
+      "createdAt": "2026-12-02T10:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "strap-stitches-comment-1",
+          "authorId": "linen-loop",
+          "body": "Did you leave the same distance between the stitching and the cut edge?",
+          "createdAt": "2026-12-02T10:05:00Z"
+        }
+      ]
+    },
+    {
+      "id": "cardboard-spacers",
+      "title": "Cardboard spacers that stay put",
+      "body": "I used folded card to check where a shelf needs a little more support. A strip of removable tape kept the pieces from sliding while I measured. Marking each spacer saved time when I took the shelf apart.",
+      "authorId": "maple-clamp",
+      "spaceId": "general-discussion",
+      "createdAt": "2026-12-03T11:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "cardboard-spacers-comment-1",
+          "authorId": "small-bracket",
+          "body": "I like the idea of labeling the spacers before taking the shelf apart.",
+          "createdAt": "2026-12-03T11:05:00Z"
+        },
+        {
+          "id": "cardboard-spacers-comment-2",
+          "authorId": "soft-pencil",
+          "body": "It would be useful to see a sketch of your stack.",
+          "createdAt": "2026-12-03T11:10:00Z"
+        }
+      ]
+    },
+    {
+      "id": "keep-the-old-holes",
+      "title": "Can I keep the old screw holes?",
+      "body": "The screws on a loose desk tray handle still turn after they should be snug. I would like to keep the existing handle and its position if the holes can be repaired. The tray is unfinished wood.",
+      "authorId": "small-bracket",
+      "spaceId": "general-discussion",
+      "createdAt": "2026-12-04T12:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "keep-the-old-holes-comment-1",
+          "authorId": "quiet-hinge",
+          "body": "Check the two screws side by side for damage before changing the wood.",
+          "createdAt": "2026-12-04T12:05:00Z"
+        },
+        {
+          "id": "keep-the-old-holes-comment-2",
+          "authorId": "maple-clamp",
+          "body": "Measure the depth too. A short screw looks similar when it is already installed.",
+          "createdAt": "2026-12-04T12:10:00Z"
+        }
+      ]
+    },
+    {
+      "id": "scrap-labels",
+      "title": "Labels for a box of fabric scraps",
+      "body": "I sorted my scraps by how they stretch and put a small label on each bundle. I can find a test piece more quickly now. It makes the box easier to lend because someone else can see what is in it.",
+      "authorId": "linen-loop",
+      "spaceId": "general-discussion",
+      "createdAt": "2026-12-05T09:00:00Z",
+      "pinned": false,
+      "comments": []
+    },
+    {
+      "id": "second-attempt",
+      "title": "A photo of the second attempt",
+      "body": "The first photo made my uneven seam look straight because I took it from above. I took another from table height with a sheet of paper behind the edge. The second angle shows exactly where the seam rises.",
+      "authorId": "soft-pencil",
+      "spaceId": "general-discussion",
+      "createdAt": "2026-12-05T10:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "second-attempt-comment-1",
+          "authorId": "chalk-boat",
+          "body": "That angle also makes it much easier to compare a before and after picture.",
+          "createdAt": "2026-12-05T10:05:00Z"
+        }
+      ]
+    },
+    {
+      "id": "measuring-with-a-strip",
+      "title": "Measure with a strip of paper",
+      "body": "The gap around my tray was too narrow for the ruler to sit flat. A strip of paper fit inside, so I marked the ends and measured it on the table. I kept the strip in my repair notes so I can repeat the check.",
+      "authorId": "quiet-hinge",
+      "spaceId": "general-discussion",
+      "createdAt": "2026-12-06T11:00:00Z",
+      "pinned": false,
+      "comments": [
+        {
+          "id": "measuring-with-a-strip-comment-1",
+          "authorId": "folding-rule",
+          "body": "I can try this at the back of my drawer.",
+          "createdAt": "2026-12-06T11:05:00Z"
+        },
+        {
+          "id": "measuring-with-a-strip-comment-2",
+          "authorId": "river-reed",
+          "body": "Keep the strip flat when you transfer the measurement.",
+          "createdAt": "2026-12-06T11:10:00Z"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "december-open-bench",
+      "spaceId": "events",
+      "hostId": "paper-kite",
+      "title": "December open bench",
+      "startsAt": "2026-12-12T14:00:00+01:00",
+      "endsAt": "2026-12-12T16:00:00+01:00",
+      "timezone": "Europe/Amsterdam",
+      "location": {
+        "kind": "in_person",
+        "label": "Amsterdam"
+      },
+      "description": "Bring one small repair you can work on at a shared table. We will compare plans at the start and leave time at the end to write down what changed.",
+      "rsvpMemberIds": [
+        "river-reed",
+        "glass-pebble",
+        "folding-rule"
+      ]
+    },
+    {
+      "id": "repair-notes-review",
+      "spaceId": "events",
+      "hostId": "river-reed",
+      "title": "Repair notes review",
+      "startsAt": "2026-12-20T19:00:00+01:00",
+      "endsAt": "2026-12-20T19:45:00+01:00",
+      "timezone": "Europe/Amsterdam",
+      "location": {
+        "kind": "online",
+        "label": "Online"
+      },
+      "description": "Bring two photos and a short explanation of a repair. We will read each other's notes and point out where another picture or a measurement would help.",
+      "rsvpMemberIds": [
+        "chalk-boat",
+        "quiet-hinge",
+        "soft-pencil"
+      ]
+    },
+    {
+      "id": "january-show-and-tell",
+      "spaceId": "events",
+      "hostId": "paper-kite",
+      "title": "January show-and-tell",
+      "startsAt": "2027-01-16T11:00:00+01:00",
+      "endsAt": "2027-01-16T12:00:00+01:00",
+      "timezone": "Europe/Amsterdam",
+      "location": {
+        "kind": "online",
+        "label": "Online"
+      },
+      "description": "Show one thing you repaired or changed over the holidays. An unfinished attempt is welcome, especially if you can explain the next thing you would try.",
+      "rsvpMemberIds": [
+        "blue-spool",
+        "folding-rule"
+      ]
+    }
+  ],
+  "course": {
+    "id": "document-a-small-repair",
+    "spaceId": "course",
+    "authorId": "river-reed",
+    "title": "Document a small repair",
+    "description": "Keep a short record another person could use to repeat your repair.",
+    "modules": [
+      {
+        "id": "before-you-change-it",
+        "title": "Before you change it",
+        "lessons": [
+          {
+            "id": "pick-one-symptom",
+            "title": "Pick one symptom",
+            "body": "Choose an object that you can move and check safely at home. Describe a single symptom and the moment it appears, such as a drawer rubbing only as it closes. Write one sentence that you can check again after the repair."
+          },
+          {
+            "id": "take-a-wide-photo",
+            "title": "Take a wide photo",
+            "body": "Place the object where someone can see how its parts fit together. Take a wide photo in steady light and keep the problem area in frame. Label the picture with a short phrase that tells a reader where to look."
+          },
+          {
+            "id": "record-a-measurement",
+            "title": "Record a measurement",
+            "body": "Choose one gap, length or angle that may change during the repair. Write down what you measured, the unit and the two points you measured between. Add a photo or sketch if the points are hard to describe."
+          }
+        ]
+      },
+      {
+        "id": "after-the-first-fix",
+        "title": "After the first fix",
+        "lessons": [
+          {
+            "id": "change-one-thing",
+            "title": "Change one thing",
+            "body": "Write down the smallest adjustment you can make before trying it. Change just that part and keep the rest of the setup the same. Repeat the check from the first lesson and record what you observe."
+          },
+          {
+            "id": "take-the-matching-photo",
+            "title": "Take the matching photo",
+            "body": "Return the object and camera to their original positions. Take a second picture with the same framing and a similar level of light. Put the two photographs side by side and mark the area where the change is easiest to see."
+          },
+          {
+            "id": "share-the-record",
+            "title": "Share the record",
+            "body": "Put your symptom, check, adjustment and result into a short note with the two photographs. Say what you would try next if the problem returns. Ask someone to read the note and tell you which step they would need to see more clearly."
+          }
+        ]
+      }
+    ]
+  },
+  "chatThreads": [
+    {
+      "id": "drawer-fit-check",
+      "spaceId": "show-your-work",
+      "title": "Drawer fit check",
+      "messages": [
+        {
+          "id": "drawer-fit-check-1",
+          "authorId": "folding-rule",
+          "body": "Drawer fit check. I marked the spot where the right corner rubs.",
+          "sentAt": "2026-12-06T13:00:00Z"
+        },
+        {
+          "id": "drawer-fit-check-2",
+          "authorId": "quiet-hinge",
+          "body": "Does the gap on the left stay the same when you close it slowly?",
+          "sentAt": "2026-12-06T13:03:00Z"
+        },
+        {
+          "id": "drawer-fit-check-3",
+          "authorId": "folding-rule",
+          "body": "It gets a little wider. There is a pinch on the right just before it closes.",
+          "sentAt": "2026-12-06T13:06:00Z"
+        },
+        {
+          "id": "drawer-fit-check-4",
+          "authorId": "maple-clamp",
+          "body": "Try a strip of paper to see where the gap first narrows.",
+          "sentAt": "2026-12-06T13:09:00Z"
+        },
+        {
+          "id": "drawer-fit-check-5",
+          "authorId": "folding-rule",
+          "body": "The paper stops halfway along the right edge.",
+          "sentAt": "2026-12-06T13:12:00Z"
+        },
+        {
+          "id": "drawer-fit-check-6",
+          "authorId": "quiet-hinge",
+          "body": "That is a good place to look for a raised screw head.",
+          "sentAt": "2026-12-06T13:15:00Z"
+        },
+        {
+          "id": "drawer-fit-check-7",
+          "authorId": "folding-rule",
+          "body": "One screw sits slightly proud. I will check the fit again after reseating it.",
+          "sentAt": "2026-12-06T13:18:00Z"
+        },
+        {
+          "id": "drawer-fit-check-8",
+          "authorId": "maple-clamp",
+          "body": "Keep the paper strip so you can repeat the same check.",
+          "sentAt": "2026-12-06T13:21:00Z"
+        }
+      ]
+    },
+    {
+      "id": "strap-test",
+      "spaceId": "show-your-work",
+      "title": "Strap test",
+      "messages": [
+        {
+          "id": "strap-test-1",
+          "authorId": "blue-spool",
+          "body": "Strap test. I have two stitched samples and a small bag to compare them.",
+          "sentAt": "2026-12-06T14:00:00Z"
+        },
+        {
+          "id": "strap-test-2",
+          "authorId": "linen-loop",
+          "body": "Put the same load in the bag for both attempts so the comparison is fair.",
+          "sentAt": "2026-12-06T14:03:00Z"
+        },
+        {
+          "id": "strap-test-3",
+          "authorId": "blue-spool",
+          "body": "I used the same paperback in each one. The straight rows twist a bit.",
+          "sentAt": "2026-12-06T14:06:00Z"
+        },
+        {
+          "id": "strap-test-4",
+          "authorId": "chalk-boat",
+          "body": "A picture of the upper edge under load would show the difference.",
+          "sentAt": "2026-12-06T14:09:00Z"
+        },
+        {
+          "id": "strap-test-5",
+          "authorId": "blue-spool",
+          "body": "I can rest the bag on the table and take that picture.",
+          "sentAt": "2026-12-06T14:12:00Z"
+        },
+        {
+          "id": "strap-test-6",
+          "authorId": "linen-loop",
+          "body": "Mark which sample is which before you put them down.",
+          "sentAt": "2026-12-06T14:15:00Z"
+        }
+      ]
+    }
+  ],
+  "directMessages": [
+    {
+      "id": "bench-setup",
+      "participantIds": [
+        "paper-kite",
+        "glass-pebble"
+      ],
+      "messages": [
+        {
+          "id": "bench-setup-1",
+          "authorId": "paper-kite",
+          "body": "Can you help set out mats at the open bench?",
+          "sentAt": "2026-12-05T15:00:00Z"
+        },
+        {
+          "id": "bench-setup-2",
+          "authorId": "glass-pebble",
+          "body": "Yes. I will arrive ten minutes early with the spare roll of tape.",
+          "sentAt": "2026-12-05T15:03:00Z"
+        },
+        {
+          "id": "bench-setup-3",
+          "authorId": "paper-kite",
+          "body": "Thanks. I will keep the table nearest the door clear for the tool swap.",
+          "sentAt": "2026-12-05T15:06:00Z"
+        },
+        {
+          "id": "bench-setup-4",
+          "authorId": "glass-pebble",
+          "body": "I will bring a sign for the two parts of the tray.",
+          "sentAt": "2026-12-05T15:09:00Z"
+        }
+      ]
+    },
+    {
+      "id": "photo-review",
+      "participantIds": [
+        "chalk-boat",
+        "soft-pencil"
+      ],
+      "messages": [
+        {
+          "id": "photo-review-1",
+          "authorId": "soft-pencil",
+          "body": "Could you look at my second seam photo before the review?",
+          "sentAt": "2026-12-06T10:00:00Z"
+        },
+        {
+          "id": "photo-review-2",
+          "authorId": "chalk-boat",
+          "body": "Sure. I can give it a look after lunch.",
+          "sentAt": "2026-12-06T10:03:00Z"
+        },
+        {
+          "id": "photo-review-3",
+          "authorId": "soft-pencil",
+          "body": "Thanks. I am trying to show where the seam starts to rise.",
+          "sentAt": "2026-12-06T10:06:00Z"
+        },
+        {
+          "id": "photo-review-4",
+          "authorId": "chalk-boat",
+          "body": "The paper behind the edge helps. Keep it in the matching photo too.",
+          "sentAt": "2026-12-06T10:09:00Z"
+        }
+      ]
+    },
+    {
+      "id": "tray-handle",
+      "participantIds": [
+        "small-bracket",
+        "maple-clamp"
+      ],
+      "messages": [
+        {
+          "id": "tray-handle-1",
+          "authorId": "small-bracket",
+          "body": "The two old screws are different lengths. Could that explain the loose end?",
+          "sentAt": "2026-12-06T16:00:00Z"
+        },
+        {
+          "id": "tray-handle-2",
+          "authorId": "maple-clamp",
+          "body": "It could. Measure the depth of both holes before choosing a replacement.",
+          "sentAt": "2026-12-06T16:03:00Z"
+        },
+        {
+          "id": "tray-handle-3",
+          "authorId": "small-bracket",
+          "body": "I will bring the screws and the tray to the open bench.",
+          "sentAt": "2026-12-06T16:06:00Z"
+        },
+        {
+          "id": "tray-handle-4",
+          "authorId": "maple-clamp",
+          "body": "I can bring a small gauge so we can check them there.",
+          "sentAt": "2026-12-06T16:09:00Z"
+        }
+      ]
+    }
+  ]
+}
