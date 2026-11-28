@@ -3,14 +3,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Calendar, Copy, Check, Linkedin } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 interface EventShareRowProps {
   slug: string;
   title: string;
+  actionsOnly?: boolean;
 }
 
-export function EventShareRow({ slug, title }: EventShareRowProps) {
+export function EventShareRow({
+  slug,
+  title,
+  actionsOnly = false,
+}: EventShareRowProps) {
+  const tr = useTranslations("redesign.events");
   const t = useTranslations("common");
   const [copied, setCopied] = useState(false);
 
@@ -40,6 +47,42 @@ export function EventShareRow({ slug, title }: EventShareRowProps) {
   const xUrl = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`;
   const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
   const icsUrl = `/api/events/${slug}/ics`;
+
+  if (actionsOnly) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="max-sm:min-h-11"
+          onClick={copyLink}
+        >
+          {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+          {copied ? tr("copied") : tr("copyLink")}
+        </Button>
+        <Button asChild variant="outline" className="min-h-11 min-w-11">
+          <a
+            href={xUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={tr("shareX")}
+          >
+            X
+          </a>
+        </Button>
+        <Button asChild variant="outline" className="min-h-11 min-w-11">
+          <a
+            href={linkedInUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={tr("shareLinkedIn")}
+          >
+            <Linkedin aria-hidden="true" />
+          </a>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">

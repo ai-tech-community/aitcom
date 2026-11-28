@@ -1,5 +1,11 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
@@ -19,13 +25,13 @@ vi.mock("@/trpc/react", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: m.success, error: m.error } }));
 import { RegistrationSourceLinks } from "./registration-source-links";
-function show(locale: "en" | "nl" = "en") {
+function show(locale: "en" | "nl" = "en", secondary = false) {
   return render(
     <NextIntlClientProvider
       locale={locale}
       messages={locale === "en" ? en : nl}
     >
-      <RegistrationSourceLinks eventId={7} />
+      <RegistrationSourceLinks eventId={7} secondary={secondary} />
     </NextIntlClientProvider>,
   );
 }
@@ -78,4 +84,23 @@ it("localizes the sharing controls in Dutch", () => {
   expect(
     screen.getByRole("button", { name: "Luma-link kopiëren" }),
   ).toBeVisible();
+});
+
+it("hides the secondary registration links while loading", () => {
+  m.query.isLoading = true;
+  expect(show("en", true).container).toBeEmptyDOMElement();
+});
+
+it("keeps a temporary tracking-link notice and retry inside its secondary section", () => {
+  m.query.isError = true;
+  show("en", true);
+  const section = screen.getByRole("region", {
+    name: "Tracked registration links",
+  });
+  expect(within(section).getByRole("status")).toHaveTextContent(
+    "Tracking links are unavailable right now.",
+  );
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  fireEvent.click(within(section).getByRole("button", { name: "Retry" }));
+  expect(m.query.refetch).toHaveBeenCalledTimes(1);
 });

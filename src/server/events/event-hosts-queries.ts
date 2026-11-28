@@ -1,9 +1,19 @@
-import { and, inArray, isNull } from "drizzle-orm";
+import { cache } from "react";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
 import { communities } from "@/server/db/schema";
 
 type DB = typeof _db;
+
+/** The breadcrumb needs the host's route as well as its display name. */
+export const loadEventHost = cache(async (db: DB, communityId: string) => {
+  const [host] = await db
+    .select({ name: communities.name, slug: communities.slug })
+    .from(communities)
+    .where(and(eq(communities.id, communityId), isNull(communities.deletedAt)));
+  return host ?? null;
+});
 
 /**
  * Names of the communities hosting a set of events, keyed by community id.

@@ -1,3 +1,6 @@
+import { ArrowLeft, ArrowUpRight, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { PageMain } from "@/components/page-main";
 import { and, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
@@ -10,6 +13,7 @@ import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
 import { communities, communityMemberships } from "@/server/db/schema";
 import { canViewEventAttendees } from "@/server/events/attendee-access";
+import { isPubliclyListedEventStatus } from "@/lib/events/event-status";
 import { getPayloadClient } from "@/server/payload";
 
 /**
@@ -60,6 +64,43 @@ export default async function EventAttendeesPage({
   if (!canViewEventAttendees({ event, viewerId, membership })) notFound();
 
   const t = await getTranslations("events.attendeeList");
+
+  if (isOpenCommunitiesEnabled()) {
+    const tr = await getTranslations("redesign.events");
+    return (
+      <PageMain className="mx-auto w-full max-w-5xl space-y-5 pb-8">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <Button asChild variant="ghost" className="-ml-3 min-h-11">
+            <Link href={`/communities/${slug}/events`}>
+              <ArrowLeft aria-hidden="true" />
+              {community.name}
+            </Link>
+          </Button>
+          {isPubliclyListedEventStatus(event.status) ? (
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href={`/events/${event.slug}`}>
+                {tr("eventDetails")}
+                <ArrowUpRight aria-hidden="true" />
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+        <header className="border-border flex items-start gap-3 border-b pb-5">
+          <span className="border-border bg-secondary/45 grid size-11 shrink-0 place-items-center rounded-md border sm:size-13">
+            <Users aria-hidden="true" className="size-5 sm:size-6" />
+          </span>
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              {tr("organizerAttendees")}
+            </h1>
+            <p className="mt-1 text-base font-medium">{event.title}</p>
+            <p className="text-muted-foreground mt-1 text-sm">{t("intro")}</p>
+          </div>
+        </header>
+        <OrganizerAttendeeList eventId={event.id} />
+      </PageMain>
+    );
+  }
 
   return (
     <PageMain className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">

@@ -1,5 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import { RouteTabs } from "@/components/ui/route-tabs";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { HubTabKey, HubTabState } from "@/server/hackathon/hub-tabs";
@@ -25,7 +28,27 @@ export function HackathonTabBar({
   labels: Record<HubTabKey, string>;
 }) {
   const pathname = usePathname();
+  const t = useTranslations("redesign.events");
   const base = `/events/${slug}`;
+
+  if (isOpenCommunitiesEnabled()) {
+    return (
+      <RouteTabs
+        aria-label={t("hackathonNav")}
+        activeTone="ink"
+        className="min-h-11"
+        tabs={tabs.map(({ key, available }) => ({
+          href: SEGMENTS[key] ? `${base}/${SEGMENTS[key]}` : base,
+          label: (
+            <span className={available ? undefined : "opacity-75"}>
+              {labels[key]}
+            </span>
+          ),
+          match: SEGMENTS[key] ? "prefix" : "exact",
+        }))}
+      />
+    );
+  }
 
   return (
     <nav

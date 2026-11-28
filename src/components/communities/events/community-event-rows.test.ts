@@ -277,3 +277,27 @@ describe("community rows through the shared presenter", () => {
     expect(input.placeToBeAnnounced).toBe(false);
   });
 });
+
+it("carries the community event's end time and format into the agenda", () => {
+  const [row] = presentEventRows(
+    [
+      toCommunityEventRowInput(
+        item(92, {
+          date: "2026-12-12",
+          startTime: "14:00",
+          endTime: "16:00",
+          timezone: "Europe/Amsterdam",
+          format: "in-person",
+          location: "Amsterdam",
+        }),
+        PUBLISHED,
+      ),
+    ],
+    { locale: "en", labels: EN },
+  );
+  expect(row).toMatchObject({
+    time: "14:00 CET",
+    timeRange: "14:00–16:00 CET",
+    formatLabel: "In person",
+  });
+});

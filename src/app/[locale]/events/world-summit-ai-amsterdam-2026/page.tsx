@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { EventHubLinks } from "@/components/events/event-hub-links";
 import { WorldSummitGuide } from "@/components/guides/world-summit-guide";
 import { resolveLocale } from "@/i18n/messages";
@@ -85,8 +86,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function WorldSummitPage() {
   const locale = await getLocale();
   const t = await getTranslations("worldSummitEvent");
+  const tr = isOpenCommunitiesEnabled()
+    ? await getTranslations("redesign.events")
+    : null;
   return (
-    <WorldSummitGuide locale={locale} t={t}>
+    <WorldSummitGuide locale={locale} t={t} backLabel={tr?.("backEvents")}>
       <EventHubLinks />
     </WorldSummitGuide>
   );

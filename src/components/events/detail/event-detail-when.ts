@@ -1,5 +1,8 @@
 import {
   eventDayParts,
+  eventWallTimeToUtc,
+  isEventOver,
+  isValidTimeZone,
   formatEventDay,
   formatEventDayRange,
   type EventTimeFields,
@@ -61,6 +64,24 @@ export function eventDeadlineDay(
     deadline instanceof Date ? deadline.toISOString() : deadline.trim();
   if (!iso) return null;
   return formatEventDay(iso, locale);
+}
+
+/** Reservation availability includes the stored last day of a multi-day event. */
+export function eventDetailHasEnded(
+  event: EventTimeFields,
+  now = new Date(),
+): boolean {
+  const firstDay = eventDayParts(event.date, "en")?.iso;
+  if (!firstDay) return false;
+  const lastDay = event.endDate
+    ? eventDayParts(event.endDate, "en")?.iso
+    : undefined;
+  if (!lastDay || lastDay <= firstDay) return isEventOver(event, now);
+  const timezone = isValidTimeZone(event.timezone) ? event.timezone : "UTC";
+  return event.endTime
+    ? eventWallTimeToUtc(lastDay, event.endTime, timezone).getTime() <=
+        now.getTime()
+    : isEventOver({ date: lastDay, timezone }, now);
 }
 
 export function eventSummaryLine(

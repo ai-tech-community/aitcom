@@ -1,8 +1,14 @@
 import Image from "next/image";
-import { getTranslations } from "next-intl/server";
+import { CalendarDays, MapPin } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import type { Event, Media } from "@/payload-types";
 import type { HackathonPhase } from "@/server/hackathon/phase";
+import { getEventRowLabels } from "@/components/events/rows/get-event-row-labels";
+import { eventFormatLabel } from "@/components/events/rows/event-rows";
+import { EventHeading } from "@/components/events/detail/event-heading";
+import { formatEventDayRange } from "@/lib/event-time";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { Badge } from "@/components/ui/badge";
 import { CancelledEventBadge } from "@/components/events/cancelled-event-badge";
 import { EventTimeDisplay } from "@/components/event-time-display";
@@ -38,6 +44,57 @@ export async function HackathonHeader({
   const cover = getCoverImage(event.coverImage ?? event.image);
   const statusLabel = t(PHASE_LABEL_KEY[phase]);
   const cancelled = event.status === "cancelled";
+
+  if (isOpenCommunitiesEnabled()) {
+    const [locale, labels] = await Promise.all([
+      getLocale(),
+      getEventRowLabels(),
+    ]);
+    return (
+      <EventHeading
+        title={event.title}
+        cover={
+          cover?.url ? { url: cover.url, alt: cover.alt ?? event.title } : null
+        }
+        labels={
+          <>
+            {cancelled ? (
+              <CancelledEventBadge label={tEvents("cancelledLabel")} />
+            ) : (
+              <Badge variant="secondary">{statusLabel}</Badge>
+            )}
+            {event.format ? (
+              <Badge variant="outline">
+                {eventFormatLabel(event.format, labels)}
+              </Badge>
+            ) : null}
+          </>
+        }
+        facts={
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <CalendarDays aria-hidden="true" className="size-4" />
+              <time dateTime={event.date.slice(0, 10)}>
+                {formatEventDayRange(event.date, event.endDate, locale)}
+              </time>
+              <EventTimeDisplay
+                date={event.date}
+                startTime={event.startTime ?? null}
+                endTime={event.endTime ?? null}
+                timezone={event.timezone ?? null}
+              />
+            </div>
+            {event.location ? (
+              <span className="flex items-center gap-2">
+                <MapPin aria-hidden="true" className="size-4" />
+                {event.location}
+              </span>
+            ) : null}
+          </>
+        }
+      />
+    );
+  }
 
   return (
     <div className="border-border bg-secondary/30 relative overflow-hidden rounded-2xl border">

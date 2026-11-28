@@ -1,5 +1,6 @@
 "use client";
 
+import { EventBreadcrumb } from "@/components/events/detail/event-breadcrumb";
 import { Link, usePathname } from "@/i18n/navigation";
 import type { HubTabKey } from "@/server/hackathon/hub-tabs";
 
@@ -18,10 +19,12 @@ export function HackathonBreadcrumb({
   slug,
   title,
   labels,
+  community,
 }: {
   slug: string;
   title: string;
   labels: Record<HubTabKey, string>;
+  community?: { name: string; slug: string } | null;
 }) {
   const pathname = usePathname();
   const base = `/events/${slug}`;
@@ -38,6 +41,17 @@ export function HackathonBreadcrumb({
 
   // On the overview tab the leaf would just repeat the event title link.
   const leaf = activeKey && activeKey !== "overview" ? labels[activeKey] : null;
+
+  if (community !== undefined) {
+    return (
+      <EventBreadcrumb
+        community={community}
+        title={title}
+        eventHref={base}
+        leaf={leaf}
+      />
+    );
+  }
 
   return (
     <nav className="mb-6 flex items-center gap-2 font-mono text-xs tracking-wider">

@@ -17,6 +17,10 @@ import {
   type EventFormat,
   type EventType,
 } from "@/lib/event-metadata";
+import { CalendarDays } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { EventAgendaRow } from "@/components/events/rows/event-agenda-row";
 import { EventsListingToolbar } from "@/components/events-listing-toolbar";
 import { EventHubLinks } from "@/components/events/event-hub-links";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
@@ -44,6 +48,7 @@ import { eventDeadlineDay } from "@/components/events/detail/event-detail-when";
 import {
   eventFormatLabel,
   eventRowKind,
+  presentEventRows,
 } from "@/components/events/rows/event-rows";
 import { getEventRowLabels } from "@/components/events/rows/get-event-row-labels";
 import { loadEventSideWhere } from "@/server/events/event-side-where";
@@ -356,18 +361,39 @@ export default async function EventsPage({
       )
     : [];
   const aiFlags = await loadEventAiFlags(events.map((event) => event.id));
+  const redesign = isOpenCommunitiesEnabled();
+  const tr = redesign ? await getTranslations("redesign.events") : null;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <div
+      className={cn(
+        "mx-auto max-w-6xl",
+        redesign ? "px-4 py-6 sm:px-8 sm:py-10" : "px-6 py-16 sm:px-12",
+      )}
+    >
       {eventJsonLd.map((data, index) => (
         <JsonLd
           key={`event-jsonld-${typeof data.url === "string" ? data.url : index}`}
           data={data}
         />
       ))}
-      <SectionLabel as="h1">{t("title")}</SectionLabel>
+      {tr ? (
+        <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight sm:gap-4 sm:text-4xl">
+          <span className="border-border bg-secondary/45 grid size-11 shrink-0 place-items-center rounded-md border sm:size-13">
+            <CalendarDays aria-hidden="true" className="size-5 sm:size-6" />
+          </span>
+          {tr("title")}
+        </h1>
+      ) : (
+        <SectionLabel as="h1">{t("title")}</SectionLabel>
+      )}
 
-      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div
+        className={cn(
+          "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between",
+          redesign ? "mt-3" : "mt-6",
+        )}
+      >
         <p className="text-muted-foreground max-w-2xl text-base leading-relaxed">
           {promoteJoin ? t("listingLead") : t("listingMemberLead")}
         </p>
@@ -393,15 +419,30 @@ export default async function EventsPage({
       {isMapView ? (
         <EventsMap events={toMapEvents(events)} userCoords={userCoords} />
       ) : events.length === 0 ? (
-        <p className="text-muted-foreground mt-12 text-center">
+        <EmptyResults redesign={redesign}>
           {hasFilters
             ? t("filters.noMatch")
             : isPast
               ? t("filters.noPast")
               : t("noEvents")}
-        </p>
+          {tr ? (
+            <Link
+              className="text-foreground inline-flex min-h-11 items-center underline underline-offset-4"
+              href="/events"
+            >
+              {tr("browseUpcoming")}
+            </Link>
+          ) : null}
+        </EmptyResults>
       ) : (
-        <div className="mt-8 grid gap-5 lg:grid-cols-2">
+        <div
+          className={cn(
+            "mt-8 grid",
+            redesign
+              ? "border-border gap-x-8 border-t lg:grid-cols-2"
+              : "gap-5 lg:grid-cols-2",
+          )}
+        >
           {events.map((event) => {
             const imageUrl = getImageUrl(event);
             const summary = stripListingPolicy(
@@ -416,6 +457,104 @@ export default async function EventsPage({
               event.registrationDeadline,
               locale,
             );
+            if (redesign) {
+              const [row] = presentEventRows(
+                [
+                  {
+                    ...event,
+                    // The full venue remains visible in the directory.
+                    city: null,
+                    host: null,
+                  },
+                ],
+                { locale, labels },
+              );
+              if (!row) return null;
+              return (
+                <article
+                  key={event.id}
+                  className="border-border min-w-0 border-b"
+                >
+                  <EventAgendaRow
+                    row={{
+                      ...row,
+                      placeParts: event.location
+                        ? [event.location]
+                        : row.placeParts,
+                    }}
+                    dateLabel={formatEventDayRange(
+                      event.date,
+                      event.endDate,
+                      locale,
+                    )}
+                    image={
+                      imageUrl ? (
+                        <Image
+                          src={imageUrl}
+                          alt=""
+                          width={96}
+                          height={72}
+                          className="hidden aspect-[4/3] w-24 rounded-md object-cover sm:block"
+                        />
+                      ) : null
+                    }
+                    description={
+                      summary ? (
+                        <p className="text-muted-foreground mt-2 line-clamp-2 text-sm leading-relaxed">
+                          {summary}
+                        </p>
+                      ) : null
+                    }
+                    status={
+                      <>
+                        {typeof distanceKm === "number" ? (
+                          <Badge variant="outline">
+                            {formatDistance(distanceKm)}
+                          </Badge>
+                        ) : null}
+                        {aiFlags.get(event.id) === true ? (
+                          <Badge variant="outline">{t("aiBadge")}</Badge>
+                        ) : null}
+                        {event.focus ? (
+                          <Badge variant="outline">{String(event.focus)}</Badge>
+                        ) : null}
+                        {typeof event.aitFitScore === "number" ? (
+                          <Badge variant="secondary">
+                            AIT {event.aitFitScore}/10
+                          </Badge>
+                        ) : null}
+                        {registrationCloses ? (
+                          <span className="text-muted-foreground text-xs">
+                            {t("registrationCloses", {
+                              date: registrationCloses,
+                            })}
+                          </span>
+                        ) : null}
+                      </>
+                    }
+                    actions={
+                      communityMeta ? (
+                        <Link
+                          href={`/communities/${communityMeta.slug}` as never}
+                          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm underline-offset-4 hover:underline"
+                        >
+                          {communityMeta.logoUrl ? (
+                            <Image
+                              src={communityMeta.logoUrl}
+                              alt=""
+                              width={20}
+                              height={20}
+                              className="rounded-full"
+                            />
+                          ) : null}
+                          {labels.hostedBy(communityMeta.name)}
+                        </Link>
+                      ) : null
+                    }
+                  />
+                </article>
+              );
+            }
             return (
               <div
                 key={event.id}
@@ -546,6 +685,22 @@ export default async function EventsPage({
 
       <EventHubLinks />
     </div>
+  );
+}
+
+function EmptyResults({
+  redesign,
+  children,
+}: {
+  redesign: boolean;
+  children: React.ReactNode;
+}) {
+  return redesign ? (
+    <div className="border-border text-muted-foreground mt-8 flex flex-col items-center gap-3 rounded-lg border px-4 py-10 text-center">
+      {children}
+    </div>
+  ) : (
+    <p className="text-muted-foreground mt-12 text-center">{children}</p>
   );
 }
 

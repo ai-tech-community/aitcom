@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -30,15 +32,26 @@ export function EditorTopBar({
   pending: boolean;
 }) {
   const t = useTranslations("events.editor");
+  const redesign = isOpenCommunitiesEnabled();
   return (
     <div className="border-border bg-background sticky top-0 z-20 flex items-center gap-3 border-b px-4 py-3 sm:px-6 lg:static">
-      <Button asChild variant="ghost" size="icon" className="shrink-0">
+      <Button
+        asChild
+        variant="ghost"
+        size="icon"
+        className={cn("shrink-0", redesign && "max-sm:size-11")}
+      >
         <Link href={backHref} aria-label={t("backTo", { name: backLabel })}>
           <ArrowLeft aria-hidden="true" />
         </Link>
       </Button>
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-base leading-tight font-semibold">
+        <h1
+          className={cn(
+            "text-base leading-tight font-semibold",
+            redesign ? "text-pretty sm:text-lg" : "truncate",
+          )}
+        >
           {title}
         </h1>
         {subtitle ? (
@@ -48,8 +61,18 @@ export function EditorTopBar({
       <Button asChild variant="ghost" className="hidden sm:inline-flex">
         <Link href={backHref}>{t("cancel")}</Link>
       </Button>
-      <Button type="submit" form={formId} disabled={pending}>
-        {pending ? (
+      <Button
+        type="submit"
+        form={formId}
+        disabled={pending}
+        aria-busy={redesign ? pending : undefined}
+        className={
+          redesign
+            ? "max-sm:min-h-11 max-sm:max-w-[46%] max-sm:whitespace-normal"
+            : undefined
+        }
+      >
+        {pending && !redesign ? (
           <Loader2 className="animate-spin" aria-hidden="true" />
         ) : null}
         {submitLabel}

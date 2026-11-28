@@ -1,3 +1,7 @@
+import { getTranslations } from "next-intl/server";
+import { EventHeading } from "@/components/events/detail/event-heading";
+import { SectionLabel } from "@/components/ui/section-label";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { notFound, redirect } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 
@@ -56,5 +60,21 @@ export default async function JudgePage({
     redirect(`/communities/${slug}/events`);
   }
 
-  return <JudgeWorkspace challengeId={challengeId} />;
+  if (!isOpenCommunitiesEnabled())
+    return <JudgeWorkspace challengeId={challengeId} />;
+
+  const t = await getTranslations("redesign.events");
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+      <EventHeading
+        title={event.title}
+        labels={
+          <SectionLabel as="div" bordered={false}>
+            {t("judgeDesk")}
+          </SectionLabel>
+        }
+      />
+      <JudgeWorkspace challengeId={challengeId} />
+    </div>
+  );
 }

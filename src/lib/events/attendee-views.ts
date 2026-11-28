@@ -34,6 +34,18 @@ export const VIEW_STATUSES: Record<AttendeeView, readonly AttendeeStatus[]> = {
   cancelled: ["cancelled", "payment_failed"],
 };
 
+/** Checked-in attendees still hold a registration and a seat. */
+export const REGISTERED_ATTENDEE_STATUSES = ["registered", "attended"] as const;
+
+export function attendeeStatusesForView(
+  view: AttendeeView,
+  includeCheckedIn: boolean,
+): readonly AttendeeStatus[] {
+  return includeCheckedIn && view === "registered"
+    ? REGISTERED_ATTENDEE_STATUSES
+    : VIEW_STATUSES[view];
+}
+
 /** A view from untrusted input (a query string); "active" when unknown. */
 export function parseAttendeeView(
   value: string | null | undefined,

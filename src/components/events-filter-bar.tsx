@@ -1,5 +1,8 @@
 "use client";
 
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -53,6 +56,8 @@ export function EventsFilterBar({
   visitorCountryName = null,
 }: EventsFilterBarProps = {}) {
   const t = useTranslations("events");
+  const tr = useTranslations("redesign.events");
+  const redesign = isOpenCommunitiesEnabled();
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -154,7 +159,8 @@ export function EventsFilterBar({
     visitorCountryName,
     locale,
   );
-  const upper = (value: string) => value.toLocaleUpperCase(locale);
+  const upper = (value: string) =>
+    redesign ? value : value.toLocaleUpperCase(locale);
 
   const typeLabel = (value: EventType) => {
     switch (value) {
@@ -210,161 +216,218 @@ export function EventsFilterBar({
     }
   };
 
+  const selectClass = redesign
+    ? "h-11 w-full text-sm"
+    : "font-mono text-xs tracking-wider";
+  const locationFilter = country && (
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2",
+        redesign ? "text-sm" : "font-mono text-xs tracking-wider",
+      )}
+    >
+      <span className="text-muted-foreground">
+        {upper(
+          t("filters.detected", {
+            country: visitorCountryCode
+              ? `${country} (${visitorCountryCode})`
+              : country,
+          }),
+        )}
+      </span>
+      <button
+        type="button"
+        onClick={toggleNearMe}
+        aria-pressed={redesign ? nearMe : undefined}
+        className={`rounded border px-2.5 py-1 transition-colors ${redesign ? "min-h-11" : ""} ${
+          nearMe
+            ? "border-foreground bg-foreground text-background"
+            : "border-border hover:bg-secondary/40"
+        }`}
+      >
+        {nearMe
+          ? `✓ ${upper(t("filters.inCountry", { country }))}`
+          : upper(t("filters.showOnly", { country }))}
+      </button>
+    </div>
+  );
+  const searchInput = (
+    <Input
+      type={redesign ? "search" : "text"}
+      aria-label={redesign ? t("filters.search") : undefined}
+      value={search}
+      onChange={(e) => handleSearchChange(e.target.value)}
+      placeholder={
+        redesign ? t("filters.search") : `/ ${upper(t("filters.search"))}`
+      }
+      className={redesign ? "h-11 text-sm" : "font-mono text-sm tracking-wider"}
+    />
+  );
+  const filters = (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <Select value={type} onValueChange={(v) => setFilter("type", v)}>
+        <SelectTrigger
+          className={selectClass}
+          aria-label={redesign ? tr("filterLabels.anyType") : undefined}
+        >
+          <SelectValue placeholder={t("filters.anyType")}>
+            {type === ANY || !(EVENT_TYPES as readonly string[]).includes(type)
+              ? t("filters.anyType")
+              : upper(typeLabel(type as EventType))}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ANY}>{t("filters.anyType")}</SelectItem>
+          {EVENT_TYPES.map((value) => (
+            <SelectItem key={value} value={value}>
+              {upper(typeLabel(value))}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={focus} onValueChange={(v) => setFilter("focus", v)}>
+        <SelectTrigger
+          className={selectClass}
+          aria-label={redesign ? tr("filterLabels.anyFocus") : undefined}
+        >
+          <SelectValue placeholder={t("filters.anyFocus")}>
+            {focus === ANY ||
+            !(EVENT_FOCUS_OPTIONS as readonly string[]).includes(focus)
+              ? t("filters.anyFocus")
+              : focusLabel(focus as EventFocus)}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ANY}>{t("filters.anyFocus")}</SelectItem>
+          {EVENT_FOCUS_OPTIONS.map((value) => (
+            <SelectItem key={value} value={value}>
+              {focusLabel(value)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={format} onValueChange={(v) => setFilter("format", v)}>
+        <SelectTrigger
+          className={selectClass}
+          aria-label={redesign ? tr("filterLabels.anyFormat") : undefined}
+        >
+          <SelectValue placeholder={t("filters.anyFormat")}>
+            {format === ANY ||
+            !(EVENT_FORMAT_OPTIONS as readonly string[]).includes(format)
+              ? t("filters.anyFormat")
+              : formatLabel(format as EventFormat)}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ANY}>{t("filters.anyFormat")}</SelectItem>
+          {EVENT_FORMAT_OPTIONS.map((value) => (
+            <SelectItem key={value} value={value}>
+              {formatLabel(value)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={ai} onValueChange={(v) => setFilter("ai", v)}>
+        <SelectTrigger aria-label={t("filterAi")} className={selectClass}>
+          <SelectValue placeholder={t("filterAiAll")}>
+            {ai === "1"
+              ? t("filterAiYes")
+              : ai === "0"
+                ? t("filterAiNo")
+                : t("filterAiAll")}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ANY}>{t("filterAiAll")}</SelectItem>
+          <SelectItem value="1">{t("filterAiYes")}</SelectItem>
+          <SelectItem value="0">{t("filterAiNo")}</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select value={fit} onValueChange={(v) => setFilter("fit", v)}>
+        <SelectTrigger
+          className={selectClass}
+          aria-label={redesign ? tr("filterLabels.anyFit") : undefined}
+        >
+          <SelectValue placeholder={t("filters.anyFit")}>
+            {(FIT_SCORES as readonly string[]).includes(fit)
+              ? t("filters.fitAtLeast", { score: fit })
+              : t("filters.anyFit")}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ANY}>{t("filters.anyFit")}</SelectItem>
+          {FIT_SCORES.map((score) => (
+            <SelectItem key={score} value={score}>
+              {t("filters.fitAtLeast", { score })}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={sort} onValueChange={setSort}>
+        <SelectTrigger
+          className={selectClass}
+          aria-label={redesign ? tr("filterLabels.sortDate") : undefined}
+        >
+          <SelectValue placeholder={t("filters.sortDate")}>
+            {sortLabel(sort)}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {(["date", "fit", "newest", "near"] as const).map((value) => (
+            <SelectItem key={value} value={value}>
+              {sortLabel(value)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+  const reset = hasFilters && (
+    <button
+      type="button"
+      onClick={resetAll}
+      className={cn(
+        "text-muted-foreground hover:text-foreground underline-offset-4 hover:underline",
+        redesign ? "min-h-11 text-sm" : "font-mono text-xs tracking-wider",
+      )}
+    >
+      {t("filters.clear")}
+    </button>
+  );
+
+  if (redesign) {
+    return (
+      <div className="mt-4 space-y-2">
+        {searchInput}
+        <details className="group border-border rounded-md border">
+          <summary className="focus-visible:ring-ring/50 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-sm font-medium focus-visible:ring-[3px] focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+            <SlidersHorizontal aria-hidden="true" className="size-4" />
+            {hasFilters ? tr("activeFilters") : tr("filters")}
+            <ChevronDown
+              aria-hidden="true"
+              className="text-muted-foreground ml-auto size-4 group-open:rotate-180"
+            />
+          </summary>
+          <div className="border-border space-y-3 border-t p-3">
+            {locationFilter}
+            {filters}
+            {reset}
+          </div>
+        </details>
+      </div>
+    );
+  }
   return (
     <div className="border-border mt-4 space-y-3 rounded-lg border p-4">
-      {country && (
-        <div className="flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
-          <span className="text-muted-foreground">
-            {upper(
-              t("filters.detected", {
-                country: visitorCountryCode
-                  ? `${country} (${visitorCountryCode})`
-                  : country,
-              }),
-            )}
-          </span>
-          <button
-            type="button"
-            onClick={toggleNearMe}
-            className={`rounded border px-2.5 py-1 transition-colors ${
-              nearMe
-                ? "border-foreground bg-foreground text-background"
-                : "border-border hover:bg-secondary/40"
-            }`}
-          >
-            {nearMe
-              ? `✓ ${upper(t("filters.inCountry", { country }))}`
-              : upper(t("filters.showOnly", { country }))}
-          </button>
-        </div>
-      )}
-      <Input
-        type="text"
-        value={search}
-        onChange={(e) => handleSearchChange(e.target.value)}
-        placeholder={`/ ${upper(t("filters.search"))}`}
-        className="font-mono text-sm tracking-wider"
-      />
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <Select value={type} onValueChange={(v) => setFilter("type", v)}>
-          <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder={t("filters.anyType")}>
-              {type === ANY ||
-              !(EVENT_TYPES as readonly string[]).includes(type)
-                ? t("filters.anyType")
-                : upper(typeLabel(type as EventType))}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ANY}>{t("filters.anyType")}</SelectItem>
-            {EVENT_TYPES.map((value) => (
-              <SelectItem key={value} value={value}>
-                {upper(typeLabel(value))}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={focus} onValueChange={(v) => setFilter("focus", v)}>
-          <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder={t("filters.anyFocus")}>
-              {focus === ANY ||
-              !(EVENT_FOCUS_OPTIONS as readonly string[]).includes(focus)
-                ? t("filters.anyFocus")
-                : focusLabel(focus as EventFocus)}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ANY}>{t("filters.anyFocus")}</SelectItem>
-            {EVENT_FOCUS_OPTIONS.map((value) => (
-              <SelectItem key={value} value={value}>
-                {focusLabel(value)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={format} onValueChange={(v) => setFilter("format", v)}>
-          <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder={t("filters.anyFormat")}>
-              {format === ANY ||
-              !(EVENT_FORMAT_OPTIONS as readonly string[]).includes(format)
-                ? t("filters.anyFormat")
-                : formatLabel(format as EventFormat)}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ANY}>{t("filters.anyFormat")}</SelectItem>
-            {EVENT_FORMAT_OPTIONS.map((value) => (
-              <SelectItem key={value} value={value}>
-                {formatLabel(value)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={ai} onValueChange={(v) => setFilter("ai", v)}>
-          <SelectTrigger
-            aria-label={t("filterAi")}
-            className="font-mono text-xs tracking-wider"
-          >
-            <SelectValue placeholder={t("filterAiAll")}>
-              {ai === "1"
-                ? t("filterAiYes")
-                : ai === "0"
-                  ? t("filterAiNo")
-                  : t("filterAiAll")}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ANY}>{t("filterAiAll")}</SelectItem>
-            <SelectItem value="1">{t("filterAiYes")}</SelectItem>
-            <SelectItem value="0">{t("filterAiNo")}</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={fit} onValueChange={(v) => setFilter("fit", v)}>
-          <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder={t("filters.anyFit")}>
-              {(FIT_SCORES as readonly string[]).includes(fit)
-                ? t("filters.fitAtLeast", { score: fit })
-                : t("filters.anyFit")}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ANY}>{t("filters.anyFit")}</SelectItem>
-            {FIT_SCORES.map((score) => (
-              <SelectItem key={score} value={score}>
-                {t("filters.fitAtLeast", { score })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={sort} onValueChange={setSort}>
-          <SelectTrigger className="font-mono text-xs tracking-wider">
-            <SelectValue placeholder={t("filters.sortDate")}>
-              {sortLabel(sort)}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {(["date", "fit", "newest", "near"] as const).map((value) => (
-              <SelectItem key={value} value={value}>
-                {sortLabel(value)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {hasFilters && (
-        <button
-          type="button"
-          onClick={resetAll}
-          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider underline-offset-4 hover:underline"
-        >
-          {t("filters.clear")}
-        </button>
-      )}
+      {locationFilter}
+      {searchInput}
+      {filters}
+      {reset}
     </div>
   );
 }

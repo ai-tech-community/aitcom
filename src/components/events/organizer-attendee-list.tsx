@@ -14,9 +14,12 @@ import {
   type SourceFilter,
 } from "@/lib/events/registration-source";
 import { RegistrationSourceLinks } from "./registration-source-links";
+import { cn } from "@/lib/utils";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { api, type RouterOutputs } from "@/trpc/react";
 import {
-  VIEW_STATUSES,
+  REGISTERED_ATTENDEE_STATUSES,
+  attendeeStatusesForView,
   type AttendeeView as View,
 } from "@/lib/events/attendee-views";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +59,9 @@ const STATUS_BADGE: Record<
  * privacy rule; this component only presents and filters.
  */
 export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
+  const redesign = isOpenCommunitiesEnabled();
   const t = useTranslations("events.attendeeList");
+  const tr = useTranslations("redesign.events");
   const locale = useLocale();
   const query = api.events.attendees.useQuery({ eventId });
   const [view, setView] = useState<View>("active");
@@ -65,8 +70,13 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
 
   const shown = useMemo(() => {
     const rows = query.data?.rows ?? [];
-    return filterSourceAttendees(rows, VIEW_STATUSES[view], source, search);
-  }, [query.data, view, source, search]);
+    return filterSourceAttendees(
+      rows,
+      attendeeStatusesForView(view, redesign),
+      source,
+      search,
+    );
+  }, [query.data, view, source, search, redesign]);
 
   if (query.isLoading) {
     return (
@@ -88,17 +98,24 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
   }
 
   const { counts, event, rows } = query.data;
+  const registrationLinks = (
+    <RegistrationSourceLinks eventId={eventId} secondary={redesign} />
+  );
   if (rows.length === 0) {
     return (
       <div className="space-y-6">
-        <RegistrationSourceLinks eventId={eventId} />
+        {!redesign ? registrationLinks : null}
         <EmptyState title={t("emptyTitle")} description={t("emptyHint")} />
+        {redesign ? registrationLinks : null}
       </div>
     );
   }
 
   const count = (v: View) =>
-    VIEW_STATUSES[v].reduce((sum, status) => sum + counts[status], 0);
+    attendeeStatusesForView(v, redesign).reduce(
+      (sum, status) => sum + counts[status],
+      0,
+    );
   const views: { value: View; label: string }[] = (
     [
       "active",
@@ -110,19 +127,25 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
       "attended",
       "cancelled",
     ] as View[]
-  ).map((v) => ({ value: v, label: `${t(`view.${v}`)} ${count(v)}` }));
+  ).map((v) => ({
+    value: v,
+    label: `${redesign && v === "active" ? tr("activeAttendees") : t(`view.${v}`)} ${count(v)}`,
+  }));
 
   const seats =
     event.maxAttendees !== null
       ? t("seats", {
-          taken: counts.registered + counts.attended,
+          taken: REGISTERED_ATTENDEE_STATUSES.reduce(
+            (sum, status) => sum + counts[status],
+            0,
+          ),
           max: event.maxAttendees,
         })
       : null;
 
-  return (
-    <div className="space-y-4">
-      <RegistrationSourceLinks eventId={eventId} />
+  const sourceTools = (
+    <>
+      {registrationLinks}
       <section
         aria-label={t("sourceTotals")}
         className="space-y-2 border-t pt-4"
@@ -148,27 +171,62 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
           ))}
         </dl>
       </section>
-      <p className="text-muted-foreground font-mono text-xs tracking-wider tabular-nums">
-        {[
-          t("summary.registered", { count: counts.registered }),
-          t("summary.waitlisted", { count: counts.waitlisted }),
-          t("summary.attended", { count: counts.attended }),
-          seats,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-      </p>
+    </>
+  );
+  const summary = [
+    redesign ? tr("activeAttendeeCount", { count: count("active") }) : null,
+    t("summary.registered", { count: count("registered") }),
+    t("summary.waitlisted", { count: count("waitlisted") }),
+    t("summary.attended", { count: count("attended") }),
+    seats,
+  ].filter(Boolean);
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="max-w-full max-sm:-m-1 max-sm:overflow-x-auto max-sm:p-1">
+  return (
+    <div className={cn("space-y-4", redesign && "@container")}>
+      {!redesign ? sourceTools : null}
+      {redesign ? (
+        <ul className="border-border flex flex-wrap gap-x-5 gap-y-2 border-b pb-4 text-sm font-medium tabular-nums">
+          {summary.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted-foreground font-mono text-xs tracking-wider tabular-nums">
+          {summary.join(" · ")}
+        </p>
+      )}
+
+      <div
+        className={cn(
+          "flex flex-col gap-3",
+          redesign
+            ? "@5xl:flex-row @5xl:items-center @5xl:justify-between"
+            : "sm:flex-row sm:items-center sm:justify-between",
+        )}
+      >
+        <div
+          className={cn(
+            "max-w-full",
+            redesign
+              ? "-m-1 overflow-x-auto p-1"
+              : "max-sm:-m-1 max-sm:overflow-x-auto max-sm:p-1",
+          )}
+        >
           <SegmentedControl
             aria-label={t("viewsLabel")}
+            className={redesign ? "min-h-12" : undefined}
             options={views}
             value={view}
             onValueChange={setView}
           />
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div
+          className={cn(
+            "flex flex-col gap-2 sm:flex-row sm:items-center",
+            redesign &&
+              "max-sm:[&_a]:min-h-11 max-sm:[&_button]:min-h-11 max-sm:[&_input]:min-h-11",
+          )}
+        >
           <Select
             value={source}
             onValueChange={(value) => setSource(sourceFilter(value))}
@@ -209,18 +267,31 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
       {shown.length === 0 ? (
         <EmptyState title={t("noMatches")} description={t("noMatchesHint")} />
       ) : (
-        <ul className="divide-border border-border divide-y rounded-xl border">
+        <ul
+          className={cn(
+            "divide-border border-border divide-y rounded-xl border",
+            redesign &&
+              "max-sm:[&_a]:inline-flex max-sm:[&_a]:min-h-11 max-sm:[&_a]:items-center max-sm:[&_button]:min-h-11 max-sm:[&_summary]:min-h-11 max-sm:[&_summary]:py-3",
+          )}
+        >
           {shown.map((row) => (
             <AttendeeRow key={row.registrationId} row={row} eventId={eventId} />
           ))}
         </ul>
       )}
+      {redesign ? (
+        <div className="space-y-5 pt-3 max-sm:[&_button]:min-h-11">
+          {sourceTools}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function AttendeeRow({ row, eventId }: { row: Attendee; eventId: number }) {
   const t = useTranslations("events.attendeeList");
+  const tr = useTranslations("redesign.events");
+  const redesign = isOpenCommunitiesEnabled();
   const locale = useLocale();
   const registeredAt = new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
@@ -231,6 +302,69 @@ function AttendeeRow({ row, eventId }: { row: Attendee; eventId: number }) {
         new Date(row.communityMemberSince),
       )
     : null;
+
+  const metadata = (
+    <p className="text-muted-foreground mt-1 text-xs">
+      {[
+        memberSince ? t("memberSince", { date: memberSince }) : t("notMember"),
+        t("pastEvents", { count: row.pastEventsAttended }),
+        row.paymentStatus ? t("payment", { status: row.paymentStatus }) : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+    </p>
+  );
+  const profile = row.detailsShared ? (
+    row.profile ? (
+      <details className="mt-2 text-sm">
+        <summary className="text-muted-foreground hover:text-foreground cursor-pointer">
+          {t("profile")}
+        </summary>
+        <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
+          {row.profile.company ? (
+            <Detail term={t("company")}>{row.profile.company}</Detail>
+          ) : null}
+          {row.profile.experienceLevel ? (
+            <Detail term={t("experience")}>
+              {row.profile.experienceLevel}
+            </Detail>
+          ) : null}
+          {row.profile.skills.length > 0 ? (
+            <Detail term={t("skills")}>{row.profile.skills.join(", ")}</Detail>
+          ) : null}
+          {row.profile.interests.length > 0 ? (
+            <Detail term={t("interests")}>
+              {row.profile.interests.join(", ")}
+            </Detail>
+          ) : null}
+          {(
+            [
+              ["LinkedIn", row.profile.linkedinUrl],
+              ["GitHub", row.profile.githubUrl],
+              [t("website"), row.profile.websiteUrl],
+            ] as const
+          ).map(([label, url]) =>
+            url ? (
+              <Detail key={label} term={label}>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="break-all hover:underline"
+                >
+                  {url}
+                </a>
+              </Detail>
+            ) : null,
+          )}
+        </dl>
+      </details>
+    ) : (
+      <p className="text-muted-foreground mt-2 text-xs">
+        {t("profilePrivate")}
+      </p>
+    )
+  ) : null;
 
   return (
     <li className="px-4 py-3">
@@ -253,10 +387,12 @@ function AttendeeRow({ row, eventId }: { row: Attendee; eventId: number }) {
           <Badge variant="outline">
             {t(`sources.${registrationSource(row.registrationSource)}`)}
           </Badge>
-          <Badge variant={STATUS_BADGE[row.status]}>
-            {t(`status.${row.status}`)}
-            {row.waitlistPosition !== null ? ` #${row.waitlistPosition}` : ""}
-          </Badge>
+          {redesign && row.status === "attended" && row.checkedInAt ? null : (
+            <Badge variant={redesign ? "outline" : STATUS_BADGE[row.status]}>
+              {t(`status.${row.status}`)}
+              {row.waitlistPosition !== null ? ` #${row.waitlistPosition}` : ""}
+            </Badge>
+          )}
           <span className="text-muted-foreground font-mono text-xs tabular-nums">
             {registeredAt}
           </span>
@@ -270,19 +406,7 @@ function AttendeeRow({ row, eventId }: { row: Attendee; eventId: number }) {
         </div>
       </div>
 
-      <p className="text-muted-foreground mt-1 text-xs">
-        {[
-          memberSince
-            ? t("memberSince", { date: memberSince })
-            : t("notMember"),
-          t("pastEvents", { count: row.pastEventsAttended }),
-          row.paymentStatus
-            ? t("payment", { status: row.paymentStatus })
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-      </p>
+      {!redesign ? metadata : null}
 
       {row.answers.length > 0 ? (
         // The organizer asked these to plan the event, so they are open,
@@ -303,59 +427,17 @@ function AttendeeRow({ row, eventId }: { row: Attendee; eventId: number }) {
         </dl>
       ) : null}
 
-      {row.detailsShared ? (
-        row.profile ? (
-          <details className="mt-2 text-sm">
-            <summary className="text-muted-foreground hover:text-foreground cursor-pointer">
-              {t("profile")}
-            </summary>
-            <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
-              {row.profile.company ? (
-                <Detail term={t("company")}>{row.profile.company}</Detail>
-              ) : null}
-              {row.profile.experienceLevel ? (
-                <Detail term={t("experience")}>
-                  {row.profile.experienceLevel}
-                </Detail>
-              ) : null}
-              {row.profile.skills.length > 0 ? (
-                <Detail term={t("skills")}>
-                  {row.profile.skills.join(", ")}
-                </Detail>
-              ) : null}
-              {row.profile.interests.length > 0 ? (
-                <Detail term={t("interests")}>
-                  {row.profile.interests.join(", ")}
-                </Detail>
-              ) : null}
-              {(
-                [
-                  ["LinkedIn", row.profile.linkedinUrl],
-                  ["GitHub", row.profile.githubUrl],
-                  [t("website"), row.profile.websiteUrl],
-                ] as const
-              ).map(([label, url]) =>
-                url ? (
-                  <Detail key={label} term={label}>
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="break-all hover:underline"
-                    >
-                      {url}
-                    </a>
-                  </Detail>
-                ) : null,
-              )}
-            </dl>
-          </details>
-        ) : (
-          <p className="text-muted-foreground mt-2 text-xs">
-            {t("profilePrivate")}
-          </p>
-        )
-      ) : null}
+      {redesign ? (
+        <details className="mt-1 text-sm">
+          <summary className="text-muted-foreground hover:text-foreground w-fit cursor-pointer rounded underline-offset-4 hover:underline">
+            {tr("registrationDetails")}
+          </summary>
+          {metadata}
+          {profile}
+        </details>
+      ) : (
+        profile
+      )}
     </li>
   );
 }

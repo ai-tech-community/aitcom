@@ -11,6 +11,7 @@ vi.mock("./registration-source-links", () => ({
   RegistrationSourceLinks: () => null,
 }));
 const m = vi.hoisted(() => ({
+  redesign: false,
   state: { isLoading: false, isError: false } as {
     isLoading: boolean;
     isError: boolean;
@@ -23,6 +24,9 @@ const m = vi.hoisted(() => ({
   checkInOptions: {} as { onSuccess?: () => void; onError?: () => void },
 }));
 
+vi.mock("@/lib/communities/redesign-flag", () => ({
+  isOpenCommunitiesEnabled: () => m.redesign,
+}));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -175,6 +179,7 @@ function names() {
 beforeEach(() => {
   // jsdom does not implement the scrolling used by the shared Radix Select.
   Element.prototype.scrollIntoView = vi.fn();
+  m.redesign = false;
   m.state = { isLoading: false, isError: false };
   m.data = data();
   m.refetch.mockReset();
@@ -367,5 +372,97 @@ it("combines source filtering with search and exports the same selection", () =>
   expect(screen.getByRole("link", { name: "Download CSV" })).toHaveAttribute(
     "href",
     "/api/events/builders-night/attendees.csv?view=active&locale=en&source=luma&search=Ada",
+  );
+});
+
+it("keeps the CSV, search and check-in actions beside the redesigned roster", () => {
+  m.redesign = true;
+  renderList();
+  const csv = screen.getByRole("link", { name: /download.*csv/i });
+  expect(csv).toHaveAttribute(
+    "href",
+    expect.stringContaining(
+      "/api/events/builders-night/attendees.csv?view=active",
+    ),
+  );
+  expect(screen.getByText("2 registered")).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Ada" } });
+  expect(screen.queryByText("Grace Hopper")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Check in" }));
+  expect(m.checkIn).toHaveBeenCalledWith({
+    registrationId: "r1",
+    checkedIn: true,
+  });
+});
+
+it("shows one check-in signal and folds secondary details under the attendee", () => {
+  m.redesign = true;
+  m.data = data([
+    {
+      ...ROWS[0]!,
+      status: "attended",
+      checkedInAt: new Date("2026-10-05T18:04:00Z"),
+    },
+  ]);
+  renderList();
+  const row = screen.getByText("Ada Lovelace").closest("li")!;
+  expect(within(row).getAllByText(/Checked in/)).toHaveLength(1);
+  expect(within(row).getByText("What do you hope to learn?")).toBeVisible();
+  expect(within(row).getByText(/2 earlier events/)).not.toBeVisible();
+  fireEvent.click(within(row).getByRole("button", { name: "Undo" }));
+  expect(m.checkIn).toHaveBeenCalledWith({
+    registrationId: "r1",
+    checkedIn: false,
+  });
+});
+
+it("separates active and cancelled sign-ups and counts checked-in people as registered", () => {
+  m.redesign = true;
+  m.data = data([
+    ROWS[0]!,
+    ROWS[1]!,
+    {
+      ...ROWS[2]!,
+      status: "attended",
+      checkedInAt: new Date("2026-10-05T18:04:00Z"),
+    },
+    ROWS[3]!,
+  ]);
+  renderList();
+
+  expect(screen.getByText("3 active sign-ups", { exact: true })).toBeVisible();
+  expect(screen.getByText("2 registered", { exact: true })).toBeVisible();
+  expect(screen.getByText("1 checked in", { exact: true })).toBeVisible();
+  expect(screen.getByText("2 of 40 seats taken")).toBeVisible();
+  expect(screen.getByRole("radio", { name: "Active 3" })).toBeChecked();
+  expect(screen.queryByText("Cancelled Carl")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Download CSV" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("?view=active&"),
+  );
+
+  fireEvent.click(screen.getByRole("radio", { name: "Registered 2" }));
+  expect(screen.getByText("Ada Lovelace")).toBeVisible();
+  expect(screen.getByText("Old Registrant")).toBeVisible();
+  expect(screen.queryByText("Grace Hopper")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Download CSV" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("?view=registered&"),
+  );
+
+  fireEvent.click(screen.getByRole("radio", { name: "Waitlist 1" }));
+  expect(screen.getByText("Grace Hopper")).toBeVisible();
+  expect(screen.queryByText("Ada Lovelace")).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("radio", { name: "Checked in 1" }));
+  expect(screen.getByText("Old Registrant")).toBeVisible();
+  expect(screen.queryByText("Ada Lovelace")).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("radio", { name: "Cancelled 1" }));
+  expect(screen.getByText("Cancelled Carl")).toBeVisible();
+  expect(screen.queryByText("Old Registrant")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Download CSV" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("?view=cancelled&"),
   );
 });

@@ -1,4 +1,8 @@
-import { eventDayParts, formatEventTimeRange } from "@/lib/event-time";
+import {
+  eventDayParts,
+  formatEventTimeRange,
+  isValidTimeZone,
+} from "@/lib/event-time";
 import { EVENT_TYPES, type EventType } from "@/lib/event-metadata";
 import {
   isOnlineEvent,
@@ -33,6 +37,7 @@ export interface EventRowInput {
   date: string;
   /** "HH:MM" wall-clock in `timezone`. */
   startTime?: string | null;
+  endTime?: string | null;
   /** IANA zone the start time is expressed in. */
   timezone?: string | null;
   city?: string | null;
@@ -88,6 +93,10 @@ export interface EventRow {
   year: string | null;
   /** Start time with zone abbreviation, "09:00 PDT"; null without startTime. */
   time: string | null;
+  /** Full range and explicit format for agenda surfaces. */
+  timeRange?: string | null;
+  formatLabel?: string | null;
+  timezone?: string | null;
   /** ["City, Country"] / ["Online"] / ["Amsterdam, Netherlands", "Hybrid"]. */
   placeParts: string[];
   /** "by <community>", when a host community is known. */
@@ -195,12 +204,19 @@ export function presentEventRows(
 ): EventRow[] {
   return events.map((event) => {
     const parts = eventDayParts(event.date, locale);
-    const time = formatEventTimeRange({
+    const timing = {
       date: event.date,
       startTime: clean(event.startTime),
-      endTime: null,
       timezone: event.timezone,
-    });
+    };
+    const time = formatEventTimeRange(timing);
+    const endTime = clean(event.endTime);
+    const timeRange = endTime
+      ? formatEventTimeRange({ ...timing, endTime })
+      : time;
+    const formatLabel = event.format
+      ? eventFormatLabel(event.format, labels)
+      : null;
     const placeParts = eventRowPlaceParts(event, labels);
     const hostName = clean(event.host);
     const host = hostName ? labels.hostedBy(hostName) : null;
@@ -219,6 +235,9 @@ export function presentEventRows(
           ? String(parts.year)
           : null,
       time,
+      timeRange,
+      formatLabel,
+      timezone: isValidTimeZone(event.timezone) ? event.timezone : null,
       placeParts,
       host,
       kind,

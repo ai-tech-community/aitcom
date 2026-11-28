@@ -1,4 +1,6 @@
 import { useLocale, useTranslations } from "next-intl";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { EventAgendaRow } from "@/components/events/rows/event-agenda-row";
 import { TimetableRow } from "@/components/events/rows/timetable-row";
 import { Pause } from "@/components/events/rows/row-speech";
 import { useEventRowLabels } from "@/components/events/rows/use-event-row-labels";
@@ -45,6 +47,9 @@ export function MyEventsList({
   /** "Now" for the year shown on rows; tests pin it. */
   now?: Date;
 }) {
+  const ScheduleRow = isOpenCommunitiesEnabled()
+    ? EventAgendaRow
+    : TimetableRow;
   const locale = useLocale();
   const labels = useEventRowLabels();
   const t = useTranslations("events.myEvents");
@@ -59,7 +64,7 @@ export function MyEventsList({
           : item.status.replace(/_/g, " ");
         return (
           <li key={item.key}>
-            <TimetableRow
+            <ScheduleRow
               row={row}
               status={
                 <span

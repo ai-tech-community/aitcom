@@ -1,12 +1,17 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { ArrowUpRight, Check, ChevronDown, Clock3 } from "lucide-react";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatEventDayRange } from "@/lib/event-time";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { hasAccountNames } from "@/lib/person-name";
 import {
@@ -22,6 +27,8 @@ import {
 
 interface EventRegisterButtonProps {
   eventId: number;
+  cancelled?: boolean;
+  ended?: boolean;
   price?: number | null;
   isExternal?: boolean;
   sourceUrl?: string | null;
@@ -30,13 +37,18 @@ interface EventRegisterButtonProps {
   /** When the event starts, for "Edit my answers" (until the start). */
   timing?: {
     date: string;
+    endDate?: string | null;
     startTime?: string | null;
     timezone?: string | null;
   };
 }
 
+const subscribeToNothing = () => () => undefined;
+
 export function EventRegisterButton({
   eventId,
+  cancelled = false,
+  ended = false,
   price,
   isExternal = false,
   sourceUrl = null,
@@ -44,9 +56,22 @@ export function EventRegisterButton({
   timing,
 }: EventRegisterButtonProps) {
   const t = useTranslations("events");
+  const format = useFormatter();
+  const locale = useLocale();
+  const tr = useTranslations("redesign.events");
+  const redesign = isOpenCommunitiesEnabled();
+  const actionClass = redesign
+    ? "min-h-11 w-full whitespace-normal"
+    : "w-full font-mono text-xs tracking-wider";
   const tc = useTranslations("common");
   const { promptAuth } = useRequireAuth();
   const session = authClient.useSession();
+  // A streamed RSVP can hydrate after the shared session store resolves.
+  const hydrated = useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
 
   const isLoggedIn = !!session.data?.user;
   // First/last name are asked once, before the first registration that
@@ -55,19 +80,36 @@ export function EventRegisterButton({
   // One dialog: names when the account has none, plus the organizer's
   // questions; or, once registered, just the answers.
   const [dialog, setDialog] = useState<"register" | "answers" | null>(null);
+  const [cancelledEventId, setCancelledEventId] = useState<number | null>(null);
   const router = useRouter();
   const isPaid = (price ?? 0) > 0;
 
   const registrationStatus = api.events.registrationStatus.useQuery(
     { eventId },
-    { enabled: isLoggedIn },
+    { enabled: isLoggedIn && !(redesign && ended) },
   );
 
   const utils = api.useUtils();
 
+  function refreshRegistration() {
+    void utils.events.registrationStatus.invalidate({ eventId });
+    void utils.events.myRegistrations.invalidate();
+    if (redesign) {
+      void utils.events.registrationCount.invalidate({
+        eventId,
+        includeIntent: isExternal,
+      });
+      void utils.events.getAttendees.invalidate({
+        eventId,
+        includeIntent: isExternal,
+      });
+    }
+  }
+
   const registerMutation = api.events.register.useMutation({
     onSuccess: (data) => {
       setDialog(null);
+      setCancelledEventId(null);
       // Names given with this registration are now on the account.
       void session.refetch();
       if (data.alreadyRegistered) {
@@ -81,8 +123,7 @@ export function EventRegisterButton({
       } else {
         toast.success(t("registration.toastRegistered"));
       }
-      void utils.events.registrationStatus.invalidate({ eventId });
-      void utils.events.myRegistrations.invalidate();
+      refreshRegistration();
     },
     onError: (error) => {
       // The account has no names yet (e.g. a stale session): ask for them.
@@ -98,7 +139,12 @@ export function EventRegisterButton({
         setDialog("register");
         return;
       }
-      toast.error(error.message || "Registration failed. Please try again.");
+      toast.error(
+        error.message ||
+          (redesign
+            ? tr("rsvpError")
+            : "Registration failed. Please try again."),
+      );
     },
   });
 
@@ -132,12 +178,17 @@ export function EventRegisterButton({
 
   const cancelMutation = api.events.cancelRegistration.useMutation({
     onSuccess: () => {
-      toast.success(t("registration.toastCancelled"));
-      void utils.events.registrationStatus.invalidate({ eventId });
-      void utils.events.myRegistrations.invalidate();
+      if (redesign) setCancelledEventId(eventId);
+      else toast.success(t("registration.toastCancelled"));
+      refreshRegistration();
     },
     onError: (error) => {
-      toast.error(error.message || "Cancellation failed. Please try again.");
+      toast.error(
+        error.message ||
+          (redesign
+            ? tr("cancelError")
+            : "Cancellation failed. Please try again."),
+      );
     },
   });
 
@@ -147,37 +198,98 @@ export function EventRegisterButton({
         toast.info(t("registration.toastAlreadyGoing"));
       } else {
         toast.success(
-          "Marked as going. Don't forget to register on the event site.",
+          redesign
+            ? tr("externalIntentSaved")
+            : "Marked as going. Don't forget to register on the event site.",
         );
       }
-      void utils.events.registrationStatus.invalidate({ eventId });
-      void utils.events.myRegistrations.invalidate();
+      refreshRegistration();
     },
     onError: (error) => {
-      toast.error(error.message || "Could not save. Please try again.");
+      toast.error(
+        error.message ||
+          (redesign ? tr("saveError") : "Could not save. Please try again."),
+      );
     },
   });
 
   const removeIntentMutation = api.events.removeIntent.useMutation({
     onSuccess: () => {
       toast.success(tc("removed"));
-      void utils.events.registrationStatus.invalidate({ eventId });
-      void utils.events.myRegistrations.invalidate();
+      refreshRegistration();
     },
     onError: (error) => {
-      toast.error(error.message || "Could not remove. Please try again.");
+      toast.error(
+        error.message ||
+          (redesign
+            ? tr("removeError")
+            : "Could not remove. Please try again."),
+      );
     },
   });
 
+  const cancelledNotice = (
+    <p className="text-muted-foreground text-sm">
+      {tr("cancelledRegistration")}
+    </p>
+  );
+
+  if (redesign && ended) {
+    return cancelled ? (
+      cancelledNotice
+    ) : (
+      <p className="text-muted-foreground flex min-h-11 items-center gap-2 text-sm font-medium">
+        <Clock3 aria-hidden="true" className="size-4 shrink-0" />
+        {tr("eventEnded")}
+      </p>
+    );
+  }
+
+  if (
+    redesign &&
+    (!hydrated ||
+      session.isPending ||
+      (isLoggedIn && registrationStatus.isLoading))
+  ) {
+    return (
+      <div aria-busy="true" aria-label={tr("loadingRegistration")}>
+        <Skeleton className="h-11 w-full" />
+      </div>
+    );
+  }
+
+  if (redesign && isLoggedIn && registrationStatus.isError) {
+    return (
+      <div className="space-y-2">
+        <p role="alert" className="text-muted-foreground text-sm">
+          {tr("loadRegistrationError")}
+        </p>
+        <Button
+          variant="outline"
+          className={actionClass}
+          onClick={() => void registrationStatus.refetch()}
+        >
+          {tr("retry")}
+        </Button>
+        {isExternal && sourceUrl ? (
+          <ExternalSiteLink url={sourceUrl} primary />
+        ) : null}
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
-    const signInLabel = isExternal
-      ? "Sign in to mark as going"
-      : "Sign in to register";
+    if (redesign && cancelled) return cancelledNotice;
+    const signInLabel = redesign
+      ? tr(isExternal ? "signInIntent" : "signInRsvp")
+      : isExternal
+        ? "Sign in to mark as going"
+        : "Sign in to register";
     return (
       <div className="space-y-3">
         <Button
-          variant="outline"
-          className="w-full font-mono text-xs tracking-wider"
+          variant={redesign && !isExternal ? "default" : "outline"}
+          className={actionClass}
           onClick={() => promptAuth(signInLabel)}
         >
           {signInLabel}
@@ -191,11 +303,7 @@ export function EventRegisterButton({
 
   if (registrationStatus.isLoading) {
     return (
-      <Button
-        variant="outline"
-        disabled
-        className="w-full font-mono text-xs tracking-wider"
-      >
+      <Button variant="outline" disabled className={actionClass}>
         Loading...
       </Button>
     );
@@ -207,20 +315,32 @@ export function EventRegisterButton({
     if (isExternal && status === "intent") {
       return (
         <div className="space-y-3">
-          <div className="border-border flex items-center gap-2 rounded border px-4 py-2.5">
-            <div className="bg-primary h-2 w-2 rounded-full" />
-            <span className="text-muted-foreground font-mono text-xs tracking-wider">
-              STATUS: GOING
-            </span>
-          </div>
-          {sourceUrl && <ExternalSiteLink url={sourceUrl} primary />}
+          {redesign ? (
+            <RegistrationStatus confirmed>
+              {tr("status.intent")}
+            </RegistrationStatus>
+          ) : (
+            <div className="border-border flex items-center gap-2 rounded border px-4 py-2.5">
+              <div className="bg-primary h-2 w-2 rounded-full" />
+              <span className="text-muted-foreground font-mono text-xs tracking-wider">
+                STATUS: GOING
+              </span>
+            </div>
+          )}
+          {redesign && cancelled
+            ? cancelledNotice
+            : sourceUrl && <ExternalSiteLink url={sourceUrl} primary />}
           <Button
             variant="outline"
-            className="w-full font-mono text-xs tracking-wider"
+            className={actionClass}
             onClick={() => removeIntentMutation.mutate({ eventId })}
             disabled={removeIntentMutation.isPending}
           >
-            {removeIntentMutation.isPending ? "Removing..." : "Not going"}
+            {redesign
+              ? tr(removeIntentMutation.isPending ? "removing" : "notGoing")
+              : removeIntentMutation.isPending
+                ? "Removing..."
+                : "Not going"}
           </Button>
         </div>
       );
@@ -237,35 +357,80 @@ export function EventRegisterButton({
               ? "PENDING PAYMENT"
               : status.toUpperCase();
 
-    return (
-      <div className="space-y-3">
-        <div className="border-border flex items-center gap-2 rounded border px-4 py-2.5">
-          <div className="bg-primary h-2 w-2 rounded-full" />
-          <span className="text-muted-foreground font-mono text-xs tracking-wider">
-            STATUS: {statusLabel}
-          </span>
-        </div>
-        {questions.length > 0 &&
-        timing &&
-        canChangeAnswers(timing) &&
-        status !== "attended" ? (
+    const canEditAnswers =
+      questions.length > 0 &&
+      timing &&
+      canChangeAnswers(timing) &&
+      status !== "attended";
+    const canCancel = status !== "pending_payment";
+    const controls = (
+      <>
+        {canEditAnswers ? (
           <Button
             variant="outline"
-            className="w-full"
+            className={cn("w-full", redesign && "min-h-11")}
             onClick={() => setDialog("answers")}
           >
             {t("registration.editAnswers")}
           </Button>
         ) : null}
-        {status !== "pending_payment" && (
+        {canCancel && (
           <Button
             variant="outline"
-            className="w-full font-mono text-xs tracking-wider"
+            className={actionClass}
             onClick={() => cancelMutation.mutate({ eventId })}
             disabled={cancelMutation.isPending}
           >
-            {cancelMutation.isPending ? "Cancelling..." : "Cancel registration"}
+            {redesign
+              ? tr(
+                  cancelMutation.isPending
+                    ? "cancelling"
+                    : "cancelRegistration",
+                )
+              : cancelMutation.isPending
+                ? "Cancelling..."
+                : "Cancel registration"}
           </Button>
+        )}
+      </>
+    );
+
+    return (
+      <div className="space-y-3">
+        {redesign ? (
+          <RegistrationStatus
+            confirmed={status === "registered" || status === "attended"}
+            date={
+              status === "registered" && timing
+                ? formatEventDayRange(timing.date, timing.endDate, locale)
+                : undefined
+            }
+          >
+            {tr(`status.${status}`)}
+          </RegistrationStatus>
+        ) : (
+          <div className="border-border flex items-center gap-2 rounded border px-4 py-2.5">
+            <div className="bg-primary h-2 w-2 rounded-full" />
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
+              STATUS: {statusLabel}
+            </span>
+          </div>
+        )}
+        {redesign ? (
+          canEditAnswers || canCancel ? (
+            <details className="group rounded-md border">
+              <summary className="focus-visible:ring-ring/50 flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-md px-3 text-sm font-medium outline-none focus-visible:ring-[3px] [&::-webkit-details-marker]:hidden">
+                {tr("manageRsvp")}
+                <ChevronDown
+                  aria-hidden="true"
+                  className="text-muted-foreground size-4 group-open:rotate-180"
+                />
+              </summary>
+              <div className="space-y-2 border-t p-2">{controls}</div>
+            </details>
+          ) : null
+        ) : (
+          controls
         )}
         {dialog === "answers" ? (
           <RegistrationDialog
@@ -288,20 +453,33 @@ export function EventRegisterButton({
     );
   }
 
+  if (redesign && cancelled) return cancelledNotice;
+
   if (isExternal) {
     return (
       <div className="space-y-3">
         {sourceUrl && <ExternalSiteLink url={sourceUrl} primary />}
         <Button
           variant="outline"
-          className="w-full font-mono text-xs tracking-wider"
+          className={actionClass}
           onClick={() => markIntentMutation.mutate({ eventId })}
           disabled={markIntentMutation.isPending}
         >
-          {markIntentMutation.isPending ? "Saving..." : "I'm going"}
+          {redesign
+            ? tr(markIntentMutation.isPending ? "saving" : "markGoing")
+            : markIntentMutation.isPending
+              ? "Saving..."
+              : "I'm going"}
         </Button>
-        <p className="text-muted-foreground text-center font-mono text-xs tracking-wider">
-          Registration handled on external site
+        <p
+          className={cn(
+            "text-muted-foreground text-center text-xs",
+            !redesign && "font-mono tracking-wider",
+          )}
+        >
+          {redesign
+            ? tr("externalNotice")
+            : "Registration handled on external site"}
         </p>
       </div>
     );
@@ -312,17 +490,33 @@ export function EventRegisterButton({
   return (
     <div className="space-y-2">
       <Button
-        className="w-full font-mono text-xs tracking-wider"
+        className={actionClass}
         onClick={() => register()}
         disabled={registerMutation.isPending}
       >
-        {registerMutation.isPending
-          ? "Registering..."
-          : `Register${priceLabel}`}
+        {redesign
+          ? registerMutation.isPending
+            ? tr("registering")
+            : isPaid
+              ? tr("paidRegistration", {
+                  price: format.number((price ?? 0) / 100, {
+                    style: "currency",
+                    currency: "EUR",
+                  }),
+                })
+              : tr("rsvp")
+          : registerMutation.isPending
+            ? "Registering..."
+            : `Register${priceLabel}`}
       </Button>
       <p className="text-muted-foreground text-xs">
         {t("registration.organizerNotice")}
       </p>
+      {redesign ? (
+        <p role="status" className="text-muted-foreground text-sm empty:hidden">
+          {cancelledEventId === eventId ? tr("status.cancelled") : null}
+        </p>
+      ) : null}
       {dialog === "register" ? (
         <RegistrationDialog
           open
@@ -339,6 +533,39 @@ export function EventRegisterButton({
   );
 }
 
+function RegistrationStatus({
+  confirmed,
+  date,
+  children,
+}: {
+  confirmed: boolean;
+  date?: string;
+  children: React.ReactNode;
+}) {
+  const Icon = confirmed ? Check : Clock3;
+  return (
+    <div
+      role="status"
+      className={cn(
+        "flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-semibold",
+        confirmed
+          ? "border-success/35 bg-success/10 text-success"
+          : "border-border bg-secondary/60",
+      )}
+    >
+      <Icon aria-hidden="true" className="size-4 shrink-0" />
+      <div className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2">
+        <span>{children}</span>
+        {date ? (
+          <span className="text-muted-foreground text-xs font-normal tabular-nums">
+            {date}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function ExternalSiteLink({
   url,
   primary,
@@ -346,6 +573,22 @@ function ExternalSiteLink({
   url: string;
   primary?: boolean;
 }) {
+  const tr = useTranslations("redesign.events");
+  if (isOpenCommunitiesEnabled()) {
+    return (
+      <Button
+        asChild
+        variant={primary ? "default" : "outline"}
+        className="min-h-11 w-full whitespace-normal"
+      >
+        <a href={url} target="_blank" rel="noreferrer">
+          {tr("externalRegister")}
+          <ArrowUpRight aria-hidden="true" />
+        </a>
+      </Button>
+    );
+  }
+
   const base =
     "w-full inline-flex items-center justify-center rounded-md px-4 py-2 font-mono text-xs tracking-wider transition-colors";
   const styles = primary

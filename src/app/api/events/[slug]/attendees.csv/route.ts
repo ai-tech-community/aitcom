@@ -6,7 +6,11 @@ import { NextResponse } from "next/server";
 import { createTranslator } from "next-intl";
 
 import { loadMessages, resolveLocale } from "@/i18n/messages";
-import { VIEW_STATUSES, parseAttendeeView } from "@/lib/events/attendee-views";
+import {
+  attendeeStatusesForView,
+  parseAttendeeView,
+} from "@/lib/events/attendee-views";
+import { isOpenCommunitiesEnabled } from "@/lib/communities/redesign-flag";
 import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
 import { toAttendeesCsv } from "@/server/events/attendee-csv";
@@ -48,7 +52,7 @@ export async function GET(
   const csv = toAttendeesCsv(
     filterSourceAttendees(
       data.rows,
-      VIEW_STATUSES[view],
+      attendeeStatusesForView(view, isOpenCommunitiesEnabled()),
       sourceFilter(url.searchParams.get("source")),
       url.searchParams.get("search") ?? "",
     ),
